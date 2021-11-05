@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ctenums import ItemID, CharID, RecruitID, TreasureID
-from treasurewriter import TreasureLocTier
+from treasuredata import TreasureLocTier
 import randosettings as rset
 import randoconfig as cfg
 #

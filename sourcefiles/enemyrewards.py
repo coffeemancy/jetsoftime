@@ -8,8 +8,27 @@ from ctrom import CTRom
 import randoconfig as cfg
 import randosettings as rset
 
-import treasurewriter as tw
+import treasuredata as td
 import enemywriter as ew
+
+# We do not want to be reconstructing these lists every time that
+# get_distributions is called.  They are _named to avoid importing with
+# an import *.
+
+# It is possible that we can link directly to the identically named lists
+# in treasuredata, but for safety we're going to copy them.
+_low_gear = td.get_item_list(td.ItemTier.LOW_GEAR)
+_low_cons = td.get_item_list(td.ItemTier.LOW_CONSUMABLE)
+_pass_gear = td.get_item_list(td.ItemTier.PASSABLE_GEAR)
+_pass_cons = td.get_item_list(td.ItemTier.PASSABLE_CONSUMABLE)
+_mid_gear = td.get_item_list(td.ItemTier.MID_GEAR)
+_mid_cons = td.get_item_list(td.ItemTier.MID_CONSUMABLE)
+_good_gear = td.get_item_list(td.ItemTier.GOOD_GEAR)
+_good_cons = td.get_item_list(td.ItemTier.GOOD_CONSUMABLE)
+_high_gear = td.get_item_list(td.ItemTier.HIGH_GEAR)
+_high_cons = td.get_item_list(td.ItemTier.HIGH_CONSUMABLE)
+_awe_gear = td.get_item_list(td.ItemTier.AWESOME_GEAR)
+_awe_cons = td.get_item_list(td.ItemTier.AWESOME_CONSUMABLE)
 
 
 class RewardGroup(Enum):
@@ -33,79 +52,73 @@ class RewardGroup(Enum):
 #   3) Set drop to 0 (ItemID.NONE) with probability 1-drop_rate
 # So get_distributions returns drop_dist, charm_dist, drop_rate
 def get_distributions(enemy_group: RewardGroup,
-                      difficulty: rset.Difficulty) -> (tw.TreasureDist,
-                                                       tw.TreasureDist,
+                      difficulty: rset.Difficulty) -> (td.TreasureDist,
+                                                       td.TreasureDist,
                                                        float):
 
     if enemy_group == RewardGroup.COMMON_ENEMY:
         if difficulty == rset.Difficulty.NORMAL or \
            difficulty == rset.Difficulty.EASY:
 
-            drop_dist = tw.TreasureDist(
-                (2, tw.passable_lvl_items + tw.low_lvl_items),
-                (8, (tw.passable_lvl_consumables +
-                     tw.passable_lvl_consumables)),
+            drop_dist = td.TreasureDist(
+                (2, _pass_gear + _low_gear),
+                (8, _low_cons + _pass_cons),
             )
             charm_dist = None
             drop_rate = 0.5
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist((1, [ItemID.NONE]))
+            drop_dist = td.TreasureDist((1, [ItemID.NONE]))
             charm_dist = drop_dist
             drop_rate = 0
         else:
             exit()
     elif enemy_group == RewardGroup.UNCOMMON_ENEMY:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
-            drop_dist = tw.TreasureDist(
-                (2, tw.mid_lvl_items+tw.good_lvl_items),
-                (8, tw.mid_lvl_consumables+tw.good_lvl_consumables)
+            drop_dist = td.TreasureDist(
+                (2, _mid_gear+_good_gear),
+                (8, _mid_cons+_good_cons)
             )
 
             charm_dist = None
             drop_rate = 0.4
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist((1, [ItemID.NONE]))
-            charm_dist = tw.TreasureDist(
-                (1, tw.mid_lvl_consumables+tw.good_lvl_consumables)
+            drop_dist = td.TreasureDist((1, [ItemID.NONE]))
+            charm_dist = td.TreasureDist(
+                (1, _mid_cons+_good_cons)
             )
             drop_rate = 0
         else:
             exit()
     elif enemy_group == RewardGroup.RARE_ENEMY:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
-            drop_dist = tw.TreasureDist(
-                (2, (tw.mid_lvl_items + tw.good_lvl_items +
-                     tw.high_lvl_items)),
-                (8, (tw.mid_lvl_consumables + tw.good_lvl_consumables +
-                     tw.high_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (2, _mid_gear + _good_gear + _high_gear),
+                (8, _mid_cons + _good_cons + _high_cons)
             )
             charm_dist = None
             drop_rate = 0.4
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist(
-                (1, (tw.passable_lvl_consumables + tw.mid_lvl_consumables +
-                     tw.good_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (1, _pass_cons + _mid_cons + _good_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (1, tw.mid_lvl_items + tw.good_lvl_items)
+            charm_dist = td.TreasureDist(
+                (1, _mid_gear + _good_gear)
             )
             drop_rate = 1.0
         else:
             exit()
     elif enemy_group == RewardGroup.RAREST_ENEMY:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
-            drop_dist = tw.TreasureDist(
-                (1, tw.high_lvl_items + tw.awesome_lvl_items),
-                (9, tw.high_lvl_consumables + tw.awesome_lvl_consumables)
+            drop_dist = td.TreasureDist(
+                (1, _high_gear + _awe_gear),
+                (9, _high_cons + _awe_cons)
             )
             charm_dist = None
             drop_rate = 0.3
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist(
-                (2, (tw.mid_lvl_items + tw.good_lvl_items +
-                     tw.high_lvl_items + tw.awesome_lvl_items)),
-                (8, (tw.mid_lvl_consumables + tw.good_lvl_consumables +
-                     tw.high_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (2, _mid_gear + _good_gear + _high_gear + _awe_gear),
+                (8, _mid_cons + _good_cons + _high_cons + _awe_cons)
             )
             charm_dist = drop_dist
             drop_rate = 0.3
@@ -113,89 +126,83 @@ def get_distributions(enemy_group: RewardGroup,
             exit()
     elif enemy_group == RewardGroup.EARLY_BOSS:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
-            drop_dist = tw.TreasureDist(
-                (15, tw.awesome_lvl_items),
-                (60, tw.good_lvl_items + tw.high_lvl_items),
-                (225, tw.mid_lvl_items),
-                (100, (tw.mid_lvl_consumables + tw.high_lvl_consumables +
-                       tw.good_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (15, _awe_gear),
+                (60, _good_gear + _high_gear),
+                (225, _mid_gear),
+                (100, _mid_cons + _high_cons + _good_cons + _awe_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (20, tw.good_lvl_items + tw.high_lvl_items),
-                (75, tw.mid_lvl_items)
+            charm_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (20, _good_gear + _high_gear),
+                (75, _mid_gear)
             )
             drop_rate = 1.0
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (20, tw.good_lvl_items + tw.high_lvl_items),
-                (75, tw.mid_lvl_items),
-                (100, (tw.mid_lvl_consumables + tw.high_lvl_consumables +
-                       tw.good_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (20, _good_gear + _high_gear),
+                (75, _mid_gear),
+                (100, _mid_cons + _high_cons + _good_cons + _awe_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (20, tw.good_lvl_items + tw.high_lvl_items),
-                (75, tw.mid_lvl_items)
+            charm_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (20, _good_gear + _high_gear),
+                (75, _mid_gear)
             )
             drop_rate = 0.5
         else:
             exit()
     elif enemy_group == RewardGroup.MIDGAME_BOSS:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
-            drop_dist = tw.TreasureDist(
-                (15, tw.awesome_lvl_items),
-                (60, tw.good_lvl_items + tw.high_lvl_items),
-                (225, tw.good_lvl_items),
-                (100, (tw.mid_lvl_consumables + tw.high_lvl_consumables +
-                       tw.good_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (15, _awe_gear),
+                (60, _good_gear + _high_gear),
+                (225, _good_gear),
+                (100, _mid_cons + _high_cons + _good_cons + _awe_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (20, tw.good_lvl_items + tw.high_lvl_items),
-                (75, tw.good_lvl_items)
+            charm_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (20, _good_gear + _high_gear),
+                (75, _good_gear)
             )
             drop_rate = 1.0
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (20, tw.good_lvl_items + tw.high_lvl_items),
-                (75, tw.good_lvl_items),
-                (100, (tw.mid_lvl_consumables + tw.high_lvl_consumables +
-                       tw.good_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (20, _good_gear + _high_gear),
+                (75, _good_gear),
+                (100, _mid_cons + _high_cons + _good_cons + _awe_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (20, tw.good_lvl_items + tw.high_lvl_items),
-                (75, tw.good_lvl_items)
+            charm_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (20, _good_gear + _high_gear),
+                (75, _good_gear)
             )
             drop_rate = 1.0
         else:
             exit()
     elif enemy_group == RewardGroup.LATE_BOSS:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
-            drop_dist = tw.TreasureDist(
-                (15, tw.awesome_lvl_items),
-                (285, tw.good_lvl_items + tw.high_lvl_items),
-                (100, (tw.mid_lvl_consumables + tw.good_lvl_consumables +
-                       tw.high_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (15, _awe_gear),
+                (285, _good_gear + _high_gear),
+                (100, _mid_cons + _good_cons + _high_cons + _awe_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (95, tw.good_lvl_items, tw.high_lvl_items)
+            charm_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (95, _good_gear, _high_gear)
             )
             drop_rate = 1.0
         elif difficulty == rset.Difficulty.HARD:
-            drop_dist = tw.TreasureDist(
-                (10, tw.awesome_lvl_items),
-                (190, tw.good_lvl_items + tw.high_lvl_items),
-                (100, (tw.mid_lvl_consumables + tw.good_lvl_consumables +
-                       tw.high_lvl_consumables + tw.awesome_lvl_consumables))
+            drop_dist = td.TreasureDist(
+                (10, _awe_gear),
+                (190, _good_gear + _high_gear),
+                (100, _mid_cons + _good_cons + _high_cons + _awe_cons)
             )
-            charm_dist = tw.TreasureDist(
-                (5, tw.awesome_lvl_items),
-                (95, tw.good_lvl_items, tw.high_lvl_items)
+            charm_dist = td.TreasureDist(
+                (5, _awe_gear),
+                (95, _good_gear, _high_gear)
             )
             drop_rate = 1.0
         else:
@@ -204,7 +211,7 @@ def get_distributions(enemy_group: RewardGroup,
     return drop_dist, charm_dist, drop_rate
 
 
-common_enemies = [
+_common_enemies = [
     EnemyID.BELLBIRD, EnemyID.BLUE_IMP, EnemyID.GREEN_IMP, EnemyID.ROLY,
     EnemyID.POLY, EnemyID.ROLYPOLY, EnemyID.ROLY_RIDER, EnemyID.BLUE_EAGLET,
     EnemyID.AVIAN_CHAOS, EnemyID.IMP_ACE, EnemyID.GNASHER, EnemyID.NAGA_ETTE,
@@ -214,7 +221,7 @@ common_enemies = [
     EnemyID.CAVE_BAT, EnemyID.OGAN, EnemyID.BEETLE, EnemyID.GATO,
 ]
 
-uncommon_enemies = [
+_uncommon_enemies = [
     EnemyID.REPTITE_GREEN, EnemyID.KILWALA, EnemyID.KRAWLIE,
     EnemyID.HENCH_PURPLE, EnemyID.GOLD_EAGLET, EnemyID.RED_EAGLET,
     EnemyID.GNAWER, EnemyID.OCTOPOD, EnemyID.FLY_TRAP, EnemyID.MEAT_EATER,
@@ -233,7 +240,7 @@ uncommon_enemies = [
     EnemyID.ROLY_BOMBER,
 ]
 
-rare_enemies = [
+_rare_enemies = [
     EnemyID.TERRASAUR, EnemyID.MARTELLO, EnemyID.PANEL, EnemyID.STONE_IMP,
     EnemyID.BANTAM_IMP, EnemyID.RUMINATOR, EnemyID.MAN_EATER, EnemyID.DEFUNCT,
     EnemyID.DECEASED, EnemyID.REAPER, EnemyID.JUGGLER, EnemyID.RETINITE_EYE,
@@ -249,19 +256,19 @@ rare_enemies = [
     EnemyID.SPEKKIO_NU, EnemyID.OZZIE_MAGUS_CHAINS,
 ]
 
-rarest_enemies = [
+_rarest_enemies = [
     EnemyID.NU, EnemyID.DEPARTED, EnemyID.SIDE_KICK, EnemyID.RUBBLE,
     EnemyID.NU_2,
 ]
 
-early_bosses = [
+_early_bosses = [
     EnemyID.YAKRA, EnemyID.MASA, EnemyID.MUNE, EnemyID.MASA_MUNE,
     EnemyID.OZZIE_ZENAN, EnemyID.OZZIE_FORT, EnemyID.HECKRAN,
     EnemyID.ZOMBOR_BOTTOM, EnemyID.ZOMBOR_TOP, EnemyID.SUPER_SLASH_TRIO,
     EnemyID.FLEA_PLUS, EnemyID.ATROPOS_XR, EnemyID.GOLEM_BOSS,
 ]
 
-midgame_bosses = [
+_midgame_bosses = [
     EnemyID.RETINITE_EYE, EnemyID.DRAGON_TANK, EnemyID.GRINDER, EnemyID.NIZBEL,
     EnemyID.NIZBEL_II, EnemyID.SLASH_SWORD, EnemyID.FLEA, EnemyID.TANK_HEAD,
     EnemyID.RETINITE_BOTTOM, EnemyID.RETINITE_TOP, EnemyID.DISPLAY,
@@ -273,7 +280,7 @@ midgame_bosses = [
     EnemyID.SON_OF_SUN_EYE, EnemyID.SON_OF_SUN_FLAME, EnemyID.R_SERIES,
 ]
 
-late_bosses = [
+_late_bosses = [
     EnemyID.MAMMON_M, EnemyID.ZEAL, EnemyID.TWIN_GOLEM, EnemyID.GOLEM,
     EnemyID.AZALA, EnemyID.ELDER_SPAWN_HEAD, EnemyID.ELDER_SPAWN_SHELL,
     EnemyID.ZEAL_2_CENTER, EnemyID.ZEAL_2_LEFT, EnemyID.ZEAL_2_RIGHT,
@@ -284,23 +291,29 @@ late_bosses = [
     EnemyID.GIGA_GAIA_RIGHT, EnemyID.MAGUS, EnemyID.DALTON_PLUS,
 ]
 
+_enemy_group_dict = dict()
+
+_enemy_group_dict[RewardGroup.COMMON_ENEMY] = _common_enemies
+_enemy_group_dict[RewardGroup.UNCOMMON_ENEMY] = _uncommon_enemies
+_enemy_group_dict[RewardGroup.RARE_ENEMY] = _rare_enemies
+_enemy_group_dict[RewardGroup.RAREST_ENEMY] = _rarest_enemies
+_enemy_group_dict[RewardGroup.EARLY_BOSS] = _early_bosses
+_enemy_group_dict[RewardGroup.MIDGAME_BOSS] = _midgame_bosses
+_enemy_group_dict[RewardGroup.LATE_BOSS] = _late_bosses
+
+
+# public way to get the list of enemies in a given tier.
+# returns a copy to avoid messing with the lists in global scope
+def get_enemy_tier(tier: RewardGroup):
+    return _enemy_group_dict[tier].copy()
+
 
 # This method just alters the cfg.RandoConfig object.
 def write_enemy_rewards_to_config(settings: rset.Settings,
                                   config: cfg.RandoConfig):
 
-    # Maybe this dict can be set up globally with the enemy lists
-    enemy_group_dict = dict()
-    enemy_group_dict[RewardGroup.COMMON_ENEMY] = common_enemies
-    enemy_group_dict[RewardGroup.UNCOMMON_ENEMY] = uncommon_enemies
-    enemy_group_dict[RewardGroup.RARE_ENEMY] = rare_enemies
-    enemy_group_dict[RewardGroup.RAREST_ENEMY] = rarest_enemies
-    enemy_group_dict[RewardGroup.EARLY_BOSS] = early_bosses
-    enemy_group_dict[RewardGroup.MIDGAME_BOSS] = midgame_bosses
-    enemy_group_dict[RewardGroup.LATE_BOSS] = late_bosses
-
     for group in list(RewardGroup):
-        enemies = enemy_group_dict[group]
+        enemies = _enemy_group_dict[group]
         drop_dist, charm_dist, drop_rate = \
             get_distributions(group, settings.item_difficulty)
 
@@ -364,23 +377,6 @@ def main():
     for x in list(EnemyID):
         if x not in total_assigned:
             print(f"{x} [0x{int(x):02X}] not assigned")
-
-    exit()
-
-    # Checking to make sure the definitions are common across the files
-    tw_items = tw.alvlconsumables
-    ew_items = ew.alvlconsumables
-
-    tw_minus_ew = [x for x in tw_items if x not in ew_items]
-    ew_minus_tw = [x for x in ew_items if x not in tw_items]
-
-    print("Treasure but not enemy drop/charm:")
-    for x in tw_minus_ew:
-        print(f"    {ItemID(x)}")
-
-    print("Enemy drop/charm but not item:")
-    for x in ew_minus_tw:
-        print(f"    {ItemID(x)}")
 
 
 if __name__ == '__main__':

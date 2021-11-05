@@ -2,8 +2,6 @@ from shutil import copyfile
 import struct as st
 import os
 from os import stat
-from time import time
-import sys
 import pathlib
 import treasurewriter
 import shopwriter
@@ -29,7 +27,7 @@ from ctrom import CTRom
 import ctstrings
 import enemyrewards
 
-from freespace import FSWriteType
+# from freespace import FSWriteType
 import randoconfig as cfg
 import randosettings as rset
 
@@ -112,6 +110,9 @@ class Randomizer:
 
         # Boss scaling (done after boss rando)
         bossscaler.set_boss_power(self.settings, self.config)
+
+        # Black Tyrano/Magus boss randomization
+        
 
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
@@ -259,13 +260,20 @@ class Randomizer:
         file_object.write("Enemy Drop and Charm\n")
         file_object.write("--------------------\n")
 
-        tiers = [enemyrewards.common_enemies,
-                 enemyrewards.uncommon_enemies,
-                 enemyrewards.rare_enemies,
-                 enemyrewards.rarest_enemies,
-                 enemyrewards.early_bosses + enemyrewards.midgame_bosses +
-                 enemyrewards.late_bosses]
-
+        EnTier = enemyrewards.RewardGroup
+        get_enemies = enemyrewards.get_enemy_tier
+        tiers = [
+            get_enemies(EnTier.COMMON_ENEMY),
+            get_enemies(EnTier.UNCOMMON_ENEMY),
+            get_enemies(EnTier.RARE_ENEMY),
+            get_enemies(EnTier.RAREST_ENEMY),
+            (
+                get_enemies(EnTier.EARLY_BOSS) +
+                get_enemies(EnTier.MIDGAME_BOSS) +
+                get_enemies(EnTier.LATE_BOSS)
+            )
+        ]
+        
         labels = ['Common Enemies',
                   'Uncommon Enemies',
                   'Rare Enemies',
@@ -279,12 +287,12 @@ class Randomizer:
             file_object.write(labels[ind] + '\n')
             for enemy_id in tier:
                 file_object.write(
-                    '\t'+
+                    '\t' +
                     str.ljust(f"{enemy_id}", width) +
                     " Drop: "
                     f"{self.config.enemy_dict[enemy_id].drop_item}\n")
                 file_object.write(
-                    '\t'+
+                    '\t' +
                     str.ljust("", width) +
                     "Charm: "
                     f"{self.config.enemy_dict[enemy_id].charm_item}\n")

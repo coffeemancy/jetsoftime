@@ -1,132 +1,110 @@
 from __future__ import annotations
-from io import BytesIO
+
 import math
 import struct as st
 import random as rand
 
-from byteops import get_value_from_bytes, to_little_endian, to_file_ptr
 from ctenums import ItemID, ShopID
 from ctrom import CTRom
-import treasurewriter as tw
+import treasuredata as td
 
 import randoconfig as cfg
 import randosettings as rset
 
-# There are minor changes do the item distributions for shops.
-# low_lvl_consumables: tw has powermeal but not shopwriter
-# good_lvl_items: tw has greendream but not shopwriter
-# hlvlconsumables: tw has tabs but not shopwriter
-
-# There's no reason for these to be in treasurewriter.  Maybe a method
-# in the enum?
-low_lvl_items = tw.low_lvl_items
-low_lvl_consumables = tw.low_lvl_consumables[:]
-low_lvl_consumables.remove(ItemID.POWER_MEAL)
-
-passable_lvl_items = tw.passable_lvl_items
-passable_lvl_consumables = tw.passable_lvl_consumables
-mid_lvl_items = tw.mid_lvl_items
-mid_lvl_consumables = tw.mid_lvl_consumables
-good_lvl_items = tw.good_lvl_items[:]
-good_lvl_items.remove(ItemID.GREENDREAM)
-
-good_lvl_consumables = tw.good_lvl_consumables
-high_lvl_items = tw.high_lvl_items
-high_lvl_consumables = tw.high_lvl_consumables[:]
-
-for x in [ItemID.POWER_TAB, ItemID.MAGIC_TAB, ItemID.SPEED_TAB]:
-    high_lvl_consumables.remove(x)
-
-awesome_lvl_items = tw.awesome_lvl_items
-awesome_lvl_consumables = tw.awesome_lvl_consumables
-
-regular_shop_ids = [
-    ShopID.TRUCE_MARKET_600,
-    ShopID.ARRIS_DOME,
-    ShopID.DORINO,
-    ShopID.PORRE_600,
-    ShopID.PORRE_1000,
-    ShopID.CHORAS_INN_1000,
-    ShopID.CHORAS_MARKET_600,
-    ShopID.MILENNIAL_FAIR_ARMOR,
-    ShopID.MILLENIAL_FAIR_ITEMS,
-]
-
-good_shop_ids = [
-    ShopID.MELCHIORS_HUT,
-    ShopID.IOKA_VILLAGE,
-    ShopID.NU_NORMAL_KAJAR,
-    ShopID.ENHASA,
-    ShopID.EARTHBOUND_VILLAGE,
-    ShopID.TRANN_DOME,
-    ShopID.MEDINA_MARKET,
-]
-
-good_lapis_shop_ids = [
-    ShopID.FIONAS_SHRINE,
-    ShopID.TRUCE_MARKET_1000,
-]
-
-best_shop_ids = [
-    ShopID.NU_SPECIAL_KAJAR,
-    # ShopID.LAST_VILLAGE_UPDATED,  # This shop is actually unused
-    ShopID.NU_BLACK_OMEN,
-]
-
-unused_shop_ids = [
-    ShopID.LAST_VILLAGE_UPDATED,
-    ShopID.EMPTY_12,
-    ShopID.EMPTY_14,
-]
-
-shop_starts = list(range(0xC2C6F,0xC2C9D,2))
-regular_shops = [0xC2C6F,0xC2C73,0xC2C77,0xC2C79,0xC2C85] + list(range(0xC2C89,0xC2C91,2))
-good_shops = [0xC2C71,0xC2C75,0xC2C7D,0xC2C81,0xC2C83,0xC2C87,0xC2C93,0xC2C97,0xC2C99]
-best_shops = [0xC2C7B,0xC2C7F,0xC2C9B]
-forbid_shops = [0xC2C91,0xC2C95]
-llvlitems = [0x95,0x98,0x99,0x97,0x96,0xA4,0x02,0x03,0x12,0x13,0x20,0x21,0x2F,0x30,0x3C,0x7E,0x7F,0x80,0x5C,0x5D,0x5E,
-0x5F,0x60,0x61]
-llvlconsumables = [0xBD,0xBE,0xC6,0xC7,0xC8]
-plvlitems = [0xAB,0xA6,0x9C,0xB4,0xAC,0x04,0x05,0x0F,0xB9,0x14,0x22,0x23,0x31,0x81,0x82,0x62,0x63,0x64,0x65]
-plvlconsumables = [0xBE,0xC0]
-mlvlitems = [0xA8,0xA9,0xA0,0xA7,0x9D,0x9E,0x9F,0x06,0x07,0x08,0x15,0x16,0x24,0x25,0x32,0x33,0x34,0x3E,0x3F,0x4C,0x83,
-0x84,0x8B,0x66,0x67,0x75,0x76,0x77,0x78,0x79]
-mlvlconsumables =[0xBF,0xC1,0xCA,0xCB,0xCC]
-glvlitems = [0xAD,0xB5,0xB6,0xB7,0xA1,0xA2,0x09,0x0A,0x10,0x17,0x18,0x26,0x29,0x35,0x36,0x40,0x43,0x4D,0x85,
-0x88,0x92,0x93,0x68,0x69,0x71,0x72,0x73,0x74]
-glvlconsumables = [0xBF,0xC2,0xC4]
-hlvlitems = [0x9A,0x9B,0xA3,0xBA,0x0B,0x0C,0x0D,0x19,0x1A,0x27,0x37,0x38,0x41,0x4E,0x89,0x8A,0x8C,0x8D,0x8E,0x6A,0x6E,0x70]
-hlvlconsumables = [0xC3,0xC4]
-alvlitems = [0xBB,0x0E,0x53,0x54,0x55,0x28,0x39,0x91,0x86,0x8F,0x6C,0x7A,0x6D,0x6B]
-alvlconsumables = [0xC3,0xC5]
-
 
 def write_shops_to_config(settings: rset.Settings,
                           config: cfg.RandoConfig):
-    regular_dist = tw.TreasureDist(
-        (6, low_lvl_consumables + passable_lvl_consumables),
-        (4, passable_lvl_items + mid_lvl_items)
+
+    # Bunch of declarations.  They're here instead of in global scope after
+    # the great shelling of November 2021.
+
+    # Get short names for item lists for defining distributions later.
+    ITier = td.ItemTier
+    # no shop sells low gear
+    # low_gear = td.get_item_list(ITier.LOW_GEAR)
+
+    # power meals are not sellable
+    low_cons = td.get_item_list(ITier.LOW_CONSUMABLE)
+    low_cons.remove(ItemID.POWER_MEAL)
+
+    pass_gear = td.get_item_list(ITier.PASSABLE_GEAR)
+    pass_cons = td.get_item_list(ITier.PASSABLE_CONSUMABLE)
+    mid_gear = td.get_item_list(ITier.MID_GEAR)
+    mid_cons = td.get_item_list(ITier.MID_CONSUMABLE)
+
+    # greendream is not sellable
+    good_gear = td.get_item_list(ITier.GOOD_GEAR)
+    good_gear.remove(ItemID.GREENDREAM)
+
+    good_cons = td.get_item_list(ITier.GOOD_CONSUMABLE)
+    high_gear = td.get_item_list(ITier.HIGH_GEAR)
+
+    # Tabs are not sellable
+    high_cons = td.get_item_list(ITier.HIGH_CONSUMABLE)
+    for x in [ItemID.POWER_TAB, ItemID.MAGIC_TAB, ItemID.SPEED_TAB]:
+        high_cons.remove(x)
+
+    awe_gear = td.get_item_list(ITier.AWESOME_GEAR)
+    awe_cons = td.get_item_list(ITier.AWESOME_CONSUMABLE)
+
+    # Regular Shop Setup
+    regular_shop_ids = [
+        ShopID.TRUCE_MARKET_600, ShopID.ARRIS_DOME, ShopID.DORINO,
+        ShopID.PORRE_600, ShopID.PORRE_1000, ShopID.CHORAS_INN_1000,
+        ShopID.CHORAS_MARKET_600, ShopID.MILENNIAL_FAIR_ARMOR,
+        ShopID.MILLENIAL_FAIR_ITEMS,
+    ]
+
+    regular_dist = td.TreasureDist(
+        (6, low_cons + pass_cons),
+        (4, pass_gear + mid_gear)
     )
     regular_guaranteed = []
 
-    good_dist = tw.TreasureDist(
-        (5, passable_lvl_consumables + mid_lvl_consumables),
-        (5, mid_lvl_items + good_lvl_items)
+    # Good Shop Setup.  Fiona and Fritz have lapis guaranteed.
+    good_shop_ids = [
+        ShopID.MELCHIORS_HUT, ShopID.IOKA_VILLAGE, ShopID.NU_NORMAL_KAJAR,
+        ShopID.ENHASA, ShopID.EARTHBOUND_VILLAGE, ShopID.TRANN_DOME,
+        ShopID.MEDINA_MARKET,
+    ]
+
+    good_lapis_shop_ids = [
+        ShopID.FIONAS_SHRINE, ShopID.TRUCE_MARKET_1000,
+    ]
+
+    good_dist = td.TreasureDist(
+        (5, pass_cons + mid_cons),
+        (5, mid_gear + good_gear)
     )
     good_guaranteed = []
     good_lapis_guaranteed = [ItemID.LAPIS]
 
-    best_dist = tw.TreasureDist(
-        (5, (good_lvl_consumables + high_lvl_consumables +
-             awesome_lvl_consumables)),
-        (5, good_lvl_items + high_lvl_items + awesome_lvl_items)
+    # Best Shop Setup
+    best_shop_ids = [
+        ShopID.NU_SPECIAL_KAJAR,
+        # ShopID.LAST_VILLAGE_UPDATED,  # This shop is actually unused
+        ShopID.NU_BLACK_OMEN,
+    ]
+
+    best_dist = td.TreasureDist(
+        (5, good_cons + high_cons + awe_cons),
+        (5, good_gear + high_gear + awe_gear)
     )
     best_guaranteed = [ItemID.AMULET]
 
+    # Unused Shop Setup
+    unused_shop_ids = [
+        ShopID.LAST_VILLAGE_UPDATED, ShopID.EMPTY_12, ShopID.EMPTY_14,
+    ]
+
+    # Melchior's special shop
     shop_manager = config.shop_manager
     shop_manager.set_shop_items(ShopID.MELCHIOR_FAIR,
                                 get_melchior_shop_items())
 
+    # Now write out the regular, good, best shops.
+    # Parallel lists for type, dist, and guarantees.  This is a little ugly
+    # and maybe each shop should get its own guarantee list instead of by tier.
     shop_types = [regular_shop_ids, good_shop_ids,
                   good_lapis_shop_ids, best_shop_ids]
     shop_dists = [regular_dist, good_dist, good_dist, best_dist]
@@ -211,6 +189,7 @@ def get_shop_items(guaranteed_items: list[ItemID], item_dist):
 
     # Typically better items have a higher index.  The big exception is
     # that consumables are at the very top.  That's ok though.
+    # TODO: Write a custom sort for ItemIDs
     return sorted(shop_items, reverse=True)
 
 

@@ -2,7 +2,7 @@ from logictypes import Location, BaselineLocation, LocationGroup, \
     LinkedLocation, Game
 
 from ctenums import TreasureID as TID, CharID as Characters, ItemID
-from treasurewriter import TreasureLocTier as LootTiers
+from treasuredata import TreasureLocTier as LootTiers
 import randosettings as rset
 import randoconfig as cfg
 
