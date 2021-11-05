@@ -53,7 +53,7 @@ class GameFlags(Flag):
     BOSS_RANDO = auto()
     DUPLICATE_CHARS = auto()
     DUPLICATE_TECHS = auto()
-
+    VISIBLE_HEALTH = auto()
 
 class TabRandoScheme(StrIntEnum):
     UNIFORM = 0
@@ -133,7 +133,8 @@ class Settings:
         ret.gameflags = (GameFlags.FIX_GLITCH |
                          GameFlags.FAST_PENDANT |
                          GameFlags.ZEAL_END |
-                         GameFlags.UNLOCKED_MAGIC)
+                         GameFlags.UNLOCKED_MAGIC |
+                         GameFlags.VISIBLE_HEALTH)
 
         ret.seed = ''
 
