@@ -1180,6 +1180,14 @@ class RecruitID(StrIntEnum):
     FROGS_BURROW = auto()
 
 
+class Element(StrIntEnum):
+    LIGHTNING = auto()
+    FIRE = auto()
+    SHADOW = auto()
+    ICE = auto()
+    NONELEMENTAL = auto()
+
+
 class TechID(StrIntEnum):
     NONE = 0
     CYCLONE = 1

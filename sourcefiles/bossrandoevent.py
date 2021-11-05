@@ -11,7 +11,7 @@ import random
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import Boss, BossScheme, LinearScaleBoss, LinearNoHPScaleBoss, \
     get_default_boss_assignment
-from ctenums import LocID, BossID, EnemyID
+from ctenums import LocID, BossID, EnemyID, CharID, Element
 from enemystats import EnemyStats
 from ctevent import Event, free_event, get_loc_event_ptr
 from ctrom import CTRom
@@ -1226,6 +1226,19 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # Write all of the scaled stats back to config's dict
     for enemy_id in scaled_dict.keys():
         config.enemy_dict[enemy_id] = scaled_dict[enemy_id]
+
+
+# Magus gets random hp and a random character sprite (ctenums.CharID)
+# Black Tyrano gets random hp and a random element (ctenums.Element)
+def randomize_midbosses(config: cfg.RandoConfig):
+    # Random hp from 10k to 15k
+    config.enemy_dict[EnemyID.MAGUS].hp = random.randrange(10000, 15001, 1000)
+    config.magus_char = random.choice(list(CharID))
+
+    config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
+        random.randrange(8000, 13001, 1000)
+    config.black_tyrano_element = \
+        random.choice(list(Element))
 
 
 def write_bosses_to_ctrom(ctrom: CTRom, settings: rset.Settings,

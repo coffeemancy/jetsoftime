@@ -9,7 +9,7 @@ from byteops import to_little_endian, get_value_from_bytes, to_file_ptr
 
 from bossdata import get_boss_data_dict
 from ctenums import ItemID, LocID, TreasureID as TID, CharID, ShopID, \
-    RecruitID, BossID
+    RecruitID, BossID, Element
 import techdb
 # from ctevent import ScriptManager as SM, Event
 from ctrom import CTRom
@@ -1120,6 +1120,10 @@ class RandoConfig:
         self.boss_data_dict = get_boss_data_dict()
         self.boss_rank = dict()
         self.enemy_dict = enemystats.get_stat_dict(rom)
+
+        self.magus_char = CharID.MAGUS
+        self.black_tyrano_element = Element.FIRE
+
         self.shop_manager = ShopManager(rom)
         self.price_manager = PriceManager(rom)
         self.char_manager = CharManager(rom)
