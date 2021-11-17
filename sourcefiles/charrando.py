@@ -15,6 +15,8 @@ from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
     update_ptrs, to_rom_ptr, print_bytes
 from ctenums import CharID, RecruitID
+from ctrom import CTRom
+import freespace
 from statcompute import PCStats as PC
 import scriptextend as scripts
 
@@ -2166,6 +2168,66 @@ def reassign_characters_file(filename, char_choices, dup_duals,
             ipswriter.write_patch_objs(choras_patch, outfile)
 
             fix_burrow(rom, outfile)
+
+
+def reassign_characters_on_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
+    # This file was originally written to deal with a rom as a bytearray.
+    # Dealing with BytesIO.getbuffer() is awkward because slicing gives
+    # MemoryView objects which will block subsequent writes by existing.
+
+    # So we're not going to fight it yet.  We will get a bytearray, change it,
+    # write it back, and be sure to update the space manager while we go.
+    ctrom.rom_data.seek(0)
+    rom = bytearray(ctrom.rom_data.read())
+
+    extend_techs(rom)
+
+    space_man = ctrom.rom_data.space_manager
+    mark_used = freespace.FSWriteType.MARK_USED
+    mark_free = freespace.FSWriteType.MARK_FREE
+    no_mark = freespace.FSWriteType.NO_MARK
+
+    # Free up the space used by default
+    orig_db = TechDB.get_default_db(rom)
+    TechDB.mark_techdb(orig_db, space_man, mark_free)
+
+    # This is overly aggressive, but I'm going to claim all of bank 0x5F
+    # used by techs and scripts and.  In reality, we probably can fit it
+    # all in half that space.  At the moment, space is not a real issue.
+    space_man.mark_block((0x5F0000, 0x600000), mark_used)
+
+    # Have to rebuild reassign list to match original format
+    reassign = [config.char_manager.pcs[i].assigned_char for i in range(7)]
+    print(reassign)
+    input()
+    new_db = config.techdb
+    TechDB.write_db_internal(new_db, rom)
+
+    reassign_tech_refs(rom, new_db, reassign)
+    # This writes some data to bank 4F when redoing rock routines
+    # See the update_rock_techs function for details.
+    space_man.mark_block((0x4F1200, 0x4F1230), mark_used)
+    space_man.mark_block((0x4F1300, 0x4F1330), mark_used)
+    space_man.mark_block((0x4F2000, 0x4F2050), mark_used)
+
+    # Targeting changes also are written to bank 0x4F
+    space_man.mark_block((0x4F1000, 0x4F1090), mark_used)
+
+    reassign_magic(rom, new_db, reassign)
+
+    # These writes are all in bank 5F
+    reassign_graphics(rom, 0x5F7000, 0x5F7200, reassign)
+    fix_menu_graphics(rom, reassign)
+
+    # Some routine changes in bank 4F
+    fix_ayla_fist(rom, reassign)
+    space_man.mark_block((0x4F1100, 0x4F1140), mark_used)
+
+    reassign_items(rom, reassign)
+
+    # Write everything back to the ctrom
+    ctrom.rom_data.seek(0)
+    ctrom.rom_data.write(rom, no_mark)
 
 
 # Do everything to apply the reassignment list to the rom
