@@ -176,7 +176,7 @@ class PCStats:
 
         if self.xp_next != self.xp_thresh[self.level]:
             print('Warning. xp_thresh does not match stat block')
-            print(f"Level: self.level")
+            print(f"Level: {self.level}")
             print(f"{self.xp_next}, {self.xp_thresh[self.level]}")
 
         self.tp_next = \
@@ -225,10 +225,14 @@ class PCStats:
         self.level = new_level
 
     def get_stat_string(self) -> str:
+        mp_growth_str = ' '.join(str(x) for x in self.mp_growth)
+        hp_growth_str = ' '.join(str(x) for x in self.hp_growth)
         ret = ''
         ret += f"Level: {self.level}\n"
         ret += f"Tech Level: {self.tech_level}\n"
         ret += f"Max HP: {self.max_hp}\t Max MP: {self.max_mp}\n"
+        ret += f"HP Growth: {hp_growth_str}\n"
+        ret += f"MP Growth: {mp_growth_str}\n"
         ret += 'Pow Stm Spd Hit Evd Mag Mdf\n'
         temp_cur = get_stat_base_order(self.cur_stats)
         ret += ' ' + ' '.join(f"{x:02d} " for x in temp_cur)
