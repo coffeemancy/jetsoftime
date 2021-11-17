@@ -22,7 +22,7 @@ class PlayerChar:
 
     def __init__(self, rom: bytearray, pc_id: CharID,
                  stat_start: int = 0x0C0000,
-                 hp_growth_start: int = 0x0C25A8,
+                 hp_growth_start: int = 0x0C258A,
                  mp_growth_start: int = 0x0C25C2,
                  stat_growth_start: int = 0x0C25FA,
                  xp_thresh_start: int = 0x0C2632,
@@ -43,7 +43,7 @@ class PlayerChar:
     # Being explicit here that we only write out the stats.
     def write_stats_to_ctrom(self, ctrom: CTRom,
                              stat_start: int = 0x0C0000,
-                             hp_growth_start: int = 0x0C25A8,
+                             hp_growth_start: int = 0x0C258A,
                              mp_growth_start: int = 0x0C25C2,
                              stat_growth_start: int = 0x0C25FA,
                              tp_thresh_start: int = 0x0C26FA):
@@ -297,8 +297,8 @@ class CharRecruit:
 
         script.data[pos+1] = int(self.held_char)
 
-        orig_char = CharID(cmd.args[0])
-        orig_load_cmd = CharRecruit.load_cmds[orig_char]
+        # orig_char = CharID(cmd.args[0])
+        # orig_load_cmd = CharRecruit.load_cmds[orig_char]
         target_load_cmd = CharRecruit.load_cmds[self.held_char]
 
         # Now handle the recruitment
@@ -316,7 +316,8 @@ class CharRecruit:
 
             (pos, cmd) = \
                 script.find_command(
-                    [0x81, 0xD2, 0xCF, 0xC8, 0xD0, 0xD3] + [orig_load_cmd],
+                    [0x81, 0xD2, 0xCF, 0xC8, 0xD0, 0xD3] +
+                    CharRecruit.load_cmds,
                     pos, end
                 )
 
@@ -327,9 +328,14 @@ class CharRecruit:
             if cmd.command in [0x81, 0xD2, 0xCF, 0xD0, 0xD3]:
                 script.data[pos+1] = int(self.held_char)
             elif cmd.command == 0xC8:
-                script.data[pos+1] = int(self.held_char | 0xC0)
-            elif cmd.command == orig_load_cmd:
-                script.data[pos] == target_load_cmd
+                if script.data[pos+1] in range(0xC0, 0xC8):
+                    script.data[pos+1] = int(self.held_char | 0xC0)
+                else:
+                    pass
+                    # script.data[pos+1] = int(self.held_char)
+            elif cmd.command in CharRecruit.load_cmds:
+                script.data[pos] = target_load_cmd
+
             else:
                 print(f"Error, uncaught command ({cmd.command:02X})")
                 exit()
@@ -362,27 +368,33 @@ class StarterChar:
         num_add_party = 0
 
         pos = start
-        while (num_name_char != self.starter_num+1 or
-               num_add_party != self.starter_num+1):
+        while (num_name_char < self.starter_num+1 or
+               num_add_party < self.starter_num+1):
 
             # 0xD3 - Add to active party: 1st arg pc_id
             # 0xC8 - Special Dialog (name): 1st arg pc_id | 0xC0
-            pos, cmd = script.find_command([], pos, end)
+            pos, cmd = script.find_command([0xD3, 0xC8], pos, end)
 
             if pos is None:
+                print(f"{self.loc_id} {self.object_id} {self.function_id}")
                 print("Error: Hit end of function before finding character.")
+                input()
                 exit()
 
             if cmd.command == 0xD3:
+                print("Found add party")
                 if num_add_party == self.starter_num:
                     script.data[pos+1] = int(self.held_char)
 
                 num_add_party += 1
             elif cmd.command == 0xC8:
-                if num_name_char == self.starter_num:
-                    script.data[pos+1] = int(self.held_char) | 0xC0
+                dialog_id = script.data[pos+1]
+                if dialog_id in range(0xC0, 0xC8):
+                    print("Found name char")
+                    if num_name_char == self.starter_num:
+                        script.data[pos+1] = int(self.held_char) | 0xC0
 
-                num_name_char += 1
+                    num_name_char += 1
 
             pos += len(cmd)
 
@@ -463,8 +475,11 @@ class ScriptTreasure(Treasure):
         # item add commands
         while (num_add_item != self.item_num+1 or
                num_set_item_mem != self.item_num+1):
+            print(f"{num_add_item} {num_set_item_mem}")
 
             pos, cmd = script.find_command(cmd_ids, pos, end)
+
+            print(f"[{pos}] {cmd}")
 
             if pos is None:
                 print('Error setting item:\n\t', end='')
@@ -475,10 +490,11 @@ class ScriptTreasure(Treasure):
                 # Item text location is 0x7F0200.  In the command, this is
                 # the last argument.
                 if cmd.args[-1] != 0x00:
-                    continue
+                    # maybe print a debug message
+                    pass
                 else:
                     num_set_item_mem += 1
-                    set_item_mem_addr = pos + 2  # cmd, val, mem
+                    set_item_mem_addr = pos + 1  # cmd, val, mem
             elif cmd.command == 0xCA:
                 num_add_item += 1
                 add_item_addr = pos + 1  # cmd, item
@@ -569,10 +585,10 @@ class RandoConfig:
             TID.SUNKEN_DESERT_B1_SW: ChestTreasure(0x43),
             TID.SUNKEN_DESERT_B2_NW: ChestTreasure(0x44),
             TID.SUNKEN_DESERT_B2_N: ChestTreasure(0x45),
-            TID.SUNKEN_DESERT_B2_W: ChestTreasure(0x46),
-            TID.SUNKEN_DESERT_B2_SW: ChestTreasure(0x47),
-            TID.SUNKEN_DESERT_B2_SE: ChestTreasure(0x48),
-            TID.SUNKEN_DESERT_B2_E: ChestTreasure(0x49),
+            TID.SUNKEN_DESERT_B2_E: ChestTreasure(0x46),
+            TID.SUNKEN_DESERT_B2_SE: ChestTreasure(0x47),
+            TID.SUNKEN_DESERT_B2_SW: ChestTreasure(0x48),
+            TID.SUNKEN_DESERT_B2_W: ChestTreasure(0x49),
             TID.SUNKEN_DESERT_B2_CENTER: ChestTreasure(0x4A),
             TID.MAGUS_CASTLE_GUILLOTINE_1: ChestTreasure(0x4B),
             TID.MAGUS_CASTLE_GUILLOTINE_2: ChestTreasure(0x4C),
@@ -830,7 +846,7 @@ class RandoConfig:
                 item_num=0
             ),
             TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600: ScriptTreasure(
-                location=LocID.NORTHERN_RUINS_ANTECHAMBER,
+                location=LocID.NORTHERN_RUINS_BACK_ROOM,
                 object_id=0x11,
                 function_id=0x01,
                 item_num=1
@@ -838,7 +854,7 @@ class RandoConfig:
             TID.TRUCE_INN_SEALED_600: ScriptTreasure(
                 location=LocID.TRUCE_INN_600_2F,
                 object_id=0x0C,
-                function_id=0,
+                function_id=1,
             ),
             TID.TRUCE_INN_SEALED_1000: ScriptTreasure(
                 location=LocID.TRUCE_INN_1000,
@@ -931,7 +947,7 @@ class RandoConfig:
                                            function_id=0x01),
             TID.FIONA_KEY: ScriptTreasure(location=LocID.FIONAS_SHRINE,
                                           object_id=0x08,
-                                          function_id=0x03),
+                                          function_id=0x04),
             TID.ARRIS_DOME_KEY: ScriptTreasure(location=LocID.ARRIS_DOME,
                                                object_id=0x0F,
                                                function_id=0x2),
@@ -983,37 +999,37 @@ class RandoConfig:
             TID.TRADING_POST_RANGED_WEAPON: ScriptTreasure(
                 location=LocID.IOKA_TRADING_POST,
                 object_id=0x0C,
-                function_id=0x03,
+                function_id=0x04,
                 item_num=0
             ),
             TID.TRADING_POST_ACCESSORY: ScriptTreasure(
                 location=LocID.IOKA_TRADING_POST,
                 object_id=0x0C,
-                function_id=0x03,
+                function_id=0x04,
                 item_num=1
             ),
             TID.TRADING_POST_TAB: ScriptTreasure(
                 location=LocID.IOKA_TRADING_POST,
                 object_id=0x0C,
-                function_id=0x03,
+                function_id=0x04,
                 item_num=2
             ),
             TID.TRADING_POST_MELEE_WEAPON: ScriptTreasure(
                 location=LocID.IOKA_TRADING_POST,
                 object_id=0x0C,
-                function_id=0x03,
+                function_id=0x04,
                 item_num=3
             ),
             TID.TRADING_POST_ARMOR: ScriptTreasure(
                 location=LocID.IOKA_TRADING_POST,
                 object_id=0x0C,
-                function_id=0x03,
+                function_id=0x04,
                 item_num=4
             ),
             TID.TRADING_POST_HELM: ScriptTreasure(
                 location=LocID.IOKA_TRADING_POST,
                 object_id=0x0C,
-                function_id=0x03,
+                function_id=0x04,
                 item_num=5
             ),
             TID.JERKY_GIFT: ScriptTreasure(
@@ -1132,12 +1148,16 @@ class RandoConfig:
 
         self.techdb = techdb.TechDB.get_default_db(rom)
 
+        self.power_tab_amt = 1
+        self.magic_tab_amt = 1
+        self.speed_tab_amt = 1
+
     def write_to_ctrom(self, ctrom: CTRom):
         # Write enemies out
         for enemy_id, stats in self.enemy_dict.items():
             stats.write_to_stream(ctrom.rom_data, enemy_id)
 
-        # Write treasures out
+        # Write treasures out -- this includes key items
         for treasure in self.treasure_assign_dict.values():
             treasure.write_to_ctrom(ctrom)
 
@@ -1155,8 +1175,6 @@ class RandoConfig:
         # Stats
         self.char_manager.write_stats_to_ctrom(ctrom)
 
-        # TODO: duplicate character assignments
-        # TODO: tech rando
 
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
