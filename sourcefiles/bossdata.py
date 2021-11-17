@@ -113,7 +113,7 @@ class Boss:
         ids = [EnemyID.GUARDIAN, EnemyID.GUARDIAN_BIT,
                EnemyID.GUARDIAN_BIT]
         slots = [3, 7, 8]
-        disps = [(0, 0), (-0x50, -0x98), (0x40, -0x98)]
+        disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
         power = 15
 
         return cls.generic_multi_spot(ids, disps, slots, power)
@@ -182,6 +182,15 @@ class Boss:
         slots = [3, 6, 7, 8]
         disps = [(0, 0), (-0x50, -0x1F), (-0x10, -0x2F), (0x40, -0x1F)]
         power = 25
+
+        return cls.generic_multi_spot(ids, disps, slots, power)
+
+    @classmethod
+    def MUD_IMP(cls: Type[T]) -> T:
+        ids = [EnemyID.MUD_IMP, EnemyID.BLUE_BEAST, EnemyID.RED_BEAST]
+        slots = [9, 3, 7]
+        disps = [(0, 0), (30, 10), (0, 20)]
+        power = 15
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -281,7 +290,7 @@ def get_default_boss_assignment():
         LocID.MT_WOE_SUMMIT: BossID.GIGA_GAIA,
         LocID.BLACK_OMEN_GIGA_MUTANT: BossID.GIGA_MUTANT,
         LocID.ZEAL_PALACE_THRONE_NIGHT: BossID.GOLEM,
-        LocID.ARRIS_DOME: BossID.GUARDIAN,
+        LocID.ARRIS_DOME_GUARDIAN_CHAMBER: BossID.GUARDIAN,
         LocID.HECKRAN_CAVE_NEW: BossID.HECKRAN,
         LocID.DEATH_PEAK_GUARDIAN_SPAWN: BossID.LAVOS_SPAWN,
         LocID.CAVE_OF_MASAMUNE: BossID.MASA_MUNE,
@@ -297,7 +306,8 @@ def get_default_boss_assignment():
         LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_GOLEM,
         LocID.MANORIA_COMMAND: BossID.YAKRA,
         LocID.KINGS_TRIAL_NEW: BossID.YAKRA_XIII,
-        LocID.ZENAN_BRIDGE: BossID.ZOMBOR
+        LocID.ZENAN_BRIDGE: BossID.ZOMBOR,
+        LocID.FACTORY_RUINS_SECURITY_CENTER: BossID.R_SERIES
     }
 
 
@@ -320,6 +330,7 @@ def get_boss_data_dict():
         BossID.MASA_MUNE: LinearScaleBoss.MASA_MUNE(),
         BossID.MEGA_MUTANT: LinearScaleBoss.MEGA_MUTANT(),
         BossID.MOTHER_BRAIN: LinearScaleBoss.MOTHER_BRAIN(),
+        BossID.MUD_IMP: LinearScaleBoss.MUD_IMP(),
         BossID.NIZBEL: LinearScaleBoss.NIZBEL(),
         BossID.NIZBEL_2: LinearScaleBoss.NIZBEL_II(),
         BossID.RETINITE: LinearScaleBoss.RETINITE(),
