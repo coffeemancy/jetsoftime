@@ -152,8 +152,6 @@ class Event:
         total_len = strings_len + ptrs_len
 
         string_index = fsrom.get_free_addr(total_len)
-        # print(f"{string_index:06X}")
-        # print(f"{to_rom_ptr(string_index):06X}")
 
         str_pos = string_index % 0x10000 + ptrs_len
         fsrom.seek(string_index)
@@ -233,7 +231,7 @@ class Event:
         '''Reads a .flux file and loads it into an Event'''
 
         with open(filename, 'rb') as infile:
-            flux = infile.read()
+            flux = bytearray(infile.read())
 
         # These first bytes are used internally by TF, but they don't seem
         # to matter for our purposes.  If we want to write flux files we'll
@@ -242,7 +240,6 @@ class Event:
         script_len = get_value_from_bytes(flux[0x13:0x15])
         script_end = script_start+script_len
 
-        print(f"script_end: {script_end:04X}")
         ret_script = Event()
 
         ret_script.num_objects = flux[0x17]
@@ -257,7 +254,7 @@ class Event:
         cur_string_ind = 0
 
         while pos < len(flux):
-            print(f"Current string: {cur_string_ind:02X} at {pos+0xCA1:04X}")
+            # print(f"Current string: {cur_string_ind:02X} at {pos+0xCA1:04X}")
             string_ind = flux[pos]
 
             if string_ind != cur_string_ind:
@@ -301,6 +298,8 @@ class Event:
             print(f"Expected {num_strings} strings.  "
                   f"Found {len(ret_script.strings)}")
             exit()
+
+        ret_script.modified_strings = True
 
         return ret_script
 
@@ -921,10 +920,12 @@ class Event:
     def set_string_index(self, rom_ptr: int):
 
         start = self.get_function_start(0, 0)
-        end = self.get_function_start(0, 0)
+        end = self.get_function_end(0, 0)
 
-        pos = self.find_command([0xB8], start, end)
+        pos, _ = self.find_command([0xB8], start, end)
 
+        # TODO: Worry whether there are multiple string index commands.
+        #       Should keep searching and delete extra ones.
         if pos is None:
             # No string index set
             if not self.strings:
@@ -937,7 +938,7 @@ class Event:
                 self.insert_commands(cmd.to_bytearray(), start)
         else:
             str_ind_bytes = to_little_endian(rom_ptr, 3)
-            self.data[pos+1:pos+3] = str_ind_bytes
+            self.data[pos+1:pos+4] = str_ind_bytes
 
     def find_command(self, cmd_ids: list[int],
                      start_pos: int = None,
@@ -971,20 +972,15 @@ class Event:
         if end_pos is None or end_pos > len(self.data):
             end_pos = len(self.data)
 
-        # print(f"{start_pos: 04x}")
-        # input()
-
         pos = start_pos
         while pos < end_pos:
             cmd = get_command(self.data, pos)
-            # print(f"{cmd.command:02X}" + str(cmd))
 
             if cmd == find_cmd:
                 return pos
 
             pos += len(cmd)
 
-            # print(f"{find_cmd.command:02X}" + str(find_cmd))
         return None
 
     # Helper method to shift all jumps by a given amount.  Typically this
@@ -1235,9 +1231,11 @@ class ScriptManager:
         return self.script_dict[loc_id]
 
     def set_script(self, script, loc_id: LocID):
-        if self.script_dict[loc_id] is None:
+        if loc_id not in self.script_dict.keys() or \
+           self.script_dict[loc_id] is None:
+
             self.orig_len_dict[loc_id] = \
-                get_compressed_length(self.fsrom.getbuffer(), loc_id)
+                get_compressed_event_length(self.fsrom.getbuffer(), loc_id)
 
         self.script_dict[loc_id] = script
 
@@ -1275,6 +1273,8 @@ class ScriptManager:
 
             # str_pos tracks where the pointer needs to point
             str_pos = string_index % 0x10000 + ptrs_len
+            print(f"Location: {loc_id}")
+            print(f"String Index: {string_index:06X}")
             self.fsrom.seek(string_index)
 
             # Write the pointers
@@ -1287,7 +1287,7 @@ class ScriptManager:
             for x in script.strings:
                 self.fsrom.write(x, FSWriteType.MARK_USED)
 
-            # script.set_string_index(to_rom_ptr(string_index))
+            script.set_string_index(to_rom_ptr(string_index))
 
         # The rest is mostly straightforward
         compr_event = compress(script.get_bytearray())
@@ -1318,6 +1318,20 @@ class ScriptManager:
 
 
 def main():
+
+    with open('./roms/locked_test.sfc', 'rb') as infile:
+        rom = bytearray(infile.read())
+
+    for loc in range(0x0, 0x1EF+1):
+        st = get_loc_event_ptr(rom, loc)
+        size = get_compressed_event_length(rom, loc)
+
+        print(f"({st:06X}, {st+size:06X})")
+        if 0x372A73 in range(st, st+size+1):
+            print(f"found: {loc:04X}")
+            input()
+
+    quit()
 
     # Try to get an event from a flux
     script = Event.from_flux('./flux/normal-spekkio.flux')
