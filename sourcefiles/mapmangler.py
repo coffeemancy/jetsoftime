@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from byteops import get_value_from_bytes, to_file_ptr, to_little_endian,\
     update_ptrs, print_bytes
-from freespace import FreeSpace as FS
+from freespace import FSRom
 
 
 # Location Data (above):
@@ -200,11 +200,11 @@ class LocExits:
 
         return ret
 
-    def from_rom(fsrom: FS) -> LocExits:
+    def from_rom(fsrom: FSRom) -> LocExits:
         # get the ptr from the rom
 
         rom = fsrom.getbuffer()
-        
+
         ptr_loc = 0x00A69E
         exit_ptr_st = get_value_from_bytes(rom[ptr_loc:ptr_loc+3])
         exit_ptr_st = to_file_ptr(exit_ptr_st)
@@ -239,9 +239,10 @@ class LocExits:
 
         rom[data_st:data_st+data_len] = self.data[:]
 
-    def write_to_fsrom(self, fsrom: FS):
+    def write_to_fsrom(self, fsrom: FSRom):
 
         rom = fsrom.getbuffer()
+        space_man = fsrom.space_manager
 
         # Get the existing data's bounds
         ptr_loc = 0x009CD4
@@ -271,7 +272,9 @@ class LocExits:
 
             # Free the leftovers
             if num_exits > self.num_records:
-                fsrom.mark_block((out_data_st+len(self.data), last_ptr), True)
+                space_man.mark_block(
+                    (out_data_st+len(self.data), last_ptr), True
+                )
         else:
             # Insufficient space, need a new start
             # Ptrs and data need to live in the same bank.  FS won't allow a
@@ -279,12 +282,14 @@ class LocExits:
             # ptr block and data block are in the same bank.
 
             # Free the old space
-            fsrom.mark_block((exit_ptr_st, exit_ptr_st+0x400), True)
-            fsrom.mark_block((first_ptr, first_ptr+7*num_exits), True)
+            space_man.mark_block(
+                (exit_ptr_st, exit_ptr_st+0x400), True
+            )
+            space_man.mark_block((first_ptr, first_ptr+7*num_exits), True)
 
             # Get new starts
-            starts = fsrom.get_same_bank_free_addrs([len(self.data),
-                                                     2*len(self.ptrs)])
+            starts = space_man.get_same_bank_free_addrs([len(self.data),
+                                                         2*len(self.ptrs)])
             out_data_st = starts[0]
             out_ptr_st = starts[1]
 
