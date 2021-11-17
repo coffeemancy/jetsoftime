@@ -9,6 +9,8 @@ from byteops import get_record, set_record, print_bytes, \
     file_ptr_from_rom
 from techrefs import fix_tech_refs
 
+import freespace
+
 
 class TechDB:
     control_size = 0xB
@@ -1307,6 +1309,27 @@ class TechDB:
                            db.menu_req_start,
                            db.group_sizes_start,
                            db.atb_pen_start)
+
+    def mark_techdb(db, fs: freespace.FreeSpace,
+                    mark_type: freespace.FSWriteType):
+
+        starts = [db.control_start, db.effect_start, db.gfx_start,
+                  db.target_start, db.menu_grp_start, db.bat_grp_start,
+                  db.name_start, db.desc_start, db.desc_ptr_start,
+                  db.lrn_req_start, db.lrn_ref_start, db.mp_start,
+                  db.menu_req_start, db.group_sizes_start,
+                  db.atb_pen_start]
+
+        sizes = [len(db.controls), len(db.effects), len(db.gfx),
+                 len(db.targets), len(db.menu_grps), len(db.bat_grps),
+                 len(db.names), len(db.descs), len(db.desc_ptrs),
+                 len(db.lrn_reqs), len(db.lrn_refs), len(db.mps),
+                 len(db.menu_mp_reqs), len(db.group_sizes),
+                 len(db.atb_pens)]
+
+        for i in range(len(starts)):
+            fs.mark_block((starts[i], starts[i]+sizes[i]),
+                          mark_type)
 
     def write_db(db, rom,
                  control_start,
