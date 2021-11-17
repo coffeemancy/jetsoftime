@@ -23,6 +23,7 @@ import roboribbon
 import techrandomizer
 
 import ctenums
+import ctevent
 from ctrom import CTRom
 import ctstrings
 import enemyrewards
@@ -51,12 +52,18 @@ class Randomizer:
         rom_data.patch_txt_file('./patches/fast_overworld_walk_patch.txt')
         rom_data.patch_txt_file('./patches/faster_epoch_patch.txt')
         rom_data.patch_txt_file('./patches/faster_menu_dpad.txt')
-        
+
         if rset.GameFlags.ZEAL_END in flags:
             rom_data.patch_txt_file('./patches/zeal_end_boss.txt')
 
+        # Patching with lost.ips does not give a valid event for
+        # mystic mountains.  I could fix the event by applying a flux file,
+        # but I'm worried about what might happen when the invalid event is
+        # marked free space.  For now we keep with 3.1 and apply the
+        # mysticmtnfix.ips to restore the event.
         if rset.GameFlags.LOST_WORLDS in flags:
             rom_data.patch_ips_file('./patches/lost.ips')
+            rom_data.patch_ips('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
             rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
@@ -112,7 +119,117 @@ class Randomizer:
         bossscaler.set_boss_power(self.settings, self.config)
 
         # Black Tyrano/Magus boss randomization
+        bossrando.randomize_midbosses(self.config)
+
+        # Tabs
+        tabwriter.write_tabs_to_config(self.settings, self.config)
+
+    def write_config_to_ctrom(self):
+
+        config = self.config
+        ctrom = self.ctrom
+
+        # Write enemies out
+        for enemy_id, stats in config.enemy_dict.items():
+            stats.write_to_stream(ctrom.rom_data, enemy_id)
+
+        # Write treasures out -- this includes key items
+        # for treasure in config.treasure_assign_dict.values():
+        for tid in config.treasure_assign_dict:
+            treasure = config.treasure_assign_dict[tid]
+            print(f"{tid}: {treasure}")
+            treasure.write_to_ctrom(ctrom)
+
+        # Write shops out
+        config.shop_manager.write_to_ctrom(ctrom)
+
+        # Write prices out
+        config.price_manager.write_to_ctrom(ctrom)
+
+        # Write characters out
+        # Recruitment spots
+        for character in config.char_assign_dict.values():
+            character.write_to_ctrom(ctrom)
+
+        # Stats
+        config.char_manager.write_stats_to_ctrom(ctrom)
+
+        # Write out the rest of the character data (incl. techs)
+        charrando.reassign_characters_on_ctrom(ctrom, config)
+
+        # Write out the bosses and midbossses
+        bossrando.write_bosses_to_ctrom(ctrom, config)
+        bossrando.write_midbosses_to_ctrom(ctrom, config)
+
+        # tabs
+        tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
+
+    def write_ctrom(self):
+        # The config is going to handle writing everything in the config.
+        # Other than the config, we need to handle writing all of the patches
+        # and things like that.
+
+        # King's Trial and Heckran's Cave need their maps fixed to allow
+        # for more complicated bosses to fit there.
         
+
+        # First come the script changes determined by flags
+
+        Event = ctevent.Event
+        # Some dc flag patches can be added regardless.  No reason not to.
+
+        # Sets magic learning at game start depending on character assignment
+        telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
+
+        # Allows left chest when medal is on non-Frog Frogs
+        burrow_event = Event.from_flux('./flux/cr_burrow.Flux')
+
+        # Start Ruins quest when GrandLeon on non-Frog Frogs
+        choras_inn_event = Event.from_flux('./flux/cr_choras_cafe.Flux')
+
+        script_manager = self.ctrom.script_manager
+        script_manager.set_script(telepod_event,
+                                  ctenums.LocID.TELEPOD_EXHIBIT)
+        script_manager.set_script(burrow_event,
+                                  ctenums.LocID.FROGS_BURROW)
+        script_manager.set_script(choras_inn_event,
+                                  ctenums.LocID.CHORAS_CAFE)
+
+        # Flag specific script changes:
+        #   - Locked characters changes to proto dome and dactyl nest
+        #   - Duplicate characters changes to Spekkio
+        flags = self.settings.gameflags
+        dup_chars = rset.GameFlags.DUPLICATE_CHARS in flags
+        locked_chars = rset.GameFlags.LOCKED_CHARS in flags
+        lost_worlds = rset.GameFlags.LOST_WORLDS in flags
+
+        if dup_chars and not lost_worlds:
+            # Lets Spekkio give magic properly to duplicates
+            dc_spekkio_event = Event.from_flux('./flux/charrando-eot.flux')
+            script_manager.set_script(dc_spekkio_event,
+                                      ctenums.LocID.SPEKKIO)
+
+        if locked_chars:
+            lc_dactyl_upper_event = \
+                Event.from_flux('./flux/lc_dactyl_upper.Flux')
+            script_manager.set_script(lc_dactyl_upper_event,
+                                      ctenums.LocID.DACTYL_NEST_UPPER)
+
+            # Note: This changes the Proto Dome script, but it does not change
+            #       which objects/functions have the char recruit data, so the
+            #       randomization doesn't break.  If a script does change that
+            #       data then self.config.char_assign_dict would change.
+            lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
+            script_manager.set_script(lc_proto_dome_event,
+                                      ctenums.LocID.PROTO_DOME)
+
+        # This makes copies of heckran cave passagesways and king's trial
+        # so that bosses can go there.  There's no reason not do just do this
+        # regardless of whether boss rando is on.
+        bossrando.duplicate_maps_on_ctrom(self.ctrom)
+
+        self.write_config_to_ctrom()
+        self.ctrom.write_all_scripts_to_rom()
 
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
@@ -206,7 +323,7 @@ class Randomizer:
 
         item_ids = [x for x in list(ctenums.ItemID)
                     if x in range(1, ctenums.ItemID(0xD0))]
-        
+
         for item_id in item_ids:
             file_object.write(
                 str.ljust(str(ctenums.ItemID(item_id)), width) +
@@ -273,7 +390,7 @@ class Randomizer:
                 get_enemies(EnTier.LATE_BOSS)
             )
         ]
-        
+
         labels = ['Common Enemies',
                   'Uncommon Enemies',
                   'Rare Enemies',
@@ -762,10 +879,21 @@ def main():
 
     settings = rset.Settings.get_race_presets()
     settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+    settings.char_choices = [[i for i in range(7)] for j in range(7)]
     settings.gameflags |= rset.GameFlags.BOSS_SCALE
     rando = Randomizer(rom, settings)
     rando.write_config()
+    LocID = ctenums.LocID
+    BossID = ctenums.BossID
+    rando.config.boss_assign_dict[LocID.MANORIA_COMMAND] = BossID.MUD_IMP
+    rando.write_ctrom()
     rando.write_spoiler_log('spoiler_log.txt')
+
+    with open('./roms/ct_out.sfc', 'wb') as outfile:
+        rando.ctrom.rom_data.seek(0)
+        outfile.write(rando.ctrom.rom_data.read())
+
+    
 
 
 if __name__ == "__main__":
