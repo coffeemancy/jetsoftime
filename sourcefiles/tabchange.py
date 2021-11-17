@@ -17,9 +17,8 @@ def choose_binom(min_val: int, max_val: int, p_succ: float):
     return min_val+add
 
 
-def process_ctrom(ctrom: CTRom,
-                  settings: rset.Settings,
-                  config: cfg.RandoConfig):
+def write_tabs_to_config(settings: rset.Settings,
+                         config: cfg.RandoConfig):
 
     tab_settings = settings.tab_settings
 
@@ -37,13 +36,19 @@ def process_ctrom(ctrom: CTRom,
     magic_amt = rand_func(tab_settings.magic_min, tab_settings.magic_max)
     speed_amt = rand_func(tab_settings.speed_min, tab_settings.speed_max)
 
-    rewrite_tabs_fs(ctrom, power_amt, magic_amt, speed_amt)
+    config.power_tab_amt = power_amt
+    config.magic_tab_amt = magic_amt
+    config.speed_tab_amt = speed_amt
 
 
 # New version that uses the freespace manager to write wherever is free
 # if no argument is given.
-def rewrite_tabs_fs(ctrom: CTRom, power_amt, magic_amt, speed_amt,
-                    rt_start=None):
+def rewrite_tabs_on_ctrom(ctrom: CTRom,
+                          config: cfg.RandoConfig, start=None):
+
+    power_amt = config.power_tab_amt
+    magic_amt = config.magic_tab_amt
+    speed_amt = config.speed_tab_amt
 
     power_hex = bytearray([power_amt]).hex()
     magic_hex = bytearray([magic_amt]).hex()
@@ -64,8 +69,12 @@ def rewrite_tabs_fs(ctrom: CTRom, power_amt, magic_amt, speed_amt,
                            'A6 00 BD 2F 00 18 65 10 C5 12 90 02	A5 12' +
                            '9D 2F 00 5C 0E B3 C2')
 
-    if rt_start is None:
+    if start is None:
         rt_start = spaceman.get_free_addr(len(rt))
+        print(f"{rt_start:06X}")
+        input()
+    else:
+        rt_start = start
 
     rt_start_b = to_little_endian(to_rom_ptr(rt_start), 3)
 
@@ -78,7 +87,7 @@ def rewrite_tabs_fs(ctrom: CTRom, power_amt, magic_amt, speed_amt,
 
     # old_rom[rt_start:rt_start+len(rt)] = rt[:]
     ctrom.rom_data.seek(rt_start)
-    ctrom.rom_data.write(rt)
+    ctrom.rom_data.write(rt, FSWriteType.MARK_USED)
 
     # Change the number that is displayed when a tab is used
     rt = bytearray.fromhex('AD BD 0D 29 FF 00 C9 01 00 D0 05' +
@@ -89,7 +98,8 @@ def rewrite_tabs_fs(ctrom: CTRom, power_amt, magic_amt, speed_amt,
                            'A9' + speed_hex + '00' +
                            '9D 63 0F 5C D6 B2 C2')
 
-    if rt_start is None:
+    if start is None:
+        # Get the start from the space manager
         disp_start = spaceman.get_free_addr(len(rt))
     else:
         # put the display routine a little bit later on
@@ -104,7 +114,7 @@ def rewrite_tabs_fs(ctrom: CTRom, power_amt, magic_amt, speed_amt,
 
     # old_rom[disp_start:disp_start+len(rt)] = rt[:]
     ctrom.rom_data.seek(disp_start)
-    ctrom.rom_data.write(rt)
+    ctrom.rom_data.write(rt, FSWriteType.MARK_USED)
 
     # Overwrite numbers in item descriptions
     # old_rom[0x375DC4] = pow_add[0] + 0xD4
