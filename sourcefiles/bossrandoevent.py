@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import copy
-
 from byteops import to_little_endian
+import copy
 from collections.abc import Callable
-from dataclasses import dataclass, replace
 from freespace import FSWriteType
 import random
 
@@ -629,13 +627,12 @@ def set_ozzies_fort_flea_plus_spot_boss(ctrom: CTRom, boss: BossScheme):
     # Need to double check that the routines are setting start/end correctly
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
                               lambda scr: scr.get_function_start(0x9, 1),
-                              False, first_x, first_y)
+                              first_x, first_y)
 
 
 def set_ozzies_fort_super_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0xB8
-    script = ctrom.script_manager.get_script(loc_id)
-
+    
     boss_obj = 0x9
     first_x, first_y = 0x270, 0x250
 
@@ -644,7 +641,7 @@ def set_ozzies_fort_super_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
     # Need to double check that the routines are setting start/end correctly
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
                               lambda scr: scr.get_function_start(0x9, 1),
-                              False, first_x, first_y)
+                              first_x, first_y)
 
 
 def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
@@ -1019,6 +1016,89 @@ def append_boss_object(script: Event, boss: BossScheme, part_index: int,
     return obj_id
 
 
+def duplicate_maps_on_ctrom(ctrom: CTRom):
+
+    fsrom = ctrom.rom_data
+    script_man = ctrom.script_manager
+
+    # First do Heckran's Cave Passageways
+    exits = LocExits.from_rom(fsrom)
+    duplicate_heckran_map(fsrom, exits, LocID.HECKRAN_CAVE_NEW)
+    exits.write_to_fsrom(fsrom)
+
+    script = script_man.get_script(LocID.HECKRAN_CAVE_PASSAGEWAYS)
+
+    # Notes for Hecrkan editing:
+    #   - Remove 1, 2, 0xC, 0xE, 0xF, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+    #         0x17, 0x18
+    #   - Heckran's object was 0xD, now 0xA (3 removed prior)
+    #   - Can clean up object 0 because it controls multiple encounters, but
+    #     There's no real value to doing so.
+
+    new_script = copy.deepcopy(script)
+    del_objs = [0x18, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0xF,
+                0xE, 0xC, 2, 1]
+    for x in del_objs:
+        new_script.remove_object(x)
+
+    script_man.set_script(new_script, LocID.HECKRAN_CAVE_NEW)
+
+    # Now do King's Trial
+    #   - In location 0x1B9 (Courtroom Lobby) change the ChangeLocation
+    #     command of Obj8, Activate.  It's after a 'If Marle in party' command.
+
+    script = script_man.get_script(LocID.COURTROOM_LOBBY)
+
+    # Find the if Marle is in party command
+    (pos, cmd) = script.find_command([0xD2],
+                                     script.get_function_start(8, 1),
+                                     script.get_function_end(8, 1))
+    if pos is None or cmd.args[0] != 1:
+        print("Error finding command (kings trial 1)")
+        print(pos)
+        print(cmd.args[1])
+        exit()
+
+    # Find the changelocation in this conditional block
+    jump_target = pos + cmd.args[-1] - 1
+    (pos, cmd) = script.find_command([0xDC, 0xDD, 0xDE,
+                                      0xDF, 0xE0, 0xE1],
+                                     pos, jump_target)
+
+    if pos is None:
+        print("Error finding command (kings trial 2)")
+    else:
+        loc = cmd.args[0]
+        # The location is in bits 0x01FF of the argument.
+        # Keep whatever the old bits have in 0xFE00 put put in the new location
+        loc = (loc & 0xFE00) + int(LocID.KINGS_TRIAL_NEW)
+        script.data[pos+1:pos+3] = to_little_endian(loc, 2)
+
+    # Note, the script manager hands the actual object, so when edited there's
+    # no need to script_man.set_script it
+
+    # Duplicate King's Trial location, 0x1B6, to 0xC1
+    duplicate_location_data(fsrom, LocID.KINGS_TRIAL, LocID.KINGS_TRIAL_NEW)
+
+    # Copy and edit script to remove objects
+    script = script_man.get_script(LocID.KINGS_TRIAL)
+    new_script = copy.deepcopy(script)
+
+    # Can delete:
+    #   - Object 0xB: The false witness against the king
+    #   - Object 0xC: The paper the chancellor holds up in trial (small)
+    #   - Object 0xD: The blue sparkle left by the Yakra key
+    # This might not be enough.  Maybe the soldiers can go too?  The scene will
+    # be changed, but it's worth it?
+
+    del_objs = [0x19, 0x0C, 0x0B]
+    for x in del_objs:
+        new_script.remove_object(x)
+
+    # New Yakra XII object is 0xB for boss rando purposes
+    script_man.set_script(new_script, LocID.KINGS_TRIAL_NEW)
+
+
 # Duplicate maps which run into sprite limits for boss rando
 def duplicate_maps(fsrom: FS):
 
@@ -1241,8 +1321,37 @@ def randomize_midbosses(config: cfg.RandoConfig):
         random.choice(list(Element))
 
 
-def write_bosses_to_ctrom(ctrom: CTRom, settings: rset.Settings,
-                          config: cfg.RandoConfig):
+def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
+    # There are .txt patches for overwriting Magus/Tyrano AI/Techs.
+    # These do not mess with stats or scripts or anything else, so I'm
+    # going to keep these around.
+
+    rom = ctrom.rom_data
+    if config.magus_char == CharID.CRONO:
+        rom.patch_txt_file('./patches/magus_c.txt')
+    elif config.magus_char == CharID.MARLE:
+        rom.patch_txt_file('./patches/magus_m.txt')
+    elif config.magus_char == CharID.LUCCA:
+        rom.patch_txt_file('./patches/magus_l.txt')
+    elif config.magus_char == CharID.ROBO:
+        rom.patch_txt_file('./patches/magus_r.txt')
+    elif config.magus_char == CharID.FROG:
+        rom.patch_txt_file('./patches/magus_f.txt')
+    elif config.magus_char == CharID.AYLA:
+        rom.patch_txt_file('./patches/magus_a.txt')
+
+    elem = config.black_tyrano_element
+    if elem == Element.ICE:
+        rom.patch_txt_file('./patches/tyrano_i.txt')
+    elif elem == Element.LIGHTNING:
+        rom.patch_txt_file('./patches/tyrano_l.txt')
+    elif elem == Element.SHADOW:
+        rom.patch_txt_file('./patches/tyrano_s.txt')
+    elif elem == Element.NONELEMENTAL:
+        rom.patch_txt_file('./patches/tyrano_n.txt')
+
+
+def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
     # Config should have a list of what bosses are to be placed where, so
     # now it's just a matter of writing them to the ctrom.
@@ -1296,7 +1405,22 @@ def write_bosses_to_ctrom(ctrom: CTRom, settings: rset.Settings,
 
 
 def main():
-    pass
+    with open('./roms/jets_test.sfc', 'rb') as infile:
+        rom = bytearray(infile.read())
+
+    ctrom = CTRom(rom, True)
+    ctrom.rom_data.space_manager.mark_block(
+        (0x5f0000, 0x5fffff),
+        FSWriteType.MARK_FREE
+    )
+
+    set_manoria_boss(ctrom, Boss.GUARDIAN().scheme)
+
+    ctrom.write_all_scripts_to_rom()
+
+    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
+        ctrom.rom_data.seek(0)
+        outfile.write(ctrom.rom_data.read())
 
 
 if __name__ == '__main__':
