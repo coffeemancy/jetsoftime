@@ -450,35 +450,27 @@ class FSRom(BytesIO):
 
 def main():
 
-    fs = FreeSpace(0x600000, True)
-    fs2 = FreeSpace(0x600000, True)
-
-    fs.mark_blocks_txt('./patches/save_anywhere_patch.txt')
-    fs.mark_blocks_txt('./patches/unequip_patch.txt')
-    fs.mark_blocks_txt('./patches/fadeout_patch.txt')
-    fs.mark_blocks_txt('./patches/hp_overflow_patch.txt')
-
-    fs2.mark_blocks_txt('./patches/fast_overworld_walk_patch.txt')
-    fs2.mark_blocks_txt('./patches/faster_epoch_patch.txt')
-    fs2.mark_blocks_txt('./patches/faster_menu_dpad.txt')
-
-    fs.print_blocks()
-    fs2.print_blocks()
-
-    exit()
-    
-    fs.mark_block((0, 0x400000), FSWriteType.MARK_USED)
-
-    fs.mark_blocks_ips('./patch.ips')
-    fs.mark_blocks_txt('./patches/patch_codebase.txt')
-    fs.print_blocks()
-
     with open('./roms/ct.sfc', 'rb') as infile:
-        fsrom = FSRom(infile.read(), False)
+        fsrom = FSRom(infile.read(), True)
 
+    fsrom.space_manager.extend_end_marker(0x600000, True)
+    fsrom.space_manager.mark_blocks_ips('./patches/locked_chars.ips')
+    fsrom.space_manager.print_blocks()
+    input()
+    
     fsrom.patch_ips_file('./patch.ips')
     fsrom.patch_txt_file('./patches/patch_codebase.txt')
-    fsrom.print_blocks()
+    fsrom.patch_ips_file('./patches/lost.ips')
+
+    with open('./roms/lw_test_1.sfc', 'wb') as outfile:
+        fsrom.seek(0)
+        outfile.write(fsrom.read())
+
+    fsrom.patch_ips_file('./patches/mysticmtnfix.ips')
+
+    with open('./roms/lw_test_2.sfc', 'wb') as outfile:
+        fsrom.seek(0)
+        outfile.write(fsrom.read())
 
 
 # Test using patch.ips and patch_codebase.txt

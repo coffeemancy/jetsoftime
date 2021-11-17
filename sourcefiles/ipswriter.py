@@ -115,19 +115,9 @@ def write_patch_alt(patch, outfile):
         write_patch_objs(p, f)
 
 
+def main():
+    pass
+
+
 if __name__ == "__main__":
-    with open("ct_vanilla.sfc", "rb") as infile:
-        rom = infile.read()
-
-        with open("test-out-1.sfc", "wb") as outfile1, \
-             open("test-out-2.sfc", "wb") as outfile2:
-
-            outfile1.write(rom)
-            outfile2.write(rom)
-
-        print("start.")
-        write_patch("patch.ips", "test-out-1.sfc")
-        print("done 1.")
-        write_patch_alt("patch.ips", "test-out-2.sfc")
-        print("done 2.")
-        # Compare the output with cmp on Linux or FC on Windows.
+    main()

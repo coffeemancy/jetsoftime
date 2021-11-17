@@ -9,7 +9,7 @@ import randosettings as rset
 
 TID = ctenums.TreasureID
 ItemID = ctenums.ItemID
-
+    
 
 def write_treasures_to_config(settings: rset.Settings,
                               config: cfg.RandoConfig):

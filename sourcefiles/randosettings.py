@@ -2,7 +2,8 @@ from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
 
-from ctenums import BossID, LocID, boss_loc_dict
+from ctenums import BossID, LocID
+
 
 class StrIntEnum(IntEnum):
 
@@ -54,6 +55,7 @@ class GameFlags(Flag):
     DUPLICATE_CHARS = auto()
     DUPLICATE_TECHS = auto()
     VISIBLE_HEALTH = auto()
+
 
 class TabRandoScheme(StrIntEnum):
     UNIFORM = 0

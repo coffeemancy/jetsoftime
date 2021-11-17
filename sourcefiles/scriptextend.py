@@ -988,7 +988,7 @@ def get_aa_beast_toss_scr(rom, bank_st, scr_ptrs_st):
     return bt_scr
 
 
-if __name__ == '__main__':
+def main():
     with open('ct_vanilla_exp.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
@@ -1013,3 +1013,7 @@ if __name__ == '__main__':
 
     # with open('jets_test.sfc', 'rb') as infile:
     #    rom = bytearray(infile.read())
+
+
+if __name__ == '__main__':
+    main()

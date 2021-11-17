@@ -244,7 +244,7 @@ class CTString(bytearray):
     @classmethod
     def ct_bytes_to_techname(cls, array: bytes):
         return CTString(array).to_ascii(techname=True)
-    
+
     @classmethod
     def ct_bytes_to_ascii(cls, array: bytes):
         return CTString(array).to_ascii()

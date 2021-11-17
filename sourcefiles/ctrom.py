@@ -90,8 +90,16 @@ class CTRom():
 def main():
     filename = './roms/jets_test.sfc'
 
-    ctrom = CTRom.from_file(filename)
+    ctrom = CTRom.from_file(filename, True)
     space_manager = ctrom.rom_data.space_manager
+
+    ctrom.rom_data.patch_ips_file('./patches/hard.ips')
+
+    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
+        ctrom.rom_data.seek(0)
+        outfile.write(ctrom.rom_data.read())
+
+    quit()
 
     # Set up some safe free blocks.
     space_manager.mark_block((0, 0x40FFFF),
