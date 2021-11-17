@@ -30,6 +30,7 @@ class BossID(StrIntEnum):
     LAVOS_SPAWN = auto()
     MASA_MUNE = auto()
     MEGA_MUTANT = auto()
+    MUD_IMP = auto()
     NIZBEL = auto()
     NIZBEL_2 = auto()
     RETINITE = auto()
@@ -55,7 +56,8 @@ class BossID(StrIntEnum):
         return (
             cls.ATROPOS_XR,
             cls.DALTON_PLUS,
-            cls.GOLEM_BOSS
+            cls.GOLEM_BOSS,
+            cls.MUD_IMP
         )
 
     @classmethod
@@ -88,7 +90,10 @@ class BossID(StrIntEnum):
 
     @classmethod
     def get_multi_part_bosses(cls):
-        return cls.SON_OF_SUN, cls.RETINITE
+        return [
+            cls.SON_OF_SUN, cls.RETINITE,  # cls.MOTHER_BRAIN, cls.GIGA_GAIA
+        ]
+
 
 
 class CharID(StrIntEnum):
@@ -149,15 +154,15 @@ class LocID(StrIntEnum):
     SNAIL_STOP = 0x35
     CHORAS_CARPENTER_1000 = 0x3D
     LUCCAS_WORKSHOP = 0x04
-    
+
     # Additional Sealed Chest Locations
-    NORTHERN_RUINS_ANTECHAMBER = 0x42
+    NORTHERN_RUINS_ANTECHAMBER = 0x44
     NORTHERN_RUINS_BACK_ROOM = 0x46
     TRUCE_INN_1000 = 0x0C
     TRUCE_INN_600_2F = 0x75
     FOREST_RUINS = 0x2A
     PORRE_ELDER = 0x9A
-    PORRE_MAYOR_2F = 33
+    PORRE_MAYOR_2F = 0x33
     GUARDIA_CASTLE_KINGS_TOWER_600 = 0x1E0
     GUARDIA_CASTLE_KINGS_TOWER_1000 = 0x1E6
     GUARDIA_FOREST_600 = 0x77
@@ -175,6 +180,14 @@ class LocID(StrIntEnum):
     DENADORO_MTS_MASAMUNE_EXTERIOR = 0x8F
     LARUBA_RUINS = 0x124
     KAJAR_ROCK_ROOM = 0x167
+
+    # Script Changes
+    TELEPOD_EXHIBIT = 0x08
+    CHORAS_CAFE = 0xBC
+    SPEKKIO = 0x1D1
+    DACTYL_NEST_UPPER = 0x126
+    COURTROOM_LOBBY = 0x1B9
+    KINGS_TRIAL = 0x1B6
 
     @classmethod
     def get_boss_locations(cls):
@@ -230,31 +243,6 @@ class LocID(StrIntEnum):
             cls.BLACK_OMEN_TERRA_MUTANT,
             cls.DEATH_PEAK_GUARDIAN_SPAWN
         ]
-
-
-boss_loc_dict = {
-    LocID.BLACK_OMEN_ELDER_SPAWN: BossID.ELDER_SPAWN,
-    LocID.ZENAN_BRIDGE: BossID.ZOMBOR,
-    LocID.CAVE_OF_MASAMUNE: BossID.MASA_MUNE,
-    LocID.SUNKEN_DESERT_DEVOURER: BossID.RETINITE,
-    LocID.MAGUS_CASTLE_SLASH: BossID.SLASH_SWORD,
-    LocID.MAGUS_CASTLE_FLEA: BossID.FLEA,
-    LocID.OZZIES_FORT_FLEA_PLUS: BossID.FLEA_PLUS,
-    LocID.OZZIES_FORT_SUPER_SLASH: BossID.SUPER_SLASH,
-    LocID.HECKRAN_CAVE_NEW: BossID.HECKRAN,
-    LocID.KINGS_TRIAL_NEW: BossID.YAKRA_XIII,
-    LocID.GIANTS_CLAW_TYRANO: BossID.RUST_TYRANO,
-    LocID.MANORIA_COMMAND: BossID.YAKRA,
-    LocID.SUN_PALACE: BossID.SON_OF_SUN,
-    LocID.REPTITE_LAIR_AZALA_ROOM: BossID.NIZBEL,
-    LocID.TYRANO_LAIR_NIZBEL: BossID.NIZBEL_2,
-    LocID.BLACK_OMEN_GIGA_MUTANT: BossID.GIGA_MUTANT,
-    LocID.BLACK_OMEN_TERRA_MUTANT: BossID.TERRA_MUTANT,
-    LocID.ZEAL_PALACE_THRONE_NIGHT: BossID.GOLEM,
-    LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_GOLEM,
-    LocID.DEATH_PEAK_GUARDIAN_SPAWN: BossID.LAVOS_SPAWN
-}
-
 
 # Copied and reformatted from Anguirel's list
 class ItemID(StrIntEnum):
