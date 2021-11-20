@@ -71,8 +71,6 @@ def rewrite_tabs_on_ctrom(ctrom: CTRom,
 
     if start is None:
         rt_start = spaceman.get_free_addr(len(rt))
-        print(f"{rt_start:06X}")
-        input()
     else:
         rt_start = start
 
@@ -127,7 +125,7 @@ def rewrite_tabs_on_ctrom(ctrom: CTRom,
     ctrom.rom_data.write(bytes([magic_amt+0xD4]))
 
     ctrom.rom_data.seek(0x375DD9)
-    ctrom.rom_data.write(bytes([magic_amt+0xD4]))
+    ctrom.rom_data.write(bytes([speed_amt+0xD4]))
 
 
 
