@@ -3,7 +3,6 @@
 # flags and update the GameConfig.  Then, the randomizer will write the
 # GameConfig out to the rom.
 from __future__ import annotations
-from io import BufferedWriter
 
 from byteops import to_little_endian, get_value_from_bytes, to_file_ptr
 
@@ -241,7 +240,7 @@ class ShopManager:
             if shop in [ShopID.EMPTY_12, ShopID.EMPTY_14,
                         ShopID.LAST_VILLAGE_UPDATED]:
                 continue
-            
+
             ret += str(shop)
             ret += ':\n'
             for item in self.shop_dict[shop]:
@@ -382,7 +381,7 @@ class StarterChar:
                 exit()
 
             if cmd.command == 0xD3:
-                print("Found add party")
+                # print("Found add party")
                 if num_add_party == self.starter_num:
                     script.data[pos+1] = int(self.held_char)
 
@@ -390,7 +389,7 @@ class StarterChar:
             elif cmd.command == 0xC8:
                 dialog_id = script.data[pos+1]
                 if dialog_id in range(0xC0, 0xC8):
-                    print("Found name char")
+                    # print("Found name char")
                     if num_name_char == self.starter_num:
                         script.data[pos+1] = int(self.held_char) | 0xC0
 
@@ -475,11 +474,11 @@ class ScriptTreasure(Treasure):
         # item add commands
         while (num_add_item != self.item_num+1 or
                num_set_item_mem != self.item_num+1):
-            print(f"{num_add_item} {num_set_item_mem}")
+            # print(f"{num_add_item} {num_set_item_mem}")
 
             pos, cmd = script.find_command(cmd_ids, pos, end)
 
-            print(f"[{pos}] {cmd}")
+            # print(f"[{pos}] {cmd}")
 
             if pos is None:
                 print('Error setting item:\n\t', end='')
@@ -507,7 +506,10 @@ class ScriptTreasure(Treasure):
 
 class RandoConfig:
 
-    def __init__(self, rom: bytearray):
+    # It is important that RandoConfig can get a reasonble configuration
+    # without having a rom in hand.  Otherwise, we are forced to apply some
+    # patches to the rom before we can extract the proper jets data.
+    def __init__(self, rom: bytearray = None):
 
         self.treasure_assign_dict = {
             TID.TRUCE_MAYOR_1F: ChestTreasure(0x02),
@@ -1135,46 +1137,42 @@ class RandoConfig:
 
         self.boss_data_dict = get_boss_data_dict()
         self.boss_rank = dict()
-        self.enemy_dict = enemystats.get_stat_dict(rom)
 
         self.magus_char = CharID.MAGUS
         self.black_tyrano_element = Element.FIRE
 
-        self.shop_manager = ShopManager(rom)
-        self.price_manager = PriceManager(rom)
-        self.char_manager = CharManager(rom)
-
         self.key_item_locations = []
-
-        self.techdb = techdb.TechDB.get_default_db(rom)
 
         self.power_tab_amt = 1
         self.magic_tab_amt = 1
         self.speed_tab_amt = 1
 
-    def write_to_ctrom(self, ctrom: CTRom):
-        # Write enemies out
-        for enemy_id, stats in self.enemy_dict.items():
-            stats.write_to_stream(ctrom.rom_data, enemy_id)
+        # This is probably not the way I want to do things.  It's bad
+        # that there's no way to get default values into these structures
+        # without providing a rom to read from.
+        if rom is None:
+            self.enemy_dict = None  # enemystats.get_stat_dict(rom)
+            self.shop_manager = None  # ShopManager(rom)
+            self.price_manager = None  # PriceManager(rom)
+            self.char_manager = None  # CharManager(rom)
+            self.techdb = None  # techdb.TechDB.get_default_db(rom)
+        else:
+            self.enemy_dict = enemystats.get_stat_dict(rom)
+            self.shop_manager = ShopManager(rom)
+            self.price_manager = PriceManager(rom)
+            self.char_manager = CharManager(rom)
+            self.techdb = techdb.TechDB.get_default_db(rom)
 
-        # Write treasures out -- this includes key items
-        for treasure in self.treasure_assign_dict.values():
-            treasure.write_to_ctrom(ctrom)
+    @classmethod
+    def get_config_from_rom(cls, rom: bytearray):
+        ret_cfg = RandoConfig()
 
-        # Write shops out
-        self.shop_manager.write_to_ctrom(ctrom)
-
-        # Write prices out
-        self.price_manager.write_to_ctrom(ctrom)
-
-        # Write characters out
-        # Recruitment spots
-        for character in self.char_assign_dict.values():
-            character.write_to_ctrom(ctrom)
-
-        # Stats
-        self.char_manager.write_stats_to_ctrom(ctrom)
-
+        ret_cfg.enemy_dict = enemystats.get_stat_dict(rom)
+        ret_cfg.shop_manager = ShopManager(rom)
+        ret_cfg.price_manager = PriceManager(rom)
+        ret_cfg.char_manager = CharManager(rom)
+        ret_cfg.techdb = techdb.TechDB.get_default_db(rom)
+        return ret_cfg
 
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
@@ -1190,12 +1188,6 @@ class RandoConfig:
             outfile.write(f"{self.shop_manager.__str__(self.price_manager)}\n")
             outfile.write('Prices\n')
             outfile.write(f"{self.price_manager}\n")
-
-    def write_to_stream(self, stream: BufferedWriter):
-
-        # Write enemies out
-        for key, value in self.enemy_dict.items():
-            value.write_to_stream(stream, key)
 
 
 def main():
