@@ -293,17 +293,11 @@ class LocExits:
             out_data_st = starts[0]
             out_ptr_st = starts[1]
 
-        # annoying part of dealing with getbuffer()
-        del(rom)
-
-        fsrom.seek(out_data_st)
-        fsrom.write(self.data)
+        # delay writing until we do some tests
 
         ptr_offset = out_data_st % 0x10000
         ptr_bytes = b''.join(to_little_endian(x+ptr_offset, 2)
                              for x in self.ptrs)
-        fsrom.seek(out_ptr_st)
-        fsrom.write(ptr_bytes)
 
         ptr_refs = [0x00A69E, 0x00A6A6]
         data_refs = [0x00A6B9, 0x00A6C2, 0x009CF6, 0x009D10, 0x009D1E,
@@ -311,14 +305,48 @@ class LocExits:
 
         # [0x000000, 0x010000) must be mirrored in [0x400000, 0x410000)
         # Perhaps this can be enforced in FreeSpace?
+
+        # The above isn't exactly true.  It might just be 0x008000 to
+        # 0x010000?
         ptr_mirror = [x+0x400000 for x in ptr_refs
                       if x < 0x010000]
 
         data_mirror = [x+0x400000 for x in data_refs
                        if x < 0x010000]
 
+        # Make sure that this mirroring is enforced before we alter things.
+        for i, x in enumerate(ptr_refs):
+            val1 = get_value_from_bytes(rom[x:x+3])
+
+            y = ptr_mirror[i]
+            val2 = get_value_from_bytes(rom[y:y+3])
+
+            if val1 != val2:
+                print(f'Error mirroring {x:06X}')
+                input()
+
+        for i, x in enumerate(data_refs):
+            val1 = get_value_from_bytes(rom[x:x+3])
+
+            y = data_mirror[i]
+            val2 = get_value_from_bytes(rom[y:y+3])
+
+            if val1 != val2:
+                print(f'Error mirroring {x:06X}')
+                input()
+
         ptr_refs += ptr_mirror
         data_refs += data_mirror
+
+        # annoying part of dealing with getbuffer().  Have to do this or else
+        # an existing MemoryView blocks writes.
+        del(rom)
+
+        fsrom.seek(out_ptr_st)
+        fsrom.write(ptr_bytes)
+
+        fsrom.seek(out_data_st)
+        fsrom.write(self.data)
 
         # update ptrs wants both ptrs to be file ptrs.  It converts to
         # rom ptrs when writing
@@ -330,7 +358,7 @@ class LocExits:
 # End class LocExits
 
 
-def duplicate_heckran_map(fsrom: FS, exits: LocExits, dup_loc_id):
+def duplicate_heckran_map(fsrom: FSRom, exits: LocExits, dup_loc_id):
 
     # Change the exit leading into Heckran to go to the new map
     hc_river_exits = exits.get_exits(0x31)
