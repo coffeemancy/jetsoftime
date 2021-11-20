@@ -280,7 +280,7 @@ def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
         while pos < script.get_function_end(0xB, 0):
             cmd = get_command(script.data, pos)
 
-            print(cmd)
+            # print(cmd)
             if cmd.command in EC.fwd_jump_commands:
                 pos += (cmd.args[-1] - 1)
             elif cmd.command == 0x83:
@@ -992,7 +992,7 @@ def append_boss_object(script: Event, boss: BossScheme, part_index: int,
     # print(f"({new_x:04X}, {new_y:04X})")
     # input()
 
-    print(EC.set_object_coordinates(new_x, new_y))
+    # print(EC.set_object_coordinates(new_x, new_y))
     # print(' '.join(f"{x:02X}"
     #                for x in
     #                EC.set_object_coordinates(new_x, new_y).to_bytearray()))
@@ -1389,7 +1389,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
     for loc in current_assignment.keys():
         if current_assignment[loc] == default_assignment[loc]:
-            print(f"Not assigning to {loc}.  No change from default.")
+            # print(f"Not assigning to {loc}.  No change from default.")
+            pass
         else:
             if loc not in assign_fn_dict.keys():
                 print(f"Error: Tried assigning to {loc}.  Location not "
@@ -1399,8 +1400,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
                 assign_fn = assign_fn_dict[loc]
                 boss_id = current_assignment[loc]
                 boss_scheme = config.boss_data_dict[boss_id].scheme
-                print(f"Writing {boss_id} to {loc}")
-                print(f"{boss_scheme}")
+                # print(f"Writing {boss_id} to {loc}")
+                # print(f"{boss_scheme}")
                 assign_fn(ctrom, boss_scheme)
 
 

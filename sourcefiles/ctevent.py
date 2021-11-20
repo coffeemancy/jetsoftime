@@ -753,7 +753,7 @@ class Event:
         # unused functions are given the starting point of the last used
         # function.
 
-        print(obj_id, func_id)
+        # print(obj_id, func_id)
 
         func_st_ptr = 32*obj_id + 2*func_id
         func_st = \
@@ -826,7 +826,7 @@ class Event:
     # object (call obj function, visibility, etc) and shifts all other calls
     # to objects past the removed one by 1.
     def delete_object(self, obj_id: int):
-        print(f"delete obj {obj_id:02X}")
+        # print(f"delete obj {obj_id:02X}")
         # We're going to assume that the init functions (function 0) always
         # have real start locations.  It would be crazy if this were not so.
         start = self.get_function_start(obj_id, 0)
@@ -1255,7 +1255,7 @@ class ScriptManager:
 
     # writes the script to the specified locations
     def write_script_to_rom(self, loc_id: LocID):
-        print('calling wstr', loc_id)
+        # print('calling wstr', loc_id)
 
         spaceman = self.fsrom.space_manager
 
@@ -1273,8 +1273,6 @@ class ScriptManager:
 
             # str_pos tracks where the pointer needs to point
             str_pos = string_index % 0x10000 + ptrs_len
-            print(f"Location: {loc_id}")
-            print(f"String Index: {string_index:06X}")
             self.fsrom.seek(string_index)
 
             # Write the pointers

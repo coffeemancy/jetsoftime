@@ -17,8 +17,7 @@ class Char(IntEnum):
 
 
 def process_ctrom(ctrom: CTRom,
-                  settings: rset.Settings,
-                  config: cfg.RandoConfig):
+                  settings: rset.Settings):
     # Not sure whether flag tests should be in randomize() or in the various
     # module process_ctrom routines
     if rset.GameFlags.UNLOCKED_MAGIC in settings.gameflags:

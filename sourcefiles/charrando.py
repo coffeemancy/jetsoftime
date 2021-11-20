@@ -2198,8 +2198,6 @@ def reassign_characters_on_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
     # Have to rebuild reassign list to match original format
     reassign = [config.char_manager.pcs[i].assigned_char for i in range(7)]
-    print(reassign)
-    input()
     new_db = config.techdb
     TechDB.write_db_internal(new_db, rom)
 

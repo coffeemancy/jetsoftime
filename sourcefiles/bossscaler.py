@@ -135,12 +135,13 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
     important_keys = [ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE]
 
     while rank > 0:
-        print(f"rank = {rank}")
-        print(important_keys)
+        # print(f"rank = {rank}")
+        # print(important_keys)
         important_tids = [key_item_dict[item] for item in important_keys]
 
         for item in important_keys:
-            print(f"{item} is in {key_item_dict[item]}")
+            # print(f"{item} is in {key_item_dict[item]}")
+            pass
 
         important_keys = list()
 
@@ -154,7 +155,7 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
                 # future.  Lower rank items found in the future will not
                 # decrease the rank of the future bosses.
                 important_keys.append(ItemID.PENDANT)
-                print(f"Adding {ItemID.PENDANT} to important keys")
+                # print(f"Adding {ItemID.PENDANT} to important keys")
                 prisonboss = boss_assign[LocID.PRISON_CATWALKS]
 
                 # Skip rank assignment if dtank already has a higher rank.
@@ -164,14 +165,14 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
                         prisonboss in boss_rank.keys() and
                         boss_rank[prisonboss] < rank
                 ):
-                    print(f"Setting {prisonboss} to rank {rank - 1}")
+                    # print(f"Setting {prisonboss} to rank {rank - 1}")
                     boss_rank[prisonboss] = rank - 1
                     gated_locs = [LocID.SUN_PALACE,
                                   LocID.GENO_DOME_MAINFRAME,
                                   LocID.ARRIS_DOME_GUARDIAN_CHAMBER]
                     for loc in gated_locs:
                         futureboss = boss_assign[loc]
-                        print(f"Setting {futureboss} to rank {rank}")
+                        # print(f"Setting {futureboss} to rank {rank}")
                         boss_rank[futureboss] = rank
             elif tid == TID.MELCHIOR_KEY:
                 # When Melchior gets a key item:
@@ -191,12 +192,12 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
                     location = loc_dict[tid]
                     boss = boss_assign[location]
                     boss_rank[boss] = rank
-                    print(f"Setting {boss} to rank {rank}")
+                    # print(f"Setting {boss} to rank {rank}")
 
                 if tid in item_req_dict.keys():
                     item = item_req_dict[tid]
                     important_keys.append(item)
-                    print(f"Adding {item} to important keys")
+                    # print(f"Adding {item} to important keys")
 
                 if (
                         tid not in loc_dict.keys() and
@@ -228,7 +229,7 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
     config.boss_rank = boss_rank
 
     for boss in boss_rank.keys():
-        print(f"{boss} has rank {boss_rank[boss]}")
+        # print(f"{boss} has rank {boss_rank[boss]}")
         boss_data = config.boss_data_dict[boss]
         part_ids = list(set(boss_data.scheme.ids))
         rank = boss_rank[boss]
@@ -236,13 +237,13 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
         for part in part_ids:
             if part in scaling_data.keys():
                 stat_list = scaling_data[part][rank-1]
-                print(f"{part} has defined stats {stat_list}")
+                # print(f"{part} has defined stats {stat_list}")
             else:
                 # When there is no bespoke stat scaling, fall back to each
                 # rank adding X% over the previous rank.
                 stats = config.enemy_dict[part]
                 stat_list = rank_up_stats(stats, rank)
-                print(f"{part} gets computed stats {stat_list}")
+                # print(f"{part} gets computed stats {stat_list}")
 
             config.enemy_dict[part].replace_from_stat_list(stat_list)
 
