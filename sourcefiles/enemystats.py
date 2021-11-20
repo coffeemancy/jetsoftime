@@ -76,7 +76,7 @@ class EnemyStats:
         offense = rom[stat_addr+0xE]
         defense = rom[stat_addr+0xF]
 
-        can_sightscope = bool(rom[stat_addr+0x15] & 0x2)
+        can_sightscope = not bool(rom[stat_addr+0x15] & 0x2)
 
         # enemy rewards data is a 7 byte structure beginning at 0x0C5E00
         reward_addr = 0x0C5E00 + 7*enemy_id
