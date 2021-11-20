@@ -3,6 +3,8 @@ import struct as st
 import os
 from os import stat
 import pathlib
+import pickle
+
 import treasurewriter
 import shopwriter
 import characterwriter as char_slots
@@ -21,6 +23,7 @@ import fastmagic
 import charrando
 import roboribbon
 import techrandomizer
+import qolhacks
 
 import ctenums
 import ctevent
@@ -33,62 +36,173 @@ import randoconfig as cfg
 import randosettings as rset
 
 
+class NoSettingsException(Exception):
+    pass
+
+
+class NoConfigException(Exception):
+    pass
+
+
 class Randomizer:
 
-    def __init__(self, rom: bytearray, settings: rset.Settings):
+    def __init__(self, rom: bytearray, is_vanilla: bool = True,
+                 settings: rset.Settings = None,
+                 config: cfg.RandoConfig = None):
 
-        self.ctrom = CTRom(rom)
+        # We want to keep a copy of the base rom around so that we can
+        # generate many seeds from it.
+        self.base_ctrom = CTRom(rom, ignore_checksum=not is_vanilla)
+        self.out_rom = None
+        self.has_generated = False
+
         self.settings = settings
-        flags = self.settings.gameflags
+        self.config = config
 
-        # Apply the patches that always are applied
-        self.ctrom.rom_data.patch_ips_file('./patch.ips')
-        self.ctrom.rom_data.patch_txt_file('./patches/patch_codebase.txt')
+    # The randomizer will hold onto its last generated rom in self.out_rom
+    # The settings and config are made properties so that I can update
+    # whether out_rom correctly reflects the settings/config.
+    @property
+    def settings(self):
+        return self._settings
 
-        # I verified that the following convenience patches which are now
-        # always applied are disjoint from the glitch fix patches, so it's
-        # safe to move them here.
-        rom_data = self.ctrom.rom_data
-        rom_data.patch_txt_file('./patches/fast_overworld_walk_patch.txt')
-        rom_data.patch_txt_file('./patches/faster_epoch_patch.txt')
-        rom_data.patch_txt_file('./patches/faster_menu_dpad.txt')
+    @settings.setter
+    def settings(self, new_settings: rset.Settings):
+        self._settings = new_settings
+        self.has_generated = False
 
-        if rset.GameFlags.ZEAL_END in flags:
-            rom_data.patch_txt_file('./patches/zeal_end_boss.txt')
+    @property
+    def config(self):
+        return self._config
 
-        # Patching with lost.ips does not give a valid event for
-        # mystic mountains.  I could fix the event by applying a flux file,
-        # but I'm worried about what might happen when the invalid event is
-        # marked free space.  For now we keep with 3.1 and apply the
-        # mysticmtnfix.ips to restore the event.
-        if rset.GameFlags.LOST_WORLDS in flags:
-            rom_data.patch_ips_file('./patches/lost.ips')
-            rom_data.patch_ips('./patches/mysticmtnfix.ips')
+    @config.setter
+    def config(self, new_config: cfg.RandoConfig):
+        self._config = new_config
+        self.has_generated = False
 
-        if rset.GameFlags.FAST_PENDANT in flags:
-            rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
+    # This would be used by a plando to set a non-random config.
+    # Should this exist now that config is a property?
+    def set_config(self, config: cfg.RandoConfig):
+        self.config = config
 
-        # Omitting fast magic for now.  Trying to keep rom editing to
-        # after the config's been written.
+        # TODO: Are there any sanity checks to apply to the config?
 
-        # We want to write the hard mode enemies out so that config's
-        # enemy_dict is correct
-        if settings.enemy_difficulty == rset.Difficulty.HARD:
-            rom_data.patch_ips_file('./patches/hard.ips')
+    # Given the settings passed to the randomizer, give the randomizer a
+    # random RandoConfig object.
+    def set_random_config(self):
+        if self.settings is None:
+            raise NoSettingsException
 
-        # It should be safe to move the robo's ribbon code here since it
-        # also doesn't depend on flags and should be applied prior to anything
-        # else that messes with the items because it shuffles effects
-        roboribbon.robo_ribbon_speed(rom_data.getbuffer())
+        # Some of the config defaults (prices, techdb, enemy stats) are
+        # read from the rom.  This routine partially patches a copy of the
+        # base rom, gets the data, and builds the base config.
+        self.config = Randomizer.get_base_config_from_settings(
+            bytearray(self.base_ctrom.rom_data.getvalue()),
+            self.settings
+        )
 
-        # You need to build the initial config AFTER the big patches are
-        # applied.
-        self.config = cfg.RandoConfig(bytearray(rom_data.getvalue()))
+        # An alternate approach is to build the base config with the pickles
+        # provided.  You just have to make sure to redump any time time that
+        # patch.ips or hard.ips change.  Below is how you would use pickles.
+        '''
+        with open('./pickles/default_randoconfig.pickle', 'rb') as infile:
+            self.config = pickle.load(infile)
+
+        if self.settings.enemy_difficulty == rset.Difficulty.HARD:
+            with open('./pickles/enemy_dict_hard.pickle', 'rb') as infile:
+                self.config.enemy_dict = pickle.load(infile)
+        '''
+
+        # Character config.  Includes tech randomization.
+        charrando.write_pcs_to_config(self.settings, self.config)
+        techrandomizer.write_tech_order_to_config(self.settings,
+                                                  self.config)
+
+        # Treasure config.
+        treasurewriter.write_treasures_to_config(self.settings, self.config)
+
+        # Enemy rewards
+        enemyrewards.write_enemy_rewards_to_config(self.settings, self.config)
+
+        # Key item config.  Important that this goes after treasures because
+        # otherwise the treasurewriter can overwrite key items placed by
+        # Chronosanity
+        logicwriter.commitKeyItems(self.settings, self.config)
+
+        # Shops
+        shopwriter.write_shops_to_config(self.settings, self.config)
+
+        # Item Prices
+        shopwriter.write_item_prices_to_config(self.settings, self.config)
+
+        # Boss Rando
+        bossrando.write_assignment_to_config(self.settings, self.config)
+
+        # This updates the enemy dict in the config with new stats.
+        bossrando.scale_bosses_given_assignment(self.settings, self.config)
+
+        # Key item Boss scaling (done after boss rando).  Also updates stats.
+        bossscaler.set_boss_power(self.settings, self.config)
+
+        # Black Tyrano/Magus boss randomization
+        bossrando.randomize_midbosses(self.config)
+
+        # Tabs
+        tabwriter.write_tabs_to_config(self.settings, self.config)
+
+    def rescale_bosses(self):
+        '''Reset enemy stats and redo boss scaling.'''
+        if self.settings is None:
+            raise NoSettingsException
+
+        if self.config is None:
+            raise NoConfigException
+
+        config = self.get_base_config_from_settings(
+            self.base_ctrom.rom_data.getbuffer(),
+            self.settings
+        )
+
+        self.config.enemy_dict = config.enemy_dict
+        bossrando.scale_bosses_given_assignment(self.settings, self.config)
+        bossscaler.set_boss_power(self.settings, self.config)
+
+    def __try_proto_dome_fix(self):
+        '''Removes touch == activate from proto recruit.  Maybe this fixes?'''
+        script_man = self.out_rom.script_manager
+        script = script_man.get_script(ctenums.LocID.PROTO_DOME)
+
+        EF = ctevent.EF
+        EC = ctevent.EC
+
+        # Make a function that's just a return
+        func = EF()
+        func.add(EC.return_cmd())
+
+        # Set the touch (0x01) function of the recruit obj (0x18) to the
+        # return function.
+        script.set_function(0x18, 0x01, func)
+
+    def generate_rom(self):
+        if self.settings is None:
+            raise NoSettingsException
+
+        if self.config is None:
+            raise NoConfigException
+
+        if self.has_generated:
+            return
+
+        # With valid config and settings, we can write generate the rom
+        self.__write_out_rom()
 
     # Given the settings passed to the randomizer, write the RandoConfig
     # object.
     # Use a verb other than write?
-    def write_config(self):
+    def write_random_config(self):
+        if self.settings is None:
+            raise NoSettingsException
+
         # Character config.  Includes tech randomization.
         charrando.write_pcs_to_config(self.settings, self.config)
         techrandomizer.write_tech_order_to_config(self.settings,
@@ -124,10 +238,10 @@ class Randomizer:
         # Tabs
         tabwriter.write_tabs_to_config(self.settings, self.config)
 
-    def write_config_to_ctrom(self):
+    def __write_config_to_out_rom(self):
 
         config = self.config
-        ctrom = self.ctrom
+        ctrom = self.out_rom
 
         # Write enemies out
         for enemy_id, stats in config.enemy_dict.items():
@@ -137,7 +251,6 @@ class Randomizer:
         # for treasure in config.treasure_assign_dict.values():
         for tid in config.treasure_assign_dict:
             treasure = config.treasure_assign_dict[tid]
-            print(f"{tid}: {treasure}")
             treasure.write_to_ctrom(ctrom)
 
         # Write shops out
@@ -164,40 +277,41 @@ class Randomizer:
         # tabs
         tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
 
-    def write_ctrom(self):
-        # The config is going to handle writing everything in the config.
-        # Other than the config, we need to handle writing all of the patches
-        # and things like that.
+    def __write_out_rom(self):
+        '''Given config and settings, write to self.out_rom'''
+        self.out_rom = CTRom(self.base_ctrom.rom_data.getvalue(), True)
+        self.__apply_basic_patches(self.out_rom)
+        self.__apply_settings_patches(self.out_rom, self.settings)
 
-        # King's Trial and Heckran's Cave need their maps fixed to allow
-        # for more complicated bosses to fit there.
-        
+        # This makes copies of heckran cave passagesways and king's trial
+        # so that bosses can go there.  There's no reason not do just do this
+        # regardless of whether boss rando is on.
+        bossrando.duplicate_maps_on_ctrom(self.out_rom)
 
-        # First come the script changes determined by flags
-
+        # Script changes which can always be made
         Event = ctevent.Event
         # Some dc flag patches can be added regardless.  No reason not to.
 
-        # Sets magic learning at game start depending on character assignment
+        # 1) Set magic learning at game start depending on character assignment
         telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
 
-        # Allows left chest when medal is on non-Frog Frogs
+        # 2) Allows left chest when medal is on non-Frog Frogs
         burrow_event = Event.from_flux('./flux/cr_burrow.Flux')
 
-        # Start Ruins quest when GrandLeon on non-Frog Frogs
-        choras_inn_event = Event.from_flux('./flux/cr_choras_cafe.Flux')
+        # 3) Start Ruins quest when Grand Leon is on non-Frog Frogs
+        choras_cafe_event = Event.from_flux('./flux/cr_choras_cafe.Flux')
 
-        script_manager = self.ctrom.script_manager
+        script_manager = self.out_rom.script_manager
         script_manager.set_script(telepod_event,
                                   ctenums.LocID.TELEPOD_EXHIBIT)
         script_manager.set_script(burrow_event,
                                   ctenums.LocID.FROGS_BURROW)
-        script_manager.set_script(choras_inn_event,
+        script_manager.set_script(choras_cafe_event,
                                   ctenums.LocID.CHORAS_CAFE)
 
         # Flag specific script changes:
         #   - Locked characters changes to proto dome and dactyl nest
-        #   - Duplicate characters changes to Spekkio
+        #   - Duplicate characters changes to Spekkio when not in LW
         flags = self.settings.gameflags
         dup_chars = rset.GameFlags.DUPLICATE_CHARS in flags
         locked_chars = rset.GameFlags.LOCKED_CHARS in flags
@@ -222,14 +336,17 @@ class Randomizer:
             lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
+            self.__try_proto_dome_fix()
 
-        # This makes copies of heckran cave passagesways and king's trial
-        # so that bosses can go there.  There's no reason not do just do this
-        # regardless of whether boss rando is on.
-        bossrando.duplicate_maps_on_ctrom(self.ctrom)
+        self.__write_config_to_out_rom()
+        self.out_rom.write_all_scripts_to_rom()
+        self.has_generated = True
 
-        self.write_config_to_ctrom()
-        self.ctrom.write_all_scripts_to_rom()
+    def get_generated_rom(self) -> bytearray:
+        if not self.has_generated:
+            self.generate_rom()
+
+        return self.out_rom.rom_data.getvalue()
 
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
@@ -416,38 +533,129 @@ class Randomizer:
 
         file_object.write('\n')
 
-    def randomize(self):
+    @classmethod
+    def __apply_basic_patches(cls, ctrom: CTRom):
+        '''Apply patches that are always applied to a jets rom.'''
+        rom_data = ctrom.rom_data
 
-        Flags = rset.GameFlags
-        gameflags = self.settings.gameflags
-        rom_data = self.ctrom.rom_data
+        # Apply the patches that always are applied for jets
+        # patch.ips makes sure that we have
+        #   - Stats/stat growths for characters for CharManager
+        #   - Tech data for TechDB
+        #   - Item data (including prices) for shops
+        # patch_codebase.txt may not be needed
+        rom_data.patch_ips_file('./patch.ips')
+        rom_data.patch_txt_file('./patches/patch_codebase.txt')
 
-        if Flags.FIX_GLITCH in gameflags:
-            self.fix_glitches()
+        # I verified that the following convenience patches which are now
+        # always applied are disjoint from the glitch fix patches, so it's
+        # safe to move them here.
+        rom_data.patch_txt_file('./patches/fast_overworld_walk_patch.txt')
+        rom_data.patch_txt_file('./patches/faster_epoch_patch.txt')
+        rom_data.patch_txt_file('./patches/faster_menu_dpad.txt')
 
-        if Flags.ZEAL_END in gameflags:
+        # It should be safe to move the robo's ribbon code here since it
+        # also doesn't depend on flags and should be applied prior to anything
+        # else that messes with the items because it shuffles effects
+        roboribbon.robo_ribbon_speed(rom_data.getbuffer())
+
+    @classmethod
+    def __apply_settings_patches(cls, ctrom: CTRom,
+                                 settings: rset.Settings):
+        '''Apply patches to a vanilla ctrom based on randomizer settings.  '''
+        '''These are patches not handled by writing the config.'''
+
+        rom_data = ctrom.rom_data
+        flags = settings.gameflags
+
+        if rset.GameFlags.FIX_GLITCH in flags:
+            rom_data.patch_txt_file('./patches/save_anywhere_patch.txt')
+            rom_data.patch_txt_file('./patches/unequip_patch.txt')
+            rom_data.patch_txt_file('./patches/fadeout_patch.txt')
+            rom_data.patch_txt_file('./patches/hp_overflow_patch.txt')
+
+        if rset.GameFlags.QUIET_MODE in flags:
+            rom_data.patch_ips_file('./patches/nomusic.ips')
+
+        # TODO:  I'd like to do this with .Flux event changes
+        if rset.GameFlags.ZEAL_END in flags:
             rom_data.patch_txt_file('./patches/zeal_end_boss.txt')
 
-        if Flags.LOST_WORLDS in gameflags:
+        # Patching with lost.ips does not give a valid event for
+        # mystic mountains.  I could fix the event by applying a flux file,
+        # but I'm worried about what might happen when the invalid event is
+        # marked free space.  For now we keep with 3.1 and apply the
+        # mysticmtnfix.ips to restore the event.
+        if rset.GameFlags.LOST_WORLDS in flags:
             rom_data.patch_ips_file('./patches/lost.ips')
-        elif Flags.FAST_PENDANT in gameflags:
-            # Note: This logic should be enforced on the gui end too
+            rom_data.patch_ips('./patches/mysticmtnfix.ips')
+
+        if rset.GameFlags.FAST_PENDANT in flags:
             rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
 
-        if Flags.UNLOCKED_MAGIC in gameflags:
-            fastmagic.process_ctrom(self.ctrom, self.settings, self.config)
+        # Big TODO:  Unwrap the hard patch into its component changes.
+        #            As far as I can tell it's just enemies and starting GP.
+        if settings.enemy_difficulty == rset.Difficulty.HARD:
+            rom_data.patch_ips_file('./patches/hard.ips')
 
-        tabwriter.process_ctrom(self.ctrom, self.settings, self.config)
-        treasurewriter.process_ctrom(self.ctrom, self.settings, self.config)
-        enemyrewards.process_ctrom(self.ctrom, self.settings, self.config)
+        if rset.GameFlags.UNLOCKED_MAGIC in flags:
+            fastmagic.process_ctrom(ctrom, settings)
 
-    # Just apply the various glitch fix patches
-    def fix_glitches(self):
-        rom_data = self.ctrom.rom_data
-        rom_data.patch_txt_file('./patches/save_anywhere_patch.txt')
-        rom_data.patch_txt_file('./patches/unequip_patch.txt')
-        rom_data.patch_txt_file('./patches/fadeout_patch.txt')
-        rom_data.patch_txt_file('./patches/hp_overflow_patch.txt')
+        if rset.GameFlags.VISIBLE_HEALTH in flags:
+            qolhacks.force_sightscope_on(ctrom, settings)
+
+    @classmethod
+    def dump_default_config(cls, ct_vanilla: bytearray):
+        '''Turn vanilla ct rom into default objects for a config.'''
+        '''Should run whenever a big patch (patch.ips, hard.ips) changes.'''
+        ctrom = CTRom(ct_vanilla, ignore_checksum=False)
+        cls.__apply_basic_patches(ctrom)
+
+        RC = cfg.RandoConfig
+        config = RC.get_config_from_rom(ctrom.rom_data.getbuffer())
+
+        with open('./pickles/default_randoconfig.pickle', 'wb') as outfile:
+            pickle.dump(config, outfile)
+
+    @classmethod
+    def get_base_config_from_settings(cls,
+                                      ct_vanilla: bytearray,
+                                      settings: rset.Settings):
+        '''Gets an rset.RandoConfig object with the correct initial values.
+
+        RandoConfig members which are read from rom_data after patches:
+          - enemy_dict: holds stats depending on hard mode or not
+          - shop_manager: This shouldn't be strictly needed, but at present
+                          ShopManager objects read the initial shop data from
+                          the rom.
+          - price_manager: patch.ips changes the default prices.  Potentially
+                           the difficulty patch could too.
+          - char_manager: patch.ips changes character stat growths and base
+                          stats.
+          - techdb: patch.ips changes the basic techs (i.e. Antilife)
+        '''
+
+        # It's a little wasteful copying the rom data to partially patch it
+        # to extract the base values for the above.
+
+        # I do have a pickle with a default config and normal/hard enemy dicts
+        # which can be used instead if this is an issue.  The problem with
+        # using those is the need to update them with every patch.
+        ctrom = CTRom(ct_vanilla, True)
+        Randomizer.__apply_basic_patches(ctrom)
+        return cfg.RandoConfig.get_config_from_rom(
+            bytearray(ctrom.rom_data.getvalue())
+        )
+
+    @classmethod
+    def get_randmomized_rom(cls,
+                            rom: bytearray,
+                            settings: rset.Settings) -> bytearray:
+        rando = Randomizer(rom, settings)
+        rando.set_random_config()
+        rando.generate_rom()
+        return rando.get_generated_rom()
+
 
 def read_names():
         p = open("names.txt","r")
@@ -881,19 +1089,31 @@ def main():
     settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
     settings.char_choices = [[i for i in range(7)] for j in range(7)]
     settings.gameflags |= rset.GameFlags.BOSS_SCALE
-    rando = Randomizer(rom, settings)
-    rando.write_config()
+    settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
+    rando = Randomizer(rom, is_vanilla=True,
+                       settings=settings,
+                       config=None)
+    rando.set_random_config()
     LocID = ctenums.LocID
     BossID = ctenums.BossID
-    rando.config.boss_assign_dict[LocID.MANORIA_COMMAND] = BossID.MUD_IMP
-    rando.write_ctrom()
+    cath_boss = rando.config.boss_assign_dict[LocID.MANORIA_COMMAND]
+
+    boss_dict = rando.config.boss_assign_dict
+
+    target_boss = BossID.MUD_IMP
+
+    for key in boss_dict:
+        if boss_dict[key] == target_boss:
+            boss_dict[key] = cath_boss
+
+    rando.config.boss_assign_dict[LocID.MANORIA_COMMAND] = target_boss
+    rando.rescale_bosses()
+
+    out_rom = rando.get_generated_rom()
     rando.write_spoiler_log('spoiler_log.txt')
 
     with open('./roms/ct_out.sfc', 'wb') as outfile:
-        rando.ctrom.rom_data.seek(0)
-        outfile.write(rando.ctrom.rom_data.read())
-
-    
+        outfile.write(out_rom)
 
 
 if __name__ == "__main__":
