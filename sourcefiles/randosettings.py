@@ -79,6 +79,7 @@ class ROSettings:
     loc_list: list[BossID] = field(default_factory=list)
     boss_list: list[BossID] = field(default_factory=list)
     preserve_parts: bool = False
+    enable_sightscope: bool = False
 
 
 class Settings:
@@ -101,7 +102,7 @@ class Settings:
         loc_list.remove(LocID.SUN_PALACE)
         loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
-        self.ro_settings = ROSettings(loc_list, boss_list, False)
+        self.ro_settings = ROSettings(loc_list, boss_list, False, False)
 
         self.tab_settings = TabSettings()
         self.seed = ''
