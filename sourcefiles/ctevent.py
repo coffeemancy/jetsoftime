@@ -1,5 +1,4 @@
 from __future__ import annotations
-from io import BytesIO
 
 from ctdecompress import compress, decompress, get_compressed_length, \
     get_compressed_packet
@@ -7,9 +6,9 @@ from ctenums import LocID
 from byteops import get_value_from_bytes, to_little_endian, to_file_ptr, \
     to_rom_ptr, print_bytes
 import ctstrings
-from eventcommand import EventCommand as EC, get_command, FuncSync
+from eventcommand import EventCommand as EC, get_command
 from eventfunction import EventFunction as EF
-from freespace import FreeSpace as FS, FSRom, FSWriteType 
+from freespace import FreeSpace as FS, FSRom, FSWriteType
 
 
 def get_compressed_script(rom, event_id):
@@ -276,11 +275,14 @@ class Event:
 
             cur_string = flux[pos:string_end]
             # Remove non-printable characters from the string.  Flux seems to
-            # put each ascii char in 16 bits, so there are many 0x00s.  There
-            # are also cr/lf since flux is formatting the strings in the gui.
+            # put each ascii char in 16 bits, so there are many 0x00s.
+
+            # We used to clear out all unprintable ascii, but then found out
+            # that TF uses some \r\n as actual string linebreaks.  So now we
+            # only clear out the 0s and handle the rest in ctstrings.
 
             cur_string = \
-                bytes([x for x in cur_string if x in range(0x20, 0x7F)])
+                bytes([x for x in cur_string if x != 0])
 
             # alias to save keystrokes
             CTString = ctstrings.CTString
@@ -760,11 +762,13 @@ class Event:
             get_value_from_bytes(self.data[func_st_ptr:func_st_ptr+2])
 
         # +1 to match TF for debug
-        # print(f"Function start: {func_st+1: 02X}")
+        # print(f"Function start: {func_st+1:04X}")
         if func_id != 0:
             prev_st = \
                 get_value_from_bytes(self.data[func_st_ptr-2:
                                                func_st_ptr])
+
+            # print(f"Prev start: {prev_st+1:04X}")
 
             if prev_st == func_st:
                 # print("empty func")
@@ -1316,6 +1320,21 @@ class ScriptManager:
 
 
 def main():
+
+    with open('./roms/jets_test.sfc', 'rb') as infile:
+        rom = bytearray(infile.read())
+
+    ptr = get_loc_event_ptr(rom, LocID.FROGS_BURROW)
+    event = Event.from_rom(rom, ptr)
+
+    for string in event.strings:
+        print_bytes(string, 32)
+        ascii_string = ctstrings.CTString.ct_bytes_to_ascii(string)
+        print(ascii_string)
+
+    event = Event.from_flux('./flux/cr_burrow.Flux')
+
+    quit()
 
     with open('./roms/locked_test.sfc', 'rb') as infile:
         rom = bytearray(infile.read())

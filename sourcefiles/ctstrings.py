@@ -203,12 +203,29 @@ class CTString(bytearray):
             if keyword in CTString.keywords:
                 # keywords are in range(0, 21) so there's no shift
                 ct_char = CTString.keywords.index(keyword)
+                end = pos + length
+
+                # Sometimes TF uses \r\n to stand for a CT linebreak.
+                # Sometimes it throws it in there as formatting after a
+                # '{linebreak}' in the ascii.  We need to strip out the
+                # latter \r\n instances.
+
+                # '\r\n' after a break char is a fake break
+                break_chars = (5, 6, 7, 8, 10, 11, 12)
+
+                if ct_char in break_chars and \
+                   end+2 < len(string) and \
+                   string[end:end+2] == '\r\n':
+                    length += 2
             elif keyword in CTString.symbols:
                 # quotation marks are in there too as {"1} and {"2}
                 ct_char = CTString.symbols.index(keyword) + 0xDE
             else:
                 print(f"unknown keyword \'{keyword}\'")
                 exit()
+        elif char == '\r' and pos+1 < len(string) and string[pos+1] == '\n':
+            length = 2
+            ct_char = 5
         else:
             print(f"unknown symbol \'{char}\'")
             exit()
