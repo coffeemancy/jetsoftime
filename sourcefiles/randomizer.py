@@ -113,6 +113,8 @@ class Randomizer:
                 self.config.enemy_dict = pickle.load(infile)
         '''
 
+        rand.seed(self.settings.seed)
+
         # Character config.  Includes tech randomization.
         charrando.write_pcs_to_config(self.settings, self.config)
         techrandomizer.write_tech_order_to_config(self.settings,
@@ -145,7 +147,7 @@ class Randomizer:
         bossscaler.set_boss_power(self.settings, self.config)
 
         # Black Tyrano/Magus boss randomization
-        bossrando.randomize_midbosses(self.config)
+        bossrando.randomize_midbosses(self.settings, self.config)
 
         # Tabs
         tabwriter.write_tabs_to_config(self.settings, self.config)
@@ -179,9 +181,9 @@ class Randomizer:
         func = EF()
         func.add(EC.return_cmd())
 
-        # Set the touch (0x01) function of the recruit obj (0x18) to the
+        # Set the touch (0x02) function of the recruit obj (0x18) to the
         # return function.
-        script.set_function(0x18, 0x01, func)
+        script.set_function(0x18, 0x02, func)
 
     def generate_rom(self):
         if self.settings is None:
@@ -336,7 +338,7 @@ class Randomizer:
             lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
-            self.__try_proto_dome_fix()
+        self.__try_proto_dome_fix()
 
         self.__write_config_to_out_rom()
         self.out_rom.write_all_scripts_to_rom()
@@ -1090,6 +1092,10 @@ def main():
     settings.char_choices = [[i for i in range(7)] for j in range(7)]
     settings.gameflags |= rset.GameFlags.BOSS_SCALE
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
+
+    settings.ro_settings.enable_sightscope = True
+    
+    settings.seed = 1837502734
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)
