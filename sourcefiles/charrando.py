@@ -14,7 +14,8 @@ import ipswriter
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
     update_ptrs, to_rom_ptr, print_bytes
-from ctenums import CharID, RecruitID
+from ctenums import CharID, RecruitID, LocID
+import ctevent
 from ctrom import CTRom
 import freespace
 from statcompute import PCStats as PC
@@ -2170,6 +2171,35 @@ def reassign_characters_file(filename, char_choices, dup_duals,
             fix_burrow(rom, outfile)
 
 
+def fix_kings_trial_anim(ctrom: CTRom, config: cfg.RandoConfig):
+
+    marle_assign = config.char_manager.pcs[CharID.MARLE].assigned_char
+    if marle_assign == CharID.MARLE:
+        return
+
+    trial_event = ctrom.script_manager.get_script(LocID.KINGS_TRIAL_NEW)
+
+    EC = ctevent.EC
+
+    # 0xAC is play animation, 0xA8 is Marle's problem animation
+    bad_anim_cmd = EC.generic_one_arg(0xAC, 0xA8)
+
+    # Can make this char-specific if desired
+    fixed_anim_cmd = EC.generic_one_arg(0xAC, 0x1A)
+
+    start = trial_event.get_function_start(0x02, 0x06)
+    end = trial_event.get_function_end(0x02, 0x06)
+
+    pos = trial_event.find_exact_command(bad_anim_cmd, start, end)
+
+    if pos is None:
+        print(f"Error: Can not find {bad_anim_cmd} (fix_kings_trial_anim)")
+
+    # Just overwrite with the new command
+    trial_event.data[pos:pos+len(bad_anim_cmd)] = \
+        fixed_anim_cmd.to_bytearray()
+
+
 def reassign_characters_on_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # This file was originally written to deal with a rom as a bytearray.
     # Dealing with BytesIO.getbuffer() is awkward because slicing gives
@@ -2226,6 +2256,8 @@ def reassign_characters_on_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # Write everything back to the ctrom
     ctrom.rom_data.seek(0)
     ctrom.rom_data.write(rom, no_mark)
+
+    fix_kings_trial_anim(ctrom, config)
 
 
 # Do everything to apply the reassignment list to the rom
