@@ -7,7 +7,7 @@ from freespace import FSWriteType
 import random
 
 # from ctdecompress import compress, decompress, get_compressed_length
-from bossdata import Boss, BossScheme, LinearScaleBoss, LinearNoHPScaleBoss, \
+from bossdata import Boss, BossScheme, LinearScaleBoss, SonOfSunScaleBoss, \
     get_default_boss_assignment
 from ctenums import LocID, BossID, EnemyID, CharID, Element
 from enemystats import EnemyStats
@@ -745,7 +745,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in arb0 for whatever reason.
-        set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 4)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 3)
 
     # Remove unused boss objects.  In reverse order of course.
     for i in range(len(boss_objs), len(boss.ids), -1):

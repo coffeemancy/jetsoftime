@@ -337,7 +337,7 @@ def get_boss_data_dict():
         BossID.R_SERIES: LinearScaleBoss.R_SERIES(),
         BossID.RUST_TYRANO: LinearScaleBoss.RUST_TYRANO(),
         BossID.SLASH_SWORD: LinearScaleBoss.SLASH_SWORD(),
-        BossID.SON_OF_SUN: LinearNoHPScaleBoss.SON_OF_SUN(),
+        BossID.SON_OF_SUN: SonOfSunScaleBoss.SON_OF_SUN(),
         BossID.SUPER_SLASH: LinearScaleBoss.SUPER_SLASH(),
         BossID.TERRA_MUTANT: LinearScaleBoss.TERRA_MUTANT(),
         BossID.TWIN_GOLEM: LinearScaleBoss.TWIN_GOLEM(),
@@ -404,25 +404,20 @@ class LinearScaleBoss(Boss):
         return scaled_stats
 
 
-class LinearNoHPScaleBoss(LinearScaleBoss):
+class SonOfSunScaleBoss(Boss):
 
     # Scale like a linear boss, but then reset the hps to default
     def scale_relative_to(
             self, other: Boss,
             stat_dict: dict[EnemyID, EnemyStats]
     ) -> list[EnemyStats]:
-        part_hps = [
-            x.hp
-            for x in [stat_dict[part] for part in self.scheme.ids]
+
+        scaled_stats = [
+            # Scaling SoS Flame offense makes the damage from hitting the
+            # correct flame change.  So neither hp nor offense are scaled.
+            linear_scale_stats(stat_dict[part], self.power, other.power,
+                               scale_hp=False, scale_offense=False)
+            for part in self.scheme.ids
         ]
-        print(part_hps)
-        input()
-
-        scaled_stats = \
-            LinearScaleBoss.scale_relative_to(self, other, stat_dict)
-
-        # reset the hps
-        for i in range(len(scaled_stats)):
-            scaled_stats[i].hp = part_hps[i]
 
         return scaled_stats
