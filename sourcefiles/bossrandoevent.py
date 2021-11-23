@@ -1352,11 +1352,6 @@ def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     elif config.magus_char == CharID.AYLA:
         rom.patch_txt_file('./patches/magus_a.txt')
 
-    print(config.enemy_dict[EnemyID.MAGUS])
-    print(config.enemy_dict[EnemyID.MAGUS].can_sightscope)
-    print(config.magus_char)
-    input()
-
     elem = config.black_tyrano_element
     if elem == Element.ICE:
         rom.patch_txt_file('./patches/tyrano_i.txt')
