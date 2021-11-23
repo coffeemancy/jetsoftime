@@ -165,7 +165,20 @@ class Randomizer:
             self.settings
         )
 
-        self.config.enemy_dict = config.enemy_dict
+        for loc in self.config.boss_assign_dict:
+            boss = self.config.boss_assign_dict[loc]
+            scheme = self.config.boss_data_dict[boss].scheme
+
+            for part in set(scheme.ids):
+                stats = self.config.enemy_dict[part]
+                charm = stats.charm_item
+                drop = stats.drop_item
+
+                config.enemy_dict[part].charm_item = charm
+                config.enemy_dict[part].drop_item = drop
+
+                self.config.enemy_dict[part] = config.enemy_dict[part]
+
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
@@ -1094,8 +1107,8 @@ def main():
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
 
     settings.ro_settings.enable_sightscope = True
-    
-    settings.seed = 1837502734
+
+    settings.seed = 501068039472
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)

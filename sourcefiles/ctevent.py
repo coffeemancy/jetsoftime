@@ -599,8 +599,9 @@ class Event:
         # Remove all calls to object 0xC's functions
         calls = [2, 3, 4]
         draw_status = [0x7C, 0x7D]
+        processing = [0x0A, 0x0B, 0x0C]
 
-        obj_cmds = calls + draw_status
+        obj_cmds = calls + draw_status + processing
 
         pos = self.get_function_start(0, 0)
         end = len(self.data)
@@ -1334,6 +1335,12 @@ def main():
 
     event = Event.from_flux('./flux/cr_burrow.Flux')
 
+    for x in event.strings:
+        print_bytes(x, 16)
+        ascii_string = ctstrings.CTString.ct_bytes_to_ascii(x)
+        print(ascii_string)
+        print()
+
     quit()
 
     with open('./roms/locked_test.sfc', 'rb') as infile:
@@ -1355,6 +1362,7 @@ def main():
 
     for x in script.strings:
         print_bytes(x, 16)
+        
         print()
 
     input()
