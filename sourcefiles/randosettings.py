@@ -98,9 +98,11 @@ class Settings:
         boss_list = \
             BossID.get_one_part_bosses() + BossID.get_two_part_bosses()
 
+        boss_list += [BossID.SON_OF_SUN, BossID.RETINITE]
+
         loc_list = LocID.get_boss_locations()
-        loc_list.remove(LocID.SUN_PALACE)
-        loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
+        # loc_list.remove(LocID.SUN_PALACE)
+        # loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
         self.ro_settings = ROSettings(loc_list, boss_list, False, False)
 
