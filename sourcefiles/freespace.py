@@ -29,6 +29,7 @@ class FreeSpace():
         if is_free == FSWriteType.NO_MARK:
             return
         else:
+            # print(f"Marking [{block[0]:06X}, {block[1]:06X})  as {is_free}")
             is_free = (is_free == FSWriteType.MARK_FREE)
 
         # maybe verify block is valid?
@@ -166,7 +167,8 @@ class FreeSpace():
 
         while True:
             tries[0] = self.get_free_addr(sort_sizes[0], start)
-            self.mark_block((tries[0], tries[0]+sort_sizes[0]), False)
+            self.mark_block((tries[0], tries[0]+sort_sizes[0]),
+                            FSWriteType.MARK_USED)
 
             first_bank = (tries[0] >> 16) << 16
 
@@ -186,7 +188,8 @@ class FreeSpace():
                                         True)
                 else:
                     # Mark and proceed to next
-                    self.mark_block((tries[i], tries[i]+sort_sizes[i]), False)
+                    self.mark_block((tries[i], tries[i]+sort_sizes[i]),
+                                    FSWriteType.MARK_USED)
 
             if success:
                 break
@@ -195,7 +198,8 @@ class FreeSpace():
         # the buffer from the freespace checker so that we can copy the
         # freespace checker and mess with that while finding addresses.
         for i in range(len(tries)):
-            self.mark_block((tries[i], tries[i]+sort_sizes[i]), True)
+            self.mark_block((tries[i], tries[i]+sort_sizes[i]),
+                            FSWriteType.MARK_FREE)
 
         perm, tries = zip(*sorted(zip(perm, tries)))
 
