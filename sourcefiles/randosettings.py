@@ -98,7 +98,7 @@ class Settings:
         boss_list = \
             BossID.get_one_part_bosses() + BossID.get_two_part_bosses()
 
-        boss_list += [BossID.SON_OF_SUN, BossID.RETINITE]
+        boss_list += [BossID.SON_OF_SUN, BossID.RETINITE, BossID.MUD_IMP]
 
         loc_list = LocID.get_boss_locations()
         # loc_list.remove(LocID.SUN_PALACE)
