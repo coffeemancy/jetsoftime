@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from byteops import get_value_from_bytes, to_file_ptr, to_little_endian,\
     update_ptrs, print_bytes
-from freespace import FSRom
+from freespace import FSRom, FSWriteType
 
 
 # Location Data (above):
@@ -273,7 +273,8 @@ class LocExits:
             # Free the leftovers
             if num_exits > self.num_records:
                 space_man.mark_block(
-                    (out_data_st+len(self.data), last_ptr), True
+                    (out_data_st+len(self.data), last_ptr),
+                    FSWriteType.MARK_FREE
                 )
         else:
             # Insufficient space, need a new start
@@ -282,16 +283,18 @@ class LocExits:
             # ptr block and data block are in the same bank.
 
             # Free the old space
+            
             space_man.mark_block(
-                (exit_ptr_st, exit_ptr_st+0x400), True
+                (exit_ptr_st, exit_ptr_st+0x400), FSWriteType.MARK_FREE
             )
-            space_man.mark_block((first_ptr, first_ptr+7*num_exits), True)
-
+            space_man.mark_block((first_ptr, first_ptr+7*num_exits),
+                                 FSWriteType.MARK_FREE)
             # Get new starts
             starts = space_man.get_same_bank_free_addrs([len(self.data),
                                                          2*len(self.ptrs)])
             out_data_st = starts[0]
             out_ptr_st = starts[1]
+
 
         # delay writing until we do some tests
 
@@ -302,6 +305,7 @@ class LocExits:
         ptr_refs = [0x00A69E, 0x00A6A6]
         data_refs = [0x00A6B9, 0x00A6C2, 0x009CF6, 0x009D10, 0x009D1E,
                      0x009CD4, 0x009CDC, 0x009CE6, 0x009D17, 0x00A6E2]
+
 
         # [0x000000, 0x010000) must be mirrored in [0x400000, 0x410000)
         # Perhaps this can be enforced in FreeSpace?
@@ -343,10 +347,10 @@ class LocExits:
         del(rom)
 
         fsrom.seek(out_ptr_st)
-        fsrom.write(ptr_bytes)
+        fsrom.write(ptr_bytes, FSWriteType.MARK_USED)
 
         fsrom.seek(out_data_st)
-        fsrom.write(self.data)
+        fsrom.write(self.data, FSWriteType.MARK_USED)
 
         # update ptrs wants both ptrs to be file ptrs.  It converts to
         # rom ptrs when writing
@@ -379,7 +383,7 @@ def duplicate_heckran_map(fsrom: FSRom, exits: LocExits, dup_loc_id):
 
 
 # Except for events
-def duplicate_location_data(fsrom: FS, loc_id, dup_loc_id):
+def duplicate_location_data(fsrom: FSRom, loc_id, dup_loc_id):
     # I think all you have to do is change the LocationData and update the
     # exits?
     orig_data = LocationData.from_rom(fsrom.getbuffer(), loc_id)
