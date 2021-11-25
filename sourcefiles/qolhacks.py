@@ -1,6 +1,74 @@
 # File for quality of life hacks
+
+import ctevent
+import ctenums
+
 from ctrom import CTRom
+import randoconfig as cfg
 import randosettings as rset
+
+
+class ScriptTabTreasure(cfg.ScriptTreasure):
+
+    def remove_pause(self, ctrom: CTRom):
+
+        script = ctrom.script_manager.get_script(self.location)
+        start = script.get_function_start(self.object_id, self.function_id)
+        end = script.get_function_end(self.object_id, self.function_id)
+
+        pos = start
+        num_removed = 0
+        while True:
+            # exploremode toggle commands are 0xE3.  We're nuking them
+            pos, _ = script.find_command([0xE3], start, end)
+
+            if pos is None:
+                break
+
+            script.delete_commands(pos, 1)
+            num_removed += 1
+
+        # print(f"Num removed: {num_removed}")
+        if num_removed % 2 != 0:
+            # print("Warning: Removed an odd number of exploremode commands")
+            # input()
+            pass
+
+
+# Toma's grave's speed tab is annoying because the same function covers
+# the pop turn-in and the speed tab.
+# We need to
+#  1) Remove the exploremode off from the start of the function
+#  2) Add an exploremode on command after checking for pop, etc
+#  3) Pray calling exploremode on when it's already on doesn't break things.
+class TomasGraveTreasure(ScriptTabTreasure):
+
+    def remove_pause(self, ctrom: CTRom):
+
+        script = ctrom.script_manager.get_script(self.location)
+        start = script.get_function_start(self.object_id, self.function_id)
+        end = script.get_function_end(self.object_id, self.function_id)
+
+        pos = start
+
+        # remove initial exploremode off
+        if script.data[pos] == 0xE3:
+            script.delete_commands(pos, 1)
+        else:
+            print("Error: Couldn't find initial exploremode command.")
+            exit()
+
+        # insert an exploremode off after checks for pop
+        # marker is scrollscreen (0xE7) 00 00
+        scroll_screen = ctevent.EC.generic_two_arg(0xE7, 0, 0)
+        pos = script.find_exact_command(scroll_screen, pos, end)
+
+        if pos is None:
+            print("Error: couldn't find scroll screen")
+            exit()
+
+        explore_off = ctevent.EC.generic_one_arg(0xE3, 0)
+        script.insert_commands(explore_off.to_bytearray(), pos)
 
 
 # Trick the game into thinking P1 has the SightScope equipped, for enemy health
@@ -13,6 +81,109 @@ def force_sightscope_on(ctrom: CTRom, settings: rset.Settings):
         # Ignore the result of that comparison and evaluate to always true, by
         # overwriting the BEQ (branch-if-equal) to BRA (branch-always)
         ctrom.rom_data.write(bytes([0x80]))
+
+
+def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
+
+    # Eventually check for settings here
+
+    TID = ctenums.TreasureID
+    LocID = ctenums.LocID
+    ItemID = ctenums.ItemID
+
+    # Eventually, this might make it into a part of the randoconfig.
+    # For now, the held_item and such don't matter.  We just want the
+    # location, object, function to nuke the exploremode commands.
+    slow_tabs = {
+        TID.GUARDIA_FOREST_POWER_TAB_600: ScriptTabTreasure(
+            location=LocID.GUARDIA_FOREST_600,
+            object_id=0x3F,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.GUARDIA_FOREST_POWER_TAB_1000: ScriptTabTreasure(
+            location=LocID.GUARDIA_FOREST_1000,
+            object_id=0x26,
+            function_id=0x01,
+            item_num=1,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.PORRE_MARKET_600_POWER_TAB: ScriptTabTreasure(
+            location=LocID.GUARDIA_FOREST_1000,
+            object_id=0x0C,
+            function_id=0x01,
+            item_num=1,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.MANORIA_CONFINEMENT_POWER_TAB: ScriptTabTreasure(
+            location=LocID.MANORIA_CONFINEMENT,
+            object_id=0x0A,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.TOMAS_GRAVE_SPEED_TAB: TomasGraveTreasure(
+            location=LocID.WEST_CAPE,
+            object_id=0x08,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.SPEED_TAB
+        ),
+        TID.DENADORO_MTS_SPEED_TAB: ScriptTabTreasure(
+            location=LocID.DENADORO_WEST_FACE,
+            object_id=0x09,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.SPEED_TAB
+        ),
+        TID.GIANTS_CLAW_CAVERNS_POWER_TAB: ScriptTabTreasure(
+            location=LocID.GIANTS_CLAW_CAVERNS,
+            object_id=0x0D,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.GIANTS_CLAW_ENTRANCE_POWER_TAB: ScriptTabTreasure(
+            location=LocID.GIANTS_CLAW_ENTRANCE,
+            object_id=0x0B,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.GIANTS_CLAW_TRAPS_POWER_TAB: ScriptTabTreasure(
+            location=LocID.ANCIENT_TYRANO_LAIR_TRAPS,
+            object_id=0x15,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.POWER_TAB
+        ),
+        TID.MAGUS_CASTLE_FLEA_MAGIC_TAB: ScriptTabTreasure(
+            location=LocID.MAGUS_CASTLE_FLEA,
+            object_id=0x0D,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.SPEED_TAB
+        ),
+        TID.ARRIS_DOME_SEALED_POWER_TAB: ScriptTabTreasure(
+            location=LocID.ARRIS_DOME_SEALED_ROOM,
+            object_id=0x08,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.SPEED_TAB
+        ),
+        TID.TRANN_DOME_SEALED_MAGIC_TAB: ScriptTabTreasure(
+            location=LocID.TRANN_DOME_SEALED_ROOM,
+            object_id=0x08,
+            function_id=0x01,
+            item_num=0,
+            held_item=ItemID.SPEED_TAB
+        )
+    }
+
+    for tab in slow_tabs:
+        # print(f"Made {tab} fast.")
+        slow_tabs[tab].remove_pause(ctrom)
 
 
 # After writing additional hacks, put them here. Based on the settings, they
@@ -30,5 +201,3 @@ def main():
 # Testing
 if __name__ == "__main__":
     main()
-
-
