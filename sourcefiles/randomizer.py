@@ -301,6 +301,7 @@ class Randomizer:
         # This makes copies of heckran cave passagesways and king's trial
         # so that bosses can go there.  There's no reason not do just do this
         # regardless of whether boss rando is on.
+
         bossrando.duplicate_maps_on_ctrom(self.out_rom)
 
         # Script changes which can always be made
@@ -395,8 +396,12 @@ class Randomizer:
         file_object.write("Character Locations\n")
         file_object.write("-------------------\n")
         for recruit_spot in char_assign.keys():
+            held_char = char_assign[recruit_spot].held_char
+            reassign_char = \
+                self.config.char_manager.pcs[held_char].assigned_char
             file_object.write(str.ljust(f"{recruit_spot}", 20) +
-                              f"{char_assign[recruit_spot].held_char}\n")
+                              f"{char_assign[recruit_spot].held_char}"
+                              f" reassigned {reassign_char}\n")
         file_object.write('\n')
 
         file_object.write("Character Stats\n")
@@ -618,6 +623,8 @@ class Randomizer:
 
         if rset.GameFlags.VISIBLE_HEALTH in flags:
             qolhacks.force_sightscope_on(ctrom, settings)
+
+        qolhacks.fast_tab_pickup(ctrom, settings)
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
@@ -1101,18 +1108,23 @@ def main():
         rom = infile.read()
 
     settings = rset.Settings.get_race_presets()
-    settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
-    settings.char_choices = [[i for i in range(7)] for j in range(7)]
-    settings.gameflags |= rset.GameFlags.BOSS_SCALE
+    # settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+    # settings.char_choices = [[i for i in range(7)] for j in range(7)]
+    settings.char_choices = [[j] for j in range(7)]
+    # settings.gameflags |= rset.GameFlags.BOSS_SCALE
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
+    settings.gameflags |= rset.GameFlags.LOCKED_CHARS
 
     settings.ro_settings.enable_sightscope = True
 
-    settings.seed = 501068039472
+    settings.seed = 1234567890
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)
     rando.set_random_config()
+
+    '''
+    # Force a given boss in cathedral for testing
     LocID = ctenums.LocID
     BossID = ctenums.BossID
     cath_boss = rando.config.boss_assign_dict[LocID.MANORIA_COMMAND]
@@ -1127,8 +1139,10 @@ def main():
 
     rando.config.boss_assign_dict[LocID.MANORIA_COMMAND] = target_boss
     rando.rescale_bosses()
+    '''
 
     out_rom = rando.get_generated_rom()
+    # rando.out_rom.rom_data.space_manager.print_blocks()
     rando.write_spoiler_log('spoiler_log.txt')
 
     with open('./roms/ct_out.sfc', 'wb') as outfile:
