@@ -74,7 +74,7 @@ def free_event(fsrom: FS, loc_id: int):
     event_ptr = get_loc_event_ptr(rom, loc_id)
     event_len = get_compressed_length(rom, event_ptr)
 
-    fsrom.mark_block((event_ptr, event_ptr+event_len), True)
+    fsrom.mark_block((event_ptr, event_ptr+event_len), FSWriteType.MARK_FREE)
 
     event = Event.from_rom(rom, event_ptr)
     string_index = event.get_string_index()
@@ -1256,7 +1256,8 @@ class ScriptManager:
             # This will take some more sophistication to do correctly.
             pass
 
-        spaceman.mark_block((script_ptr, script_ptr+script_compr_len), True)
+        spaceman.mark_block((script_ptr, script_ptr+script_compr_len),
+                            FSWriteType.MARK_FREE)
 
     # writes the script to the specified locations
     def write_script_to_rom(self, loc_id: LocID):
