@@ -79,11 +79,13 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
 
             char_man.pcs[i].stats = new_stats[i]
             char_man.pcs[i].assigned_char = choices[i]
+    else:
+        choices = [i for i in range(7)]
 
-        dup_duals = rset.GameFlags.DUPLICATE_TECHS in settings.gameflags
-        config.techdb = get_reassign_techdb(config.techdb,
-                                            choices,
-                                            dup_duals)
+    dup_duals = rset.GameFlags.DUPLICATE_TECHS in settings.gameflags
+    config.techdb = get_reassign_techdb(config.techdb,
+                                        choices,
+                                        dup_duals)
 
 
 # TODO: Revisit this now that I've done a better job in ctstring.py
