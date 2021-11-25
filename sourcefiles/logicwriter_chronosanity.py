@@ -8,6 +8,7 @@ import struct as st
 import logicfactory
 import logictypes
 import treasurewriter as treasure
+import treasuredata
 
 from ctrom import CTRom
 import randoconfig as cfg
@@ -273,8 +274,10 @@ def commitKeyItems(settings: rset.Settings,
 
                 # This is a baseline location without a key item.
                 # Assign a piece of treasure.
-                dist = treasure.get_treasure_distribution(settings,
-                                                          location.lootTier)
+                dist = \
+                    treasuredata.get_treasure_distribution(settings,
+                                                           location.lootTier)
+
                 treasureCode = dist.get_random_item()
                 location.writeTreasure(treasureCode, config)
 

@@ -82,12 +82,12 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
     lost_worlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
     boss_scaling = rset.GameFlags.BOSS_SCALE in settings.gameflags
 
+    if not boss_scaling:
+        return
+
     if chronosanity or lost_worlds:
         print('Boss scaling not compatible with either Lost Worlds or '
               'Chronosanity.  Returning.')
-        return
-
-    if not boss_scaling:
         return
 
     game_config = logicfactory.getGameConfig(settings, config)
