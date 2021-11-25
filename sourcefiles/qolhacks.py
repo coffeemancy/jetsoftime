@@ -110,7 +110,7 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
             held_item=ItemID.POWER_TAB
         ),
         TID.PORRE_MARKET_600_POWER_TAB: ScriptTabTreasure(
-            location=LocID.GUARDIA_FOREST_1000,
+            location=LocID.PORRE_MARKET_600,
             object_id=0x0C,
             function_id=0x01,
             item_num=1,
