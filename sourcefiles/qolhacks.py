@@ -44,9 +44,6 @@ class ScriptTabTreasure(cfg.ScriptTreasure):
             input()
 
         if pos_flag > pos_text:
-
-            print(f'here {self.location}')
-            input()
             pos_add_item, _ = script.find_command([0xCA], start, end)
 
             script.delete_commands(pos_flag, 1)
