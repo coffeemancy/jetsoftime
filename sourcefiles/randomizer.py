@@ -1108,16 +1108,18 @@ def main():
         rom = infile.read()
 
     settings = rset.Settings.get_race_presets()
-    # settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
-    # settings.char_choices = [[i for i in range(7)] for j in range(7)]
-    settings.char_choices = [[j] for j in range(7)]
+    settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+    settings.char_choices = [[i for i in range(7)] for j in range(7)]
+    # settings.char_choices = [[j] for j in range(7)]
     # settings.gameflags |= rset.GameFlags.BOSS_SCALE
+    settings.gameflags |= rset.GameFlags.CHRONOSANITY
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
     settings.gameflags |= rset.GameFlags.LOCKED_CHARS
+    settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
 
     settings.ro_settings.enable_sightscope = True
 
-    settings.seed = 1234567890
+    settings.seed = 'franklin_1'
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)
@@ -1142,10 +1144,11 @@ def main():
     '''
 
     out_rom = rando.get_generated_rom()
+    seed = settings.seed
     # rando.out_rom.rom_data.space_manager.print_blocks()
-    rando.write_spoiler_log('spoiler_log.txt')
+    rando.write_spoiler_log(f'spoiler_log_{seed}.txt')
 
-    with open('./roms/ct_out.sfc', 'wb') as outfile:
+    with open(f'./roms/ct_out_{seed}.sfc', 'wb') as outfile:
         outfile.write(out_rom)
 
 
