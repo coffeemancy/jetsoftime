@@ -34,6 +34,23 @@ class ScriptTabTreasure(cfg.ScriptTreasure):
             # input()
             pass
 
+        # Now make sure that the flag set is after the textbox.
+        pos_flag, flag_cmd = script.find_command([0x65], start, end)
+        pos_text, text_cmd = script.find_command([0xBB, 0xC1, 0xC2],
+                                                 start, end)
+
+        if pos_flag is None or pos_text is None:
+            print(f'Error finding flag set or text box in {self.location}')
+            input()
+
+        if pos_flag > pos_text:
+
+            print(f'here {self.location}')
+            input()
+            pos_add_item, _ = script.find_command([0xCA], start, end)
+
+            script.delete_commands(pos_flag, 1)
+            script.insert_commands(flag_cmd.to_bytearray(), pos_add_item)
 
 # Toma's grave's speed tab is annoying because the same function covers
 # the pop turn-in and the speed tab.
