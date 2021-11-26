@@ -29,7 +29,7 @@ def robo_ribbon_speed(rom):
 
     # We want to swap boost 7 and boost 9
     boost_start = 0x0C29D7
-    temp = rom[boost_start+2*7:boost_start+2*8]
+    temp = bytearray(rom[boost_start+2*7:boost_start+2*8])
     rom[boost_start+2*7:boost_start+2*8] = \
         rom[boost_start+2*9:boost_start+2*10]
     rom[boost_start+2*9:boost_start+2*10] = temp[:]
@@ -41,11 +41,11 @@ def robo_ribbon_speed(rom):
     for i in range(0, 0x94):
         boost_byte = 0x0C06A4 + 4 + i*6
         if rom[boost_byte] == 7:
-            # print('%X' % i)
+            # print('7 %X' % i)
             rom[boost_byte] = 9
         elif rom[boost_byte] == 9:
             rom[boost_byte] = 7
-            # print('%X' % i)
+            # print('9 %X' % i)
 
     # Accessories have 4 byte data beginning at 0x0C052C
     # We need byte 2 to be 0x40  and byte 3 to be 7 or 9 to do the swap
@@ -54,11 +54,11 @@ def robo_ribbon_speed(rom):
         if rom[type_byte] == 0x40:
             boost_byte = type_byte+1
             if rom[boost_byte] == 7:
-                # print('%X' % i)
+                # print('7 %X' % i)
                 rom[boost_byte] = 9
             elif rom[boost_byte] == 9:
                 rom[boost_byte] = 7
-                # print('%X' % i)
+                # print('9 %X' % i)
 
 
 if __name__ == '__main__':
