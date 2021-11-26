@@ -120,6 +120,10 @@ class Randomizer:
         techrandomizer.write_tech_order_to_config(self.settings,
                                                   self.config)
 
+        # Fast Magic.  Should be fine before or after charrando.
+        # Safest after.
+        fastmagic.write_config(self.settings, self.config)
+
         # Treasure config.
         treasurewriter.write_treasures_to_config(self.settings, self.config)
 
@@ -211,48 +215,6 @@ class Randomizer:
         # With valid config and settings, we can write generate the rom
         self.__write_out_rom()
 
-    # Given the settings passed to the randomizer, write the RandoConfig
-    # object.
-    # Use a verb other than write?
-    def write_random_config(self):
-        if self.settings is None:
-            raise NoSettingsException
-
-        # Character config.  Includes tech randomization.
-        charrando.write_pcs_to_config(self.settings, self.config)
-        techrandomizer.write_tech_order_to_config(self.settings,
-                                                  self.config)
-
-        # Treasure config.
-        treasurewriter.write_treasures_to_config(self.settings, self.config)
-
-        # Enemy rewards
-        enemyrewards.write_enemy_rewards_to_config(self.settings, self.config)
-
-        # Key item config.  Important that this goes after treasures because
-        # otherwise the treasurewriter can overwrite key items placed by
-        # Chronosanity
-        logicwriter.commitKeyItems(self.settings, self.config)
-
-        # Shops
-        shopwriter.write_shops_to_config(self.settings, self.config)
-
-        # Item Prices
-        shopwriter.write_item_prices_to_config(self.settings, self.config)
-
-        # Boss Rando
-        bossrando.write_assignment_to_config(self.settings, self.config)
-        bossrando.scale_bosses_given_assignment(self.settings, self.config)
-
-        # Boss scaling (done after boss rando)
-        bossscaler.set_boss_power(self.settings, self.config)
-
-        # Black Tyrano/Magus boss randomization
-        bossrando.randomize_midbosses(self.config)
-
-        # Tabs
-        tabwriter.write_tabs_to_config(self.settings, self.config)
-
     def __write_config_to_out_rom(self):
 
         config = self.config
@@ -284,12 +246,6 @@ class Randomizer:
 
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
-
-        # This needs to go after charrando writes the techdb out.
-        # TODO: Change fastmagic to look into the config and alter the
-        #       techdb there.
-        if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
-            fastmagic.process_ctrom(ctrom, self.settings)
 
         # Write out the bosses and midbossses
         bossrando.write_bosses_to_ctrom(ctrom, config)
@@ -627,6 +583,9 @@ class Randomizer:
 
         if rset.GameFlags.VISIBLE_HEALTH in flags:
             qolhacks.force_sightscope_on(ctrom, settings)
+
+        if rset.GameFlags.UNLOCKED_MAGIC in flags:
+            fastmagic.write_ctrom(ctrom, settings)
 
         qolhacks.fast_tab_pickup(ctrom, settings)
 
