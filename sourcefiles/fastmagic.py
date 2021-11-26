@@ -1,27 +1,59 @@
 
 from byteops import get_value_from_bytes, to_file_ptr
-from enum import IntEnum
+from ctenums import CharID
 from ctrom import CTRom
+
 import randosettings as rset
 import randoconfig as cfg
 
 
-class Char(IntEnum):
-    CRONO = 0
-    MARLE = 1
-    LUCCA = 2
-    ROBO = 3
-    FROG = 4
-    AYLA = 5
-    MAGUS = 6
+def write_config(settings: rset.Settings, config: cfg.RandoConfig):
+    techdb = config.techdb
+
+    control_headers = techdb.controls
+    control_size = techdb.control_size
+
+    # The 0x80 bit of the first byte of each control header controls whether
+    # a tech requires magic to learn (single techs only). We will unset this
+    # byte on all single techs so that a trip to spekkio is not required.
+
+    for tech in range(1, 7*8):
+        magic_byte = tech*control_size
+        control_headers[magic_byte] &= 0x7F
 
 
-def process_ctrom(ctrom: CTRom,
-                  settings: rset.Settings):
+def write_ctrom(ctrom: CTRom,
+                settings: rset.Settings):
     # Not sure whether flag tests should be in randomize() or in the various
     # module process_ctrom routines
     if rset.GameFlags.UNLOCKED_MAGIC in settings.gameflags:
-        set_fast_magic(ctrom.rom_data.getbuffer())
+        magic_learners = [CharID.CRONO, CharID.MARLE,
+                          CharID.LUCCA, CharID.FROG]
+
+        # If UNLOCKED_MAGIC is enabled, then the techdb has set all single
+        # techs to be non-magical for learning purposes.  Now we just need
+        # to let the game know that everyone can learn their techs without
+        # a visit to Spekkio.
+
+        # The array in rom beginning at (default) 0x3FF951 gives says how many
+        # techs a character can learn without visiting Spekkio.
+
+        # Default Values: 03 03 03 FF 03 FF 00
+        # Note: Magus is 00 but also comes with magic learned initially.
+
+        rom_data = ctrom.rom_data
+
+        rom_data.seek(0x3FF894)  # location of ptr to thresholds on rom
+        thresh_ptr_bytes = rom_data.read(3)
+        thresh_ptr = get_value_from_bytes(thresh_ptr_bytes)
+        thresh_ptr = to_file_ptr(thresh_ptr)
+
+        for x in magic_learners:
+            rom_data.seek(thresh_ptr + x)
+            # Set the threshold to 8.
+            # 0xFF works here but confuses the dc flag into thinking that the
+            # chars are not magic users.
+            rom_data.write(b'\x08')
 
 
 # This is more in line with how the other randomizer functions work
@@ -36,7 +68,8 @@ def set_fast_magic_file(filename):
         control_ptr = get_value_from_bytes(control_ptr_bytes)
         control_ptr = to_file_ptr(control_ptr)
 
-        magic_learners = [Char.CRONO, Char.MARLE, Char.LUCCA, Char.FROG]
+        magic_learners = [CharID.CRONO, CharID.MARLE,
+                          CharID.LUCCA, CharID.FROG]
 
         for x in magic_learners:
             # Each control header is 11 bytes and each PC has 8 single techs
