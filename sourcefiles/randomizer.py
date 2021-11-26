@@ -285,6 +285,12 @@ class Randomizer:
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
 
+        # This needs to go after charrando writes the techdb out.
+        # TODO: Change fastmagic to look into the config and alter the
+        #       techdb there.
+        if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
+            fastmagic.process_ctrom(ctrom, self.settings)
+
         # Write out the bosses and midbossses
         bossrando.write_bosses_to_ctrom(ctrom, config)
         bossrando.write_midbosses_to_ctrom(ctrom, config)
@@ -355,6 +361,7 @@ class Randomizer:
         self.__try_proto_dome_fix()
 
         self.__write_config_to_out_rom()
+
         self.out_rom.write_all_scripts_to_rom()
         self.has_generated = True
 
@@ -618,13 +625,11 @@ class Randomizer:
         if settings.enemy_difficulty == rset.Difficulty.HARD:
             rom_data.patch_ips_file('./patches/hard.ips')
 
-        if rset.GameFlags.UNLOCKED_MAGIC in flags:
-            fastmagic.process_ctrom(ctrom, settings)
-
         if rset.GameFlags.VISIBLE_HEALTH in flags:
             qolhacks.force_sightscope_on(ctrom, settings)
 
         qolhacks.fast_tab_pickup(ctrom, settings)
+
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
