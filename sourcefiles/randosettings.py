@@ -55,6 +55,7 @@ class GameFlags(Flag):
     DUPLICATE_CHARS = auto()
     DUPLICATE_TECHS = auto()
     VISIBLE_HEALTH = auto()
+    FAST_TABS = auto()
 
 
 class TabRandoScheme(StrIntEnum):
@@ -98,7 +99,7 @@ class Settings:
         boss_list = \
             BossID.get_one_part_bosses() + BossID.get_two_part_bosses()
 
-        boss_list += [BossID.SON_OF_SUN, BossID.RETINITE, BossID.MUD_IMP]
+        boss_list += [BossID.SON_OF_SUN, BossID.RETINITE]
 
         loc_list = LocID.get_boss_locations()
         # loc_list.remove(LocID.SUN_PALACE)
@@ -139,7 +140,8 @@ class Settings:
                          GameFlags.FAST_PENDANT |
                          GameFlags.ZEAL_END |
                          GameFlags.UNLOCKED_MAGIC |
-                         GameFlags.VISIBLE_HEALTH)
+                         GameFlags.VISIBLE_HEALTH |
+                         GameFlags.FAST_TABS)
 
         ret.seed = ''
 
