@@ -67,8 +67,40 @@ class EventCommand:
 
         return x
 
+    def move_party(pc1_x, pc1_y, pc2_x, pc2_y, pc3_x, pc3_y):
+        ret_cmd = event_commands[0xD9].copy()
+        ret_cmd.args = [pc1_x, pc1_y, pc2_x, pc2_y, pc3_x, pc3_y]
+        return ret_cmd
+
+    def change_location(location, x_coord, y_coord, facing=0,
+                        unk=0, wait_vblank=True) -> EventCommand:
+        # There are many different change location commands.  I'll update this
+        # as I understand their differences.
+        if wait_vblank:
+            cmd = 0xE1
+        else:
+            cmd = 0xE0
+
+        ret_cmd = event_commands[cmd].copy()
+        ret_cmd.args = [0, 0, 0]
+
+        ret_cmd.args[0] = (facing & 0x03) << 9
+        ret_cmd.args[0] |= (unk & 0x03) << 0xB
+        ret_cmd.args[0] |= location
+
+        ret_cmd.args[1] = x_coord
+        ret_cmd.args[2] = y_coord
+
+        return ret_cmd
+
+    def fade_screen() -> EventCommand:
+        return EventCommand.generic_zero_arg(0xF2)
+
+    def darken(duration) -> EventCommand:
+        return EventCommand.generic_one_arg(0xF0, duration)
+
     def load_enemy(enemy_id: int, slot_number: int,
-                   is_static: bool = False):
+                   is_static: bool = False) -> EventCommand:
         # maybe validate?
         # enemy id in [0, 0xFF], slot id in [0, A]
         slot_arg = slot_number | 0x80*(is_static)
