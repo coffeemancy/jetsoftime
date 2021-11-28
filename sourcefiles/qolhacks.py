@@ -9,8 +9,13 @@ import randosettings as rset
 
 
 class ScriptTabTreasure(cfg.ScriptTreasure):
+    '''ScriptTreasure with extra method for removing exploremode offs.'''
 
     def remove_pause(self, ctrom: CTRom):
+        '''
+        Removes the exploremode off/on from the script.  Moves the pickup
+        flag before the textbox if needed.
+        '''
 
         script = ctrom.script_manager.get_script(self.location)
         start = script.get_function_start(self.object_id, self.function_id)
@@ -34,20 +39,30 @@ class ScriptTabTreasure(cfg.ScriptTreasure):
             # input()
             pass
 
-        # Now make sure that the flag set is after the textbox.
+        # Now make sure that the flag set is after the textbox.  Otherwise
+        # it's possible to pick the same tab up multiple times.
+
+        # Bit setting is in command 0x65
         pos_flag, flag_cmd = script.find_command([0x65], start, end)
+
+        # 0xBB, 0xC1, 0xC2 are the basic textbox commands
         pos_text, text_cmd = script.find_command([0xBB, 0xC1, 0xC2],
                                                  start, end)
 
         if pos_flag is None or pos_text is None:
             print(f'Error finding flag set or text box in {self.location}')
-            input()
+            raise SystemExit
 
+        # If the item looted flag is set after the texbox, then the player
+        # can keep the textbox up, leave the screen, and avoid setting the
+        # flag, so the tab can be picked up again.
         if pos_flag > pos_text:
+            # In this case, put the flag right before the item is added.
             pos_add_item, _ = script.find_command([0xCA], start, end)
 
             script.delete_commands(pos_flag, 1)
             script.insert_commands(flag_cmd.to_bytearray(), pos_add_item)
+
 
 # Toma's grave's speed tab is annoying because the same function covers
 # the pop turn-in and the speed tab.
@@ -99,7 +114,8 @@ def force_sightscope_on(ctrom: CTRom, settings: rset.Settings):
 
 def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
 
-    # Eventually check for settings here
+    if rset.GameFlags.FAST_TABS not in settings.gameflags:
+        return
 
     TID = ctenums.TreasureID
     LocID = ctenums.LocID
@@ -204,6 +220,7 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
 # will or will not modify the ROM.
 def attempt_all_qol_hacks(ctrom: CTRom, settings: rset.Settings):
     force_sightscope_on(ctrom, settings)
+    fast_tab_pickup(ctrom, settings)
 
 
 def main():
