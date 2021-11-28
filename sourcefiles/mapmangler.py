@@ -125,7 +125,7 @@ class LocationExit:
         width = byte2 & 0x7F
         vertical = bool(byte2 & 0x80)
 
-        dest_loc = get_value_from_bytes(rom[ptr+3:ptr+4]) & 0x1FF
+        dest_loc = get_value_from_bytes(rom[ptr+3:ptr+5]) & 0x1FF
 
         byte4 = rom[ptr+4]
         facing = byte4 & 0x06
@@ -229,10 +229,7 @@ class LocExits:
 
     def write_to_rom(self, rom, ptr_st, data_st):
         ptr_len = len(self.ptrs*2)  # should always be 0x400
-        print(f"ptr len: {ptr_len:04X}")
-
         data_len = len(self.data)
-        print(f"data len: {data_len:04X}")
 
         ptr_bytes = b''.join(to_little_endian(x, 2) for x in self.ptrs)
         rom[ptr_st:ptr_st+ptr_len] = ptr_bytes[:]
@@ -245,7 +242,8 @@ class LocExits:
         space_man = fsrom.space_manager
 
         # Get the existing data's bounds
-        ptr_loc = 0x009CD4
+        # ptr_loc = 0x009CD4
+        ptr_loc = 0x00A69E
         exit_ptr_st = get_value_from_bytes(rom[ptr_loc:ptr_loc+3])
 
         exit_ptr_st = to_file_ptr(exit_ptr_st)
@@ -260,8 +258,9 @@ class LocExits:
         num_exits = (last_ptr-first_ptr) / 7
 
         if not num_exits.is_integer():
+            print(f"{first_ptr:04X} {last_ptr:04X}")
             print("Error: non-integer number of records")
-            exit()
+            raise SystemExit
         else:
             num_exits = int(num_exits)
 
@@ -283,7 +282,6 @@ class LocExits:
             # ptr block and data block are in the same bank.
 
             # Free the old space
-            
             space_man.mark_block(
                 (exit_ptr_st, exit_ptr_st+0x400), FSWriteType.MARK_FREE
             )
@@ -295,7 +293,6 @@ class LocExits:
             out_data_st = starts[0]
             out_ptr_st = starts[1]
 
-
         # delay writing until we do some tests
 
         ptr_offset = out_data_st % 0x10000
@@ -305,7 +302,6 @@ class LocExits:
         ptr_refs = [0x00A69E, 0x00A6A6]
         data_refs = [0x00A6B9, 0x00A6C2, 0x009CF6, 0x009D10, 0x009D1E,
                      0x009CD4, 0x009CDC, 0x009CE6, 0x009D17, 0x00A6E2]
-
 
         # [0x000000, 0x010000) must be mirrored in [0x400000, 0x410000)
         # Perhaps this can be enforced in FreeSpace?
@@ -362,8 +358,17 @@ class LocExits:
 # End class LocExits
 
 
-def duplicate_heckran_map(fsrom: FSRom, exits: LocExits, dup_loc_id):
+def duplicate_map(fsrom: FSRom, exits: LocExits, orig_loc_id, dup_loc_id):
+    '''Duplicates a map and the exits.'''
+    orig_exits = exits.get_exits(orig_loc_id)
+    exits.delete_exits(dup_loc_id)
+    exits.add_exits(dup_loc_id, orig_exits)
 
+    duplicate_location_data(fsrom, orig_loc_id, dup_loc_id)
+
+
+def duplicate_heckran_map(fsrom: FSRom, exits: LocExits, dup_loc_id):
+    '''Duplicates the map the Heckran is on and alters the exits to match.'''
     # Change the exit leading into Heckran to go to the new map
     hc_river_exits = exits.get_exits(0x31)
     alter_exit = hc_river_exits[4]
@@ -396,11 +401,12 @@ def main():
     with open('jets_test.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
-    fsrom = FS(rom, False)
-    fsrom.mark_block((0x41107C, 0x4F0000), True)
-    fsrom.mark_block((0x4F2100, 0x5B8000), True)
-    fsrom.mark_block((0x5B80C8, 0x5DBB68), True)
-    fsrom.mark_block((0x5DBB85, 0x5F0000), True)
+    fsrom = FSRom(rom, False)
+    space_man = fsrom.space_manager
+    space_man.mark_block((0x41107C, 0x4F0000), True)
+    space_man.mark_block((0x4F2100, 0x5B8000), True)
+    space_man.mark_block((0x5B80C8, 0x5DBB68), True)
+    space_man.mark_block((0x5DBB85, 0x5F0000), True)
 
     exits = LocExits.from_rom(fsrom)
 
