@@ -7,8 +7,7 @@ from freespace import FSWriteType
 import random
 
 # from ctdecompress import compress, decompress, get_compressed_length
-from bossdata import Boss, BossScheme, LinearScaleBoss, SonOfSunScaleBoss, \
-    get_default_boss_assignment
+from bossdata import Boss, BossScheme, get_default_boss_assignment
 from ctenums import LocID, BossID, EnemyID, CharID, Element
 from enemystats import EnemyStats
 from ctevent import Event, free_event, get_loc_event_ptr
@@ -17,7 +16,8 @@ from eventcommand import EventCommand as EC, get_command, FuncSync
 from eventfunction import EventFunction as EF
 # from eventscript import get_location_script, get_loc_event_ptr
 from freespace import FreeSpace as FS
-from mapmangler import LocExits, duplicate_heckran_map, duplicate_location_data
+from mapmangler import LocExits, duplicate_heckran_map, duplicate_map, \
+    duplicate_location_data
 
 import randosettings as rset
 import randoconfig as cfg
@@ -1016,6 +1016,92 @@ def append_boss_object(script: Event, boss: BossScheme, part_index: int,
     return obj_id
 
 
+# When Giga Gaia and Mother Brain get put into the pool, Zenan Bridge will
+# hit the sprite limit.  This function will copy Zenan Bridge to a new map
+# and adjust the scripts to link them together appropriately.
+def duplicate_zenan_bridge(ctrom: CTRom, dup_loc_id: LocID):
+
+    fsrom = ctrom.rom_data
+    script_man = ctrom.script_manager
+
+    # Copy the exists of the original Zenan Bridge to the copy
+    exits = LocExits.from_rom(fsrom)
+    duplicate_map(fsrom, exits, LocID.ZENAN_BRIDGE, dup_loc_id)
+    exits.write_to_fsrom(fsrom)
+
+    # Copy the script of the original Zenan Bridge to the copy
+    script = script_man.get_script(LocID.ZENAN_BRIDGE)
+    new_script = copy.deepcopy(script)
+
+    # In the original script, the party runs off the screen, the screen
+    # scrolls left, and then the Zombor fight begins.  To avoid sprite limits
+    # we are going to warp to the Zenan copy when the team runs off the screen.
+
+    # The part where the team runs off the screen is in obj1, func1
+    start = script.get_function_start(0x01, 0x00)
+    end = script.get_function_end(0x01, 0x00)
+
+    move_party = EC.move_party(0x86, 0x08, 0x88, 0x7, 0x89, 0x0A)
+    pos = script.find_exact_command(move_party, start, end)
+
+    if pos is None:
+        print('Error finding move_party')
+        raise SystemExit
+
+    # Insert the transition commands after the party moves
+    pos += len(move_party)
+
+    change_loc = EC.change_location(dup_loc_id, 0x05, 0x08)
+
+    # Make the string of new commands.
+    # After the party runs off, the screen fades out and we change location
+    insert_cmds = EF()
+    (
+        insert_cmds
+        .add(EC.darken(4))
+        .add(EC.fade_screen())
+        .add(change_loc)
+    )
+
+    script.insert_commands(insert_cmds.get_bytearray(), pos)
+
+    # after the move party in the normal script, each pc strikes a pose and the
+    # screen scrolls (4 commands). We'll delete those commands because they'll
+    # never get executed since we're changing location.
+    pos += len(insert_cmds.get_bytearray())
+    script.delete_commands(pos, 4)
+
+    # Now, trim down the event for the duplicate map by removing the skeletons
+    # other than the ones that make Zombor and the guards.
+    unneeded_objs = sorted(
+        (0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x15, 0x16, 0x17, 0x0F,
+         0x0E, 0x0D),
+        reverse=True
+    )
+
+    for obj in unneeded_objs:
+        new_script.remove_object(obj)
+
+    # Trim down obj0, func0 so that all it does is get the party in position
+    # for the fight... and preserve the string index of course.  Nobody
+    # would forget to preserve the string index, right?
+    string_index = new_script.get_string_index()
+    string_index_cmd = EC.set_string_index(string_index)
+
+    new_startup_func = EF()
+    (
+        new_startup_func
+        .add(string_index_cmd)
+        .add(EC.return_cmd())
+        .add(move_party)
+        .add(EC.end_cmd())
+    )
+
+    # Finally, set the new function and set the new script.
+    new_script.set_function(0, 0, new_startup_func)
+    script_man.set_script(new_script, LocID.ZENAN_BRIDGE_BOSS)
+
+
 def duplicate_maps_on_ctrom(ctrom: CTRom):
 
     fsrom = ctrom.rom_data
@@ -1024,6 +1110,7 @@ def duplicate_maps_on_ctrom(ctrom: CTRom):
     # First do Heckran's Cave Passageways
     exits = LocExits.from_rom(fsrom)
     duplicate_heckran_map(fsrom, exits, LocID.HECKRAN_CAVE_NEW)
+
     exits.write_to_fsrom(fsrom)
 
     script = script_man.get_script(LocID.HECKRAN_CAVE_PASSAGEWAYS)
@@ -1305,7 +1392,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         for ind, part_id in enumerate(new_boss.scheme.ids):
             scaled_stats[ind].can_sightscope = can_sightscope
             if can_sightscope:
-                print(f"Set sightscope on {part_id}.")
+                # print(f"Set sightscope on {part_id}.")
+                pass
             scaled_dict[part_id] = scaled_stats[ind]
 
     # Write all of the scaled stats back to config's dict
@@ -1427,7 +1515,82 @@ def main():
         FSWriteType.MARK_FREE
     )
 
-    set_manoria_boss(ctrom, Boss.GUARDIAN().scheme)
+    # Set up New Zenan Bridge.  Then we'll edit it in TF.
+    fsrom = ctrom.rom_data
+    script_man = ctrom.script_manager
+
+    exits = LocExits.from_rom(fsrom)
+    duplicate_map(fsrom, exits, LocID.ZENAN_BRIDGE, LocID.ZENAN_BRIDGE_BOSS)
+    exits.write_to_fsrom(fsrom)
+
+    script = script_man.get_script(LocID.ZENAN_BRIDGE)
+    new_script = copy.deepcopy(script)
+
+
+    # Change the script to change location to the new map when it's Zombor time
+
+    start = script.get_function_start(0x01, 0x00)
+    end = script.get_function_end(0x01, 0x00)
+
+    move_party = EC.move_party(0x86, 0x08, 0x88, 0x7, 0x89, 0x0A)
+    pos = script.find_exact_command(move_party, start, end)
+
+    if pos is None:
+        print('Error finding move_party')
+        raise SystemExit
+
+    pos += len(move_party)
+
+    change_loc = EC.change_location(LocID.ZENAN_BRIDGE_BOSS,
+                                    0x05, 0x08)
+
+    insert_cmds = EF()
+    (
+        insert_cmds
+        .add(EC.darken(4))
+        .add(EC.fade_screen())
+        .add(change_loc)
+    )
+
+    script.insert_commands(insert_cmds.get_bytearray(), pos)
+
+    pos += len(insert_cmds.get_bytearray())
+
+    # after the move party, the normal script, each pc strikes a pose and the
+    # screen scrolls (4 commands). We'll delete those commands because they'll
+    # never get executed since we're changing location.
+    script.delete_commands(pos, 4)
+
+    unneeded_objs = sorted(
+        (0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x15, 0x16, 0x17, 0x0F,
+         0x0E, 0x0D),
+        reverse=True
+    )
+
+    for obj in unneeded_objs:
+        new_script.remove_object(obj)
+
+    string_index = new_script.get_string_index()
+    string_index_cmd = EC.set_string_index(string_index)
+
+    new_startup_func = EF()
+    new_startup_func.add(
+        string_index_cmd
+    ).add(
+        EC.return_cmd()
+    ).add(
+        move_party
+    ).add(
+        EC.end_cmd()
+    )
+
+    new_script.set_function(0, 0, new_startup_func)
+
+    script_man.set_script(new_script, LocID.ZENAN_BRIDGE_BOSS)
+
+    duplicate_maps_on_ctrom(ctrom)
+    set_kings_trial_boss(ctrom, Boss.MUD_IMP().scheme)
+    # set_zenan_bridge_boss(ctrom, Boss.MUD_IMP().scheme)
 
     ctrom.write_all_scripts_to_rom()
 
