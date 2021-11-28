@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum, auto
+from enum import IntEnum, auto
 
 
 class StrIntEnum(IntEnum):
@@ -93,7 +93,6 @@ class BossID(StrIntEnum):
         return [
             cls.SON_OF_SUN, cls.RETINITE,  # cls.MOTHER_BRAIN, cls.GIGA_GAIA
         ]
-
 
 
 class CharID(StrIntEnum):
@@ -200,6 +199,16 @@ class LocID(StrIntEnum):
     COURTROOM_LOBBY = 0x1B9
     KINGS_TRIAL = 0x1B6
 
+    # Death Peak for music change
+    DEATH_PEAK_SOUTH_FACE = 0xF5
+    DEATH_PEAK_SOUTHEAST_FACE = 0xF6
+    DEATH_PEAK_NORTHEAST_FACE = 0xF7
+    DEATH_PEAK_NORTHWEST_FACE = 0x105
+    DEATH_PEAK_UPPER_NORTH_FACE = 0x106
+    DEATH_PEAK_LOWER_NORTH_FACE = 0x107
+    DEATH_PEAK_CAVE = 0x108
+    DEATH_PEAK_SUMMIT = 0x109
+
     @classmethod
     def get_boss_locations(cls):
         return [
@@ -254,6 +263,7 @@ class LocID(StrIntEnum):
             cls.BLACK_OMEN_TERRA_MUTANT,
             cls.DEATH_PEAK_GUARDIAN_SPAWN
         ]
+
 
 # Copied and reformatted from Anguirel's list
 class ItemID(StrIntEnum):
@@ -855,6 +865,7 @@ class TreasureID(StrIntEnum):
             cls.MT_WOE_FINAL_1, cls.MT_WOE_FINAL_2,
             cls.MT_WOE_KEY
         ]
+
 
 class EnemyID(StrIntEnum):
     # Boss IDs
