@@ -762,6 +762,7 @@ class Event:
         func_st = \
             get_value_from_bytes(self.data[func_st_ptr:func_st_ptr+2])
 
+        empty_func = False
         # +1 to match TF for debug
         # print(f"Function start: {func_st+1:04X}")
         if func_id != 0:
