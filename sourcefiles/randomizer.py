@@ -24,6 +24,7 @@ import charrando
 import roboribbon
 import techrandomizer
 import qolhacks
+import cosmetichacks
 
 import ctenums
 import ctevent
@@ -263,6 +264,7 @@ class Randomizer:
         self.out_rom = CTRom(self.base_ctrom.rom_data.getvalue(), True)
         self.__apply_basic_patches(self.out_rom)
         self.__apply_settings_patches(self.out_rom, self.settings)
+        self.__apply_cosmetic_patches(self.out_rom, self.settings)
 
         # This makes copies of heckran cave passagesways and king's trial
         # so that bosses can go there.  There's no reason not do just do this
@@ -595,6 +597,17 @@ class Randomizer:
             qolhacks.fast_tab_pickup(ctrom, settings)
 
     @classmethod
+    def __apply_cosmetic_patches(cls, ctrom: CTRom,
+                                 settings: rset.Settings):
+        cos_flags = settings.cosmetic_flags
+
+        if rset.CosmeticFlags.ZENAN_ALT_MUSIC in cos_flags:
+            cosmetichacks.zenan_bridge_alt_battle_music(ctrom, settings)
+
+        if rset.CosmeticFlags.DEATH_PEAK_ALT_MUSIC in cos_flags:
+            cosmetichacks.death_peak_singing_mountain_music(ctrom, settings)
+
+    @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
         '''Turn vanilla ct rom into default objects for a config.'''
         '''Should run whenever a big patch (patch.ips, hard.ips) changes.'''
@@ -822,19 +835,20 @@ def main():
         rom = infile.read()
 
     settings = rset.Settings.get_race_presets()
-    # settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
-    # settings.char_choices = [[i for i in range(7)] for j in range(7)]
+    settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+    settings.char_choices = [[i for i in range(7)] for j in range(7)]
     # settings.char_choices = [[j] for j in range(7)]
     # settings.gameflags |= rset.GameFlags.BOSS_SCALE
-    # settings.gameflags |= rset.GameFlags.CHRONOSANITY
+    settings.gameflags |= rset.GameFlags.CHRONOSANITY
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
     settings.gameflags |= rset.GameFlags.FAST_TABS
     # settings.gameflags |= rset.GameFlags.LOCKED_CHARS
-    # settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
+    settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
+    settings.cosmetic_flags |= rset.CosmeticFlags.ZENAN_ALT_MUSIC
 
     settings.ro_settings.enable_sightscope = True
 
-    settings.seed = 'asdfasfdasdf'
+    settings.seed = 'franklin_1'
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)
@@ -859,6 +873,7 @@ def main():
     '''
 
     out_rom = rando.get_generated_rom()
+   
     seed = settings.seed
     # rando.out_rom.rom_data.space_manager.print_blocks()
     rando.write_spoiler_log(f'spoiler_log_{seed}.txt')
