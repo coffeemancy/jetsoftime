@@ -247,6 +247,10 @@ class Randomizer:
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
 
+        if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
+            # fastmagic.process_ctrom(ctrom, self.settings)
+            pass
+
         # Write out the bosses and midbossses
         bossrando.write_bosses_to_ctrom(ctrom, config)
         bossrando.write_midbosses_to_ctrom(ctrom, config)
@@ -587,8 +591,8 @@ class Randomizer:
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
             fastmagic.write_ctrom(ctrom, settings)
 
-        qolhacks.fast_tab_pickup(ctrom, settings)
-
+        if rset.GameFlags.FAST_TABS in flags:
+            qolhacks.fast_tab_pickup(ctrom, settings)
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
@@ -812,278 +816,25 @@ def command_line():
         shop_prices = "Normal"
     
 
-#
-# Given a tk IntVar, convert it to a Y/N value for use by the randomizer.
-#
-def get_flag_value(flag_var):
-  if flag_var.get() == 1:
-    return "Y"
-  else:
-    return "N"
-  
-#
-# Handle seed generation from the GUI.
-# Convert all of the GUI datastore values internal values
-# for the randomizer and then generate the ROM.
-#  
-def handle_gui(datastore):
-  global flags
-  global sourcefile
-  global outputfolder
-  global difficulty
-  global glitch_fixes
-#  global fast_move
-#  global sense_dpad
-  global lost_worlds
-  global boss_scaler
-  global zeal_end
-  global quick_pendant
-  global locked_chars
-  global tech_list
-  global seed
-  global unlocked_magic
-  global quiet_mode
-  global chronosanity
-  global tab_treasures
-  global boss_rando
-  global shop_prices
-  global duplicate_chars
-  global same_char_techs
-  global char_choices
-  
-  # Get the user's chosen difficulty
-  difficulty = datastore.difficulty.get()
-
-  # Get the user's chosen tech randomization
-  tech_list = datastore.techRando.get()
-  
-  # Get the user's chosen shop price settings
-  shop_prices = datastore.shopPrices.get()
-  
-  # build the flag string from the gui datastore vars
-  flags = difficulty[0]
-  for flag, value in datastore.flags.items():
-    if value.get() == 1:
-      flags = flags + flag
-  if tech_list == "Fully Random":
-      flags = flags + "te"
-  elif tech_list == "Balanced Random":
-      flags = flags + "tex"
-      
-  if shop_prices == "Free":
-    flags = flags + "spf"
-  elif shop_prices == "Mostly Random":
-    flags = flags + "spm"
-  elif shop_prices == "Fully Random":
-    flags = flags + "spr"
-  
-  # Set the flag variables based on what the user chose
-  glitch_fixes = get_flag_value(datastore.flags['g'])
-  #fast_move = get_flag_value(datastore.flags['s'])
-  #sense_dpad = get_flag_value(datastore.flags['d'])
-  lost_worlds = get_flag_value(datastore.flags['l'])
-  boss_scaler = get_flag_value(datastore.flags['b'])
-  boss_rando = get_flag_value(datastore.flags['ro'])
-  zeal_end = get_flag_value(datastore.flags['z'])
-  quick_pendant = get_flag_value(datastore.flags['p'])
-  locked_chars = get_flag_value(datastore.flags['c'])
-  unlocked_magic = get_flag_value(datastore.flags['m'])
-  quiet_mode = get_flag_value(datastore.flags['q'])
-  chronosanity = get_flag_value(datastore.flags['cr'])
-  tab_treasures = get_flag_value(datastore.flags['tb'])
-  duplicate_chars = get_flag_value(datastore.flags['dc'])
-
-  # dc settings
-  if datastore.char_choices is None:
-      char_choices = [[1 for i in range(0,7)] for j in range(0,7)]
-      same_char_techs = "N"
-  else:
-      char_choices = []
-      for i in range(7):
-          char_choices.append([])
-          for j in range(7):
-              if datastore.char_choices[i][j].get() == 1:
-                  char_choices[i].append(j)
-
-      same_char_techs = get_flag_value(datastore.dup_techs)
-  
-  
-  # source ROM
-  sourcefile = datastore.inputFile.get()
-  
-  # output folder
-  outputfolder = datastore.outputFolder.get()
-  
-  # seed
-  seed = datastore.seed.get()
-  if seed is None or seed == "":
-    names = read_names()
-    seed = "".join(rand.choice(names) for i in range(2))
-  rand.seed(seed)
-  datastore.seed.set(seed)
-  
-  # GUI values have been converted, generate the ROM.
-  generate_rom()
-   
-#
-# Generate the randomized ROM.
-#    
-def generate_rom():
-     global flags
-     global sourcefile
-     global outputfolder
-     global difficulty
-     global glitch_fixes
-     global fast_move
-     global sense_dpad
-     global lost_worlds
-     global boss_rando
-     global boss_scaler
-     global zeal_end
-     global quick_pendant
-     global locked_chars
-     global tech_list
-     global seed
-     global unlocked_magic
-     global quiet_mode
-     global chronosanity
-     global tab_treasures
-     global shop_prices
-     global duplicate_chars
-     global same_char_techs
-     global char_choices
-     
-     # isolate the ROM file name
-     inputPath = pathlib.Path(sourcefile)
-     outfile = inputPath.name
-     
-     # Create the output file name
-     outfile = outfile.split(".")
-     outfile = str(outfile[0])
-     if flags == "":
-       outfile = "%s.%s.sfc"%(outfile,seed)
-     else:
-       outfile = "%s.%s.%s.sfc"%(outfile,flags,seed)
-       
-     # Append the output file name to the selected directory
-     # If there is no selected directory, use the input path
-     if outputfolder == None or outputfolder == "":
-       outfile = str(inputPath.parent.joinpath(outfile))
-     else:
-       outfile = str(pathlib.Path(outputfolder).joinpath(outfile))
-       
-     size = stat(sourcefile).st_size
-     if size % 0x400 == 0:
-        copyfile(sourcefile, outfile)
-     elif size % 0x200 == 0:
-        print("SNES header detected. Removing header from output file.")
-        f = open(sourcefile, 'r+b')
-        data = f.read()
-        f.close()
-        data = data[0x200:]
-        open(outfile, 'w+').close()
-        f = open(outfile, 'r+b')
-        f.write(data)
-        f.close()
-     print("Applying patch. This might take a while.")
-     bigpatches.write_patch_alt("patch.ips",outfile)
-     patches.patch_file("patches/patch_codebase.txt",outfile)
-     if glitch_fixes == "Y":
-        patches.patch_file("patches/save_anywhere_patch.txt",outfile)
-        patches.patch_file("patches/unequip_patch.txt",outfile)
-        patches.patch_file("patches/fadeout_patch.txt",outfile)
-        patches.patch_file("patches/hp_overflow_patch.txt",outfile)
-     patches.patch_file("patches/fast_overworld_walk_patch.txt",outfile)
-     patches.patch_file("patches/faster_epoch_patch.txt",outfile)
-     patches.patch_file("patches/faster_menu_dpad.txt",outfile)
-     if zeal_end == "Y":
-        patches.patch_file("patches/zeal_end_boss.txt",outfile)
-     if lost_worlds == "Y":
-        bigpatches.write_patch_alt("patches/lost.ips",outfile)
-     if lost_worlds == "Y":
-         pass
-     elif quick_pendant == "Y":
-             patches.patch_file("patches/fast_charge_pendant.txt",outfile)
-     if unlocked_magic == "Y":
-        fastmagic.set_fast_magic_file(outfile)
-        # bigpatches.write_patch_alt("patches/fastmagic.ips",outfile)
-     if difficulty == "hard":
-         bigpatches.write_patch_alt("patches/hard.ips",outfile)
-     tabwriter.rewrite_tabs(outfile)#Psuedoarc's code to rewrite Power and Magic tabs and make them more impactful
-     roboribbon.robo_ribbon_speed_file(outfile)
-     print("Randomizing treasures...")
-     treasures.randomize_treasures(outfile,difficulty,tab_treasures)
-     hardcoded_items.randomize_hardcoded_items(outfile,tab_treasures)
-     print("Randomizing enemy loot...")
-     enemystuff.randomize_enemy_stuff(outfile,difficulty)
-     print("Randomizing shops...")
-     shops.randomize_shops(outfile)
-     shops.modify_shop_prices(outfile, shop_prices)
-     print("Randomizing character locations...")
-     char_locs = char_slots.randomize_char_positions(outfile,locked_chars,lost_worlds)
-     print("Now placing key items...")
-     if chronosanity == "Y":
-       chronosanity_logic.writeKeyItems(
-           outfile, char_locs, (locked_chars == "Y"), (quick_pendant == "Y"), lost_worlds == "Y")
-     elif lost_worlds == "Y":
-       keyitemlist = keyitems.randomize_lost_worlds_keys(char_locs,outfile)
-     else:
-       keyitemlist = keyitems.randomize_keys(char_locs,outfile,locked_chars)
-     if boss_scaler == "Y" and chronosanity != "Y":
-         print("Rescaling bosses based on key items..")
-         boss_scale.scale_bosses(char_locs,keyitemlist,locked_chars,outfile)
-     #print("Boss rando: " + boss_rando)
-     if boss_rando == "Y":
-         boss_shuffler.randomize_bosses(outfile,difficulty)
-         boss_shuffler.randomize_dualbosses(outfile,difficulty)
-     # going to handle techs differently for dup chars
-     if duplicate_chars == "Y":
-         charrando.reassign_characters_file(outfile, char_choices,
-                                            same_char_techs == "Y",
-                                            tech_list,
-                                            lost_worlds == "Y")
-     else:
-         if tech_list == "Fully Random":
-             tech_order.take_pointer(outfile)
-         elif tech_list == "Balanced Random":
-             tech_order.take_pointer_balanced(outfile)
-
-     if quiet_mode == "Y":
-         bigpatches.write_patch_alt("patches/nomusic.ips",outfile)
-     # Tyrano Castle chest hack
-     f = open(outfile,"r+b")
-     f.seek(0x35F6D5)
-     f.write(st.pack("B",1))
-     f.close()
-     #Mystic Mtn event fix in Lost Worlds
-     if lost_worlds == "Y":         
-       f = open(outfile,"r+b")
-       bigpatches.write_patch_alt("patches/mysticmtnfix.ips",outfile)
-     #Bangor Dome event fix if character locks are on
- #      if locked_chars == "Y":
- #        bigpatches.write_patch_alt("patches/bangorfix.ips",outfile)
-       f.close()
-     print("Randomization completed successfully.")
-
-
 def main():
 
     with open('./roms/ct.sfc', 'rb') as infile:
         rom = infile.read()
 
     settings = rset.Settings.get_race_presets()
-    settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
-    settings.char_choices = [[i for i in range(7)] for j in range(7)]
+    # settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+    # settings.char_choices = [[i for i in range(7)] for j in range(7)]
     # settings.char_choices = [[j] for j in range(7)]
     # settings.gameflags |= rset.GameFlags.BOSS_SCALE
-    settings.gameflags |= rset.GameFlags.CHRONOSANITY
+    # settings.gameflags |= rset.GameFlags.CHRONOSANITY
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
-    settings.gameflags |= rset.GameFlags.LOCKED_CHARS
-    settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
+    settings.gameflags |= rset.GameFlags.FAST_TABS
+    # settings.gameflags |= rset.GameFlags.LOCKED_CHARS
+    # settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
 
     settings.ro_settings.enable_sightscope = True
 
-    settings.seed = 'franklin_1'
+    settings.seed = 'asdfasfdasdf'
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)
