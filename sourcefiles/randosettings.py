@@ -58,6 +58,11 @@ class GameFlags(Flag):
     FAST_TABS = auto()
 
 
+class CosmeticFlags(Flag):
+    ZENAN_ALT_MUSIC = auto()
+    DEATH_PEAK_ALT_MUSIC = auto()
+
+
 class TabRandoScheme(StrIntEnum):
     UNIFORM = 0
     BINOMIAL = 1
@@ -108,6 +113,7 @@ class Settings:
         self.ro_settings = ROSettings(loc_list, boss_list, False, False)
 
         self.tab_settings = TabSettings()
+        self.cosmetic_flags = CosmeticFlags(False)
         self.seed = ''
 
     def get_race_presets():
