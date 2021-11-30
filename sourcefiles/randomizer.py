@@ -344,6 +344,9 @@ class Randomizer:
             self.write_shop_spoilers(outfile)
             self.write_price_spoilers(outfile)
 
+    def write_settings_spoilers(self, file_object):
+        pass
+
     def write_key_item_spoilers(self, file_object):
         file_object.write("Key Item Locations\n")
         file_object.write("------------------\n")
@@ -577,7 +580,7 @@ class Randomizer:
         # mysticmtnfix.ips to restore the event.
         if rset.GameFlags.LOST_WORLDS in flags:
             rom_data.patch_ips_file('./patches/lost.ips')
-            rom_data.patch_ips('./patches/mysticmtnfix.ips')
+            rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
             rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
@@ -835,20 +838,23 @@ def main():
         rom = infile.read()
 
     settings = rset.Settings.get_race_presets()
-    settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
-    settings.char_choices = [[i for i in range(7)] for j in range(7)]
+    # settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+    # settings.char_choices = [[i for i in range(7)] for j in range(7)]
     # settings.char_choices = [[j] for j in range(7)]
     # settings.gameflags |= rset.GameFlags.BOSS_SCALE
-    settings.gameflags |= rset.GameFlags.CHRONOSANITY
+    # settings.gameflags |= rset.GameFlags.CHRONOSANITY
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
     settings.gameflags |= rset.GameFlags.FAST_TABS
     # settings.gameflags |= rset.GameFlags.LOCKED_CHARS
-    settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
+    # settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
+    # settings.gameflags |= rset.GameFlags.LOST_WORLDS
+
     settings.cosmetic_flags |= rset.CosmeticFlags.ZENAN_ALT_MUSIC
+    settings.cosmetic_flags |= rset.CosmeticFlags.DEATH_PEAK_ALT_MUSIC
 
     settings.ro_settings.enable_sightscope = True
 
-    settings.seed = 'franklin_1'
+    settings.seed = 'Cthulu_Crisis_1'
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)
@@ -873,7 +879,7 @@ def main():
     '''
 
     out_rom = rando.get_generated_rom()
-   
+
     seed = settings.seed
     # rando.out_rom.rom_data.space_manager.print_blocks()
     rando.write_spoiler_log(f'spoiler_log_{seed}.txt')
