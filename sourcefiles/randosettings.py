@@ -180,12 +180,57 @@ class Settings:
         ret.gameflags = (GameFlags.BOSS_SCALE |
                          GameFlags.LOCKED_CHARS)
 
-        # All bosses, all spots
-        ret.ro_settings = ROSettings(
-            LocID.get_boss_locations(),
-            list(BossID),
-            False
-        )
-
         ret.seed = ''
         return ret
+
+    def get_flag_string(self):
+        # Flag string is based only on main game flags
+
+        diff_str_dict = {
+            Difficulty.EASY: 'e',
+            Difficulty.NORMAL: 'n',
+            Difficulty.HARD: 'h',
+        }
+
+        tech_str_dict = {
+            TechOrder.FULL_RANDOM: 'te',
+            TechOrder.BALANCED_RANDOM: 'tex',
+            TechOrder.NORMAL: ''
+        }
+
+        flag_str_dict = {
+            GameFlags.FIX_GLITCH: 'g',
+            GameFlags.LOST_WORLDS: 'l',
+            GameFlags.BOSS_SCALE: 'b',
+            GameFlags.BOSS_RANDO: 'ro',
+            GameFlags.ZEAL_END: 'z',
+            GameFlags.FAST_PENDANT: 'p',
+            GameFlags.LOCKED_CHARS: 'c',
+            GameFlags.UNLOCKED_MAGIC: 'm',
+            GameFlags.QUIET_MODE: 'q',
+            GameFlags.CHRONOSANITY: 'cr',
+            GameFlags.TAB_TREASURES: 'tb',
+            GameFlags.DUPLICATE_CHARS: 'dc',
+        }
+
+        shop_str_dict = {
+            ShopPrices.FREE: 'spf',
+            ShopPrices.MOSTLY_RANDOM: 'spm',
+            ShopPrices.FULLY_RANDOM: 'spr',
+            ShopPrices.NORMAL: ''
+        }
+
+        flag_string = ''
+
+        # Now we have difficulty for enemies and items separated, but to
+        # match the old flag string, just use enemy difficulty.
+        flag_string += diff_str_dict[self.enemy_difficulty]
+
+        for flag in flag_str_dict:
+            if flag in self.gameflags:
+                flag_string += flag_str_dict[flag]
+
+        flag_string += tech_str_dict[self.techorder]
+        flag_string += shop_str_dict[self.shopprices]
+
+        return flag_string
