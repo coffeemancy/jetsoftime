@@ -988,6 +988,17 @@ def append_boss_object(script: Event, boss: BossScheme, part_index: int,
     new_x = first_x + boss.disps[part_index][0]
     new_y = first_y + boss.disps[part_index][1]
 
+    # There's a problem because of the inconsistencies between the tile
+    # coords and pixel coords.  For now, we're going to check if the initial
+    # coords are tile based (%16 == 0).  If not, shift them so that the
+    # set_coords will shift them back to the right place.
+    # TODO: Fix by using the set_coord command in the script to determine
+    #       Whether pixels or tiles are specified for first_x, first_y
+    shift = True
+    if first_x % 16 != 0 or first_y % 16 != 0:
+        # shift pixel coordinates to match their tile counterparts
+        shift = False
+
     # print(f"({first_x:04X}, {first_y:04X})")
     # print(f"({new_x:04X}, {new_y:04X})")
     # input()
@@ -1001,7 +1012,7 @@ def append_boss_object(script: Event, boss: BossScheme, part_index: int,
     # Make the new object
     init = EF()
     init.add(EC.load_enemy(new_id, new_slot)) \
-        .add(EC.set_object_coordinates(new_x, new_y)) \
+        .add(EC.set_object_coordinates(new_x, new_y, shift)) \
         .add(EC.set_own_drawing_status(is_shown)) \
         .add(EC.return_cmd()) \
         .add(EC.end_cmd())
@@ -1518,6 +1529,9 @@ def main():
     # Set up New Zenan Bridge.  Then we'll edit it in TF.
     fsrom = ctrom.rom_data
     script_man = ctrom.script_manager
+
+    set_giants_claw_boss(ctrom, Boss.RETINITE().scheme)
+    quit()
 
     exits = LocExits.from_rom(fsrom)
     duplicate_map(fsrom, exits, LocID.ZENAN_BRIDGE, LocID.ZENAN_BRIDGE_BOSS)

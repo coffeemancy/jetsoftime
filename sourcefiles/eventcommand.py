@@ -197,7 +197,8 @@ class EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
 
     #  Here x and y are assumed to be pixel coordinates
-    def set_object_coordinates(x: int, y: int) -> EventCommand:
+    def set_object_coordinates(x: int, y: int,
+                               shift: bool = True) -> EventCommand:
         # print(f"set: ({x:04X}, {y:04X})")
 
         # Command 0x8B works based on tiles while 0x8D works on pixels.
@@ -213,9 +214,12 @@ class EventCommand:
             #   (2) When setting based on pixels, it doesn't seem to match
             #       tiles.  The pixels seem to need to be shifted by 0x80 to
             #       match.
+            shift_x, shift_y = 0, 0
+            if shift:
+                shift_x, shift_y = 0x80, 0x100
             return EventCommand.generic_two_arg(0x8D,
-                                                (x << 4) + 0x80,
-                                                (y << 4) + 0x100)
+                                                (x << 4) + shift_x,
+                                                (y << 4) + shift_y)
 
     def set_string_index(str_ind_rom: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xB8, str_ind_rom)
