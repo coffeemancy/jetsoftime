@@ -307,6 +307,12 @@ class RandoGUI:
             else:
                 self.flag_dict[x].set(0)
 
+        for x in self.cosmetic_flag_dict.keys():
+            if x in self.settings.cosmetic_flags:
+                self.cosmetic_flag_dict[x].set(1)
+            else:
+                self.cosmetic_flag_dict[x].set(0)
+
         # Update difficulties
         self.enemy_difficulty.set(
             Difficulty.str_dict()[self.settings.enemy_difficulty]
@@ -363,6 +369,7 @@ class RandoGUI:
             self.boss_location_listbox.select_set(index)
 
         self.preserve_part_count.set(int(ro_settings.preserve_parts))
+        self.enable_sightscope.set(int(ro_settings.enable_sightscope))
 
         self.verify_settings()
 
