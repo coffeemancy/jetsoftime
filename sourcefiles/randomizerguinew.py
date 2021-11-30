@@ -3,6 +3,7 @@ from functools import reduce
 import os
 import pathlib
 import pickle
+import random
 from time import sleep
 import threading
 import tkinter as tk
@@ -14,9 +15,11 @@ from tkinter import messagebox
 
 # custom/local libraries
 import randomizer
+import bossdata
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
-    TechOrder, TabSettings, TabRandoScheme, ROSettings
-from ctenums import LocID, BossID, boss_loc_dict
+    TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags
+from ctenums import LocID, BossID
+import ctrom
 
 
 #
@@ -93,6 +96,10 @@ class RandoGUI:
         for x in list(GameFlags):
             self.flag_dict[x] = tk.IntVar()
 
+        self.cosmetic_flag_dict = dict()
+        for x in list(CosmeticFlags):
+            self.cosmetic_flag_dict[x] = tk.IntVar()
+
         self.item_difficulty = tk.StringVar()
         self.enemy_difficulty = tk.StringVar()
         self.shop_prices = tk.StringVar()
@@ -118,11 +125,12 @@ class RandoGUI:
 
         # ro settings
         self.preserve_part_count = tk.IntVar(value=0)
+        self.enable_sightscope = tk.IntVar(value=0)
 
         # generation variables
         self.seed = tk.StringVar()
         self.input_file = tk.StringVar()
-        self.output_file = tk.StringVar()
+        self.output_dir = tk.StringVar()
 
         self.gen_thread = None
 
@@ -133,6 +141,8 @@ class RandoGUI:
         self.general_page = self.get_general_page()
         self.tabs_page = self.get_tabs_page()
         self.dc_page = self.get_dc_page()
+        self.qol_page = self.get_qol_page()
+        self.cosmetic_page = self.get_cosmetic_page()
 
         # The boss rando page is a little different because the Tk.Listbox
         # does not use an underlying variable.  Instead the
@@ -140,7 +150,15 @@ class RandoGUI:
         # selections as indices into the following two lists
         self.boss_locations = LocID.get_boss_locations()
         self.bosses = list(BossID)
-        
+
+        no_shuffle_bosses = [
+            BossID.DRAGON_TANK, BossID.GIGA_GAIA, BossID.MOTHER_BRAIN,
+            BossID.R_SERIES
+        ]
+
+        for x in no_shuffle_bosses:
+            self.bosses.remove(x)
+
         self.display_dup_char_settings_window
         self.ro_page = self.get_ro_page()
 
@@ -152,6 +170,8 @@ class RandoGUI:
 
         self.notebook.add(self.dc_page, text='DC')
         self.notebook.add(self.ro_page, text='RO')
+        self.notebook.add(self.qol_page, text='QoL')
+        self.notebook.add(self.cosmetic_page, text='Cos')
 
         # This can only be called after all of the widgets are initialized
         self.load_settings_file()
@@ -162,6 +182,8 @@ class RandoGUI:
     def set_settings(self, new_settings: Settings):
         self.__settings = new_settings
         print(self.__settings.char_choices)
+        print(self.__settings.gameflags)
+        print(self.__settings.get_flag_string())
         self.update_gui_vars()
 
     settings = property(get_settings, set_settings)
@@ -192,7 +214,7 @@ class RandoGUI:
             pickle.dump(
                 [self.settings,
                  self.input_file.get(),
-                 self.output_file.get()],
+                 self.output_dir.get()],
                 outfile
             )
 
@@ -200,14 +222,19 @@ class RandoGUI:
         filePath = self.get_settings_file()
         if filePath.exists():
             with open(str(filePath), 'rb') as infile:
-                [self.settings, input_file, output_file] = pickle.load(infile)
+                [self.settings, input_file, output_dir] = pickle.load(infile)
+                self.input_file.set(input_file)
+                self.output_dir.set(output_dir)
         else:
             self.settings = Settings.get_new_player_presets()
             self.input_file.set('test1')
-            self.output_file.set('test2')
+            self.output_dir.set('test2')
 
     def gui_vars_to_settings(self):
         '''Turns RandoGUI variables back into Settings object'''
+
+        # Seed
+        self.settings.seed = self.seed.get()
 
         # Look up difficulty enum given string
         inv_diff_dict = Difficulty.inv_str_dict()
@@ -223,7 +250,14 @@ class RandoGUI:
         flags = [x for x in list(GameFlags)
                  if self.flag_dict[x].get() == 1]
 
-        self.settings.gameflags = reduce(lambda a, b: a | b, flags)
+        # Cosmetic flags
+        cosmetic_flags = [x for x in list(CosmeticFlags)
+                          if self.cosmetic_flag_dict[x].get() == 1]
+
+        self.settings.gameflags = \
+            reduce(lambda a, b: a | b, flags, GameFlags(False))
+        self.settings.cosmetic_flags = \
+            reduce(lambda a, b: a | b, cosmetic_flags, CosmeticFlags(False))
 
         # Tabs
         self.settings.tab_settings = \
@@ -247,8 +281,6 @@ class RandoGUI:
                 if self.char_choices[i][j].get() == 1:
                     self.settings.char_choices[i].append(j)
 
-        print(self.settings.char_choices)
-
         # RO Settings
         print(self.bosses)
         boss_list = [self.bosses[i]
@@ -260,8 +292,11 @@ class RandoGUI:
         self.settings.ro_settings = ROSettings(
             loc_list,
             boss_list,
-            self.preserve_part_count.get() == 1
+            self.preserve_part_count.get() == 1,
+            self.enable_sightscope.get() == 1
         )
+
+        print(self.settings.gameflags)
 
     def update_gui_vars(self):
 
@@ -936,12 +971,12 @@ class RandoGUI:
         label.grid(row=row, column=0, sticky=tk.W+tk.E)
 
         tk.Entry(
-            frame, textvariable=self.output_file
+            frame, textvariable=self.output_dir
         ).grid(row=row, column=1, columnspan=3)
 
         tk.Button(
             frame, text="Browse",
-            command=lambda: self.output_file.set(askdirectory())
+            command=lambda: self.output_dir.set(askdirectory())
         ).grid(row=row, column=4, sticky=tk.W)
         CreateToolTip(
             label,
@@ -978,12 +1013,14 @@ class RandoGUI:
 
         # Check for bad input from RO page
 
+        boss_loc_dict = bossdata.get_default_boss_assignment()
+
         if self.flag_dict[GameFlags.BOSS_RANDO].get() == 1:
             loc_selection_ind = self.boss_location_listbox.curselection()
             boss_selection_ind = self.boss_listbox.curselection()
 
             if self.preserve_part_count.get() == 1:
-                # Legacy Boss Rando is on.  Que many annoying checks.
+                # Legacy Boss Rando is on.  Cue many annoying checks.
                 # Some of this can be cleaned up, but I'm hoping the option
                 # goes away in favor of 'Safe Mode' flags.
 
@@ -1085,16 +1122,104 @@ class RandoGUI:
                     return False
         # End if boss rando set
 
+        # Check the paths so that we don't have to do it later.
+        input_path = pathlib.Path(self.input_file.get())
+        if not input_path.is_file():
+            tk.messagebox.showerror(
+                title='Invalid Input ROM Path',
+                message='Provided path to Chrono Trigger ROM is invalid'
+            )
+            return False
+
+        output_path = pathlib.Path(self.output_dir.get())
+        if not (self.output_dir.get() == '' or output_path.is_dir):
+            tk.messagebox.showerror(
+                title='Invalid Output Directory',
+                message='Provided path to output directory is invalid.'
+            )
+            return False
+
         # Failed to find an error
         return True
 
+    def get_rom_from_file(self) -> bytearray:
+        infile_path = pathlib.Path(self.input_file.get())
+
+        if not infile_path.exists():
+            raise FileNotFoundError
+
+        with open(str(infile_path), 'rb') as infile:
+            rom = bytearray(infile.read())
+
+            if len(rom) % 0x400 == 0x200:
+                print('Header detectected.  Header will be removed from the'
+                      'output rom.')
+                rom = rom[0x200:]
+
+        return rom
+
     def randomize(self):
         self.gui_vars_to_settings()
-        self.save_settings()
-        print('Randomizing....', end='')
-        sleep(5)
-        print('Done (for real).')
+
+        # Settings are tested when the generate button is clicked.
+        # Maybe we should test them inside this method instead?
+
+        rom = self.get_rom_from_file()
+
+        valid = ctrom.CTRom.validate_ct_rom_bytes(rom)
+        proceed = True
+        if not valid:
+            proceed = tk.messagebox.askyesno(
+                title='Warning',
+                message=(
+                    'Provided rom is not a vanilla Chrono Trigger '
+                    'rom.  Randomization is likely to fail.  Proceed?'
+                )
+            )
+
+        if proceed:
+            seed = self.settings.seed
+            if seed is None or seed == '':
+                names = randomizer.read_names()
+                seed = ''.join([random.choice(names) for i in range(2)])
+                self.settings.seed = seed
+                self.seed.set(seed)
+
+            rando = randomizer.Randomizer(rom, is_vanilla=False)
+            rando.settings = self.settings
+            rando.set_random_config()
+            out_rom = rando.get_generated_rom()
+
+            input_path = pathlib.Path(self.input_file.get())
+
+            if self.output_dir is None or self.output_dir.get() == '':
+                self.output_dir.set(str(input_path.parent))
+
+            base_name = input_path.name.split('.')[0]
+            flag_str = self.settings.get_flag_string()
+
+            out_filename = f"{base_name}.{flag_str}.{seed}.sfc"
+            out_dir = self.output_dir.get()
+            out_path = str(pathlib.Path(out_dir).joinpath(out_filename))
+
+            with open(out_path, 'wb') as outfile:
+                outfile.write(out_rom)
+
+            spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.txt"
+            spoiler_path = \
+                str(pathlib.Path(out_dir).joinpath(spoiler_filename))
+            rando.write_spoiler_log(spoiler_path)
+
+            tk.messagebox.showinfo(
+                title='Randomization Complete',
+                message=f'Randomization Complete.  Seed: {seed}.'
+            )
+
+            self.save_settings()
+
+        # Regardless of generation, stop the progress bar
         self.progressBar.stop()
+        self.progressBar.config(value=0)
 
     def generate_handler(self):
         if self.gen_thread is None or not self.gen_thread.is_alive():
@@ -1350,6 +1475,8 @@ class RandoGUI:
         # frame for three special buttons
         frame = ttk.Frame(outerframe)
 
+        boss_loc_dict = bossdata.get_default_boss_assignment()
+
         # Helper method for propogating locations to bosses
         def location_to_boss():
             loc_ind = self.boss_location_listbox.curselection()
@@ -1435,12 +1562,24 @@ class RandoGUI:
             text='Legacy Boss Placement',
             variable=self.preserve_part_count
         )
-        checkbox.pack()
+        checkbox.pack(anchor=tk.W)
 
         CreateToolTip(
             checkbox,
             'Follow 3.1 boss randomizer rules.  N part bosses will be only '
             'be placed in locations which normally contain an N part boss. '
+        )
+
+        checkbox = tk.Checkbutton(
+            outerframe,
+            text='Enable Sightscope',
+            variable=self.enable_sightscope
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Enables sightscope to work on randomized bosses.'
         )
 
         extraoptionframe.pack()
@@ -1455,8 +1594,74 @@ class RandoGUI:
 
         return frame
 
+    def get_qol_page(self):
+        frame = ttk.Frame(self.notebook)
 
-if __name__ == '__main__':
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Sightscope Always On',
+            variable=self.flag_dict[GameFlags.VISIBLE_HEALTH]
+        )
+        checkbox.pack(anchor=tk.W)
+        CreateToolTip(
+            checkbox,
+            'The sightscope effect will always be present in battle.  '
+            'Note that this does change which enemies can have their HP seen '
+            'by the sightscope.'
+        )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Fast Tabs',
+            variable=self.flag_dict[GameFlags.FAST_TABS]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Players are not frozen in place when tabs are picked up.  '
+            'The power tab on the Death Peak entrance is the only '
+            'exception.'
+        )
+
+        return frame
+
+    def get_cosmetic_page(self):
+        frame = ttk.Frame(self.notebook)
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Zenan Alt Battle Music',
+            variable=self.cosmetic_flag_dict[CosmeticFlags.ZENAN_ALT_MUSIC]
+        )
+        checkbox.pack(anchor=tk.W)
+        CreateToolTip(
+            checkbox,
+            'Plays the unused alternate battle theme during the Zenan Bridge '
+            'gauntlet.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Fast Tabs',
+            variable=self.cosmetic_flag_dict[
+                CosmeticFlags.DEATH_PEAK_ALT_MUSIC
+            ]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Plays the unused Singing Mountain theme during Death Peak.'
+        )
+
+        return frame
+
+
+def main():
     gui = RandoGUI()
     gui.main_window.mainloop()
+
+
+if __name__ == '__main__':
+    main()
