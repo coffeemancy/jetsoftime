@@ -225,18 +225,20 @@ class PCStats:
         self.level = new_level
 
     def get_stat_string(self) -> str:
-        mp_growth_str = ' '.join(str(x) for x in self.mp_growth)
-        hp_growth_str = ' '.join(str(x) for x in self.hp_growth)
+        # mp_growth_str = ' '.join(str(x) for x in self.mp_growth)
+        # hp_growth_str = ' '.join(str(x) for x in self.hp_growth)
         ret = ''
         ret += f"Level: {self.level}\n"
         ret += f"Tech Level: {self.tech_level}\n"
         ret += f"Max HP: {self.max_hp}\t Max MP: {self.max_mp}\n"
-        ret += f"HP Growth: {hp_growth_str}\n"
-        ret += f"MP Growth: {mp_growth_str}\n"
+        # ret += f"HP Growth: {hp_growth_str}\n"
+        # ret += f"MP Growth: {mp_growth_str}\n"
         ret += 'Pow Stm Spd Hit Evd Mag Mdf\n'
         temp_cur = get_stat_base_order(self.cur_stats)
         ret += ' ' + ' '.join(f"{x:02d} " for x in temp_cur)
-        ret += '\n'
+        ret += '\t(Current Stats)\n'
+        ret += '' + ''.join(f"{x: >3d} " for x in self.stat_growth)
+        ret += '\t(Growth/Lvl, 100 growth = 1 point)\n'
 
         return ret
 
