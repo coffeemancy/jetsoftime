@@ -181,9 +181,9 @@ class RandoGUI:
 
     def set_settings(self, new_settings: Settings):
         self.__settings = new_settings
-        print(self.__settings.char_choices)
-        print(self.__settings.gameflags)
-        print(self.__settings.get_flag_string())
+        # print(self.__settings.char_choices)
+        # print(self.__settings.gameflags)
+        # print(self.__settings.get_flag_string())
         self.update_gui_vars()
 
     settings = property(get_settings, set_settings)
@@ -282,7 +282,7 @@ class RandoGUI:
                     self.settings.char_choices[i].append(j)
 
         # RO Settings
-        print(self.bosses)
+        # print(self.bosses)
         boss_list = [self.bosses[i]
                      for i in self.boss_listbox.curselection()]
 
@@ -296,7 +296,7 @@ class RandoGUI:
             self.enable_sightscope.get() == 1
         )
 
-        print(self.settings.gameflags)
+        # print(self.settings.gameflags)
 
     def update_gui_vars(self):
 
