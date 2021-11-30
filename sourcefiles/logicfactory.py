@@ -990,7 +990,6 @@ class LostWorldsGameConfig(GameConfig):
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
-        self.game.setLostWorlds(True)
 
     def initKeyItems(self):
         self.keyItemList = [ItemID.C_TRIGGER, ItemID.CLONE, ItemID.PENDANT,

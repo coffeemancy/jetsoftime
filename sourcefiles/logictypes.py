@@ -74,7 +74,7 @@ class Game:
     # param lFlag - boolean, whether or not the Lost Worlds flag is on
     #
     def setLostWorlds(self, lFlag):
-        print('Warning: setLockedCharacters() ignored.\n'
+        print('Warning: setLostWorlds() ignored.\n'
               'Class logictypes.Game can not change game settings.'
               'Please supply the correct randosettings.Settings object at '
               'object creation.')
