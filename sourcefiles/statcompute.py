@@ -122,6 +122,51 @@ class PCStats:
 
         self.__extract_stats()
 
+    def set_base_stats(self,
+                       base_pow,
+                       base_stm,
+                       base_spd,
+                       base_hit,
+                       base_evd,
+                       base_mag,
+                       base_mdf):
+
+        base_stats = [base_pow, base_stm, base_spd, base_hit, base_evd,
+                      base_mag, base_mdf]
+        base_max = [100, 100, 16, 100, 100,
+                    100, 100]
+
+        base_stats = [min(base_stats[i], base_max[i]) for i in range(7)]
+
+        self.base_stats = base_stats
+        self.set_level(self.level)
+
+    def set_stat_growths(self,
+                         pow_growth,
+                         stm_growth,
+                         spd_growth,
+                         hit_growth,
+                         evd_growth,
+                         mag_growth,
+                         mdf_growth):
+
+        if spd_growth != 0:
+            print("Warning: Speed growth not supported.  Setting to 0")
+            spd_growth = 0
+
+        stat_growth = [pow_growth, stm_growth, spd_growth, hit_growth,
+                       evd_growth, mag_growth, mdf_growth]
+
+        stat_growth_max = [0xFF, 0xFF, 0, 0xFF, 0xFF,
+                           0xFF, 0xFF, 0xFF]
+
+        stat_growth = [max(x, 0) for x in stat_growth]
+        self.stat_growth = [min(stat_growth[i], stat_growth_max[i])
+                            for i in range(7)]
+
+        # Recompute stats
+        self.set_level(self.level)
+
     def stats_from_rom_default(rom, pc_ind):
         return PCStats.stats_from_rom(rom, pc_ind,
                                       0x0C0000,
@@ -478,7 +523,7 @@ def get_stat_cur_order(base_stat_list):
     return cur_stat_list
 
 
-if __name__ == '__main__':
+def main():
     with open('jets_test.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
@@ -503,3 +548,6 @@ if __name__ == '__main__':
 
         new_pcs[i].print_data()
 
+
+if __name__ == '__main__':
+    main()
