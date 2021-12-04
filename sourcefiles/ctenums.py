@@ -45,11 +45,14 @@ class BossID(StrIntEnum):
     YAKRA_XIII = auto()
     ZOMBOR = auto()
 
-    # Non-bossrando bosses
     MOTHER_BRAIN = auto()
     DRAGON_TANK = auto()
     GIGA_GAIA = auto()
     GUARDIAN = auto()
+
+    # Midbosses
+    MAGUS = auto()
+    BLACK_TYRANO = auto()
 
     @classmethod
     def get_extra_bosses(cls):
@@ -213,7 +216,7 @@ class LocID(StrIntEnum):
     def get_boss_locations(cls):
         return [
             cls.BLACK_OMEN_ELDER_SPAWN,
-            cls.ZENAN_BRIDGE,
+            cls.ZENAN_BRIDGE_BOSS,
             cls.CAVE_OF_MASAMUNE,
             cls.SUNKEN_DESERT_DEVOURER,
             cls.MAGUS_CASTLE_SLASH,
@@ -231,7 +234,10 @@ class LocID(StrIntEnum):
             cls.BLACK_OMEN_TERRA_MUTANT,
             cls.ZEAL_PALACE_THRONE_NIGHT,
             cls.OCEAN_PALACE_TWIN_GOLEM,
-            cls.DEATH_PEAK_GUARDIAN_SPAWN
+            cls.DEATH_PEAK_GUARDIAN_SPAWN,
+            cls.ARRIS_DOME_GUARDIAN_CHAMBER,
+            cls.GENO_DOME_MAINFRAME,
+            cls.MT_WOE_SUMMIT
         ]
 
     @classmethod
@@ -258,7 +264,7 @@ class LocID(StrIntEnum):
     def get_two_spot_boss_locations(cls):
         return[
             cls.BLACK_OMEN_ELDER_SPAWN,
-            cls.ZENAN_BRIDGE,
+            cls.ZENAN_BRIDGE_BOSS,
             cls.BLACK_OMEN_GIGA_MUTANT,
             cls.BLACK_OMEN_TERRA_MUTANT,
             cls.DEATH_PEAK_GUARDIAN_SPAWN
