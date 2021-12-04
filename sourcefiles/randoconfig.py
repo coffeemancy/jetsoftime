@@ -1132,7 +1132,7 @@ class RandoConfig:
             LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_GOLEM,
             LocID.MANORIA_COMMAND: BossID.YAKRA,
             LocID.KINGS_TRIAL_NEW: BossID.YAKRA_XIII,
-            LocID.ZENAN_BRIDGE: BossID.ZOMBOR
+            LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR
         }
 
         self.boss_data_dict = get_boss_data_dict()
