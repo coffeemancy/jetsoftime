@@ -1091,6 +1091,26 @@ class Event:
 
         del(self.data[del_pos:del_pos+cmd_len])
 
+    def delete_command_from_function(self,
+                                     cmd_ids: list[int],
+                                     obj_id: int, fn_id: int,
+                                     start: int = None,
+                                     end: int = None) -> int:
+        find_start = self.get_function_start(obj_id, fn_id)
+        find_end = self.get_function_end(obj_id, fn_id)
+
+        if start is not None and find_start < start < find_end:
+            find_start = start
+
+        if end is not None and find_start < end < find_end:
+            find_end = end
+
+        pos, _ = self.find_command(cmd_ids, find_start, find_end)
+        if pos is not None:
+            self.delete_commands(pos, 1)
+
+        return pos
+
     # This is for short additions.  In particular no string additions are
     # allowed here.  For larger additions, use insert_script, remove_object.
     def insert_commands(self, new_commands: bytearray, ins_position: int):
