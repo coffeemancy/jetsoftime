@@ -8,6 +8,10 @@ import randoconfig as cfg
 
 
 def write_config(settings: rset.Settings, config: cfg.RandoConfig):
+
+    if rset.GameFlags.UNLOCKED_MAGIC not in settings.gameflags:
+        return
+
     techdb = config.techdb
 
     control_headers = techdb.controls
