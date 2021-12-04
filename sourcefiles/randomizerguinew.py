@@ -151,9 +151,13 @@ class RandoGUI:
         self.boss_locations = LocID.get_boss_locations()
         self.bosses = list(BossID)
 
+        # no_shuffle_bosses = [
+        #     BossID.DRAGON_TANK, BossID.GIGA_GAIA, BossID.MOTHER_BRAIN,
+        #     BossID.R_SERIES, BossID.MUD_IMP, BossID.GUARDIAN
+        # ]
+
         no_shuffle_bosses = [
-            BossID.DRAGON_TANK, BossID.GIGA_GAIA, BossID.MOTHER_BRAIN,
-            BossID.R_SERIES
+            BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP
         ]
 
         for x in no_shuffle_bosses:
