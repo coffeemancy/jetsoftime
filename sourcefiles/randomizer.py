@@ -271,6 +271,8 @@ class Randomizer:
         # regardless of whether boss rando is on.
 
         bossrando.duplicate_maps_on_ctrom(self.out_rom)
+        bossrando.duplicate_zenan_bridge(self.out_rom,
+                                         ctenums.LocID.ZENAN_BRIDGE_BOSS)
 
         # Script changes which can always be made
         Event = ctevent.Event
@@ -278,6 +280,21 @@ class Randomizer:
 
         # 1) Set magic learning at game start depending on character assignment
         telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
+
+        # 3.1.1 Change:
+        # The only relevant script change with 3.1.1 is setting the 0x80 bit
+        # of 0x7f0057 for the skyway logic in the Telepod Exhibit script.
+        EC = ctevent.EC
+
+        # set flag cmd -- too lazy to make an EC function for this
+        cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
+        start = telepod_event.get_function_start(0x0E, 0x04)
+        end = telepod_event.get_function_end(0x0E, 0x04)
+
+        # Set the flag right before the screen darkens
+        pos = telepod_event.find_exact_command(EC.fade_screen(),
+                                               start, end)
+        telepod_event.insert_commands(cmd.to_bytearray(), pos)
 
         # 2) Allows left chest when medal is on non-Frog Frogs
         burrow_event = Event.from_flux('./flux/cr_burrow.Flux')
@@ -336,8 +353,8 @@ class Randomizer:
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
             self.write_key_item_spoilers(outfile)
-            self.write_character_spoilers(outfile)
             self.write_boss_rando_spoilers(outfile)
+            self.write_character_spoilers(outfile)
             self.write_boss_stat_spoilers(outfile)
             self.write_treasure_spoilers(outfile)
             self.write_drop_charm_spoilers(outfile)
@@ -460,14 +477,27 @@ class Randomizer:
     def write_boss_stat_spoilers(self, file_object):
 
         scale_dict = self.config.boss_rank
+        BossID = ctenums.BossID
 
         file_object.write("Boss Stats\n")
         file_object.write("----------\n")
-        for boss_id in self.config.boss_assign_dict.values():
+
+        boss_ids = list(self.config.boss_assign_dict.values()) + \
+            [BossID.MAGUS, BossID.BLACK_TYRANO]
+
+        for boss_id in boss_ids:
             file_object.write(str(boss_id)+':')
             if boss_id in scale_dict.keys():
                 file_object.write(
                     f" Key Item scale rank = {scale_dict[boss_id]}"
+                )
+            if boss_id == BossID.MAGUS:
+                file_object.write(
+                    f" Assigned {self.config.magus_char}"
+                )
+            if boss_id == BossID.BLACK_TYRANO:
+                file_object.write(
+                    f" Element is {self.config.black_tyrano_element}"
                 )
             file_object.write('\n')
 
@@ -481,6 +511,8 @@ class Randomizer:
                 part_str = '\t' + str.replace(part_str, '\n', '\n\t')
                 file_object.write(part_str+'\n')
             file_object.write('\n')
+
+        
 
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
@@ -536,7 +568,8 @@ class Randomizer:
         #   - Tech data for TechDB
         #   - Item data (including prices) for shops
         # patch_codebase.txt may not be needed
-        rom_data.patch_ips_file('./patch.ips')
+        # rom_data.patch_ips_file('./patch.ips')
+        rom_data.patch_ips_file('./patch-beta.ips')
         rom_data.patch_txt_file('./patches/patch_codebase.txt')
 
         # I verified that the following convenience patches which are now
@@ -854,7 +887,7 @@ def main():
 
     settings.ro_settings.enable_sightscope = True
 
-    settings.seed = 'Cthulu_Crisis_1'
+    settings.seed = 'testtesttest'
     rando = Randomizer(rom, is_vanilla=True,
                        settings=settings,
                        config=None)

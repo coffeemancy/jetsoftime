@@ -197,9 +197,14 @@ class Game:
                 self.hasCharacter(CharID.FROG))
 
     def canAccessDarkAges(self):
-        return ((self.canAccessTyranoLair()) or
-                (self.canAccessMagusCastle()) or
-                (self.lostWorlds))
+        # 3.1.1 Logic
+        return (self.lostWorlds or
+                self.canAccessPrehistory() or
+                self.canAccessFuture())
+        # 3.1 Logic
+        # return ((self.canAccessTyranoLair()) or
+        #         (self.canAccessMagusCastle()) or
+        #         (self.lostWorlds))
 
     def canAccessOceanPalace(self):
         return (self.canAccessDarkAges() and
