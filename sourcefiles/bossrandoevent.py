@@ -176,18 +176,35 @@ def set_magus_castle_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
 
 
 def set_giants_claw_boss(ctrom: CTRom, boss: BossScheme):
-    # 0xC5 is the Rust Tyrano's map - Giant's Claw Last Tyrano
-    loc_id = 0xC5
+
+    if EnemyID.RUST_TYRANO in boss.ids:
+        return
+
+    loc_id = LocID.GIANTS_CLAW_TYRANO
+    script = ctrom.script_manager.get_script(loc_id)
+
+    # Copying the existing command from when Tyrano dies.
+    copy_tiles_cmd = EC.copy_tiles(0, 0, 7, 9, 4, 0x22,
+                                   copy_l1=True,
+                                   copy_l2=True,
+                                   copy_props=True,
+                                   unk_0x10=True,
+                                   unk_0x20=True)
+
+    # Yes, the tiles will be copied again when the Tyrano dies.  If that's
+    # a problem we'll remove the other calls.
+
+    pos = script.get_object_start(0)
+    script.insert_commands(copy_tiles_cmd.to_bytearray(), pos)
 
     # First part is in object 0x9, function 0 (init)
     boss_obj = 0x9
-
     first_x, first_y = 0x80, 0x27F
 
     # Objects can start out shown, no real need for show_pos_fn
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda s: s.get_function_start(0, 0) + 1,
-                              first_x, first_y, True)
+    set_generic_one_spot_boss_script(script, boss, boss_obj,
+                                     lambda s: s.get_function_start(0, 0) + 1,
+                                     first_x, first_y, True)
 # end set giant's claw boss
 
 
@@ -259,7 +276,9 @@ def set_zeal_palace_boss(ctrom: CTRom, boss: BossScheme):
 #     that pop into existence right
 def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
     # 0x87 is Zombor's map - Zenan Bridge (Middle Ages)
-    loc_id = 0x87
+    # Except to avoid sprite bugs we changed it
+    # loc_id = 0x87
+    loc_id = LocID.ZENAN_BRIDGE_BOSS
     script = ctrom.script_manager.get_script(loc_id)
 
     num_parts = len(boss.ids)
@@ -632,7 +651,7 @@ def set_ozzies_fort_flea_plus_spot_boss(ctrom: CTRom, boss: BossScheme):
 
 def set_ozzies_fort_super_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0xB8
-    
+
     boss_obj = 0x9
     first_x, first_y = 0x270, 0x250
 
@@ -861,15 +880,219 @@ def set_twin_golem_spot(ctrom: CTRom, boss: BossScheme):
     script.insert_commands(show.get_bytearray(), show_pos)
 
 
+def set_mt_woe_boss(ctrom: CTRom, boss: BossScheme):
+
+    if EnemyID.GIGA_GAIA_HEAD in boss.ids:
+        return
+
+    loc_id = LocID.MT_WOE_SUMMIT
+    script = ctrom.script_manager.get_script(loc_id)
+
+    # Copy blank tiles over GG's body
+    pos = script.get_object_start(0)
+    copytiles = EC.copy_tiles(2, 1, 0xD, 9, 0x2, 0x11,
+                              copy_l1=True, copy_l2=True, copy_l3=True,
+                              copy_props=True)
+    script.insert_commands(copytiles.to_bytearray(), pos)
+
+    # delete the loading of melchior
+    pos = script.get_function_start(8, 0)
+    script.delete_commands(pos, 1)
+
+    boss_objs = [0x0A, 0x0B, 0x0C]
+    orig_boss_obj_count = len(boss_objs)
+
+    first_x, first_y = 0x80, 0x158
+    shift = False  # The original coords are pixel coords, don't correct
+
+    if len(boss_objs) > len(boss.ids):
+        # Remove unused objects
+        for i in range(len(boss_objs), len(boss.ids), -1):
+            script.remove_object(boss_objs[i-1])
+            del(boss_objs[i-1])
+    elif len(boss.ids) > len(boss_objs):
+        # Add new copies of a GG Hand object
+        for i in range(len(boss.ids), len(boss_objs)):
+            obj_id = script.append_copy_object(boss_objs[1])
+            boss_objs.append(obj_id)
+
+    for ind, obj in enumerate(boss_objs):
+        new_x = first_x + boss.disps[ind][0]
+        new_y = first_y + boss.disps[ind][1]
+
+        boss_id = boss.ids[ind]
+        boss_slot = boss.slots[ind]
+
+        set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
+        set_object_coordinates(script, boss_objs[ind],
+                               new_x, new_y, shift=shift)
+
+    # Mt. Woe starts with everything visible so there's no need for anything
+    # extra inserted.
+
+
+# This is line-for-line almost identical to the woe one... may be time to
+# abstract some of this out.
+def set_geno_dome_boss(ctrom: CTRom, boss: BossScheme):
+
+    if EnemyID.MOTHERBRAIN in boss.ids:
+        return
+
+    loc_id = LocID.GENO_DOME_MAINFRAME
+    script = ctrom.script_manager.get_script(loc_id)
+
+    # There appears to be an unused display object in 0x23.  It has to go
+    # to avoid sprite bugs.
+    script.remove_object(0x23)
+
+    # One screen has a function to make the screens shift colors.
+    # Get rid of it.
+    func = script.get_function(0x21, 1)
+    script.set_function(0x22, 1, func)
+
+    # Weird commands that make mother brain's colors shift.
+    # Setting 0x7E2A21 to  2 or 0.  Both are command 0x4A.
+    script.delete_command_from_function([0x4A], 0x1E, 0)
+    script.delete_command_from_function([0x4A], 0x1E, 0)
+
+    boss_objs = [0x1F, 0x20, 0x21, 0x22]
+
+    first_x, first_y = 0xA0, 0x6F
+    shift = False
+
+    ins_cmds = EF()
+    if len(boss_objs) > len(boss.ids):
+        # Remove unused objects
+        for i in range(len(boss_objs), len(boss.ids), -1):
+            script.remove_object(boss_objs[i-1])
+            del(boss_objs[i-1])
+    elif len(boss.ids) > len(boss_objs):
+        # Add new copies of a display object
+        ins_cmds = EF()
+        for i in range(len(boss_objs), len(boss.ids)):
+            obj_id = script.append_copy_object(boss_objs[1])
+            boss_objs.append(obj_id)
+
+            # record the command that needs to be called to display the
+            # new object.  Just call its activate function in this case.
+            ins_cmds.add(EC.call_obj_function(obj_id, 1, 1, FuncSync.CONT))
+
+    for ind, obj in enumerate(boss_objs):
+        new_x = first_x + boss.disps[ind][0]
+        new_y = first_y + boss.disps[ind][1]
+
+        boss_id = boss.ids[ind]
+        boss_slot = boss.slots[ind]
+
+        set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
+        set_object_coordinates(script, boss_objs[ind],
+                               new_x, new_y, shift=shift)
+
+    start = script.get_function_start(0x1E, 0)
+    end = script.get_function_end(0x1E, 0)
+    ins_pos_cmd = EC.call_obj_function(0x1F, 1, 1, FuncSync.CONT)
+    ins_pos = script.find_exact_command(ins_pos_cmd, start, end)
+    ins_pos += len(ins_pos_cmd)
+
+    script.insert_commands(ins_cmds.get_bytearray(), ins_pos)
+
+
+def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
+
+    if EnemyID.GUARDIAN in boss.ids:
+        return
+
+    loc_id = LocID.ARRIS_DOME_GUARDIAN_CHAMBER
+    script = ctrom.script_manager.get_script(loc_id)
+
+    copy_tiles = EC.copy_tiles(3, 0x11, 0xC, 0x1C,
+                               3, 2,
+                               copy_l1=True,
+                               copy_l3=True,
+                               copy_props=True,
+                               unk_0x10=True,
+                               unk_0x20=True)
+
+    pos = script.get_object_start(0)
+    script.insert_commands(copy_tiles.to_bytearray(), pos)
+
+    # first_x, first_y = 0x80, 0xA8
+    first_x, first_y = 0x80, 0xC8
+    shift = False
+
+    boss_objs = [0xB, 0xC, 0xD]
+
+    # Remove an unneeded move cmd from the arb0.  The bits float down from
+    # the ceiling, but we don't need that.
+    script.delete_command_from_function([0x96], 0xC, 3)
+    script.delete_command_from_function([0x96], 0xD, 3)
+
+    # Remove the hide command from startup
+    script.delete_command_from_function([0x91], 0xB, 0)
+    script.delete_command_from_function([0x91], 0xC, 0)
+    script.delete_command_from_function([0x91], 0xD, 0)
+
+    # Remove old calls to bit arb0s.  We will recreate these once we have the
+    # right list of objects.
+    call = EC.call_obj_function(0xC, 3, 3, FuncSync.CONT)
+    start = script.get_function_start(9, 1)
+    end = script.get_function_end(9, 1)
+    pos = script.find_exact_command(call, start, end)
+    script.delete_commands(pos, 2)
+
+    if len(boss_objs) > len(boss.ids):
+        # Remove unused objects
+        for i in range(len(boss_objs), len(boss.ids), -1):
+            script.remove_object(boss_objs[i-1])
+            del(boss_objs[i-1])
+    elif len(boss.ids) > len(boss_objs):
+        # Add new copies of a bit object (that we cleaned up above)
+        for i in range(len(boss_objs), len(boss.ids)):
+            obj_id = script.append_copy_object(boss_objs[1])
+            boss_objs.append(obj_id)
+
+    for ind, obj in enumerate(boss_objs):
+        new_x = first_x + boss.disps[ind][0]
+        new_y = first_y + boss.disps[ind][1]
+
+        boss_id = boss.ids[ind]
+        boss_slot = boss.slots[ind]
+
+        set_object_boss(script, obj, boss_id, boss_slot)
+        set_object_coordinates(script, boss_objs[ind],
+                               new_x, new_y, shift=shift)
+
+    # add calls to arb0s for all but first object.  This makes them visible
+    # and sets collisions correctly.
+    new_calls = EF()
+    for ind in range(1, len(boss_objs)):
+        # The last function halts, so all of them are finished before
+        # proceeding to the battle.
+        if ind == len(boss_objs) - 1:
+            sync = FuncSync.HALT
+        else:
+            sync = FuncSync.CONT
+
+        new_calls.add(EC.call_obj_function(boss_objs[ind], 3, 3, sync))
+
+    start = script.get_function_start(9, 1)
+    end = script.get_function_end(9, 1)
+    pos, _ = script.find_command([0xD8], start, end)  # Battle
+
+    if pos is None:
+        raise SystemExit('Couldn\'t find insertion point (Arris)')
+
+    script.insert_commands(new_calls.get_bytearray(), pos)
+
+
 # set_generic_one_spot_boss should be able to set any one spot location's boss
 # with a little help
 #       ctrom: has the script manager to get scripts from
+#        boss: A BossScheme object with the boss's coordinates/slots
 #      loc_id: The id of the location to write to (not the location event id)
-#    boss_obj: An object of type Boss holding the desired boss
+#    boss_obj: The id of the one spot boss's object in the script
 # show_pos_fn: A function to determine how to find the insertion point after
 #              the objects have been added.
-#   is_static: Is the boss static?  In other words, does it stick around after
-#              the battle to do something.
 #     first_x: The x-coordinate of the boss when show_pos is hit.  This should
 #              be after all movement is done.
 #     first_y: The same as first_x but for the y_coordinate
@@ -946,7 +1169,8 @@ def set_object_boss(script: Event, obj_id: int, boss_id: int, boss_slot: int,
 
 
 def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
-                           ignore_jumps: bool = True, fn_id: int = 0):
+                           ignore_jumps: bool = True, fn_id: int = 0,
+                           shift: bool = True):
 
     start = script.get_function_start(obj_id, fn_id)
     end = script.get_function_end(obj_id, fn_id)
@@ -959,7 +1183,10 @@ def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
         if cmd.command in EC.fwd_jump_commands and ignore_jumps:
             pos += (cmd.args[-1] - 1)
         elif cmd.command in [0x8B, 0x8D]:
-            new_coord_cmd = EC.set_object_coordinates(x, y)
+            new_coord_cmd = EC.set_object_coordinates(x, y, shift)
+            # print(f"x={x:04X}, y={y:04X}")
+            # print(new_coord_cmd)
+            # input()
 
             # The pixel-based and tile-based commands have different lengths.
             # If the new coordinates don't match the old, you have to do a
@@ -1060,16 +1287,20 @@ def duplicate_zenan_bridge(ctrom: CTRom, dup_loc_id: LocID):
         raise SystemExit
 
     # Insert the transition commands after the party moves
-    pos += len(move_party)
+    new_move_party = EC.move_party(0x8B, 0x08, 0x8B, 0x7, 0x8B, 0x0A)
 
-    change_loc = EC.change_location(dup_loc_id, 0x05, 0x08)
+    script.delete_commands(pos, 1)
+    # pos += len(new_move_party)
+
+    change_loc = EC.change_location(dup_loc_id, 0x08, 0x08)
 
     # Make the string of new commands.
     # After the party runs off, the screen fades out and we change location
     insert_cmds = EF()
     (
         insert_cmds
-        .add(EC.darken(4))
+        .add(new_move_party)
+        .add(EC.darken(1))
         .add(EC.fade_screen())
         .add(change_loc)
     )
@@ -1098,7 +1329,7 @@ def duplicate_zenan_bridge(ctrom: CTRom, dup_loc_id: LocID):
     # would forget to preserve the string index, right?
     string_index = new_script.get_string_index()
     string_index_cmd = EC.set_string_index(string_index)
-
+    
     new_startup_func = EF()
     (
         new_startup_func
@@ -1107,6 +1338,10 @@ def duplicate_zenan_bridge(ctrom: CTRom, dup_loc_id: LocID):
         .add(move_party)
         .add(EC.end_cmd())
     )
+
+    # TODO: Instead of a move party command, get conditionals, etc working
+    #       in eventcommand.py so that I can write a short script to set
+    #       initial coordinates in startup functions of player objs
 
     # Finally, set the new function and set the new script.
     new_script.set_function(0, 0, new_startup_func)
@@ -1339,7 +1574,7 @@ def write_assignment_to_config(settings: rset.Settings,
 
         # Now do the assignment
         random.shuffle(one_part_bosses)
-        print(one_part_bosses)
+        # print(one_part_bosses)
 
         for i in range(len(one_part_locations)):
             boss = one_part_bosses[i]
@@ -1347,8 +1582,8 @@ def write_assignment_to_config(settings: rset.Settings,
             config.boss_assign_dict[location] = boss
 
         random.shuffle(two_part_bosses)
-        print(two_part_bosses)
-        input()
+        # print(two_part_bosses)
+        # input()
 
         for i in range(len(two_part_locations)):
             boss = two_part_bosses[i]
@@ -1358,6 +1593,12 @@ def write_assignment_to_config(settings: rset.Settings,
         locations = boss_settings.loc_list
         bosses = boss_settings.boss_list
 
+        # Why sort before shuffling?
+        # Because the order in which the settings file specifies the bosses
+        # and locations should not change the randomized output.
+        # Boss/location enums IntEnums so it's fine to sort.
+        bosses = sorted(bosses)
+        locations = sorted(locations)
         random.shuffle(bosses)
 
         if len(bosses) < len(locations):
@@ -1478,7 +1719,7 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
         LocID.GIANTS_CLAW_TYRANO: set_giants_claw_boss,
         LocID.TYRANO_LAIR_NIZBEL: set_tyrano_lair_midboss,
         LocID.ZEAL_PALACE_THRONE_NIGHT: set_zeal_palace_boss,
-        LocID.ZENAN_BRIDGE: set_zenan_bridge_boss,
+        LocID.ZENAN_BRIDGE_BOSS: set_zenan_bridge_boss,
         LocID.DEATH_PEAK_GUARDIAN_SPAWN: set_death_peak_boss,
         LocID.BLACK_OMEN_GIGA_MUTANT: set_giga_mutant_spot_boss,
         LocID.BLACK_OMEN_TERRA_MUTANT: set_terra_mutant_spot_boss,
@@ -1489,7 +1730,10 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
         LocID.OZZIES_FORT_SUPER_SLASH: set_ozzies_fort_super_slash_spot_boss,
         LocID.SUN_PALACE: set_sun_palace_boss,
         LocID.SUNKEN_DESERT_DEVOURER: set_desert_boss,
-        LocID.OCEAN_PALACE_TWIN_GOLEM: set_twin_golem_spot
+        LocID.OCEAN_PALACE_TWIN_GOLEM: set_twin_golem_spot,
+        LocID.GENO_DOME_MAINFRAME: set_geno_dome_boss,
+        LocID.MT_WOE_SUMMIT: set_mt_woe_boss,
+        LocID.ARRIS_DOME_GUARDIAN_CHAMBER: set_arris_dome_boss
     }
 
     # Now do the writing. Only to locations in the above dict.  Only if the
@@ -1503,10 +1747,29 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
             # print(f"Not assigning to {loc}.  No change from default.")
             pass
         else:
+
+            if current_assignment[loc] == BossID.GUARDIAN:
+                # Turn guardian's body into a Nu when not vanilla
+                # Enemy sprite data at 0x24F600.  10 bytes each
+                nu_sprite_start = 0x24F600 + 10*EnemyID.NU
+                ctrom.rom_data.seek(nu_sprite_start)
+                nu_sprite = ctrom.rom_data.read(10)
+
+                guardian_sprite_start = 0x24F600 + 10*EnemyID.GUARDIAN
+                ctrom.rom_data.seek(guardian_sprite_start)
+                ctrom.rom_data.write(nu_sprite)
+            elif current_assignment[loc] == BossID.GIGA_GAIA:
+                # Turn off the flag that says GG should effect layer1
+                # We can just zero out byte 4.
+                gg_sprite_start = 0x24F600 + 10*EnemyID.GIGA_GAIA_HEAD + 4
+                ctrom.rom_data.seek(gg_sprite_start)
+                ctrom.rom_data.write(b'\x00')
+
             if loc not in assign_fn_dict.keys():
-                print(f"Error: Tried assigning to {loc}.  Location not "
-                      "supported for boss randomization.")
-                exit()
+                raise SystemExit(
+                    f"Error: Tried assigning to {loc}.  Location not "
+                    "supported for boss randomization."
+                )
             else:
                 assign_fn = assign_fn_dict[loc]
                 boss_id = current_assignment[loc]
@@ -1517,12 +1780,12 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
 
 def main():
-    with open('./roms/jets_test.sfc', 'rb') as infile:
+    with open('./roms/boss_test.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
     ctrom = CTRom(rom, True)
     ctrom.rom_data.space_manager.mark_block(
-        (0x5f0000, 0x5fffff),
+        (0x4f8000, 0x5f0000),
         FSWriteType.MARK_FREE
     )
 
@@ -1530,7 +1793,13 @@ def main():
     fsrom = ctrom.rom_data
     script_man = ctrom.script_manager
 
-    set_giants_claw_boss(ctrom, Boss.RETINITE().scheme)
+    # set_mt_woe_boss(ctrom, Boss.YAKRA().scheme)
+    # set_geno_dome_boss(ctrom, Boss.GIGA_GAIA().scheme)
+    set_arris_dome_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
+    ctrom.write_all_scripts_to_rom()
+
+    with open('./roms/boss_test_out.sfc', 'wb') as outfile:
+        outfile.write(ctrom.rom_data.getvalue())
     quit()
 
     exits = LocExits.from_rom(fsrom)
@@ -1540,9 +1809,7 @@ def main():
     script = script_man.get_script(LocID.ZENAN_BRIDGE)
     new_script = copy.deepcopy(script)
 
-
     # Change the script to change location to the new map when it's Zombor time
-
     start = script.get_function_start(0x01, 0x00)
     end = script.get_function_end(0x01, 0x00)
 
