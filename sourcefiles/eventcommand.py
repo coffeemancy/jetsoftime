@@ -172,6 +172,33 @@ class EventCommand:
 
         return ret
 
+    def copy_tiles(src_left: int, src_top: int, src_right: int, src_bot: int,
+                   dest_left: int, dest_top: int,
+                   copy_l1: bool = False,
+                   copy_l2: bool = False,
+                   copy_l3: bool = False,
+                   copy_props: bool = False,
+                   unk_0x10: bool = False,
+                   unk_0x20: bool = False) -> EventCommand:
+
+        if src_left > src_right:
+            raise SystemExit('Error, left > right')
+
+        if src_top > src_bot:
+            raise SystemError('Error: top > bot')
+
+        ret_cmd = event_commands[0xE5].copy()
+        ret_cmd.args = [0 for i in range(ret_cmd.num_args)]
+
+        ret_cmd.args[0:6] = [src_left, src_top, src_right, src_bot,
+                             dest_left, dest_top]
+
+        flags = (copy_l1) + (copy_l2 << 1) + (copy_l3 << 2) + \
+            (copy_props << 3) + (unk_0x10 << 4) + (unk_0x20 << 5)
+        ret_cmd.args[6] = flags
+
+        return ret_cmd
+
     def generic_zero_arg(cmd_id: int) -> EventCommand:
         ret = event_commands[cmd_id].copy()
         return ret
@@ -204,7 +231,7 @@ class EventCommand:
         # Command 0x8B works based on tiles while 0x8D works on pixels.
         # It should be that the two differ by a factor of 16, but it doesn't
         # match up.
-        if x % 16 == 0 and y % 16 == 0:
+        if x % 16 == 0 and y % 16 == 0 and shift is True:
             return EventCommand.generic_two_arg(0x8B, x >> 4, y >> 4)
         else:
             # Two notes on setting commands by pixels:
