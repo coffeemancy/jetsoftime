@@ -25,6 +25,23 @@ class BossScheme:
     disps: list[Tuple(int, int)] = field(default_factory=list)
     slots: list[int] = field(default_factory=list)
 
+    # Some boss spots place the boss at the edge of the screen, and this
+    # can lead some larger bosses to have parts go off screen.
+    # This method will allow reordering of parts so that everything should
+    # fit.  (Ex. GG in king's trial needs left arm to be in spot 0)
+    def reorder(self, new_first_ind):
+
+        for x in (self.ids, self.slots, self.disps):
+            temp = x[0]
+            x[0] = x[new_first_ind]
+            x[new_first_ind] = temp
+
+        # Shift displacements
+        disp_0 = self.disps[0]
+        for i in range(len(self.disps)):
+            self.disps[i][0] -= disp_0[0]
+            self.disps[i][1] -= disp_0[1]
+
 
 # The Boss class combines a BossScheme with whatever data is needed to scale
 # the boss.  Subclasses can define alternate scaling methods.
@@ -71,6 +88,15 @@ class Boss:
     @classmethod
     def ATROPOS_XR(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 20)
+
+    @classmethod
+    def BLACK_TYRANO(cls: Type[T]) -> T:
+        ids = [EnemyID.AZALA, EnemyID.BLACKTYRANO]
+        slots = [7, 3]
+        disps = [(0, 0), (0, 0)]  # Not real b/c not randomizing
+        power = 25
+
+        return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
     def DALTON_PLUS(cls: Type[T]) -> T:
@@ -123,7 +149,8 @@ class Boss:
         ids = [EnemyID.GIGA_GAIA_HEAD, EnemyID.GIGA_GAIA_LEFT,
                EnemyID.GIGA_GAIA_RIGHT]
         slots = [6, 7, 9]
-        disps = [(0, 0), (0x40, 0x30), (-0x40, 0x30)]
+        # disps = [(0, 0), (0x40, 0x30), (-0x40, 0x30)]
+        disps = [(0, 0), (0x20, 0x20), (-0x20, 0x20)]
         power = 25
 
         return cls.generic_multi_spot(ids, disps, slots, power)
@@ -174,13 +201,19 @@ class Boss:
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
+    @classmethod
+    def MAGUS(cls: Type[T]) -> T:
+        return cls.generic_one_spot(EnemyID.MAGUS, 3, 25)
+    
     # For own notes:  real screens are 0x20, 0x21, 0x22.  0x23 never shows
     @classmethod
     def MOTHER_BRAIN(cls: Type[T]) -> T:
         ids = [EnemyID.MOTHERBRAIN,
                EnemyID.DISPLAY, EnemyID.DISPLAY, EnemyID.DISPLAY]
         slots = [3, 6, 7, 8]
-        disps = [(0, 0), (-0x50, -0x1F), (-0x10, -0x2F), (0x40, -0x1F)]
+        # disps = [(0, 0), (-0x50, -0x1F), (-0x20, -0x2F), (0x40, -0x1F)]
+        # Tighten up coords to fit better.  AoE still hits screens the same
+        disps = [(0, 0), (-0x38, -0xF), (-0x8, -0x1F), (0x30, -0xF)]
         power = 25
 
         return cls.generic_multi_spot(ids, disps, slots, power)
@@ -306,7 +339,7 @@ def get_default_boss_assignment():
         LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_GOLEM,
         LocID.MANORIA_COMMAND: BossID.YAKRA,
         LocID.KINGS_TRIAL_NEW: BossID.YAKRA_XIII,
-        LocID.ZENAN_BRIDGE: BossID.ZOMBOR,
+        LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR,
         LocID.FACTORY_RUINS_SECURITY_CENTER: BossID.R_SERIES
     }
 
@@ -343,7 +376,9 @@ def get_boss_data_dict():
         BossID.TWIN_GOLEM: LinearScaleBoss.TWIN_GOLEM(),
         BossID.YAKRA: LinearScaleBoss.YAKRA(),
         BossID.YAKRA_XIII: LinearScaleBoss.YAKRA_XIII(),
-        BossID.ZOMBOR: LinearScaleBoss.ZOMBOR()
+        BossID.ZOMBOR: LinearScaleBoss.ZOMBOR(),
+        BossID.MAGUS: LinearScaleBoss.MAGUS(),
+        BossID.BLACK_TYRANO: LinearScaleBoss.BLACK_TYRANO()
     }
 
 
@@ -381,6 +416,10 @@ def linear_scale_stats(stats: EnemyStats,
         [int(min(base_stats[i] + is_scaled[i]*base_stats[i]*scale_factor,
              max_stats[i]))
          for i in range(len(base_stats))]
+
+    # Mother Brain screens go to 0 with some scalings
+    if hp < 1:
+        hp = 1
 
     return replace(stats, hp=hp, level=level, speed=speed, magic=magic,
                    mdef=mdef, offense=offense, defense=defense, xp=xp,
@@ -421,3 +460,4 @@ class SonOfSunScaleBoss(Boss):
         ]
 
         return scaled_stats
+
