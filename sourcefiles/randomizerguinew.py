@@ -157,7 +157,8 @@ class RandoGUI:
         # ]
 
         no_shuffle_bosses = [
-            BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP
+            BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
+            BossID.MAGUS, BossID.BLACK_TYRANO
         ]
 
         for x in no_shuffle_bosses:
