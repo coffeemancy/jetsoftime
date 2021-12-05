@@ -39,8 +39,27 @@ class BossScheme:
         # Shift displacements
         disp_0 = self.disps[0]
         for i in range(len(self.disps)):
-            self.disps[i][0] -= disp_0[0]
-            self.disps[i][1] -= disp_0[1]
+            self.disps[i] = (self.disps[i][0] - disp_0[0],
+                             self.disps[i][1] - disp_0[1])
+
+    def reorder_horiz(self, left=True):
+
+        x_coords = [x[0] for x in self.disps]
+        if left:
+            x_extr = min(x_coords)
+        else:
+            x_extr = max(x_coords)
+
+        x_extr_ind = x_coords.index(x_extr)
+
+        self.reorder(x_extr_ind)
+
+    # Flip a boss's orientation so that bosses like guardian can fit when
+    # they are located on the left/right edges of the screen.
+    def flip_disps(self):
+
+        for ind, disp in enumerate(self.disps):
+            self.disps[ind] = (disp[1], disp[0])
 
 
 # The Boss class combines a BossScheme with whatever data is needed to scale
@@ -132,18 +151,6 @@ class Boss:
     def FLEA_PLUS(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 20)
 
-    # This does virtually nothing since guardian sprite is built into the
-    # background.  Eventually replace with lavos versions?
-    @classmethod
-    def GUARDIAN(cls: Type[T]) -> T:
-        ids = [EnemyID.GUARDIAN, EnemyID.GUARDIAN_BIT,
-               EnemyID.GUARDIAN_BIT]
-        slots = [3, 7, 8]
-        disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
-        power = 15
-
-        return cls.generic_multi_spot(ids, disps, slots, power)
-
     @classmethod
     def GIGA_GAIA(cls: Type[T]) -> T:
         ids = [EnemyID.GIGA_GAIA_HEAD, EnemyID.GIGA_GAIA_LEFT,
@@ -171,6 +178,19 @@ class Boss:
     @classmethod
     def GOLEM_BOSS(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.GOLEM_BOSS, 3, 20)
+
+    # This does virtually nothing since guardian sprite is built into the
+    # background.  Eventually replace with lavos versions?
+    @classmethod
+    def GUARDIAN(cls: Type[T]) -> T:
+        ids = [EnemyID.GUARDIAN, EnemyID.GUARDIAN_BIT,
+               EnemyID.GUARDIAN_BIT]
+        slots = [3, 7, 8]
+        # disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
+        disps = [(0, 0), (-0x3A, -0x08), (0x40, -0x08)]
+        power = 15
+
+        return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
     def HECKRAN(cls: Type[T]) -> T:
@@ -204,7 +224,7 @@ class Boss:
     @classmethod
     def MAGUS(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.MAGUS, 3, 25)
-    
+
     # For own notes:  real screens are 0x20, 0x21, 0x22.  0x23 never shows
     @classmethod
     def MOTHER_BRAIN(cls: Type[T]) -> T:
@@ -213,7 +233,7 @@ class Boss:
         slots = [3, 6, 7, 8]
         # disps = [(0, 0), (-0x50, -0x1F), (-0x20, -0x2F), (0x40, -0x1F)]
         # Tighten up coords to fit better.  AoE still hits screens the same
-        disps = [(0, 0), (-0x38, -0xF), (-0x8, -0x1F), (0x30, -0xF)]
+        disps = [(0, 0), (-0x40, -0xF), (-0x8, -0x1F), (0x38, -0xF)]
         power = 25
 
         return cls.generic_multi_spot(ids, disps, slots, power)
