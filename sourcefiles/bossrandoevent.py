@@ -330,7 +330,14 @@ def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
     # end 1 part
 
     if num_parts > 1:
+
         first_x, first_y = 0xE0, 0x60
+
+        if (
+                EnemyID.GUARDIAN_BIT in boss.ids or
+                EnemyID.MOTHERBRAIN in boss.ids
+        ):
+            boss.reorder_horiz(left=False)
 
         # object to overwrite with new boss ids and coords
         reused_objs = [0xB, 0xC]
@@ -630,6 +637,12 @@ def set_kings_trial_boss(ctrom: CTRom, boss: BossScheme):
     boss_obj = 0xB
     first_x, first_y = 0x40, 0x100
 
+    if (
+                EnemyID.GUARDIAN_BIT in boss.ids or
+                EnemyID.MOTHERBRAIN in boss.ids
+    ):
+        boss.reorder_horiz(left=True)
+
     # show spot is right at the end of obj 0xB, arb 0
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
                               lambda scr: scr.get_function_end(0xB, 3)-1,
@@ -751,7 +764,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
     for x in del_objs:
         script.remove_object(x)
 
-    num_used = min(len(boss.ids), 2)
+    num_used = min(len(boss.ids), 3)
     first_x, first_y = 0x120, 0xC9
 
     # overwrite as many boss objects as possible
@@ -772,6 +785,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
 
     # Add more boss objects if needed.
     calls = bytearray()
+
     for i in range(len(boss_objs), len(boss.ids)):
         obj_id = script.append_copy_object(boss_objs[1])
 
@@ -817,9 +831,19 @@ def set_twin_golem_spot(ctrom: CTRom, boss: BossScheme):
         # The only difficulty is that you need a new slot for the copy
 
         if boss.slots[0] == 3:
-            new_slot = 9
-        else:
+            new_slot = 7
+        elif boss.slots[0] == 6:
             new_slot = 3
+        elif boss.slots[0] == 7:
+            new_slot = 9
+        # Weird exceptions
+        elif boss.ids[0] == EnemyID.GOLEM_BOSS:
+            new_slot = 8
+        elif boss.ids[0] in (EnemyID.NIZBEL, EnemyID.NIZBEL_II,
+                             EnemyID.RUST_TYRANO):
+            new_slot = 6
+        else:
+            new_slot = 7
 
         boss.ids.append(boss.ids[0])
         boss.disps.append((40, 0))
@@ -1780,7 +1804,7 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
 
 def main():
-    with open('./roms/boss_test.sfc', 'rb') as infile:
+    with open('./roms/jets_test.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
     ctrom = CTRom(rom, True)
@@ -1789,16 +1813,18 @@ def main():
         FSWriteType.MARK_FREE
     )
 
-    # Set up New Zenan Bridge.  Then we'll edit it in TF.
     fsrom = ctrom.rom_data
     script_man = ctrom.script_manager
 
+    duplicate_zenan_bridge(ctrom, LocID.ZENAN_BRIDGE_BOSS)
+    set_zenan_bridge_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
     # set_mt_woe_boss(ctrom, Boss.YAKRA().scheme)
     # set_geno_dome_boss(ctrom, Boss.GIGA_GAIA().scheme)
-    set_arris_dome_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
+    # set_arris_dome_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
+    # set_twin_golem_spot(ctrom, Boss.ZOMBOR().scheme)
     ctrom.write_all_scripts_to_rom()
 
-    with open('./roms/boss_test_out.sfc', 'wb') as outfile:
+    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
         outfile.write(ctrom.rom_data.getvalue())
     quit()
 
