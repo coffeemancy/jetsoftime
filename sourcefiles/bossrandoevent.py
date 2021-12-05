@@ -766,6 +766,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
 
     num_used = min(len(boss.ids), 3)
     first_x, first_y = 0x120, 0xC9
+    shift = False
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
@@ -777,7 +778,8 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in arb0 for whatever reason.
-        set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 3)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 3,
+                               shift = shift)
 
     # Remove unused boss objects.  In reverse order of course.
     for i in range(len(boss_objs), len(boss.ids), -1):
@@ -795,7 +797,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
         # The coordinate setting is in arb0
         set_object_coordinates(script, obj_id, new_x, new_y, True,
-                               fn_id=4)
+                               fn_id=4, shift=shift)
 
         # mimic call of other objects
         call = EC.call_obj_function(obj_id, 4, 0, FuncSync.SYNC)
