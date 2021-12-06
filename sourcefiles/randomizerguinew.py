@@ -227,13 +227,23 @@ class RandoGUI:
         filePath = self.get_settings_file()
         if filePath.exists():
             with open(str(filePath), 'rb') as infile:
-                [self.settings, input_file, output_dir] = pickle.load(infile)
+                [settings, input_file, output_dir] = pickle.load(infile)
+                try:
+                    self.settings = settings
+                except ValueError:
+                    tk.messagebox.showinfo(
+                        title='Settings Error',
+                        message='Unable to load saved settings.  This often'
+                        'happens after an update.  Loading defaults.'
+                    )
+                    self.settings = Settings.get_race_presets()
+
                 self.input_file.set(input_file)
                 self.output_dir.set(output_dir)
         else:
             self.settings = Settings.get_new_player_presets()
-            self.input_file.set('test1')
-            self.output_dir.set('test2')
+            self.input_file.set('')
+            self.output_dir.set('')
 
     def gui_vars_to_settings(self):
         '''Turns RandoGUI variables back into Settings object'''
