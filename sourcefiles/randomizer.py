@@ -1,23 +1,13 @@
-from shutil import copyfile
-import struct as st
 import os
-from os import stat
-import pathlib
 import pickle
+import sys
 
 import treasurewriter
 import shopwriter
-import characterwriter as char_slots
-import logicwriter as keyitems
 import logicwriter_chronosanity as logicwriter
 import random as rand
-import ipswriter as bigpatches
-import patcher as patches
-import enemywriter as enemystuff
 import bossrandoevent as bossrando
 import bossscaler
-import techwriter as tech_order
-import randomizergui as gui
 import tabchange as tabwriter
 import fastmagic
 import charrando
@@ -85,7 +75,6 @@ class Randomizer:
     # Should this exist now that config is a property?
     def set_config(self, config: cfg.RandoConfig):
         self.config = config
-
         # TODO: Are there any sanity checks to apply to the config?
 
     # Given the settings passed to the randomizer, give the randomizer a
@@ -136,6 +125,9 @@ class Randomizer:
         # Chronosanity
         logicwriter.commitKeyItems(self.settings, self.config)
 
+        # Now go write LW extra items if need be
+        treasurewriter.add_lw_key_item_gear(self.settings, self.config)
+        
         # Shops
         shopwriter.write_shops_to_config(self.settings, self.config)
 
@@ -512,8 +504,6 @@ class Randomizer:
                 file_object.write(part_str+'\n')
             file_object.write('\n')
 
-        
-
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
         file_object.write("--------------------\n")
@@ -697,173 +687,241 @@ class Randomizer:
 
 
 def read_names():
-        p = open("names.txt","r")
-        names = p.readline()
-        names = names.split(",")
-        p.close()
-        return names
+    p = open("names.txt", "r")
+    names = p.readline()
+    names = names.split(",")
+    p.close()
+    return names
 
-# Script variables
-flags = ""
-sourcefile = ""
-outputfolder = ""
-difficulty = ""
-glitch_fixes = ""
-#fast_move = ""
-#sense_dpad = ""
-lost_worlds = ""
-boss_scaler = ""
-zeal_end = ""
-quick_pendant = ""
-locked_chars = ""
-tech_list = ""
-seed = ""
-tech_list = ""
-unlocked_magic = ""
-quiet_mode = ""
-chronosanity = ""
-tab_treasures = ""
-boss_rando = ""
-shop_prices = ""
-duplicate_chars = ""
+
 #
 # Handle the command line interface for the randomizer.
-#   
-def command_line():
-     global flags
-     global sourcefile
-     global outputfolder
-     global difficulty
-     global glitch_fixes
-#     global fast_move
-#     global sense_dpad
-     global lost_worlds
-     global boss_scaler
-     global zeal_end
-     global quick_pendant
-     global locked_chars
-     global tech_list
-     global seed
-     global tech_list_balanced
-     global unlocked_magic
-     global quiet_mode
-     global chronosanity
-     global tab_treasures
-     global boss_rando
-     global shop_prices
-     global duplicate_chars
-     global same_char_techs
-     global char_choices
-     
-     flags = ""
-     sourcefile = input("Please enter ROM name or drag it onto the screen.")
-     sourcefile = sourcefile.strip("\"")
-     if sourcefile.find(".sfc") == -1:
-         if sourcefile.find(".smc") == - 1:
-             input("Invalid File Name. Try placing the ROM in the same folder as the randomizer. Also, try writing the extension(.sfc/smc).")
-             exit()
-     outputfolder = os.path.dirname(sourcefile)
-     seed = input("Enter seed(or leave blank if you want to randomly generate one).")
-     if seed is None or seed == "":
+#
+def generate_from_command_line():
+
+    sourcefile, outputfolder = get_input_file_from_command_line()
+
+    # note ext contains the '.'
+    _, ext = os.path.splitext(sourcefile)
+
+    with open(sourcefile, 'rb') as infile:
+        rom = infile.read()
+
+    if not CTRom.validate_ct_rom_bytes(rom):
+        print(
+            'Warning: File provided is not a vanilla CT ROM.  Proceed '
+            'anyway?  Randomization is likely to fail. (Y/N)'
+        )
+        proceed = (input().upper() == 'Y')
+
+        if not proceed:
+            raise SystemExit()
+
+    settings = get_settings_from_command_line()
+    rando = Randomizer(rom, is_vanilla=False,
+                       settings=settings,
+                       config=None)
+
+    rando.set_random_config()
+    out_rom = rando.get_generated_rom()
+
+    base_name = os.path.basename(sourcefile)
+    flag_string = settings.get_flag_string()
+    out_name = f"{base_name}.{flag_string}.{settings.seed}{ext}"
+    out_path = os.path.join(outputfolder, out_name)
+
+    with open(out_path, 'wb') as outfile:
+        outfile.write(out_rom)
+
+    print(f"generated: {out_path}")
+
+
+def get_input_file_from_command_line() -> (str, str):
+    sourcefile = input("Please enter ROM name or drag it onto the screen.")
+
+    # When dragging, bash puts \' around the path.  Remove if present.
+    quotes = ('\'', '\"')
+    print(sourcefile[0], sourcefile[-2])
+    if sourcefile[0] in quotes and sourcefile[-2] in quotes:
+        sourcefile = sourcefile[1:-2]
+
+    _, extension = os.path.splitext(sourcefile)
+
+    if not os.path.isfile(sourcefile):
+        input("Error: File does not exist.")
+        exit()
+
+    print(extension)
+    if extension not in ('.sfc', '.smc'):
+        input(
+            "Invalid File Name. "
+            "Try placing the ROM in the same folder as the randomizer. "
+            "Also, try writing the extension(.sfc/smc)."
+        )
+        exit()
+
+    # In theory ask for alternate output folder, but for now just place in
+    # the same one.
+    outputfolder = os.path.dirname(sourcefile)
+    print(
+        "The output ROM will be placed in the same folder:"
+        "f\n\t{outputfolder}"
+    )
+
+    return sourcefile, outputfolder
+
+
+def get_settings_from_command_line() -> rset.Settings:
+    settings = rset.Settings()
+    settings.gameflags = rset.GameFlags(False)
+
+    seed = input(
+            "Enter seed(or leave blank if you want to randomly generate one)."
+    )
+    if seed is None or seed == "":
         names = read_names()
         seed = "".join(rand.choice(names) for i in range(2))
-     rand.seed(seed)
-     difficulty = input(f"Choose your difficulty \nEasy(e)/Normal(n)/Hard(h)")
-     if difficulty == "n":
-         difficulty = "normal"
-     elif difficulty == "e":
-         difficulty = "easy"
-     else:
-         difficulty = "hard"
-     flags = flags + difficulty[0]
-     glitch_fixes = input("Would you like to disable (most known) glitches(g)? Y/N ")
-     glitch_fixes = glitch_fixes.upper()
-     if glitch_fixes == "Y":
-        flags = flags + "g" 
-     #fast_move = input("Would you like to move faster on the overworld/Epoch(s)? Y/N ")
-     #fast_move = fast_move.upper()
-     #if fast_move == "Y":
-     #   flags = flags + "s"
-     #sense_dpad = input("Would you like faster dpad inputs in menus(d)? Y/N ")
-     #sense_dpad = sense_dpad.upper()
-     #if sense_dpad == "Y":
-     #   flags = flags + "d"
-     lost_worlds = input("Would you want to activate Lost Worlds(l)? Y/N ")
-     lost_worlds = lost_worlds.upper()
-     if lost_worlds == "Y":
-         flags = flags + "l"
-     boss_scaler = input("Do you want bosses to scale with progression(b)? Y/N ")
-     boss_scaler = boss_scaler.upper()
-     if boss_scaler == "Y":
-        flags = flags + "b"
-     boss_rando = input("Do you want randomized bosses(ro)? Y/N ")
-     boss_rando = boss_rando.upper()
-     if boss_rando == "Y":
-        flags = flags + "ro"     
-     zeal_end = input("Would you like Zeal 2 to be a final boss? Note that defeating Lavos still ends the game(z). Y/N ")
-     zeal_end = zeal_end.upper()
-     if zeal_end == "Y":
-        flags = flags + "z"
-     if lost_worlds == "Y":
-        pass
-     else:
-         quick_pendant = input("Do you want the pendant to be charged earlier(p)? Y/N ")
-         quick_pendant = quick_pendant.upper()
-         if quick_pendant == "Y":
-            flags = flags + "p"
-     locked_chars = input("Do you want characters to be further locked(c)? Y/N ")
-     locked_chars = locked_chars.upper()
-     if locked_chars == "Y":
-        flags = flags + "c"
-     tech_list = input("Do you want to randomize techs(te)? Y/N ")
-     tech_list = tech_list.upper()
-     if tech_list == "Y":
-         flags = flags + "te"
-         tech_list = "Fully Random"
-         tech_list_balanced = input("Do you want to balance the randomized techs(tex)? Y/N ")
-         tech_list_balanced = tech_list_balanced.upper()
-         if tech_list_balanced == "Y":
-            flags = flags + "x"
-            tech_list = "Balanced Random"
-     unlocked_magic = input("Do you want the ability to learn all techs without visiting Spekkio(m)? Y/N")
-     unlocked_magic = unlocked_magic.upper()
-     if unlocked_magic == "Y":
-         flags = flags + "m"
-     quiet_mode = input("Do you want to enable quiet mode (No music)(q)? Y/N")
-     quiet_mode = quiet_mode.upper()
-     if quiet_mode == "Y":
-         flags = flags + "q"
-     chronosanity = input("Do you want to enable Chronosanity (key items can appear in chests)? (cr)? Y/N")
-     chronosanity = chronosanity.upper()
-     if chronosanity == "Y":
-         flags = flags + "cr"
-     duplicate_chars = input("Do you want to allow duplicte characters?")
-     duplicate_chars = duplicate_chars.upper()
-     if duplicate_chars == "Y":
-         flags = flags + "dc"
-         same_char_techs = \
-             input("Should duplicate characters learn dual techs? Y/N ")
-     else:
-         same_char_techs = "N"
 
-     tab_treasures = input("Do you want all treasures to be tabs(tb)? Y/N ")
-     tab_treasures = tab_treasures.upper()
-     if tab_treasures == "Y":
-        flags = flags + "tb"
-     shop_prices = input("Do you want shop prices to be Normal(n), Free(f), Mostly Random(m), or Fully Random(r)?")
-     shop_prices = shop_prices.upper()
-     if shop_prices == "F":
-        shop_prices = "Free"
-        flags = flags + "spf"
-     elif shop_prices == "M":
-        shop_prices = "Mostly Random"
-        flags = flags + "spm"
-     elif shop_prices == "R":
-        shop_prices = "Fully Random"
-        flags = flags + "spr"
-     else:
-        shop_prices = "Normal"
-    
+    settings.seed = seed
+
+    # Difficulty (now separated between item/enemy but only in gui)
+    difficulty = input("Choose your difficulty \nEasy(e)/Normal(n)/Hard(h) ")
+    difficulty = difficulty.lower()
+    if difficulty == "n":
+        settings.item_difficulty = rset.Difficulty.NORMAL
+        settings.enemy_difficulty = rset.Difficulty.NORMAL
+    elif difficulty == "e":
+        settings.item_difficulty = rset.Difficulty.EASY
+        settings.enemy_difficulty = rset.Difficulty.NORMAL
+    elif difficulty == 'h':
+        settings.item_difficulty = rset.Difficulty.HARD
+        settings.enemy_difficulty = rset.Difficulty.HARD
+    else:
+        print('Invalid selection.  Defaulting to normal')
+        settings.item_difficulty = rset.Difficulty.NORMAL
+        settings.enemy_difficulty = rset.Difficulty.NORMAL
+
+    glitch_fixes = input(
+        "Would you like to disable (most known) glitches(g)? Y/N "
+    )
+    glitch_fixes = glitch_fixes.upper()
+    if glitch_fixes == "Y":
+        settings.gameflags |= rset.GameFlags.FIX_GLITCH
+
+    lost_worlds = input("Would you want to activate Lost Worlds(l)? Y/N ")
+    lost_worlds = lost_worlds.upper()
+    if lost_worlds == "Y":
+        settings.gameflags |= rset.GameFlags.LOST_WORLDS
+
+    boss_scaler = input(
+        "Do you want bosses to scale with progression(b)? Y/N "
+    )
+    boss_scaler = boss_scaler.upper()
+    if boss_scaler == "Y":
+        settings.gameflags |= rset.GameFlags.BOSS_SCALE
+
+    boss_rando = input("Do you want randomized bosses(ro)? Y/N ")
+    boss_rando = boss_rando.upper()
+    if boss_rando == "Y":
+        settings.gameflags |= rset.GameFlags.BOSS_RANDO
+
+    zeal_end = input(
+        "Would you like Zeal 2 to be a final boss? "
+        "Note that defeating Lavos still ends the game(z). Y/N "
+    )
+    zeal_end = zeal_end.upper()
+    if zeal_end == "Y":
+        settings.gameflags |= rset.GameFlags.ZEAL_END
+
+    if lost_worlds == "Y":
+        # At the moment, LW is not compatible with fast pendant
+        pass
+    else:
+        quick_pendant = input(
+            "Do you want the pendant to be charged upon entering the "
+            "future(p)? Y/N "
+        )
+        quick_pendant = quick_pendant.upper()
+        if quick_pendant == "Y":
+            settings.gameflags |= rset.GameFlags.FAST_PENDANT
+
+    locked_chars = input(
+        "Do you want characters to be further locked(c)? Y/N "
+    )
+    locked_chars = locked_chars.upper()
+    if locked_chars == "Y":
+        settings.gameflags |= rset.GameFlags.LOCKED_CHARS
+
+    tech_list = input("Do you want to randomize techs(te)? Y/N ")
+    tech_list = tech_list.upper()
+    if tech_list == "Y":
+        settings.techorder = rset.TechOrder.FULL_RANDOM
+        tech_list_balanced = input(
+            "Do you want tech order randomziation to be biased so that "
+            "less useful techs are more likely to appear earlier in the "
+            "tech list (tex)? Y/N "
+        )
+        tech_list_balanced = tech_list_balanced.upper()
+        if tech_list_balanced == "Y":
+            settings.techorder = rset.TechOrder.BALANCED_RANDOM
+    else:
+        settings.techorder = rset.TechOrder.NORMAL
+
+    unlocked_magic = input(
+        "Do you want the ability to learn all techs without visiting "
+        "Spekkio(m)? Y/N "
+    )
+    unlocked_magic = unlocked_magic.upper()
+    if unlocked_magic == "Y":
+        settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
+
+    quiet_mode = input("Do you want to enable quiet mode (No music)(q)? Y/N ")
+    quiet_mode = quiet_mode.upper()
+    if quiet_mode == "Y":
+        settings.gameflags |= rset.GameFlags.QUIET_MODE
+
+    chronosanity = input(
+        "Do you want to enable Chronosanity "
+        "(key items can appear in chests)? (cr)? Y/N "
+    )
+    chronosanity = chronosanity.upper()
+    if chronosanity == "Y":
+        settings.gameflags |= rset.GameFlags.CHRONOSANITY
+
+    duplicate_chars = input("Do you want to allow duplicte characters? ")
+    duplicate_chars = duplicate_chars.upper()
+    if duplicate_chars == "Y":
+        settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
+        same_char_techs = input(
+            "Should duplicate characters learn dual techs? Y/N "
+        ).upper()
+        if same_char_techs == 'Y':
+            settings.gameflags |= rset.GameFlags.DUPLICATE_TECHS
+
+    tab_treasures = input("Do you want all treasures to be tabs(tb)? Y/N ")
+    tab_treasures = tab_treasures.upper()
+    if tab_treasures == "Y":
+        settings.gameflags |= rset.GameFlags.TAB_TREASURES
+
+    shop_prices = input(
+        "Do you want shop prices to be Normal(n), Free(f), Mostly Random(m), "
+        "or Fully Random(r)? "
+    )
+    shop_prices = shop_prices.upper()
+    if shop_prices == "F":
+        settings.shopprices = rset.ShopPrices.FREE
+    elif shop_prices == "M":
+        settings.shopprices = rset.ShopPrices.MOSTLY_RANDOM
+    elif shop_prices == "R":
+        settings.shopprices = rset.ShopPrices.FULLY_RANDOM
+    elif shop_prices == 'N':
+        settings.shopprices = rset.ShopPrices.NORMAL
+    else:
+        print('Invalid Entry.  Defaulting to Normal prices.')
+        settings.shopprices = rset.ShopPrices.NORMAL
+
+    return settings
+
 
 def main():
 
@@ -922,4 +980,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "-c":
+        generate_from_command_line()
+    else:
+        pass

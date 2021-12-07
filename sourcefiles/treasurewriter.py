@@ -3,13 +3,112 @@ from __future__ import annotations
 import random as rand
 
 import ctenums
+import logictypes
 import treasuredata as td
 import randoconfig as cfg
 import randosettings as rset
 
 TID = ctenums.TreasureID
 ItemID = ctenums.ItemID
-    
+
+
+# When LW is selected and Frog/Robo is in the game, add their key item gear
+# (robo ribbon, hero medal, grandleon) to the config.  Must be called after
+# key items and characters are placed.
+def add_lw_key_item_gear(settings: rset.Settings,
+                         config: cfg.RandoConfig):
+
+    if rset.GameFlags.LOST_WORLDS not in settings.gameflags:
+        return
+
+    RecruitID = ctenums.RecruitID
+    lw_char_recruits = [RecruitID.STARTER_1, RecruitID.STARTER_2,
+                        RecruitID.PROTO_DOME, RecruitID.DACTYL_NEST]
+    lw_chars = [x.held_char
+                for x in [
+                    config.char_assign_dict[y] for y in lw_char_recruits
+                ]]
+
+    CharID = ctenums.CharID
+
+    if not (CharID.ROBO in lw_chars or CharID.FROG in lw_chars):
+        return
+
+    # Get a list of all LW TIDs where the gear can go.  For now we're going
+    # to say that those are Chronosanity locations
+
+    # TODO: Can we read this from the logic?
+    lw_tids = [
+        TID.MYSTIC_MT_STREAM, TID.FOREST_MAZE_1, TID.FOREST_MAZE_2,
+        TID.FOREST_MAZE_3, TID.FOREST_MAZE_4, TID.FOREST_MAZE_5,
+        TID.FOREST_MAZE_6, TID.FOREST_MAZE_7, TID.FOREST_MAZE_8,
+        TID.FOREST_MAZE_9, TID.REPTITE_LAIR_REPTITES_1,
+        TID.REPTITE_LAIR_REPTITES_2,
+        TID.DACTYL_NEST_1, TID.DACTYL_NEST_2, TID.DACTYL_NEST_3,
+        TID.MT_WOE_1ST_SCREEN, TID.MT_WOE_2ND_SCREEN_1,
+        TID.MT_WOE_2ND_SCREEN_2, TID.MT_WOE_2ND_SCREEN_3,
+        TID.MT_WOE_2ND_SCREEN_4, TID.MT_WOE_2ND_SCREEN_5,
+        TID.MT_WOE_3RD_SCREEN_1, TID.MT_WOE_3RD_SCREEN_2,
+        TID.MT_WOE_3RD_SCREEN_3, TID.MT_WOE_3RD_SCREEN_4,
+        TID.MT_WOE_3RD_SCREEN_5, TID.MT_WOE_FINAL_1,
+        TID.MT_WOE_FINAL_2, TID.ARRIS_DOME_RATS,
+        TID.ARRIS_DOME_FOOD_STORE, TID.SEWERS_1, TID.SEWERS_2,
+        TID.SEWERS_3, TID.LAB_16_1, TID.LAB_16_2, TID.LAB_16_3,
+        TID.LAB_16_4, TID.LAB_32_1, TID.GENO_DOME_1F_1,
+        TID.GENO_DOME_1F_2, TID.GENO_DOME_1F_3, TID.GENO_DOME_1F_4,
+        TID.GENO_DOME_ROOM_1, TID.GENO_DOME_ROOM_2, TID.GENO_DOME_PROTO4_1,
+        TID.GENO_DOME_PROTO4_2, TID.GENO_DOME_2F_1, TID.GENO_DOME_2F_2,
+        TID.GENO_DOME_2F_3, TID.GENO_DOME_2F_4, TID.FACTORY_LEFT_AUX_CONSOLE,
+        TID.FACTORY_LEFT_SECURITY_RIGHT, TID.FACTORY_LEFT_SECURITY_LEFT,
+        TID.FACTORY_RUINS_GENERATOR, TID.FACTORY_RIGHT_DATA_CORE_1,
+        TID.FACTORY_RIGHT_DATA_CORE_2, TID.FACTORY_RIGHT_FLOOR_TOP,
+        TID.FACTORY_RIGHT_FLOOR_LEFT, TID.FACTORY_RIGHT_FLOOR_BOTTOM,
+        TID.FACTORY_RIGHT_FLOOR_SECRET, TID.FACTORY_RIGHT_CRANE_LOWER,
+        TID.FACTORY_RIGHT_CRANE_UPPER, TID.FACTORY_RIGHT_INFO_ARCHIVE,
+        TID.BANGOR_DOME_SEAL_1, TID.BANGOR_DOME_SEAL_2,
+        TID.BANGOR_DOME_SEAL_3, TID.TRANN_DOME_SEAL_1,
+        TID.TRANN_DOME_SEAL_2, TID.ARRIS_DOME_SEAL_1, TID.ARRIS_DOME_SEAL_2,
+        TID.ARRIS_DOME_SEAL_3, TID.ARRIS_DOME_SEAL_4
+    ]
+
+    lw_key_tids = [
+        TID.REPTITE_LAIR_KEY, TID.MT_WOE_KEY, TID.ARRIS_DOME_KEY,
+        TID.SUN_PALACE_KEY, TID.GENO_DOME_KEY
+    ]
+
+    ItemID = ctenums.ItemID
+    lw_keys = [
+        ItemID.PENDANT, ItemID.RUBY_KNIFE, ItemID.DREAMSTONE,
+        ItemID.CLONE, ItemID.C_TRIGGER
+    ]
+
+    if rset.GameFlags.CHRONOSANITY in settings.gameflags:
+        lw_tids += lw_key_tids
+
+    lw_avail_tids = [x for x in lw_tids
+                     if config.treasure_assign_dict[x].held_item
+                     not in lw_keys]
+
+    added_treasures = []
+    if CharID.FROG in lw_chars:
+        added_treasures += [ItemID.HERO_MEDAL, ItemID.MASAMUNE_2]
+
+    if CharID.ROBO in lw_chars:
+        added_treasures += [ItemID.ROBORIBBON]
+
+    added_tids = rand.sample(lw_avail_tids, len(added_treasures))
+    print(added_tids)
+
+    for ind, tid in enumerate(added_tids):
+        item = added_treasures[ind]
+        config.treasure_assign_dict[tid].held_item = item
+
+        # We use Cronosanity's location types in the spoiler log, so we
+        # sort of hack some new ones on to have the new items.
+        loc = logictypes.Location(tid)
+        loc.setKeyItem(item)
+        config.key_item_locations.append(logictypes.Location(tid))
+
 
 def write_treasures_to_config(settings: rset.Settings,
                               config: cfg.RandoConfig):
