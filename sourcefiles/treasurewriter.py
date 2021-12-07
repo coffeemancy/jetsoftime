@@ -97,7 +97,6 @@ def add_lw_key_item_gear(settings: rset.Settings,
         added_treasures += [ItemID.ROBORIBBON]
 
     added_tids = rand.sample(lw_avail_tids, len(added_treasures))
-    print(added_tids)
 
     for ind, tid in enumerate(added_tids):
         item = added_treasures[ind]
@@ -107,7 +106,7 @@ def add_lw_key_item_gear(settings: rset.Settings,
         # sort of hack some new ones on to have the new items.
         loc = logictypes.Location(tid)
         loc.setKeyItem(item)
-        config.key_item_locations.append(logictypes.Location(tid))
+        config.key_item_locations.append(loc)
 
 
 def write_treasures_to_config(settings: rset.Settings,
