@@ -139,7 +139,7 @@ class Boss:
                EnemyID.ELDER_SPAWN_HEAD]
         slots = [3, 9]
         disps = [(0, 0), (-8, 1)]
-        power = 30
+        power = 40
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -167,7 +167,7 @@ class Boss:
         ids = [EnemyID.GIGA_MUTANT_HEAD, EnemyID.GIGA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 35
+        power = 40
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -188,7 +188,7 @@ class Boss:
         slots = [3, 7, 8]
         # disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
         disps = [(0, 0), (-0x3A, -0x08), (0x40, -0x08)]
-        power = 15
+        power = 20
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -204,7 +204,7 @@ class Boss:
                EnemyID.LAVOS_SPAWN_HEAD]
         slots = [3, 9]
         disps = [(0, 0), (-0x7, 0)]
-        power = 18
+        power = 20
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
@@ -217,7 +217,7 @@ class Boss:
                EnemyID.MEGA_MUTANT_BOTTOM]
         slots = [3, 7]
         disps = [(0, 0), (0, 0)]
-        power = 30
+        power = 40
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -304,7 +304,7 @@ class Boss:
         ids = [EnemyID.TERRA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 35
+        power = 40
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
