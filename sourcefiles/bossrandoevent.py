@@ -637,11 +637,12 @@ def set_kings_trial_boss(ctrom: CTRom, boss: BossScheme):
     boss_obj = 0xB
     first_x, first_y = 0x40, 0x100
 
-    if (
-                EnemyID.GUARDIAN_BIT in boss.ids or
-                EnemyID.MOTHERBRAIN in boss.ids
-    ):
+    if EnemyID.GUARDIAN_BIT in boss.ids:
+        boss.disps[1] = (-0x08, -0x3A)
+        boss.disps[2] = (-0x08, 0x30)
+    elif EnemyID.MOTHERBRAIN in boss.ids:
         boss.reorder_horiz(left=True)
+
 
     # show spot is right at the end of obj 0xB, arb 0
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
@@ -1806,7 +1807,7 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
 
 def main():
-    with open('./roms/jets_test.sfc', 'rb') as infile:
+    with open('./roms/trial_test.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
     ctrom = CTRom(rom, True)
@@ -1818,15 +1819,25 @@ def main():
     fsrom = ctrom.rom_data
     script_man = ctrom.script_manager
 
+    nu_sprite_start = 0x24F600 + 10*EnemyID.NU
+    ctrom.rom_data.seek(nu_sprite_start)
+    nu_sprite = ctrom.rom_data.read(10)
+
+    guardian_sprite_start = 0x24F600 + 10*EnemyID.GUARDIAN
+    ctrom.rom_data.seek(guardian_sprite_start)
+    ctrom.rom_data.write(nu_sprite)
+
+    duplicate_maps_on_ctrom(ctrom)
     duplicate_zenan_bridge(ctrom, LocID.ZENAN_BRIDGE_BOSS)
-    set_zenan_bridge_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
+    set_kings_trial_boss(ctrom, Boss.GUARDIAN().scheme)
+    # set_zenan_bridge_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
     # set_mt_woe_boss(ctrom, Boss.YAKRA().scheme)
     # set_geno_dome_boss(ctrom, Boss.GIGA_GAIA().scheme)
     # set_arris_dome_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
     # set_twin_golem_spot(ctrom, Boss.ZOMBOR().scheme)
     ctrom.write_all_scripts_to_rom()
 
-    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
+    with open('./roms/trial_test_out.sfc', 'wb') as outfile:
         outfile.write(ctrom.rom_data.getvalue())
     quit()
 
