@@ -26,8 +26,6 @@ Windows can directly run 'randomizer.exe' in the 'dist\randomizer' directory.  F
 
 Lastly, if you're having trouble running the executable, you can try using the online seed generator at http://anguirel.ddns.net/jot/.  The online generator only supports up to version 3.1.
 
-Lastly, if you're having trouble running the executable, you can try using the online seed generator.
-
 --CREDITS--
 
 Designers: Anskiy, Abyssonym, Pseudoarc, Anguirel
