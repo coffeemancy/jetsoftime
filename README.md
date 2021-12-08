@@ -36,6 +36,6 @@ Developers: Anskiy, Abyssonym, Myself086, Anguirel, FutureForce14, gameboyf9, Ps
 
 Technical Assistance: Mauron, Myself086, Lagolunatic, Psuedoarc
 
-Notable Testers: Muppetsinspace, MisterLichTV, TheBigSalarius, proccy, boozewizard, Korenth, Taco Hero, silverneo, many others(Sorry if I forgot your name!)
+Notable Testers: Muppetsinspace, MisterLichTV, TheBigSalarius, proccy, boozewizard, Korenth, Taco Hero, silverneo, franklin, and many others(Sorry if I forgot your name!)
 
 Guides: MisterLichTV, TrintonGL
