@@ -558,7 +558,7 @@ class Randomizer:
         #   - Tech data for TechDB
         #   - Item data (including prices) for shops
         # patch_codebase.txt may not be needed
-        # rom_data.patch_ips_file('./patch.ips')
+        #rom_data.patch_ips_file('./patch.ips')
         rom_data.patch_ips_file('./patch-beta.ips')
         rom_data.patch_txt_file('./patches/patch_codebase.txt')
 
@@ -602,7 +602,8 @@ class Randomizer:
         # marked free space.  For now we keep with 3.1 and apply the
         # mysticmtnfix.ips to restore the event.
         if rset.GameFlags.LOST_WORLDS in flags:
-            rom_data.patch_ips_file('./patches/lost.ips')
+            rom_data.patch_ips_file('./patches/lost-beta.ips')
+            # rom_data.patch_ips_file('./patches/lost.ips')
             rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
@@ -765,7 +766,7 @@ def get_input_file_from_command_line() -> (str, str):
     outputfolder = os.path.dirname(sourcefile)
     print(
         "The output ROM will be placed in the same folder:"
-        "f\n\t{outputfolder}"
+        f"\n\t{outputfolder}"
     )
 
     return sourcefile, outputfolder
