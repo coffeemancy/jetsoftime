@@ -144,6 +144,7 @@ class RandoGUI:
         self.dc_page = self.get_dc_page()
         self.qol_page = self.get_qol_page()
         self.cosmetic_page = self.get_cosmetic_page()
+        self.experimental_page = self.get_experimental_page()
 
         # The boss rando page is a little different because the Tk.Listbox
         # does not use an underlying variable.  Instead the
@@ -178,6 +179,7 @@ class RandoGUI:
         self.notebook.add(self.ro_page, text='RO')
         self.notebook.add(self.qol_page, text='QoL')
         self.notebook.add(self.cosmetic_page, text='Cos')
+        self.notebook.add(self.experimental_page, text='Exp')
 
         # This can only be called after all of the widgets are initialized
         self.load_settings_file()
@@ -1645,6 +1647,26 @@ class RandoGUI:
             'Players are not frozen in place when tabs are picked up.  '
             'The power tab on the Death Peak entrance is the only '
             'exception.'
+        )
+
+        return frame
+
+    def get_experimental_page(self):
+        frame = ttk.Frame(self.notebook)
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Beta Logic',
+            variable=self.flag_dict[GameFlags.BETA_LOGIC]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Players can travel to 12,000 BC after reaching the End of Time. '
+            'Skyways are not enabled until either Black Tyrano or Magus is '
+            ' defeated. '
+            'Frog go mode no longer opens up 12,000 BC in the logic. '
         )
 
         return frame

@@ -254,7 +254,7 @@ class Randomizer:
     def __write_out_rom(self):
         '''Given config and settings, write to self.out_rom'''
         self.out_rom = CTRom(self.base_ctrom.rom_data.getvalue(), True)
-        self.__apply_basic_patches(self.out_rom)
+        self.__apply_basic_patches(self.out_rom, self.settings)
         self.__apply_settings_patches(self.out_rom, self.settings)
         self.__apply_cosmetic_patches(self.out_rom, self.settings)
 
@@ -273,20 +273,22 @@ class Randomizer:
         # 1) Set magic learning at game start depending on character assignment
         telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
 
-        # 3.1.1 Change:
-        # The only relevant script change with 3.1.1 is setting the 0x80 bit
-        # of 0x7f0057 for the skyway logic in the Telepod Exhibit script.
-        EC = ctevent.EC
+        if rset.GameFlags.BETA_LOGIC in self.settings.gameflags:
+            # 3.1.1 Change:
+            # The only relevant script change with 3.1.1 is setting the
+            # 0x80 bit of 0x7f0057 for the skyway logic in the Telepod
+            # Exhibit script.
+            EC = ctevent.EC
 
-        # set flag cmd -- too lazy to make an EC function for this
-        cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
-        start = telepod_event.get_function_start(0x0E, 0x04)
-        end = telepod_event.get_function_end(0x0E, 0x04)
+            # set flag cmd -- too lazy to make an EC function for this
+            cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
+            start = telepod_event.get_function_start(0x0E, 0x04)
+            end = telepod_event.get_function_end(0x0E, 0x04)
 
-        # Set the flag right before the screen darkens
-        pos = telepod_event.find_exact_command(EC.fade_screen(),
-                                               start, end)
-        telepod_event.insert_commands(cmd.to_bytearray(), pos)
+            # Set the flag right before the screen darkens
+            pos = telepod_event.find_exact_command(EC.fade_screen(),
+                                                   start, end)
+            telepod_event.insert_commands(cmd.to_bytearray(), pos)
 
         # 2) Allows left chest when medal is on non-Frog Frogs
         burrow_event = Event.from_flux('./flux/cr_burrow.Flux')
@@ -344,6 +346,7 @@ class Randomizer:
 
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
+            self.write_settings_spoilers(outfile)
             self.write_key_item_spoilers(outfile)
             self.write_boss_rando_spoilers(outfile)
             self.write_character_spoilers(outfile)
@@ -354,7 +357,7 @@ class Randomizer:
             self.write_price_spoilers(outfile)
 
     def write_settings_spoilers(self, file_object):
-        pass
+        file_object.write(f"Flags: {self.settings.gameflags}\n\n")
 
     def write_key_item_spoilers(self, file_object):
         file_object.write("Key Item Locations\n")
@@ -547,10 +550,20 @@ class Randomizer:
 
         file_object.write('\n')
 
+    # Because switching logic is a feature now, we need a settings object.
+    # Ugly.
     @classmethod
-    def __apply_basic_patches(cls, ctrom: CTRom):
+    def __apply_basic_patches(cls, ctrom: CTRom,
+                              settings: rset.Settings = None):
         '''Apply patches that are always applied to a jets rom.'''
         rom_data = ctrom.rom_data
+
+        if settings is None:
+            # Will give non-beta patch.  Outside of normal randomization,
+            # where a settings object is provided, this function is only
+            # called for dumping a basic config, and this won't change
+            # depending on beta or not.
+            settings = rset.Settings.get_race_presets()
 
         # Apply the patches that always are applied for jets
         # patch.ips makes sure that we have
@@ -558,8 +571,12 @@ class Randomizer:
         #   - Tech data for TechDB
         #   - Item data (including prices) for shops
         # patch_codebase.txt may not be needed
-        #rom_data.patch_ips_file('./patch.ips')
-        rom_data.patch_ips_file('./patch-beta.ips')
+        if rset.GameFlags.BETA_LOGIC in settings.gameflags:
+            rom_data.patch_ips_file('./patch-beta.ips')
+        else:
+            rom_data.patch_ips_file('./patch.ips')
+
+        # 99.9% sure this patch is redundant now
         rom_data.patch_txt_file('./patches/patch_codebase.txt')
 
         # I verified that the following convenience patches which are now
@@ -602,8 +619,10 @@ class Randomizer:
         # marked free space.  For now we keep with 3.1 and apply the
         # mysticmtnfix.ips to restore the event.
         if rset.GameFlags.LOST_WORLDS in flags:
-            rom_data.patch_ips_file('./patches/lost-beta.ips')
-            # rom_data.patch_ips_file('./patches/lost.ips')
+            if rset.GameFlags.BETA_LOGIC in flags:
+                rom_data.patch_ips_file('./patches/lost-beta.ips')
+            else:
+                rom_data.patch_ips_file('./patches/lost.ips')
             rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:

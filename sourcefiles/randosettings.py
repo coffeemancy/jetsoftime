@@ -56,6 +56,7 @@ class GameFlags(Flag):
     DUPLICATE_TECHS = auto()
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
+    BETA_LOGIC = auto()
 
 
 class CosmeticFlags(Flag):
