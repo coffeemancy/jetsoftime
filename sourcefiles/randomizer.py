@@ -507,6 +507,8 @@ class Randomizer:
                 file_object.write(part_str+'\n')
             file_object.write('\n')
 
+        file_object.write(f"Obstacle is {self.config.obstacle_status}\n\n")
+
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
         file_object.write("--------------------\n")

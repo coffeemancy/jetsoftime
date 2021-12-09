@@ -8,7 +8,7 @@ from byteops import to_little_endian, get_value_from_bytes, to_file_ptr
 
 from bossdata import get_boss_data_dict
 from ctenums import ItemID, LocID, TreasureID as TID, CharID, ShopID, \
-    RecruitID, BossID, Element
+    RecruitID, BossID, Element, StatusEffect
 import techdb
 # from ctevent import ScriptManager as SM, Event
 from ctrom import CTRom
@@ -1140,6 +1140,7 @@ class RandoConfig:
 
         self.magus_char = CharID.MAGUS
         self.black_tyrano_element = Element.FIRE
+        self.obstacle_status = StatusEffect.CHAOS
 
         self.key_item_locations = []
 

@@ -8,7 +8,7 @@ import random
 
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import Boss, BossScheme, get_default_boss_assignment
-from ctenums import LocID, BossID, EnemyID, CharID, Element
+from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect
 from enemystats import EnemyStats
 from ctevent import Event, free_event, get_loc_event_ptr
 from ctrom import CTRom
@@ -1679,6 +1679,21 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     for enemy_id in scaled_dict.keys():
         config.enemy_dict[enemy_id] = scaled_dict[enemy_id]
 
+    # We're going to jam obstacle randomization here
+    # Small block to randomize status inflicted by Obstacle/Chaotic Zone
+    SE = StatusEffect
+    rand_num = random.randrange(0, 10, 1)
+
+    #  if rand_num < 2:
+    #      status_effect = rand.choice(1,0x40) #Blind, Poison
+    if rand_num < 8:
+        status_effect = random.choice(
+            [SE.SLEEP, SE.LOCK, SE.SLOW])
+    else:
+        status_effect = random.choice([SE.CHAOS, SE.STOP])     # Chaos, Stop
+
+    config.obstacle_status = status_effect
+
 
 # Magus gets random hp and a random character sprite (ctenums.CharID)
 # Black Tyrano gets random hp and a random element (ctenums.Element)
@@ -1804,6 +1819,16 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
                 # print(f"Writing {boss_id} to {loc}")
                 # print(f"{boss_scheme}")
                 assign_fn(ctrom, boss_scheme)
+
+    # Jam in the obstacle writing here
+    # Enemy tech effects start at 0xC7AC9, 12 bytes each.
+    # Obstacle is tech 0x58 which happens to use effect header 0x58
+    # Byte 2 (0-ind) has the status bits.  These are reflected in the
+    # ctenums.StatusEffect values.
+
+    # 0xC7AC9 + 0xC*0x58 + 0x2 = 0xC7EEB
+    ctrom.rom_data.seek(0xC7EEB)
+    ctrom.rom_data.write(bytes([config.obstacle_status]))
 
 
 def main():

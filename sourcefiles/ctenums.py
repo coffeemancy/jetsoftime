@@ -201,6 +201,7 @@ class LocID(StrIntEnum):
     DACTYL_NEST_UPPER = 0x126
     COURTROOM_LOBBY = 0x1B9
     KINGS_TRIAL = 0x1B6
+    BANGOR_DOME = 0xD0
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
@@ -1273,3 +1274,11 @@ class TechID(StrIntEnum):
     DARK_MIST = 0x36
     ANTI_LIFE = 0x37
     DARK_MATTER = 0x38
+
+
+class StatusEffect(StrIntEnum):
+    SLEEP = 0x2
+    CHAOS = 0x4
+    LOCK = 0x8
+    SLOW = 0x20
+    STOP = 0x80
