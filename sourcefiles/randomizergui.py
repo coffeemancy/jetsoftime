@@ -1688,7 +1688,7 @@ class RandoGUI:
 
         checkbox = tk.Checkbutton(
             frame,
-            text='Fast Tabs',
+            text='Death Peak Alt Music',
             variable=self.cosmetic_flag_dict[
                 CosmeticFlags.DEATH_PEAK_ALT_MUSIC
             ]
