@@ -165,7 +165,8 @@ class Settings:
         ret.shopprices = ShopPrices.NORMAL
         ret.techorder = TechOrder.FULL_RANDOM
 
-        ret.gameflags = (GameFlags.LOST_WORLDS |
+        ret.gameflags = (GameFlags.FIX_GLITCH |
+                         GameFlags.LOST_WORLDS |
                          GameFlags.ZEAL_END)
 
         ret.seed = ''
@@ -180,7 +181,8 @@ class Settings:
         ret.shopprices = ShopPrices.NORMAL
         ret.techorder = TechOrder.BALANCED_RANDOM
 
-        ret.gameflags = (GameFlags.BOSS_SCALE |
+        ret.gameflags = (GameFlags.FIX_GLITCH |
+                         GameFlags.BOSS_SCALE |
                          GameFlags.LOCKED_CHARS)
 
         ret.seed = ''
