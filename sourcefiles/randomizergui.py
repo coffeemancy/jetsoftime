@@ -395,8 +395,9 @@ class RandoGUI:
     # have been chosen
     def verify_settings(self):
         if self.flag_dict[GameFlags.LOST_WORLDS].get() == 1:
-            self.flag_dict[GameFlags.FAST_PENDANT].set(0)
-            self.fast_pendant_checkbox.config(state=tk.DISABLED)
+            pass
+            # self.flag_dict[GameFlags.FAST_PENDANT].set(0)
+            # self.fast_pendant_checkbox.config(state=tk.DISABLED)
         else:
             self.fast_pendant_checkbox.config(state=tk.NORMAL)
 
