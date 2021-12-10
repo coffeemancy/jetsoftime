@@ -202,6 +202,8 @@ class LocID(StrIntEnum):
     COURTROOM_LOBBY = 0x1B9
     KINGS_TRIAL = 0x1B6
     BANGOR_DOME = 0xD0
+    ARRIS_DOME_LOWER_COMMONS = 0xD9
+    TRANN_DOME = 0xD2
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
