@@ -658,11 +658,7 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
-
         # Test to make sure the settings have LW/CR set?
-        
-        # locked characters don't matter in Lost Worlds item placement logic
-        # early pendant charge doesn't work in this mode
 
     def initKeyItems(self):
         # Since almost all checks are available from the start, no weighting is
