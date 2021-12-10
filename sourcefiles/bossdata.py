@@ -312,8 +312,8 @@ class Boss:
     def TWIN_GOLEM(cls: Type[T]) -> T:
         ids = [EnemyID.TWIN_GOLEM, EnemyID.TWIN_GOLEM]
         slots = [3, 6]
-        disps = [(-20, 0), (20, 0)]
-        power = 30
+        disps = [(0, 0), (0x20, 0)]
+        power = 40  # Should match mutant power
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod

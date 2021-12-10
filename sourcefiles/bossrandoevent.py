@@ -1553,6 +1553,10 @@ def duplicate_maps(fsrom: FS):
 def write_assignment_to_config(settings: rset.Settings,
                                config: cfg.RandoConfig):
 
+    if rset.GameFlags.BOSS_RANDO not in settings.gameflags:
+        config.boss_assign_dict = get_default_boss_assignment()
+        return
+
     boss_settings = settings.ro_settings
 
     if boss_settings.preserve_parts:
@@ -1665,14 +1669,18 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         orig_boss = orig_data[default_assignment[location]]
         new_boss = orig_data[current_assignment[location]]
 
+        # When a one part boss is put into the twin golem spot, instead of
+        # scaling to power AND doubling, scale to 75% of twin golem power,
+        # and then double.
+        if EnemyID.TWIN_GOLEM in orig_boss.scheme.ids and \
+           len(new_boss.scheme.ids) > 1:
+            orig_boss.power = int(orig_boss.power*0.75)
+
         scaled_stats = new_boss.scale_relative_to(orig_boss,
                                                   config.enemy_dict)
         # Put the stats in scaled_dict
         for ind, part_id in enumerate(new_boss.scheme.ids):
             scaled_stats[ind].can_sightscope = can_sightscope
-            if can_sightscope:
-                # print(f"Set sightscope on {part_id}.")
-                pass
             scaled_dict[part_id] = scaled_stats[ind]
 
     # Write all of the scaled stats back to config's dict
