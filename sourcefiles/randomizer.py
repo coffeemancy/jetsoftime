@@ -10,6 +10,7 @@ import bossrandoevent as bossrando
 import bossscaler
 import tabchange as tabwriter
 import fastmagic
+import fastpendant
 import charrando
 import roboribbon
 import techrandomizer
@@ -632,7 +633,10 @@ class Randomizer:
             rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
-            rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
+            if rset.GameFlags.LOST_WORLDS in flags:
+                fastpendant.apply_fast_pendant_lw(ctrom, settings)
+            else:
+                rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
 
         # Big TODO:  Unwrap the hard patch into its component changes.
         #            As far as I can tell it's just enemies and starting GP.
