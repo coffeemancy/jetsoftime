@@ -268,27 +268,34 @@ class Randomizer:
 
         # Script changes which can always be made
         Event = ctevent.Event
+        script_manager = self.out_rom.script_manager
         # Some dc flag patches can be added regardless.  No reason not to.
 
         # 1) Set magic learning at game start depending on character assignment
-        telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
+        #    unless LW...because telepod exhibit now has the LW portal change.
 
-        if rset.GameFlags.BETA_LOGIC in self.settings.gameflags:
-            # 3.1.1 Change:
-            # The only relevant script change with 3.1.1 is setting the
-            # 0x80 bit of 0x7f0057 for the skyway logic in the Telepod
-            # Exhibit script.
-            EC = ctevent.EC
+        if rset.GameFlags.LOST_WORLDS not in self.settings.gameflags:
+            telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
 
-            # set flag cmd -- too lazy to make an EC function for this
-            cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
-            start = telepod_event.get_function_start(0x0E, 0x04)
-            end = telepod_event.get_function_end(0x0E, 0x04)
+            if rset.GameFlags.BETA_LOGIC in self.settings.gameflags:
+                # 3.1.1 Change:
+                # The only relevant script change with 3.1.1 is setting the
+                # 0x80 bit of 0x7f0057 for the skyway logic in the Telepod
+                # Exhibit script.
+                EC = ctevent.EC
 
-            # Set the flag right before the screen darkens
-            pos = telepod_event.find_exact_command(EC.fade_screen(),
-                                                   start, end)
-            telepod_event.insert_commands(cmd.to_bytearray(), pos)
+                # set flag cmd -- too lazy to make an EC function for this
+                cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
+                start = telepod_event.get_function_start(0x0E, 0x04)
+                end = telepod_event.get_function_end(0x0E, 0x04)
+
+                # Set the flag right before the screen darkens
+                pos = telepod_event.find_exact_command(EC.fade_screen(),
+                                                       start, end)
+                telepod_event.insert_commands(cmd.to_bytearray(), pos)
+
+            script_manager.set_script(telepod_event,
+                                      ctenums.LocID.TELEPOD_EXHIBIT)
 
         # 2) Allows left chest when medal is on non-Frog Frogs
         burrow_event = Event.from_flux('./flux/cr_burrow.Flux')
@@ -296,9 +303,6 @@ class Randomizer:
         # 3) Start Ruins quest when Grand Leon is on non-Frog Frogs
         choras_cafe_event = Event.from_flux('./flux/cr_choras_cafe.Flux')
 
-        script_manager = self.out_rom.script_manager
-        script_manager.set_script(telepod_event,
-                                  ctenums.LocID.TELEPOD_EXHIBIT)
         script_manager.set_script(burrow_event,
                                   ctenums.LocID.FROGS_BURROW)
         script_manager.set_script(choras_cafe_event,
