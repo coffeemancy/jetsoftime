@@ -22,7 +22,11 @@ def write_config(settings: rset.Settings, config: cfg.RandoConfig):
     # byte on all single techs so that a trip to spekkio is not required.
 
     # Single techs are 1 to 1+7*8
+<<<<<<< HEAD
     for tech in range(1, 1+7*8):
+=======
+    for tech in range(1, 1+7*8+1):
+>>>>>>> b9189e90730445859a4cd916ce7f538afe323941
         magic_byte = tech*control_size
         control_headers[magic_byte] &= 0x7F
 
