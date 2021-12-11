@@ -21,7 +21,8 @@ def write_config(settings: rset.Settings, config: cfg.RandoConfig):
     # a tech requires magic to learn (single techs only). We will unset this
     # byte on all single techs so that a trip to spekkio is not required.
 
-    for tech in range(1, 7*8):
+    # Single techs are 1 to 1+7*8
+    for tech in range(1, 1+7*8+1):
         magic_byte = tech*control_size
         control_headers[magic_byte] &= 0x7F
 
