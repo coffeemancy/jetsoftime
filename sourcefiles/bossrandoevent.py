@@ -682,12 +682,14 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0xFB
     script = ctrom.script_manager.get_script(loc_id)
 
+    print(boss.ids)
+
     # Eyeball in 0xB and rest are flames. 0x10 is hidden in rando.
     # Really, 0x10 should just be removed from the start.
     script.remove_object(0x10)
 
     boss_objs = [0xB, 0xC, 0xD, 0xE, 0xF]
-    num_used = min(len(boss.ids), 2)
+    num_used = min(len(boss.ids), len(boss_objs))
 
     # After the ambush
     first_x, first_y = 0x100, 0x1B0
@@ -700,6 +702,8 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
         new_x = first_x + boss.disps[i][0]
         new_y = first_y + boss.disps[i][1]
 
+        print(boss_id)
+        input()
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[i], new_x, new_y, True)
 
