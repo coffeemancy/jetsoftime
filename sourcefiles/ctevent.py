@@ -245,21 +245,24 @@ class Event:
         ret_script.data = flux[0x18:script_end]
 
         # Now for strings... This is the ugly part.
-        ret_script.strings = []
         num_strings = flux[script_end]
+        ret_script.strings = [
+            ctstrings.CTString.from_ascii('error!{null}')
+            for x in range(num_strings)
+        ]
 
         # a few more blank/unknown bytes after number of strings
         pos = script_end + 4
-        cur_string_ind = 0
-
+        
         while pos < len(flux):
             # print(f"Current string: {cur_string_ind:02X} at {pos+0xCA1:04X}")
             string_ind = flux[pos]
 
-            if string_ind != cur_string_ind:
-                print(f"Expected {cur_string_ind:02X}, found {string_ind:02X}")
-                exit()
-
+            # if string_ind != cur_string_ind:
+            #     print(
+            #         f"Expected {cur_string_ind:02X}, found {string_ind:02X}"
+            #     )
+            #     exit()
             string_len = flux[pos+1]
             pos += 2
 
@@ -290,10 +293,10 @@ class Event:
             ct_str = CTString.from_ascii(cur_string.decode('ascii'))
             ct_str.compress()
 
-            ret_script.strings.append(ct_str)
+            ret_script.strings[string_ind] = ct_str
 
             pos += string_len
-            cur_string_ind += 1
+
         # end while pos < len(flux)
 
         if num_strings != len(ret_script.strings):
