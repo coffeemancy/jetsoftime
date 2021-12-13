@@ -22,7 +22,7 @@ Jets of Time is a remake of Wings of Time, intended to create faster seeds while
 
 --USAGE--
 
-Windows can directly run 'randomizergui.exe' in the 'randomizerguid.dist' directory.  For other platforms, users should run randomizergui.py in the sourcefiles directory.  Python >=3.8 is required and can be obtained for free at https://www.python.org/downloads/. A commandline version can be run by providing the -c flag at runtime (i.e. by running 'python3 randomizergui.py -c' if your python command is 'python3' or 'randomizergui.exe -c' from the command line)
+Windows can directly run 'randomizergui.exe' in the 'randomizergui.dist' directory.  For other platforms, users should run randomizergui.py in the sourcefiles directory.  Python >=3.8 is required and can be obtained for free at https://www.python.org/downloads/. A commandline version can be run by providing the -c flag at runtime (i.e. by running 'python3 randomizergui.py -c' if your python command is 'python3' or 'randomizergui.exe -c' from the command line)
 
 Lastly, if you're having trouble running the executable, you can try using the online seed generator at http://anguirel.ddns.net/jot/.  The online generator only supports up to version 3.1.
 
