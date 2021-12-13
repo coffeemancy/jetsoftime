@@ -130,7 +130,7 @@ class CTString(bytearray):
         'pause linebreak', 'pause linebreak+3',
         'empty dialog', 'page break+3',
         'full break', 'page break',
-        'value8', 'value16', 'value32',
+        'value 8', 'value 16', 'value 32',
         'unused 0x10', 'prev substr', 'tech name',
         'crono', 'marle', 'lucca', 'robo', 'frog', 'ayla',
         'magus', 'crononick', 'pc1', 'pc2', 'pc3', 'nadia',
@@ -157,7 +157,7 @@ class CTString(bytearray):
 
         pos = 0
 
-        while pos < len(str):
+        while pos < len(string):
 
             (char, pos) = cls.get_token(string, pos)
             ct_str.append(char)
