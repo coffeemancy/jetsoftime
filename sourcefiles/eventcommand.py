@@ -179,7 +179,8 @@ class EventCommand:
                    copy_l3: bool = False,
                    copy_props: bool = False,
                    unk_0x10: bool = False,
-                   unk_0x20: bool = False) -> EventCommand:
+                   unk_0x20: bool = False,
+                   wait_vblank: bool = True) -> EventCommand:
 
         if src_left > src_right:
             raise SystemExit('Error, left > right')
@@ -187,7 +188,12 @@ class EventCommand:
         if src_top > src_bot:
             raise SystemError('Error: top > bot')
 
-        ret_cmd = event_commands[0xE5].copy()
+        if wait_vblank:
+            cmd = 0xE4
+        else:
+            cmd = 0xE5
+
+        ret_cmd = event_commands[cmd].copy()
         ret_cmd.args = [0 for i in range(ret_cmd.num_args)]
 
         ret_cmd.args[0:6] = [src_left, src_top, src_right, src_bot,
