@@ -2213,6 +2213,8 @@ def reassign_characters_on_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     rom = bytearray(ctrom.rom_data.read())
 
     extend_techs(rom)
+    scripts.script_extend(rom, 0x5F8100, 0x5F8200)
+    scripts.add_dup_dual_scripts(rom, 0x5F8100, 0x5F8200, 0x5F8400)
 
     space_man = ctrom.rom_data.space_manager
     mark_used = freespace.FSWriteType.MARK_USED
