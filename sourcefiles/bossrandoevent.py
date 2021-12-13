@@ -23,14 +23,6 @@ import randosettings as rset
 import randoconfig as cfg
 
 
-def no_scale(stat: int, from_power: int, to_power: int):
-    return stat
-
-
-def linear_scale(stat: int, from_power: int, to_power: int):
-    return stat*to_power//from_power
-
-
 # Original exponential scaling
 def orig_exp_scale(stat: int, from_power, int, to_power: int):
     tier_diff = to_power - from_power
@@ -196,6 +188,15 @@ def set_giants_claw_boss(ctrom: CTRom, boss: BossScheme):
 
     pos = script.get_object_start(0)
     script.insert_commands(copy_tiles_cmd.to_bytearray(), pos)
+
+    # You need to do the copy in obj0, func1 (activate) too.  This is the
+    # function that gets called after returning from a menu.
+
+    # Change to a wait for vblank version
+    copy_tiles_cmd.command = 0xE4
+    func = EF()
+    func.add(copy_tiles_cmd)
+    script.set_function(0, 1, func)
 
     # First part is in object 0x9, function 0 (init)
     boss_obj = 0x9
@@ -643,7 +644,6 @@ def set_kings_trial_boss(ctrom: CTRom, boss: BossScheme):
     elif EnemyID.MOTHERBRAIN in boss.ids:
         boss.reorder_horiz(left=True)
 
-
     # show spot is right at the end of obj 0xB, arb 0
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
                               lambda scr: scr.get_function_end(0xB, 3)-1,
@@ -780,7 +780,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in arb0 for whatever reason.
         set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 3,
-                               shift = shift)
+                               shift=shift)
 
     # Remove unused boss objects.  In reverse order of course.
     for i in range(len(boss_objs), len(boss.ids), -1):
@@ -919,15 +919,20 @@ def set_mt_woe_boss(ctrom: CTRom, boss: BossScheme):
     pos = script.get_object_start(0)
     copytiles = EC.copy_tiles(2, 1, 0xD, 9, 0x2, 0x11,
                               copy_l1=True, copy_l2=True, copy_l3=True,
-                              copy_props=True)
+                              copy_props=True, wait_vblank=False)
     script.insert_commands(copytiles.to_bytearray(), pos)
+
+    # Copy on return from menu too.
+    copytiles_vblank = copytiles.copy()
+    copytiles_vblank.cmd = 0xE4
+    pos = script.get_function_start(0, 1)
+    script.insert_commands(copytiles_vblank.to_bytearray(), pos)
 
     # delete the loading of melchior
     pos = script.get_function_start(8, 0)
     script.delete_commands(pos, 1)
 
     boss_objs = [0x0A, 0x0B, 0x0C]
-    orig_boss_obj_count = len(boss_objs)
 
     first_x, first_y = 0x80, 0x158
     shift = False  # The original coords are pixel coords, don't correct
@@ -1038,10 +1043,24 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
                                copy_l3=True,
                                copy_props=True,
                                unk_0x10=True,
-                               unk_0x20=True)
+                               unk_0x20=True,
+                               wait_vblank=False)
 
     pos = script.get_object_start(0)
     script.insert_commands(copy_tiles.to_bytearray(), pos)
+
+    # copy the vblank waiting version to obj0 func 1 for post-menu
+    copy_tiles_vblank = EC.copy_tiles(3, 0x11, 0xC, 0x1C,
+                                      3, 2,
+                                      copy_l1=True,
+                                      copy_l3=True,
+                                      copy_props=True,
+                                      unk_0x10=True,
+                                      unk_0x20=True,
+                                      wait_vblank=True)
+
+    pos = script.get_function_start(0, 0)
+    script.insert_commands(copy_tiles_vblank.to_bytearray(), pos)
 
     # first_x, first_y = 0x80, 0xA8
     first_x, first_y = 0x80, 0xC8
@@ -1356,7 +1375,7 @@ def duplicate_zenan_bridge(ctrom: CTRom, dup_loc_id: LocID):
     # would forget to preserve the string index, right?
     string_index = new_script.get_string_index()
     string_index_cmd = EC.set_string_index(string_index)
-    
+
     new_startup_func = EF()
     (
         new_startup_func
