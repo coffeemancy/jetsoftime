@@ -16,6 +16,7 @@ import roboribbon
 import techrandomizer
 import qolhacks
 import cosmetichacks
+import bucketfragment
 
 import ctenums
 import ctevent
@@ -128,7 +129,7 @@ class Randomizer:
 
         # Now go write LW extra items if need be
         treasurewriter.add_lw_key_item_gear(self.settings, self.config)
-        
+
         # Shops
         shopwriter.write_shops_to_config(self.settings, self.config)
 
@@ -149,6 +150,9 @@ class Randomizer:
 
         # Tabs
         tabwriter.write_tabs_to_config(self.settings, self.config)
+
+        # Bucket
+        bucketfragment.write_fragments_to_config(self.settings, self.config)
 
     def rescale_bosses(self):
         '''Reset enemy stats and redo boss scaling.'''
@@ -179,6 +183,20 @@ class Randomizer:
 
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
+
+    def __lavos_ngplus(self):
+        '''Removes a check for dead Mammon Machine on Lavos NG+'''
+        script_man = self.out_rom.script_manager
+        script = script_man.get_script(ctenums.LocID.TESSERACT)
+
+        start = script.get_function_start(0, 0)
+        end = script.get_function_end(0, 0)
+
+        pos, cmd = script.find_command([0x16], start, end)
+        if cmd.args[0:3] == [0xA8, 0x80, 0x86]:
+            script.delete_commands(pos, 1)
+        else:
+            print('failed to find mm flag')
 
     def __try_proto_dome_fix(self):
         '''Removes touch == activate from proto recruit.  Maybe this fixes?'''
@@ -337,6 +355,7 @@ class Randomizer:
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
         self.__try_proto_dome_fix()
+        self.__lavos_ngplus()
 
         self.__write_config_to_out_rom()
 
@@ -652,6 +671,10 @@ class Randomizer:
         if rset.GameFlags.FAST_TABS in flags:
             qolhacks.fast_tab_pickup(ctrom, settings)
 
+        if rset.GameFlags.BUCKET_FRAGMENTS in flags:
+            bucketfragment.set_bucket_function(ctrom, settings)
+            bucketfragment.set_fragment_properties(ctrom)
+
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
                                  settings: rset.Settings):
@@ -963,7 +986,7 @@ def main():
     # settings.char_choices = [[i for i in range(7)] for j in range(7)]
     # settings.char_choices = [[j] for j in range(7)]
     # settings.gameflags |= rset.GameFlags.BOSS_SCALE
-    # settings.gameflags |= rset.GameFlags.CHRONOSANITY
+    settings.gameflags |= rset.GameFlags.CHRONOSANITY
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
     settings.gameflags |= rset.GameFlags.FAST_TABS
     # settings.gameflags |= rset.GameFlags.LOCKED_CHARS
@@ -980,6 +1003,14 @@ def main():
                        settings=settings,
                        config=None)
     rando.set_random_config()
+
+    rando.generate_rom()
+    out_ctrom = rando.out_rom
+
+    rando.write_spoiler_log('bucket_spoilers.txt')
+
+    with open('./roms/bucket_test_out.sfc', 'wb') as outfile:
+        outfile.write(out_ctrom.rom_data.getvalue())
 
     '''
     # Force a given boss in cathedral for testing
@@ -999,6 +1030,8 @@ def main():
     rando.rescale_bosses()
     '''
 
+    quit()
+
     out_rom = rando.get_generated_rom()
 
     seed = settings.seed
@@ -1013,4 +1046,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "-c":
         generate_from_command_line()
     else:
-        pass
+        main()

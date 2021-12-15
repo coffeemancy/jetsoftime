@@ -204,6 +204,8 @@ class LocID(StrIntEnum):
     BANGOR_DOME = 0xD0
     ARRIS_DOME_LOWER_COMMONS = 0xD9
     TRANN_DOME = 0xD2
+    END_OF_TIME = 0x1D0
+    TESSERACT = 0x1DF
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
@@ -489,6 +491,7 @@ class ItemID(StrIntEnum):
     FANGS_2 = 0xE5
     HORNS_2 = 0xE6
     FEATHERS_2 = 0xE7
+    BUCKETFRAG = 0xE8
 
     @classmethod
     def get_key_items(cls):
