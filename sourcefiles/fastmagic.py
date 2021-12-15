@@ -120,7 +120,7 @@ def set_fast_magic(rom):
     control_ptr = get_value_from_bytes(rom[0x01CBA1:0x01CBA1+3])
     control_ptr = to_file_ptr(control_ptr)
 
-    magic_learners = [Char.CRONO, Char.MARLE, Char.LUCCA, Char.FROG]
+    magic_learners = [CharID.CRONO, CharID.MARLE, CharID.LUCCA, CharID.FROG]
 
     for x in magic_learners:
         # Each control header is 11 bytes and each PC has 8 single techs
@@ -146,6 +146,7 @@ def set_fast_magic(rom):
     for x in magic_learners:
         # Set the threshold to 8
         rom[thresh_ptr + x] = 0x08
+
 
 def main():
     with open("test.sfc", 'rb') as file:
