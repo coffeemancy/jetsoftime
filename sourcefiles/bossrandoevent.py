@@ -924,7 +924,7 @@ def set_mt_woe_boss(ctrom: CTRom, boss: BossScheme):
 
     # Copy on return from menu too.
     copytiles_vblank = copytiles.copy()
-    copytiles_vblank.cmd = 0xE4
+    copytiles_vblank.command = 0xE4
     pos = script.get_function_start(0, 1)
     script.insert_commands(copytiles_vblank.to_bytearray(), pos)
 
@@ -1682,7 +1682,11 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # to the config at the very end.
     scaled_dict = dict()
 
-    can_sightscope = settings.ro_settings.enable_sightscope
+    # Make sure can_sightscope is not applied except when Boss Rando is on
+    can_sightscope = (
+        settings.ro_settings.enable_sightscope and
+        rset.GameFlags.BOSS_RANDO in settings.gameflags
+    )
 
     for location in settings.ro_settings.loc_list:
         orig_boss = orig_data[default_assignment[location]]
@@ -1706,6 +1710,30 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     for enemy_id in scaled_dict.keys():
         config.enemy_dict[enemy_id] = scaled_dict[enemy_id]
 
+
+# Magus gets random hp and a random character sprite (ctenums.CharID)
+# Black Tyrano gets random hp and a random element (ctenums.Element)
+def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
+
+    # Make sure can_sightscope is not applied except when Boss Rando is on
+    can_sightscope = (
+        settings.ro_settings.enable_sightscope and
+        rset.GameFlags.BOSS_RANDO in settings.gameflags
+    )
+
+    # Random hp from 10k to 15k
+    config.enemy_dict[EnemyID.MAGUS].hp = random.randrange(10000, 15001, 1000)
+    config.enemy_dict[EnemyID.MAGUS].can_sightscope = can_sightscope
+    config.magus_char = random.choice(list(CharID))
+
+    config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
+        random.randrange(8000, 13001, 1000)
+    config.black_tyrano_element = \
+        random.choice(list(Element))
+
+    config.enemy_dict[EnemyID.BLACKTYRANO].can_sightscope = can_sightscope
+    config.enemy_dict[EnemyID.AZALA].can_sightscope = can_sightscope
+
     # We're going to jam obstacle randomization here
     # Small block to randomize status inflicted by Obstacle/Chaotic Zone
     SE = StatusEffect
@@ -1720,26 +1748,6 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         status_effect = random.choice([SE.CHAOS, SE.STOP])     # Chaos, Stop
 
     config.obstacle_status = status_effect
-
-
-# Magus gets random hp and a random character sprite (ctenums.CharID)
-# Black Tyrano gets random hp and a random element (ctenums.Element)
-def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
-
-    can_sightscope = settings.ro_settings.enable_sightscope
-
-    # Random hp from 10k to 15k
-    config.enemy_dict[EnemyID.MAGUS].hp = random.randrange(10000, 15001, 1000)
-    config.enemy_dict[EnemyID.MAGUS].can_sightscope = can_sightscope
-    config.magus_char = random.choice(list(CharID))
-
-    config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
-        random.randrange(8000, 13001, 1000)
-    config.black_tyrano_element = \
-        random.choice(list(Element))
-
-    config.enemy_dict[EnemyID.BLACKTYRANO].can_sightscope = can_sightscope
-    config.enemy_dict[EnemyID.AZALA].can_sightscope = can_sightscope
 
 
 def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
