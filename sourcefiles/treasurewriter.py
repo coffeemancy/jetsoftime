@@ -21,18 +21,18 @@ def add_lw_key_item_gear(settings: rset.Settings,
     if rset.GameFlags.LOST_WORLDS not in settings.gameflags:
         return
 
-    RecruitID = ctenums.RecruitID
-    lw_char_recruits = [RecruitID.STARTER_1, RecruitID.STARTER_2,
-                        RecruitID.PROTO_DOME, RecruitID.DACTYL_NEST]
-    lw_chars = [x.held_char
-                for x in [
-                    config.char_assign_dict[y] for y in lw_char_recruits
-                ]]
+    # RecruitID = ctenums.RecruitID
+    # lw_char_recruits = [RecruitID.STARTER_1, RecruitID.STARTER_2,
+    #                     RecruitID.PROTO_DOME, RecruitID.DACTYL_NEST]
+    # lw_chars = [x.held_char
+    #             for x in [
+    #                 config.char_assign_dict[y] for y in lw_char_recruits
+    #             ]]
 
-    CharID = ctenums.CharID
+    # CharID = ctenums.CharID
 
-    if not (CharID.ROBO in lw_chars or CharID.FROG in lw_chars):
-        return
+    # if not (CharID.ROBO in lw_chars or CharID.FROG in lw_chars):
+    #     return
 
     # Get a list of all LW TIDs where the gear can go.  For now we're going
     # to say that those are Chronosanity locations
@@ -89,12 +89,15 @@ def add_lw_key_item_gear(settings: rset.Settings,
                      if config.treasure_assign_dict[x].held_item
                      not in lw_keys]
 
-    added_treasures = []
-    if CharID.FROG in lw_chars:
-        added_treasures += [ItemID.HERO_MEDAL, ItemID.MASAMUNE_2]
+    # added_treasures = []
+    # if CharID.FROG in lw_chars:
+    #     added_treasures += [ItemID.HERO_MEDAL, ItemID.MASAMUNE_2]
 
-    if CharID.ROBO in lw_chars:
-        added_treasures += [ItemID.ROBORIBBON]
+    # if CharID.ROBO in lw_chars:
+    #     added_treasures += [ItemID.ROBORIBBON]
+
+    added_treasures = [ItemID.HERO_MEDAL, ItemID.MASAMUNE_2,
+                       ItemID.ROBORIBBON]
 
     added_tids = rand.sample(lw_avail_tids, len(added_treasures))
 
