@@ -18,7 +18,8 @@ from tkinter import messagebox
 import randomizer
 import bossdata
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
-    TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags
+    TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags, \
+    BucketSettings
 from ctenums import LocID, BossID
 import ctrom
 
@@ -106,6 +107,7 @@ class RandoGUI:
         self.shop_prices = tk.StringVar()
         self.tech_order = tk.StringVar()
 
+        # Tab stuff
         self.power_tab_max = tk.IntVar()
         self.power_tab_min = tk.IntVar()
 
@@ -118,6 +120,7 @@ class RandoGUI:
         self.tab_rando_scheme = tk.StringVar()
         self.tab_success_chance = tk.DoubleVar()
 
+        # DC stuff
         # By default, dc puts no restrictions on assignment
         self.char_choices = [[tk.IntVar(value=1) for i in range(7)]
                              for j in range(7)]
@@ -127,6 +130,14 @@ class RandoGUI:
         # ro settings
         self.preserve_part_count = tk.IntVar(value=0)
         self.enable_sightscope = tk.IntVar(value=0)
+
+        # bucket stuff
+        # I cannot create the scales until I have an object to attach them
+        # to.  Putting these lines here just so I know they exist.
+        self.bucket_frag_required_scale = None
+        self.bucket_frag_required = tk.IntVar(value=20)
+        self.bucket_frag_extra_scale = None
+        self.bucket_frag_extra = tk.IntVar(value=10)
 
         # generation variables
         self.seed = tk.StringVar()
@@ -233,7 +244,7 @@ class RandoGUI:
                 [settings, input_file, output_dir] = pickle.load(infile)
                 try:
                     self.settings = settings
-                except ValueError:
+                except (ValueError, AttributeError):
                     tk.messagebox.showinfo(
                         title='Settings Error',
                         message='Unable to load saved settings.  This often'
@@ -314,6 +325,15 @@ class RandoGUI:
             self.enable_sightscope.get() == 1
         )
 
+        # Bucket
+        num_fragments = \
+            self.bucket_frag_required.get() + self.bucket_frag_extra.get()
+
+        self.settings.bucket_settings = BucketSettings(
+            num_fragments=num_fragments,
+            needed_fragments=self.bucket_frag_required.get()
+        )
+
         # print(self.settings.gameflags)
 
     def update_gui_vars(self):
@@ -389,6 +409,14 @@ class RandoGUI:
         self.preserve_part_count.set(int(ro_settings.preserve_parts))
         self.enable_sightscope.set(int(ro_settings.enable_sightscope))
 
+        # Bucket Settings
+        bucket_settings = self.settings.bucket_settings
+        extra_frags = (bucket_settings.num_fragments -
+                       bucket_settings.needed_fragments)
+
+        self.bucket_frag_extra.set(int(extra_frags))
+        self.bucket_frag_required.set(int(bucket_settings.needed_fragments))
+
         self.verify_settings()
 
     # Encodes rules for enabling/disabling options depending on what options
@@ -447,9 +475,6 @@ class RandoGUI:
             frame,
             text="Preset Selection:"
         ).grid(row=row, column=0, sticky=tk.E)
-
-        def silly(settings: Settings):
-            self.settings = settings
 
         # Preset Buttons
         tk.Button(
@@ -1669,6 +1694,70 @@ class RandoGUI:
             ' defeated. '
             'Frog go mode no longer opens up 12,000 BC in the logic. '
         )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Bucket Fragments',
+            variable=self.flag_dict[GameFlags.BUCKET_FRAGMENTS]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'New items called \"Fragments\" are scattered throughout the '
+            'game.  Upon collecting the required amount, the bucket in the '
+            'End of Time will double xp/tp gain and take you to Lavos.'
+        )
+
+        scaleframe = ttk.Frame(frame)
+        label = tk.Label(scaleframe, text='Required:', width=10)
+        label.pack(side=tk.LEFT, anchor=tk.W)
+        self.bucket_frag_required_scale = tk.Scale(
+            scaleframe,
+            from_=0,
+            to=50,
+            length=300,
+            resolution=1,
+            orient=tk.HORIZONTAL,
+            variable=self.bucket_frag_required
+        )
+        CreateToolTip(
+            self.bucket_frag_required_scale,
+            'How many fragments are needed to unlock the bucket.'
+        )
+        CreateToolTip(
+            label,
+            'How many fragments are needed to unlock the bucket.'
+        )
+
+        self.bucket_frag_required_scale.pack(side=tk.LEFT, anchor=tk.E)
+        scaleframe.pack(anchor=tk.W)
+
+        scaleframe = ttk.Frame(frame)
+        label = tk.Label(scaleframe, text='Extra:', width=10)
+        label.pack(side=tk.LEFT, anchor=tk.W)
+        self.bucket_frag_extra_scale = tk.Scale(
+            scaleframe,
+            from_=0,
+            to=50,
+            length=300,
+            resolution=1,
+            orient=tk.HORIZONTAL,
+            variable=self.bucket_frag_extra
+        )
+        CreateToolTip(
+            self.bucket_frag_extra_scale,
+            'How many extra fragments are available.  The total number of '
+            'fragments placed will be fragments needed + extra fragments.'
+        )
+        CreateToolTip(
+            label,
+            'How many extra fragments are available.  The total number of '
+            'fragments placed will be fragments needed + extra fragments.'
+        )
+
+        self.bucket_frag_extra_scale.pack(anchor=tk.E)
+        scaleframe.pack(anchor=tk.W)
 
         return frame
 

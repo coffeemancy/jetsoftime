@@ -57,6 +57,7 @@ class GameFlags(Flag):
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
     BETA_LOGIC = auto()
+    BUCKET_FRAGMENTS = auto()
 
 
 class CosmeticFlags(Flag):
@@ -89,6 +90,12 @@ class ROSettings:
     enable_sightscope: bool = False
 
 
+@dataclass
+class BucketSettings:
+    num_fragments: int = 30
+    needed_fragments: int = 20
+
+
 class Settings:
 
     def __init__(self):
@@ -114,6 +121,7 @@ class Settings:
         # loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
         self.ro_settings = ROSettings(loc_list, boss_list, False, False)
+        self.bucket_settings = BucketSettings(30, 20)
 
         self.tab_settings = TabSettings()
         self.cosmetic_flags = CosmeticFlags(False)
