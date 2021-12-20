@@ -206,6 +206,7 @@ class LocID(StrIntEnum):
     TRANN_DOME = 0xD2
     END_OF_TIME = 0x1D0
     TESSERACT = 0x1DF
+    BLACK_OMEN_ELEVATOR_UP = 0x65
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
