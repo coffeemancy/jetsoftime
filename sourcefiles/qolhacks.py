@@ -216,11 +216,34 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
         slow_tabs[tab].remove_pause(ctrom)
 
 
+def set_guaranteed_drops(ctrom: CTRom, settings: rset.Settings):
+    if rset.GameFlags.GUARANTEED_DROPS not in settings.gameflags:
+        return
+
+    # If charm == drop, item drops are guaranteed.  However, when the
+    # charm and drop are different, there is a chance of no drop.
+    # It looks like CT checks (random_num % 100) <= 90
+    # The check is:
+    # $FD/AC27 C9 5A       CMP #$5A
+    # $FD/AC29 B0 20       BCS $20
+    # Note BCS will branch when the value in >= 0x5A
+    # I don't think it works out to exactly 90% chance of a drop because the
+    # random numbers look to be random in [0, 0xFF].  So it's actually a bit
+    # higher than 90%.
+
+    # Changing 0x5A = 90 to 0x64 = 100 would do it
+    # But let's go for overkill and make it 0xFF.
+    rom = ctrom.rom_data
+    rom.seek(0x3DAC28)
+    rom.write(bytes([0xFF]))
+
+
 # After writing additional hacks, put them here. Based on the settings, they
 # will or will not modify the ROM.
 def attempt_all_qol_hacks(ctrom: CTRom, settings: rset.Settings):
     force_sightscope_on(ctrom, settings)
     fast_tab_pickup(ctrom, settings)
+    set_guaranteed_drops(ctrom, settings)
 
 
 def main():
