@@ -713,6 +713,7 @@ class RandoGUI:
         self.enemy_diff_dropdown = tk.OptionMenu(
             frame, self.enemy_difficulty, *enemy_difficulty_values
         )
+
         self.enemy_diff_dropdown.grid(
             row=row, column=1, sticky=tk.W, columnspan=2
         )
@@ -937,6 +938,7 @@ class RandoGUI:
             self.shop_prices,
             *shop_price_values
         )
+        self.shop_price_dropdown.config(width=20)
         self.shop_price_dropdown.grid(
             row=row, column=1, sticky=tk.W, columnspan=2
         )
@@ -958,6 +960,7 @@ class RandoGUI:
 
         self.tech_order_dropdown = tk.OptionMenu(
             frame, self.tech_order, *tech_order_values)
+        self.tech_order_dropdown.config(width=20)
         self.tech_order_dropdown.grid(
             row=row, column=1, sticky=tk.W, columnspan=2
         )
@@ -1693,6 +1696,20 @@ class RandoGUI:
             'Skyways are not enabled until either Black Tyrano or Magus is '
             ' defeated. '
             'Frog go mode no longer opens up 12,000 BC in the logic. '
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Guaranteed Drops',
+            variable=self.flag_dict[GameFlags.GUARANTEED_DROPS]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'By default, if an enemy has a charm and a drop, the drop is not '
+            'guaranteed when the enemy is defeated.  This flag makes the drop '
+            'guaranteed.'
         )
 
         checkbox = tk.Checkbutton(
