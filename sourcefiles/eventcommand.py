@@ -206,7 +206,9 @@ class EventCommand:
         return ret_cmd
 
     def get_blank_command(cmd_id: int) -> EventCommand:
-        return event_commands[cmd_id].copy()
+        ret_cmd = event_commands[cmd_id].copy()
+        ret_cmd.args = [0 for i in range(ret_cmd.num_args)]
+        return ret_cmd
 
     def generic_zero_arg(cmd_id: int) -> EventCommand:
         ret = event_commands[cmd_id].copy()
