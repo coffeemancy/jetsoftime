@@ -3,6 +3,7 @@
 # flags and update the GameConfig.  Then, the randomizer will write the
 # GameConfig out to the rom.
 from __future__ import annotations
+import json
 
 from byteops import to_little_endian, get_value_from_bytes, to_file_ptr
 
@@ -1144,6 +1145,8 @@ class RandoConfig:
 
         self.key_item_locations = []
 
+        self.omen_elevator_fights = []
+
         self.power_tab_amt = 1
         self.magic_tab_amt = 1
         self.speed_tab_amt = 1
@@ -1163,6 +1166,28 @@ class RandoConfig:
             self.price_manager = PriceManager(rom)
             self.char_manager = CharManager(rom)
             self.techdb = techdb.TechDB.get_default_db(rom)
+
+    def to_json(self, outfile_name):
+        # Make key item dict
+        # self.key_item_locations uses logictypes.Location (and subclasses)
+        # instead of tids because of linked locations
+        key_item_dict = {
+            loc.getName(): str(loc.getKeyItem())
+            for loc in self.key_item_locations
+        }
+
+        for key in key_item_dict:
+            print(f"{key}: {key_item_dict[key]}")
+
+        # Make character location dict
+        char_assign_dict = {
+            str(recruit_spot): str(recruit.held_char)
+            for (recruit_spot, recruit) in self.char_assign_dict.items()
+        }
+
+        for key, val in char_assign_dict.items():
+            print(f"{key}: {val}")
+
 
     @classmethod
     def get_config_from_rom(cls, rom: bytearray):
