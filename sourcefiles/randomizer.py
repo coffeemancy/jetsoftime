@@ -154,6 +154,9 @@ class Randomizer:
         # Bucket
         bucketfragment.write_fragments_to_config(self.settings, self.config)
 
+        # Omen elevator
+        self.__set_omen_elevator_up_config()
+
     def rescale_bosses(self):
         '''Reset enemy stats and redo boss scaling.'''
         if self.settings is None:
@@ -183,6 +186,51 @@ class Randomizer:
 
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
+
+    def __set_omen_elevator_up_config(self):
+        '''Determine which omen up elevator encounters a seed gets.'''
+        # Ruminators, goons, cybots
+        fight_thresh = [0xA0, 0x60, 0x80]
+        fights = [ind for ind, thresh in enumerate(fight_thresh)
+                  if rand.randrange(0, 0x100) < thresh]
+        self.config.omen_elevator_fights = fights
+
+    def __set_omen_elevator_up_ctrom(self, ctrom: CTRom,
+                                     config: cfg.RandoConfig):
+        '''Write omen up elevator encounters to the rom.'''
+        script_man = ctrom.script_manager
+        script = script_man.get_script(ctenums.LocID.BLACK_OMEN_ELEVATOR_UP)
+
+        start = script.get_function_start(0, 0)
+        end = script.get_function_end(0, 0)
+
+        # There are three commands (0x7F) that load a random number.
+        # These random numbers are then compared to some thresholds to
+        # determine whether a fight occurs.
+        pos = start
+        for i in range(3):
+            pos, cmd = script.find_command([0x7F], pos, end)
+            offset = cmd.args[0]
+
+            # Get a val to local mem command
+            new_cmd = ctevent.EC.get_blank_command(0x4F)
+            new_cmd.args[1] = offset
+
+            # If we determined that fight i should occur, store a 0 to the
+            # location that would have held the random number.  It will pass
+            # any threshold.  Otherwise, assign 0xFF to fail any threshold.
+            if i in config.omen_elevator_fights:
+                val = 0
+            else:
+                val = 0xFF
+
+            new_cmd.args[0] = val
+
+            # delete the get random command.  Put in the val-to-mem command.
+            script.delete_commands(pos, 1)
+            script.insert_commands(new_cmd.to_bytearray(),  pos)
+
+            pos += len(new_cmd)
 
     def __lavos_ngplus(self):
         '''Removes a check for dead Mammon Machine on Lavos NG+'''
@@ -269,6 +317,9 @@ class Randomizer:
 
         # tabs
         tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
+
+        # Omen elevator
+        self.__set_omen_elevator_up_ctrom(ctrom, config)
 
     def __write_out_rom(self):
         '''Given config and settings, write to self.out_rom'''
@@ -665,6 +716,9 @@ class Randomizer:
         if rset.GameFlags.VISIBLE_HEALTH in flags:
             qolhacks.force_sightscope_on(ctrom, settings)
 
+        if rset.GameFlags.GUARANTEED_DROPS in flags:
+            qolhacks.set_guaranteed_drops(ctrom, settings)
+
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
             fastmagic.write_ctrom(ctrom, settings)
 
@@ -674,6 +728,7 @@ class Randomizer:
         if rset.GameFlags.BUCKET_FRAGMENTS in flags:
             bucketfragment.set_bucket_function(ctrom, settings)
             bucketfragment.set_fragment_properties(ctrom)
+
 
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
@@ -989,6 +1044,7 @@ def main():
     settings.gameflags |= rset.GameFlags.CHRONOSANITY
     settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
     settings.gameflags |= rset.GameFlags.FAST_TABS
+    settings.gameflags |= rset.GameFlags.GUARANTEED_DROPS
     # settings.gameflags |= rset.GameFlags.LOCKED_CHARS
     # settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
     # settings.gameflags |= rset.GameFlags.LOST_WORLDS
