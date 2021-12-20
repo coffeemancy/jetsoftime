@@ -58,6 +58,7 @@ class GameFlags(Flag):
     FAST_TABS = auto()
     BETA_LOGIC = auto()
     BUCKET_FRAGMENTS = auto()
+    GUARANTEED_DROPS = auto()
 
 
 class CosmeticFlags(Flag):
