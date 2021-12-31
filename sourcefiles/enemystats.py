@@ -26,7 +26,7 @@ class EnemyStats:
     # There are more special flags, but I'm ignoring them for now
     can_sightscope: bool = False
 
-    name: ctstrings.CTString = ctstrings.CTString.from_ascii('Nu')
+    name: str = 'Nu'
 
     def __str__(self):
         ret = ''
@@ -97,6 +97,7 @@ class EnemyStats:
                           xp, gp, drop_item, charm_item, tp, can_sightscope,
                           name)
 
+
     # The stream will just about always be a BytesIO from CTRom.
     # Since we don't have all of the extra flags in EnemyStats, we need
     # to read and modify the flags, hence BufferedRWPair.
@@ -161,53 +162,51 @@ def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
 
 def main():
 
-    EnemyID = ctenums.EnemyID
-
-    # Get enemy names
-    with open('./roms/ct.sfc', 'rb') as infile1:
-        rom1 = infile1.read()
-
-    with open('./roms/jets_test.sfc', 'rb') as infile2:
-        rom2 = infile2.read()
-
-    enemy_name_st = 0x0C6500
-    enemy_name_end = 0x0C6FC9
-
-    name_size = 0x11
-    enemy_names1 = rom1[enemy_name_st:enemy_name_end]
-    enemy_names2 = rom2[enemy_name_st:enemy_name_end]
-
-    for ind in range(0xFB):
-        st = ind*11
-        end = (ind+1)*11
-        
-        name1 = enemy_names1[st:end]
-        name2 = enemy_names2[st:end]
-
-        if name1 != name2:
-            str1 = ctstrings.CTString.ct_bytes_to_ascii(name1)
-            str2 = ctstrings.CTString.ct_bytes_to_ascii(name2)
-
-            print(f"{ind:02X}: {str1} != {str2}")
-
-        # x = ctstrings.CTString.ct_bytes_to_ascii(name).upper()
-        # x = x.replace(' ', '_')
-        # print(f"    {x} = 0x{ind:02X}")
-
-    exit()
-
-    # Read all enemy stats
     with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
+        rom = infile.read()
 
-    stat_dict = dict()
-    for enemy_id in list(EnemyID):
-        print(f"{int(enemy_id):02X}: {enemy_id}")
-        stat_dict[enemy_id] = EnemyStats.from_rom(rom, enemy_id)
+    # Grab the original stats from the rom.
+    EnemyID = ctenums.EnemyID
+    left_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_LEFT)
+    right_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_RIGHT)
+    head = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_HEAD)
 
-    print(stat_dict[EnemyID.MAGUS])
-    exit()
-    
+    # So you can see the original stats
+    print('Original:')
+    print(left_arm)
+    print(right_arm)
+    print(head)
+
+    # Do whatever with stats here.
+    # Do not exceed 255 for most stats.
+    # HP should not exceed 32k or so I think.
+    # Do not exceed 16 speed.
+
+    left_arm.magic = 100
+    left_arm.hp = 10000
+
+    right_arm.magic = 255
+
+    # You need w+b because EnemyStats doesn't handle all flags
+    with open('./roms/jets_test_out.sfc', 'w+b') as outfile:
+        outfile.write(rom)
+        left_arm.write_to_stream(outfile, EnemyID.GIGA_GAIA_LEFT)
+        right_arm.write_to_stream(outfile, EnemyID.GIGA_GAIA_RIGHT)
+        head.write_to_stream(outfile, EnemyID.GIGA_GAIA_HEAD)
+
+        outfile.seek(0)
+        rom = outfile.read()
+
+    # Test to make sure it worked
+    left_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_LEFT)
+    right_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_RIGHT)
+    head = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_HEAD)
+
+    # So you can see the original stats
+    print('Altered:')
+    print(left_arm)
+    print(right_arm)
+    print(head)
 
 
 if __name__ == '__main__':
