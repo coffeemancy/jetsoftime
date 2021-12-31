@@ -9,7 +9,8 @@ from byteops import to_little_endian, get_value_from_bytes, to_file_ptr
 
 from bossdata import get_boss_data_dict
 from ctenums import ItemID, LocID, TreasureID as TID, CharID, ShopID, \
-    RecruitID, BossID, Element, StatusEffect
+    RecruitID, BossID, Element, StatusEffect, EnemyID
+from dataclasses import asdict
 import techdb
 # from ctevent import ScriptManager as SM, Event
 from ctrom import CTRom
@@ -1176,18 +1177,54 @@ class RandoConfig:
             for loc in self.key_item_locations
         }
 
-        for key in key_item_dict:
-            print(f"{key}: {key_item_dict[key]}")
-
         # Make character location dict
         char_assign_dict = {
             str(recruit_spot): str(recruit.held_char)
             for (recruit_spot, recruit) in self.char_assign_dict.items()
         }
 
-        for key, val in char_assign_dict.items():
-            print(f"{key}: {val}")
+        # Make treasure dict
+        treasure_dict = {
+            str(treasure_loc): str(treasure.held_item)
+            for (treasure_loc, treasure) in self.treasure_assign_dict.items()
+        }
 
+        # dataclasses.asdict will turn the enums into strings, so I'm doing
+        # this.  It's awful.
+        def stats_to_dict(stats: enemystats.EnemyStats):
+            statdict = {
+                'hp': stats.hp,
+                'level': stats.level,
+                'speed': stats.speed,
+                'magic': stats.magic,
+                'mdef': stats.mdef,
+                'offense': stats.offense,
+                'defense': stats.defense,
+                'xp': stats.xp,
+                'gp': stats.gp,
+                'drop_item': str(stats.drop_item),
+                'charm_item': str(stats.charm_item),
+                'tp': stats.tp,
+                'can_sightscope': stats.can_sightscope,
+                'name': stats.name
+            }
+            return statdict
+
+        # Make enemies dict
+        enemy_dict = {
+            str(enemy): stats_to_dict(self.enemy_dict[enemy])
+            for enemy in self.enemy_dict
+        }
+
+        json_dict = {
+            'key_items': key_item_dict,
+            'character_locations': char_assign_dict,
+            'treasures': treasure_dict,
+            'enemies': enemy_dict
+        }
+
+        with open(outfile_name, 'w') as json_out:
+            json.dump(json_dict, json_out, indent=4)
 
     @classmethod
     def get_config_from_rom(cls, rom: bytearray):
