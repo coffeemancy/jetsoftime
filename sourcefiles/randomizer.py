@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pickle
 import sys
@@ -155,7 +157,7 @@ class Randomizer:
         bucketfragment.write_fragments_to_config(self.settings, self.config)
 
         # Omen elevator
-        self.__set_omen_elevator_up_config()
+        self.__set_omen_elevators_config()
 
     def rescale_bosses(self):
         '''Reset enemy stats and redo boss scaling.'''
@@ -187,19 +189,25 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
-    def __set_omen_elevator_up_config(self):
+    def __set_omen_elevators_config(self):
         '''Determine which omen up elevator encounters a seed gets.'''
         # Ruminators, goons, cybots
-        fight_thresh = [0xA0, 0x60, 0x80]
-        fights = [ind for ind, thresh in enumerate(fight_thresh)
-                  if rand.randrange(0, 0x100) < thresh]
-        self.config.omen_elevator_fights = fights
+        fight_thresh_up = [0xA0, 0x60, 0x80]
+        fight_thresh_down = [0x80, 0x60, 0xA0]
+        fights_up = [ind for ind, thresh in enumerate(fight_thresh_up)
+                     if rand.randrange(0, 0x100) < thresh]
+        fights_down = [ind for ind, thresh in enumerate(fight_thresh_down)
+                       if rand.randrange(0, 0x100) < thresh]
 
-    def __set_omen_elevator_up_ctrom(self, ctrom: CTRom,
-                                     config: cfg.RandoConfig):
-        '''Write omen up elevator encounters to the rom.'''
+        self.config.omen_elevator_fights_up = fights_up
+        self.config.omen_elevator_fights_down = fights_down
+
+    def __set_omen_elevator_ctrom(self, ctrom: CTRom,
+                                  fights: list[int],
+                                  loc_id: ctenums.LocID):
+        '''Write an omen elevator encounters to the rom.'''
         script_man = ctrom.script_manager
-        script = script_man.get_script(ctenums.LocID.BLACK_OMEN_ELEVATOR_UP)
+        script = script_man.get_script(loc_id)
 
         start = script.get_function_start(0, 0)
         end = script.get_function_end(0, 0)
@@ -219,7 +227,7 @@ class Randomizer:
             # If we determined that fight i should occur, store a 0 to the
             # location that would have held the random number.  It will pass
             # any threshold.  Otherwise, assign 0xFF to fail any threshold.
-            if i in config.omen_elevator_fights:
+            if i in fights:
                 val = 0
             else:
                 val = 0xFF
@@ -231,6 +239,20 @@ class Randomizer:
             script.insert_commands(new_cmd.to_bytearray(),  pos)
 
             pos += len(new_cmd)
+
+    def __set_omen_elevators_ctrom(self, ctrom: CTRom,
+                                   config: cfg.RandoConfig):
+        '''Set both omen elevators'''
+        fights = [config.omen_elevator_fights_down,
+                  config.omen_elevator_fights_up]
+        loc_ids = [ctenums.LocID.BLACK_OMEN_ELEVATOR_DOWN,
+                   ctenums.LocID.BLACK_OMEN_ELEVATOR_UP]
+
+        for x in list(zip(loc_ids, fights)):
+            elev_fights = x[1]
+            elev_loc_id = x[0]
+
+            self.__set_omen_elevator_ctrom(ctrom, elev_fights, elev_loc_id)
 
     def __lavos_ngplus(self):
         '''Removes a check for dead Mammon Machine on Lavos NG+'''
@@ -319,7 +341,7 @@ class Randomizer:
         tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
 
         # Omen elevator
-        self.__set_omen_elevator_up_ctrom(ctrom, config)
+        self.__set_omen_elevators_ctrom(ctrom, config)
 
     def __write_out_rom(self):
         '''Given config and settings, write to self.out_rom'''
@@ -1031,6 +1053,19 @@ def get_settings_from_command_line() -> rset.Settings:
     return settings
 
 
+def test_json():
+    with open('./roms/ct.sfc', 'rb') as infile:
+        rom = infile.read()
+
+    settings = rset.Settings.get_race_presets()
+    settings.seed = 'asdfasf'
+
+    rando = Randomizer(rom, is_vanilla=True,
+                       settings=settings,
+                       config=None)
+    rando.set_random_config()
+    rando.config.to_json('./json/json_test.json')
+
 def main():
 
     with open('./roms/ct.sfc', 'rb') as infile:
@@ -1102,4 +1137,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "-c":
         generate_from_command_line()
     else:
-        main()
+        print("Please run randomizergui.py for a graphical interface. \n"
+              "Either randomizer.py or randomizergui.py can be run with the "
+              "-c option to use\nthe command line.")
