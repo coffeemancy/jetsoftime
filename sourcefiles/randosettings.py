@@ -59,6 +59,7 @@ class GameFlags(Flag):
     BETA_LOGIC = auto()
     BUCKET_FRAGMENTS = auto()
     GUARANTEED_DROPS = auto()
+    BUFF_XSTRIKE = auto()
 
 
 class CosmeticFlags(Flag):
