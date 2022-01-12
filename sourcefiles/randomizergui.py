@@ -1714,6 +1714,18 @@ class RandoGUI:
 
         checkbox = tk.Checkbutton(
             frame,
+            text='Buff X-Strike',
+            variable=self.flag_dict[GameFlags.BUFF_XSTRIKE]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Change X-Strike to use Spincut + Leapslash.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
             text='Bucket Fragments',
             variable=self.flag_dict[GameFlags.BUCKET_FRAGMENTS]
         )
