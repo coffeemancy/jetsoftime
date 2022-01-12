@@ -802,9 +802,26 @@ class Randomizer:
         # using those is the need to update them with every patch.
         ctrom = CTRom(ct_vanilla, True)
         Randomizer.__apply_basic_patches(ctrom)
-        return cfg.RandoConfig.get_config_from_rom(
+        config = cfg.RandoConfig.get_config_from_rom(
             bytearray(ctrom.rom_data.getvalue())
         )
+
+        # Make X-Strike use Spincut+Leapslash
+        if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
+            techdb = config.techdb
+            x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
+            x_strike['control'][5] = int(ctenums.TechID.SPINCUT)
+            x_strike['control'][6] = int(ctenums.TechID.LEAP_SLASH)
+
+            # Crono's techlevel = 4 (spincut)
+            # Frog's techlevel = 5 (leapslash)
+            x_strike['lrn_req'] = [4, 5, 0xFF]
+
+            x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
+            x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
+            techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
+
+        return config
 
     @classmethod
     def get_randmomized_rom(cls,
