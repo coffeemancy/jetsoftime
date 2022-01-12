@@ -206,6 +206,7 @@ class LocID(StrIntEnum):
     TRANN_DOME = 0xD2
     END_OF_TIME = 0x1D0
     TESSERACT = 0x1DF
+    BLACK_OMEN_ELEVATOR_DOWN = 0x64
     BLACK_OMEN_ELEVATOR_UP = 0x65
 
     # Death Peak for music change
@@ -498,10 +499,9 @@ class ItemID(StrIntEnum):
     def get_key_items(cls):
         return [cls.TOMAS_POP, cls.BENT_HILT, cls.BENT_SWORD,
                 cls.DREAMSTONE, cls.RUBY_KNIFE, cls.GATE_KEY,
-                cls.GATE_KEY, cls.PENDANT, cls.JERKY, cls.MOON_STONE,
+                cls.PENDANT, cls.JERKY, cls.MOON_STONE,
                 cls.PRISMSHARD, cls.MASAMUNE_2, cls.CLONE,
                 cls.C_TRIGGER, cls.HERO_MEDAL, cls.ROBORIBBON]
-
 
 # Extracted from Anguirel's Chronosanity code
 # Non-Chronosanity chests checked vs frankin's (?) spreadsheet at
@@ -1280,6 +1280,66 @@ class TechID(StrIntEnum):
     DARK_MIST = 0x36
     ANTI_LIFE = 0x37
     DARK_MATTER = 0x38
+    AURA_WHIRL = 0x39
+    ICE_SWORD = 0x3A
+    ICE_SWORD_2 = 0x3B
+    FIRE_WHIRL = 0x3C
+    FIRE_SWORD = 0x3D
+    FIRE_SWORD_2 = 0x3E
+    ROCKET_ROLL = 0x3F
+    MAX_CYCLONE = 0x40
+    SUPER_VOLT = 0x41
+    X_STRIKE = 0x42
+    SWORD_STREAM = 0x43
+    SPIRE = 0x44
+    DRILL_KICK = 0x45
+    VOLT_BITE = 0x46
+    FALCON_HIT = 0x47
+    ANTIPODE = 0x48
+    ANTIPODE_2 = 0x49
+    ANTIPODE_3 = 0x4A
+    AURA_BEAM = 0x4B
+    ICE_TACKLE = 0x4C
+    CURE_TOUCH = 0x4D
+    ICE_WATER = 0x4E
+    GLACIER = 0x4F
+    DOUBLE_CURE = 0x50
+    TWIN_CHARM = 0x51
+    ICE_TOSS = 0x52
+    CUBE_TOSS = 0x53
+    FIRE_PUNCH = 0x54
+    FIRE_TACKLE = 0x55
+    DOUBLE_BOMB = 0x56
+    FLAME_KICK = 0x57
+    BLAZE_TWISTER = 0x58
+    BLAZE_KICK = 0x59
+    BLADE_TOSS = 0x5A
+    BUBBLE_SNAP = 0x5B
+    CURE_WAVE = 0x5C
+    BOOGIE = 0x5D
+    SPIN_KICK = 0x5E
+    BEAST_TOSS = 0x5F
+    SLURP_KISS = 0x60
+    BUBBLE_HIT = 0x61
+    DROP_KICK = 0x62
+    RED_PIN = 0x63
+    LINE_BOMB = 0x64
+    FROG_FLARE = 0x65
+    DELTA_FORCE = 0x66
+    LIFE_LINE = 0x67
+    ARC_IMPULSE = 0x68
+    GATLING_KICK = 0x69
+    FIRE_ZONE = 0x6A
+    DELTA_STORM = 0x6B
+    FINAL_KICK = 0x6C
+    TRIPLE_RAID = 0x6D
+    TWISTER = 0x6E
+    THREE_D_ATTACK = 0x6F
+    DARK_ETERNAL = 0x70
+    OMEGA_FLARE = 0x71
+    SPIN_STRIKE = 0x72
+    POYOZO_DANCE = 0x73
+    GRAND_DREAM = 0x74
 
 
 class StatusEffect(StrIntEnum):
