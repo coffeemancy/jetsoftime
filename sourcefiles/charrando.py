@@ -111,7 +111,7 @@ def to_ct_str(string):
         elif x.islower():
             ret.append(ord(x)-97+0xBA)
         elif x == ' ':
-            ret.append(0xEF)
+            ret.append(0xFF)
         elif x == ',':
             ret.append(0xED)
 
@@ -747,9 +747,11 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                         # Cr-Cr X-strike
                         x_strike = old_db.get_tech(0x42)
                         x_strike['bat_grp'] = [0, 0, 0xFF]
-                        x_strike['lrn_req'] = [1, 1, 0xFF]
-                        x_strike['control'][6] = 1
-                        x_strike['mmp'] = [1, 1]
+                        x_strike['lrn_req'] = [4, 4, 0xFF]
+                        x_strike['control'][5] = 4
+                        x_strike['control'][6] = 4
+                        x_strike['mmp'] = [4, 4]
+                        x_strike['name'] = get_ct_name('Crono Cross')
 
                         reassign_tech(x_strike, [i, j], reassign)
                         new_db.set_tech(x_strike, to_start_id)
