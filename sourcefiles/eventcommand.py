@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from byteops import to_little_endian, get_value_from_bytes
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 
 
 # Small enum to store the synchronization scheme when a function is called
@@ -9,6 +9,18 @@ class FuncSync(Enum):
     HALT = auto()
     CONT = auto()
     SYNC = auto()
+
+
+class Operation(IntEnum):
+    EQUALS = 0
+    NOT_EQUALS = 1
+    GREATER_THAN = 2
+    LESS_THAN = 3
+    GREATER_OR_EQUAL = 4
+    LESS_OR_EQUAL = 5
+    BITWISE_AND_NONZERO = 6
+    BITWISE_OR_NONZERO = 7
+
 
 class EventCommand:
 
@@ -62,8 +74,13 @@ class EventCommand:
         x = bytearray()
         x.append(self.command)
 
-        x += b''.join(to_little_endian(self.args[i], self.arg_lens[i])
-                      for i in range(len(self.args)))
+        if self.command == 0x4E:
+            x += b''.join(to_little_endian(self.args[i], self.arg_lens[i])
+                          for i in range(len(self.args)-1))
+            x += self.args[-1]
+        else:
+            x += b''.join(to_little_endian(self.args[i], self.arg_lens[i])
+                          for i in range(len(self.args)))
 
         return x
 
@@ -234,6 +251,157 @@ class EventCommand:
     def end_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
 
+    def if_mem_op_value(
+            address: int, operation: Operation,
+            value: int, num_bytes: int,  bytes_jump: int
+    ) -> EventCommand:
+        # TODO: Should do some validation here.  Lots of overlap with
+        #       assign_val_to_mem
+
+        operator = int(operation)
+
+        if address in range(0x7F0000, 0x7F0200):
+            cmd_id = 0x16
+            if num_bytes != 1:
+                print('[0x7F0000, 0x7F0200) range requires 1 byte width.')
+                quit()
+
+            # Accessing the upper 0x100 bytes is done by ORing the operation
+            # with 0x80
+            
+            if address >= 0x7F0100:
+                operator |= 0x80
+
+            offset = address % 0x100
+
+        elif address in range(0x7F0200, 0x7F0400):
+            if address % 2 != 0:
+                print('Warning: Even address required. Rounding down.')
+                address = address - 1
+
+            offset = (address - 0x7F0200) // 2
+            if num_bytes == 1:
+                cmd_id = 0x12
+            elif num_bytes == 2:
+                cmd_id = 0x13
+            else:
+                print('Warning: Bad byte width.  Using 2.')
+                num_bytes = 2
+                cmd_id = 0x13
+
+        ret_cmd = event_commands[cmd_id].copy()
+        ret_cmd.args = [offset, value, operator, bytes_jump]
+
+        return ret_cmd
+
+    def set_storyline_counter(val: int) -> EventCommand:
+        return EventCommand.assign_val_to_mem(val, 0x7F0000, 1)
+    
+    def assign_val_to_mem(
+            val: int, address: int, num_bytes: int
+    ) -> EventCommand:
+        '''
+        Generate an EventCommand that writes val to adddress.
+
+        Paramters:
+        val (int): The value to be written
+        address (int): The address in [0x7E0000, 0x7FFFFF] to write to
+        num_bytes (int):  The number of bytes to write to.  Either 1 or 2.
+
+        Returns:
+        An eventcommand.EventCommand which will perform the write.
+        '''
+
+        # First some validation.
+        # Make sure that num_bytes is 1 or 2.  Otherwise try to guess it from
+        # the value.
+        if num_bytes not in (1, 2):
+            print(f'Warning: num_bytes ({num_bytes}) must be 1 or 2.')
+            if val < (1 << 8):
+                print('Setting num_bytes to 1')
+                num_bytes = 1
+            else:
+                print('Setting num_bytes to 2')
+                num_bytes = 2
+
+        # Make sure that the value fits in num_bytes
+        if val < 0:
+            print(f"Warning: Value ({val} < 0).  Setting to 0.")
+            val = 0
+
+        max_val = (1 << num_bytes*8) - 1
+        if val > max_val:
+            print(f"Warning: Value ({val}) exceeds maximum ({max_val}). "
+                  f"Truncating to {max_val}")
+            input('asdf')
+            val = max_val
+
+        # Make sure that the target address is in RAM - [0x7E0000, 0x7FFFFF]
+        if not (0x7E0000 <= address <= 0x7FFFFF):
+            raise SystemExit(
+                'Address not in RAM memory range [0x7E0000, 0x7FFFFF]'
+            )
+
+        # There are three types of assignments depending on the memory range
+        #   1) Script memory: [0x7F0200, 0x7F03FF]
+        #   2) Bank 7F: [0x7F0000, 0x7FFFFF]
+        #   3) All Ram: [0x7E0000, 0x7FFFFF]
+        # Each range has its own assignment commands with variants for 1 and
+        # 2 bytes.
+        if 0x7F0200 <= address <= 0x7F03FF and address % 2 == 0:
+            if num_bytes == 1:
+                cmd_id = 0x4F
+            else:
+                cmd_id = 0x50
+
+            offset = (address - 0x7F0200) // 2
+            out_cmd = event_commands[cmd_id].copy()
+            out_cmd.args = [val, offset]
+        elif 0x7F0000 <= address <= 0x7FFFFF:
+            if 0x7F0200 <= address <= 0x7F03FF:
+                # This means the user provided an odd adddress so we're
+                # falling back to the bank 7F command
+                print(
+                    f"Warning: address ({address: 06X}) is in script memory "
+                    "but has an odd address.  Using bank 7F command."
+                )
+
+            if num_bytes == 1:
+                out_cmd = event_commands[0x56].copy()
+                offset = (address - 0x7F0000)
+                out_cmd.args = [val, offset]
+            else:
+                print(
+                    "Warning: Using two byte width in bank 7F.  Falling back "
+                    "to full memory command."
+                )
+                out_cmd = event_commands[0x4B].copy()
+                out_cmd.args = [address, val]
+        else:
+            if num_bytes == 1:
+                cmd_id = 0x4A
+            else:
+                cmd_id = 0x4B
+
+            out_cmd = event_commands[cmd_id].copy()
+            out_cmd.args = [address, val]
+
+        return out_cmd
+
+    # Jumps in CT are always encoded as jump-1 because there are no jumps
+    # of 0 bytes.  For now, preserve this behavior in the commands.
+    def jump_back(jump_bytes: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0x11, jump_bytes)
+
+    def jump_forward(jump_bytes: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0x10, jump_bytes)
+
+    def check_active_pc(char_id: int, jump_bytes: int) -> EventCommand:
+        return EventCommand.generic_two_arg(0xD2, char_id, jump_bytes)
+
+    def check_recruited_pc(char_id: int, jump_bytes: int) -> EventCommand:
+        return EventCommand.generic_two_arg(0xCF, char_id, jump_bytes)
+
     #  Here x and y are assumed to be pixel coordinates
     def set_object_coordinates(x: int, y: int,
                                shift: bool = True) -> EventCommand:
@@ -262,6 +430,21 @@ class EventCommand:
     def set_string_index(str_ind_rom: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xB8, str_ind_rom)
 
+    def special_dialog(dialog_id: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0xC8, dialog_id)
+
+    def rename_character(char_id: int) -> EventCommand:
+        return EventCommand.special_dialog(0xC0 | char_id)
+
+    def replace_characters() -> EventCommand:
+        return EventCommand.special_dialog(0x00)
+
+    def text_box(string_id: int, top: bool = True) -> EventCommand:
+        if top:
+            return EventCommand.generic_one_arg(0xC1, string_id)
+        else:
+            return EventCommand.generic_two_arg(0xC2, string_id)
+
     def copy(self) -> EventCommand:
         ret_command = EventCommand(-1, 0, [], [], '', '')
         ret_command.command = self.command
@@ -279,9 +462,18 @@ class EventCommand:
         return 1 + sum(self.arg_lens)
 
     def __str__(self):
-        ret_str = f"{self.command:02X} " + self.name + ' ' + \
-            ' '.join(f"{self.args[i]:0{2*self.arg_lens[i]}X}"
-                     for i in range(len(self.args)))
+
+        if self.command == 0x4E:
+            ret_str = f"{self.command:02X} " + self.name + ' ' + \
+                ' '.join(f"{self.args[i]:0{2*self.arg_lens[i]}X}"
+                         for i in range(len(self.args)-1))
+            ret_str += '('
+            ret_str += ' '.join(f'{x:02X}' for x in self.args[-1])
+            ret_str += ')'
+        else:
+            ret_str = f"{self.command:02X} " + self.name + ' ' + \
+                ' '.join(f"{self.args[i]:0{2*self.arg_lens[i]}X}"
+                         for i in range(len(self.args)))
         return ret_str
 
 
@@ -794,7 +986,7 @@ event_commands[0x4D] = \
 
 # Will need special case in parser
 event_commands[0x4E] = \
-    EventCommand(0x4E, 3, [2, 1, 2],
+    EventCommand(0x4E, 4, [2, 1, 2, 1],
                  ['aaaa: Destination bank address',
                   'bb: Destination bank',
                   'cc: Bytes to copy + 2.  Data follows command.'],
@@ -850,7 +1042,7 @@ event_commands[0x55] = \
                  'Assign storyline counter to local memory.')
 
 event_commands[0x56] = \
-    EventCommand(0x56, 2, [2, 1],
+    EventCommand(0x56, 2, [1, 2],
                  ['vv: Value to Store',
                   'aaaa: Offset to store to (+7F0000)'],
                  'Assignment (Value to Mem)',
@@ -1937,6 +2129,10 @@ def get_command(buf: bytearray, offset: int) -> EventCommand:
         else:
             print(f"{command_id:02X}: Error, Unknown Mode")
             input()
+    elif command_id == 0x4E:
+        # Data to copy follows command.  Shove data in last arg.
+        data_len = get_value_from_bytes(buf[offset+4:offset+6]) - 2
+        command.arg_lens = [2, 1, 2, data_len]
     elif command_id == 0x88:
         mode = buf[offset+1] >> 4
         if mode == 0:
@@ -1969,8 +2165,18 @@ def get_command(buf: bytearray, offset: int) -> EventCommand:
     pos = offset + 1
     command.args = []
 
-    for i in command.arg_lens:
-        command.args.append(get_value_from_bytes(buf[pos:pos+i]))
-        pos += i
+    if command.command == 0x4E:
+        for i in command.arg_lens[0:-1]:
+            command.args.append(get_value_from_bytes(buf[pos:pos+i]))
+            pos += i
+
+        command.args.append(
+            bytearray(buf[pos:pos+command.arg_lens[-1]])
+        )
+        pos += command.arg_lens[-1]
+    else:
+        for i in command.arg_lens:
+            command.args.append(get_value_from_bytes(buf[pos:pos+i]))
+            pos += i
 
     return command
