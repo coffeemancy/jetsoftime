@@ -208,6 +208,10 @@ class LocID(StrIntEnum):
     TESSERACT = 0x1DF
     BLACK_OMEN_ELEVATOR_DOWN = 0x64
     BLACK_OMEN_ELEVATOR_UP = 0x65
+    TYRANO_LAIR_ANTECHAMBERS = 0x12E
+    PROTO_DOME_PORTAL = 0xE3
+    MYSTIC_MTN_PORTAL = 0x110
+    MAGIC_CAVE_EXTERIOR = 0xA3
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
@@ -218,6 +222,9 @@ class LocID(StrIntEnum):
     DEATH_PEAK_LOWER_NORTH_FACE = 0x107
     DEATH_PEAK_CAVE = 0x108
     DEATH_PEAK_SUMMIT = 0x109
+
+    # Other Important Locations
+    ENDING_SELECTOR = 0x52
 
     @classmethod
     def get_boss_locations(cls):
