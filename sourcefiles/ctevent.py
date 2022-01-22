@@ -253,7 +253,7 @@ class Event:
 
         # a few more blank/unknown bytes after number of strings
         pos = script_end + 4
-        
+
         while pos < len(flux):
             # print(f"Current string: {cur_string_ind:02X} at {pos+0xCA1:04X}")
             string_ind = flux[pos]
@@ -338,6 +338,11 @@ class Event:
                            for j in range(8)))
             print(' '.join(f"{self.get_function_start(i,j):04X}"
                            for j in range(8, 16)))
+
+    def add_string(self, new_string: bytearray) -> int:
+        self.strings.append(new_string)
+        self.modified_strings = True
+        return len(self.strings) - 1
 
     def get_obj_strings(self, obj_id: int) -> list[bytearray]:
 
@@ -477,10 +482,15 @@ class Event:
                 # print(' '.join(f"{x:02X}" for x in self.strings[-1]))
                 # input()
 
-            # TODO: Delete this because I'm changing how to manage strings
             # Go back to the script and update the indices if any changed
-            # for addr in str_addrs:
-            #    self.data[addr] = str_indices.index(self.data[addr])
+
+            for addr in str_addrs:
+                new_ind = str_indices.index(self.data[addr])
+
+                if new_ind != self.data[addr]:
+                    self.modified_strings = True
+                    self.data[addr] = new_ind
+
         # end if there are any strings
         '''
         # Test to see if the indices were updated correctly
@@ -870,62 +880,6 @@ class Event:
         self.remove_object_calls(obj_id)
         self.__shift_calls_back(obj_id)
 
-    '''
-    # The idea of a separate object type stopped making sense because the
-    # object type would need all of the functionality of a full script
-    # TODO: Make methods for pull out parts of a script into a new script and
-    #       merging scripts.
-    # ev_obj of type eventobject.EventObject
-    def insert_object(self, ev_obj: EO, obj_ind: int):
-
-        # build up pointers
-        obj_st = self.get_object_start(obj_ind)
-        ptrs = [obj_st for i in range(0x10)]
-
-        off = 0
-        next_off = len(ev_obj.functions[0])
-
-        for i in range(1, 0x10):
-            if len(ev_obj.functions[i]) != 0:
-                off += next_off
-                next_off = len(ev_obj.functions[i])
-
-            ptrs[i] += off
-
-        off += next_off
-        # At this point, off holds the length of the object.  Test this
-        # print(off)
-        # print(sum(len(x) for x in ev_obj.functions))
-        # input()
-
-        ptrs = b''.join(to_little_endian(x, 2) for x in ptrs)
-
-        # shift old pointers by the length of the new object
-        for i in range(32*obj_ind, 32*self.num_objects, 2):
-            self.data[i:i+2] = get_value_from_bytes(self.data[i:i+2])+off
-
-        # Insert pointers
-        self.data[32*obj_ind:32*obj_ind] = ptrs
-
-        self.num_objects += 1
-
-        # Insert data
-        self.data[obj_st:obj_st] = b''.join(x for x in ev_obj.functions)
-
-        # Insert strings
-        num_strs = len(self.strings)
-        self.strings.extend(ev_obj.strings)
-
-        pos = obj_st
-        end = obj_st + off
-
-        while pos < end:
-            cmd = get_command(self.data, pos)
-            if cmd.command in EC.str_commands:
-                script.data[pos+1] += num_strs
-    # end insert_object
-    '''
-
     def set_string_index(self, rom_ptr: int):
 
         start = self.get_function_start(0, 0)
@@ -1007,6 +961,7 @@ class Event:
     def __shift_jumps(self, before_pos: int,
                       after_pos: int,
                       shift: int):
+
         pos = self.get_object_start(0)
 
         jmp_cmds = EC.fwd_jump_commands + EC.back_jump_commands
@@ -1094,6 +1049,18 @@ class Event:
 
         del(self.data[del_pos:del_pos+cmd_len])
 
+    def delete_commands_range(self, del_start_pos, del_end_pos):
+        pos = del_start_pos
+        length_to_delete = del_end_pos - del_start_pos
+        deleted_length = 0
+        while deleted_length < length_to_delete:
+            cmd = get_command(self.data, pos)
+            self.delete_commands(pos)
+            deleted_length += len(cmd)
+
+        if deleted_length != length_to_delete:
+            print('Warning: Last deleted command exceeded del_end_pos')
+
     def delete_command_from_function(self,
                                      cmd_ids: list[int],
                                      obj_id: int, fn_id: int,
@@ -1124,6 +1091,11 @@ class Event:
         # print(f"{ins_position: 04X}")
         # input()
 
+        # Finally simplifying this using the __shift methods
+        self.__shift_jumps(ins_position, ins_position, len(new_commands))
+        self.__shift_starts(ins_position, len(new_commands))
+
+        '''
         pos = self.get_object_start(0)
         while pos < ins_position:
             cmd = get_command(self.data, pos)
@@ -1159,8 +1131,8 @@ class Event:
                 # print(f"{jump_target:04X}")
 
                 # We assume our inserted commands are not supposed to be
-                # the jump target.  So we use <=.
-                if jump_target <= ins_position:
+                # the jump target.  So we use <.
+                if jump_target < ins_position:
                     arg_offset = len(cmd) - cmd.arg_lens[-1]
                     self.data[pos+arg_offset] += len(new_commands)
 
@@ -1171,8 +1143,10 @@ class Event:
             pos += len(cmd)
 
         # print("done backward jumps")
+        '''
         self.data[ins_position:ins_position] = new_commands
 
+        '''
         # Every function start pointer whose value exceeds the insertion
         # point should be shifted
 
@@ -1183,36 +1157,7 @@ class Event:
             if ptr_loc > ins_position:
                 self.data[ptr:ptr+2] = \
                     to_little_endian(ptr_loc+len(new_commands), 2)
-
-    '''
-    def get_object(self, obj_id):
-        ret_obj = EO()
-
-        fn_starts = [get_value_from_bytes(self.data[ptr:ptr+2]) for
-                     ptr in range(obj_id*32, (obj_id+1)*32, 2)]
-
-        ret_obj.functions = [bytearray() for i in range(0x10)]
-
-        end_ptr = (obj_id+1)*32
-        end = get_value_from_bytes(self.data[end_ptr:end_ptr+2])
-
-        i = 0
-        while i < 0x10:
-            # Find the start of the next non-empty function
-            j = i+1
-            while j < 0x10 and fn_starts[j] == fn_starts[i]:
-                j += 1
-
-            # If our function was the last non-empty function, use the end of
-            # the object as the end of the function.  Otherwise, use the start
-            # of the next function as the end.
-            if j == 0x10:
-                ret_obj.functions[i] = self.data[fn_starts[i]:end]
-            else:
-                ret_obj.functions[i] = self.data[fn_starts[i]:fn_starts[j]]
-
-        ret_obj.strings, ret_obj.string_indices = self.get_obj_strings
-    '''
+        '''
 
 
 # Find the length of a location's event script
@@ -1284,12 +1229,14 @@ class ScriptManager:
                             FSWriteType.MARK_FREE)
 
     # writes the script to the specified locations
-    def write_script_to_rom(self, loc_id: LocID):
+    def write_script_to_rom(self, loc_id: LocID, free_old: bool = True):
         # print('calling wstr', loc_id)
 
         spaceman = self.fsrom.space_manager
 
-        self.free_script(loc_id)
+        if free_old:
+            self.free_script(loc_id)
+
         script = self.get_script(loc_id)
 
         if script.modified_strings:
@@ -1387,7 +1334,7 @@ def main():
 
     for x in script.strings:
         print_bytes(x, 16)
-        
+
         print()
 
     input()
