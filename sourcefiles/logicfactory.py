@@ -1033,6 +1033,36 @@ class LostWorldsGameConfig(GameConfig):
 # end LostWorldsGameCofig class
 
 
+class IceAgeGameConfig(NormalGameConfig):
+    def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
+        NormalGameConfig.__init__(self, settings, config)
+
+    def initGame(self):
+        NormalGameConfig.initGame(self)
+
+    def initKeyItems(self):
+        NormalGameConfig.initKeyItems(self)
+
+    def initLocations(self):
+        NormalGameConfig.initLocations(self)
+
+        # Make the logic changes
+
+        #
+        woe_group = next(
+            x for x in self.locationGroups if x.name == 'Darkages'
+        )
+
+        def has_go_mode(game: Game):
+            return (
+                game.canAccessDactylCharacter and
+                game.hasCharacter(Characters.AYLA) and
+                game.hasKeyItem(ItemID.DREAMSTONE)
+            )
+
+        woe_group.accessRule = has_go_mode
+
+
 #
 # Get a GameConfig object based on randomizer flags.
 # The GameConfig object will have have the correct locations,
@@ -1048,6 +1078,7 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
 
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
     lostWorlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
+    iceAge = rset.GameFlags.ICE_AGE in settings.gameflags
 
     if chronosanity and lostWorlds:
         gameConfig = ChronosanityLostWorldsGameConfig(settings, config)
@@ -1055,6 +1086,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
         gameConfig = ChronosanityGameConfig(settings, config)
     elif lostWorlds:
         gameConfig = LostWorldsGameConfig(settings, config)
+    elif iceAge:
+        gameConfig = IceAgeGameConfig(settings, config)
     else:
         gameConfig = NormalGameConfig(settings, config)
 
