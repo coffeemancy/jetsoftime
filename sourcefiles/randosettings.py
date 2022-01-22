@@ -60,6 +60,7 @@ class GameFlags(Flag):
     BUCKET_FRAGMENTS = auto()
     GUARANTEED_DROPS = auto()
     BUFF_XSTRIKE = auto()
+    ICE_AGE = auto()
 
 
 class CosmeticFlags(Flag):
@@ -216,6 +217,7 @@ class Settings:
         flag_str_dict = {
             GameFlags.FIX_GLITCH: 'g',
             GameFlags.LOST_WORLDS: 'l',
+            GameFlags.ICE_AGE: 'ia',
             GameFlags.BOSS_SCALE: 'b',
             GameFlags.BOSS_RANDO: 'ro',
             GameFlags.ZEAL_END: 'z',
