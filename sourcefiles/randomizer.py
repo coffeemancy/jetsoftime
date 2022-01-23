@@ -19,6 +19,7 @@ import techrandomizer
 import qolhacks
 import cosmetichacks
 import bucketfragment
+import iceage
 
 import ctenums
 import ctevent
@@ -158,6 +159,9 @@ class Randomizer:
 
         # Omen elevator
         self.__set_omen_elevators_config()
+
+        # Ice age GG buffs
+        iceage.write_config(self.settings, self.config)
 
     def rescale_bosses(self):
         '''Reset enemy stats and redo boss scaling.'''
@@ -424,13 +428,25 @@ class Randomizer:
             #       which objects/functions have the char recruit data, so the
             #       randomization doesn't break.  If a script does change that
             #       data then self.config.char_assign_dict would change.
+            # TODO: Just do surgery on the script instead of loading flux.
             lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
+
         self.__try_proto_dome_fix()
         self.__lavos_ngplus()
 
         self.__write_config_to_out_rom()
+
+        # Ice Age needs to go after characters are in their spot.
+        # Technically, this shouldn't be needed, but the recruit spot setter
+        # just mashes all character recruit commands into the recruit's version
+        # so the inserted code will get altered by them.
+        if rset.GameFlags.ICE_AGE in self.settings.gameflags:
+            iceage.set_ice_age_recruit_locks(self.out_rom,
+                                             self.config)
+            iceage.set_ice_age_dungon_locks(self.out_rom, self.config)
+            iceage.set_ending_after_woe(self.out_rom)
 
         self.out_rom.write_all_scripts_to_rom()
         self.has_generated = True
@@ -750,7 +766,6 @@ class Randomizer:
         if rset.GameFlags.BUCKET_FRAGMENTS in flags:
             bucketfragment.set_bucket_function(ctrom, settings)
             bucketfragment.set_fragment_properties(ctrom)
-
 
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
