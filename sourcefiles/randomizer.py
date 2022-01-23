@@ -460,6 +460,7 @@ class Randomizer:
     def write_spoiler_log(self, filename):
         with open(filename, 'w') as outfile:
             self.write_settings_spoilers(outfile)
+            self.write_tab_spoilers(outfile)
             self.write_key_item_spoilers(outfile)
             self.write_boss_rando_spoilers(outfile)
             self.write_character_spoilers(outfile)
@@ -471,6 +472,27 @@ class Randomizer:
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Flags: {self.settings.gameflags}\n\n")
+
+    def write_tab_spoilers(self, file_object):
+        file_object.write("Tab Properties\n")
+        file_object.write("--------------\n")
+
+        tab_names = [
+            'Power Tab',
+            'Magic Tab',
+            'Speed Tab'
+        ]
+
+        tab_magnitudes = [
+            self.config.power_tab_amt,
+            self.config.magic_tab_amt,
+            self.config.speed_tab_amt
+        ]
+
+        for i in range(len(tab_names)):
+            file_object.write(f'{tab_names[i]}: +{tab_magnitudes[i]}\n')
+
+        file_object.write('\n')
 
     def write_key_item_spoilers(self, file_object):
         file_object.write("Key Item Locations\n")
