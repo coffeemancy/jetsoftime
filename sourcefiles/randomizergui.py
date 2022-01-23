@@ -422,12 +422,47 @@ class RandoGUI:
     # Encodes rules for enabling/disabling options depending on what options
     # have been chosen
     def verify_settings(self):
+
+        # TODO: Dicts for disabling, etc so this can be streamlined
+        GF = GameFlags
+        ia_disabled_flags = [
+            GF.LOST_WORLDS, GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS
+        ]
+
+        ia_disabled_elements = [
+            self.lost_worlds_checkbox, self.chronosanity_checkbox,
+            self.zeal_end_checkbox, self.boss_scaling_checkbox,
+            self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
+            self.bucket_frag_required_scale
+        ]
+
+        if self.flag_dict[GameFlags.ICE_AGE].get() == 1:
+
+            for flag in ia_disabled_flags:
+                self.flag_dict[flag].set(0)
+
+            for element in ia_disabled_elements:
+                element.config(state=tk.DISABLED)
+
+            self.bucket_frag_extra_scale.config(fg='grey')
+            self.bucket_frag_required_scale.config(fg='grey')
+
+        else:
+            for element in ia_disabled_elements:
+                element.config(state=tk.NORMAL)
+
+            self.bucket_frag_extra_scale.config(fg='black')
+            self.bucket_frag_required_scale.config(fg='black')
+
         if self.flag_dict[GameFlags.LOST_WORLDS].get() == 1:
-            pass
+            self.flag_dict[GameFlags.ICE_AGE].set(0)
+            self.ice_age_checkbox.config(state=tk.DISABLED)
             # self.flag_dict[GameFlags.FAST_PENDANT].set(0)
             # self.fast_pendant_checkbox.config(state=tk.DISABLED)
         else:
             self.fast_pendant_checkbox.config(state=tk.NORMAL)
+            self.ice_age_checkbox.config(state=tk.NORMAL)
 
         if self.flag_dict[GameFlags.CHRONOSANITY].get() == 1:
             self.flag_dict[GameFlags.BOSS_SCALE].set(0)
@@ -1724,15 +1759,29 @@ class RandoGUI:
             'Change X-Strike to use Spincut + Leapslash.'
         )
 
-        checkbox = tk.Checkbutton(
+        self.ice_age_checkbox = tk.Checkbutton(
+            frame,
+            text='Ice Age',
+            variable=self.flag_dict[GameFlags.ICE_AGE],
+            command=self.verify_settings
+        )
+        self.ice_age_checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            self.ice_age_checkbox,
+            'Get Ayla.  Get the Dactyl Nest character.  Use them to defeat '
+            'the Black Tyrano and a (buffed) Giga Gaia to win.'
+        )
+
+        self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
             text='Bucket Fragments',
             variable=self.flag_dict[GameFlags.BUCKET_FRAGMENTS]
         )
-        checkbox.pack(anchor=tk.W)
+        self.bucket_fragment_checkbox.pack(anchor=tk.W)
 
         CreateToolTip(
-            checkbox,
+            self.bucket_fragment_checkbox,
             'New items called \"Fragments\" are scattered throughout the '
             'game.  Upon collecting the required amount, the bucket in the '
             'End of Time will double xp/tp gain and take you to Lavos.'
