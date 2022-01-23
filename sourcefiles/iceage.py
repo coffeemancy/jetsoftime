@@ -37,12 +37,16 @@ def write_config(settings: rset.Settings,
     verify that GG is on Woe where he ought to be.
     '''
 
+    if rset.GameFlags.ICE_AGE not in settings.gameflags:
+        return
+
     BossID = ctenums.BossID
     LocID = ctenums.LocID
     boss_dict = config.boss_assign_dict
 
     if boss_dict[LocID.MT_WOE_SUMMIT] != BossID.GIGA_GAIA:
-        raise SystemExit('Error: Ice Age and GG not on Woe.')
+        print('Error: Ice Age and GG not on Woe.')
+        exit()
 
     EnemyID = ctenums.EnemyID
 
