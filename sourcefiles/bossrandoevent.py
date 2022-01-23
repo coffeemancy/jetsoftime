@@ -944,7 +944,7 @@ def set_mt_woe_boss(ctrom: CTRom, boss: BossScheme):
             del(boss_objs[i-1])
     elif len(boss.ids) > len(boss_objs):
         # Add new copies of a GG Hand object
-        for i in range(len(boss.ids), len(boss_objs)):
+        for i in range(len(boss_objs), len(boss.ids)):
             obj_id = script.append_copy_object(boss_objs[1])
             boss_objs.append(obj_id)
 
@@ -1658,6 +1658,23 @@ def write_assignment_to_config(settings: rset.Settings,
         for i in range(len(locations)):
             config.boss_assign_dict[locations[i]] = bosses[i]
 
+        # Force GG on Woe for Ice Age
+        if rset.GameFlags.ICE_AGE in settings.gameflags:
+            woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
+            if woe_boss != BossID.GIGA_GAIA:
+                if BossID.GIGA_GAIA in config.boss_assign_dict.values():
+                    gg_loc = next(
+                        x for x in config.boss_assign_dict
+                        if config.boss_assign_dict[x] == BossID.GIGA_GAIA
+                    )
+
+                    config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
+                        BossID.GIGA_GAIA
+                    config.boss_assign_dict[gg_loc] = woe_boss
+                else:
+                    config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
+                        BossID.GIGA_GAIA
+
 
 # Scale the bosses given (the game settings) and the current assignment of
 # the bosses.  This is to be differentiated from the boss scaling flag which
@@ -1867,116 +1884,22 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
 
 def main():
-    with open('./roms/trial_test.sfc', 'rb') as infile:
+    with open('./roms/ct.sfc', 'rb') as infile:
         rom = bytearray(infile.read())
 
     ctrom = CTRom(rom, True)
+    ctrom.rom_data.patch_ips_file('./patch-beta.ips')
+
     ctrom.rom_data.space_manager.mark_block(
         (0x4f8000, 0x5f0000),
         FSWriteType.MARK_FREE
     )
 
-    fsrom = ctrom.rom_data
-    script_man = ctrom.script_manager
-
-    nu_sprite_start = 0x24F600 + 10*EnemyID.NU
-    ctrom.rom_data.seek(nu_sprite_start)
-    nu_sprite = ctrom.rom_data.read(10)
-
-    guardian_sprite_start = 0x24F600 + 10*EnemyID.GUARDIAN
-    ctrom.rom_data.seek(guardian_sprite_start)
-    ctrom.rom_data.write(nu_sprite)
-
-    duplicate_maps_on_ctrom(ctrom)
-    duplicate_zenan_bridge(ctrom, LocID.ZENAN_BRIDGE_BOSS)
-    set_kings_trial_boss(ctrom, Boss.GUARDIAN().scheme)
-    # set_zenan_bridge_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
-    # set_mt_woe_boss(ctrom, Boss.YAKRA().scheme)
-    # set_geno_dome_boss(ctrom, Boss.GIGA_GAIA().scheme)
-    # set_arris_dome_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
-    # set_twin_golem_spot(ctrom, Boss.ZOMBOR().scheme)
+    set_mt_woe_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
     ctrom.write_all_scripts_to_rom()
 
-    with open('./roms/trial_test_out.sfc', 'wb') as outfile:
+    with open('./roms/woe_test.sfc', 'wb') as outfile:
         outfile.write(ctrom.rom_data.getvalue())
-    quit()
-
-    exits = LocExits.from_rom(fsrom)
-    duplicate_map(fsrom, exits, LocID.ZENAN_BRIDGE, LocID.ZENAN_BRIDGE_BOSS)
-    exits.write_to_fsrom(fsrom)
-
-    script = script_man.get_script(LocID.ZENAN_BRIDGE)
-    new_script = copy.deepcopy(script)
-
-    # Change the script to change location to the new map when it's Zombor time
-    start = script.get_function_start(0x01, 0x00)
-    end = script.get_function_end(0x01, 0x00)
-
-    move_party = EC.move_party(0x86, 0x08, 0x88, 0x7, 0x89, 0x0A)
-    pos = script.find_exact_command(move_party, start, end)
-
-    if pos is None:
-        print('Error finding move_party')
-        raise SystemExit
-
-    pos += len(move_party)
-
-    change_loc = EC.change_location(LocID.ZENAN_BRIDGE_BOSS,
-                                    0x05, 0x08)
-
-    insert_cmds = EF()
-    (
-        insert_cmds
-        .add(EC.darken(4))
-        .add(EC.fade_screen())
-        .add(change_loc)
-    )
-
-    script.insert_commands(insert_cmds.get_bytearray(), pos)
-
-    pos += len(insert_cmds.get_bytearray())
-
-    # after the move party, the normal script, each pc strikes a pose and the
-    # screen scrolls (4 commands). We'll delete those commands because they'll
-    # never get executed since we're changing location.
-    script.delete_commands(pos, 4)
-
-    unneeded_objs = sorted(
-        (0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x15, 0x16, 0x17, 0x0F,
-         0x0E, 0x0D),
-        reverse=True
-    )
-
-    for obj in unneeded_objs:
-        new_script.remove_object(obj)
-
-    string_index = new_script.get_string_index()
-    string_index_cmd = EC.set_string_index(string_index)
-
-    new_startup_func = EF()
-    new_startup_func.add(
-        string_index_cmd
-    ).add(
-        EC.return_cmd()
-    ).add(
-        move_party
-    ).add(
-        EC.end_cmd()
-    )
-
-    new_script.set_function(0, 0, new_startup_func)
-
-    script_man.set_script(new_script, LocID.ZENAN_BRIDGE_BOSS)
-
-    duplicate_maps_on_ctrom(ctrom)
-    set_kings_trial_boss(ctrom, Boss.MUD_IMP().scheme)
-    # set_zenan_bridge_boss(ctrom, Boss.MUD_IMP().scheme)
-
-    ctrom.write_all_scripts_to_rom()
-
-    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
-        ctrom.rom_data.seek(0)
-        outfile.write(ctrom.rom_data.read())
 
 
 if __name__ == '__main__':
