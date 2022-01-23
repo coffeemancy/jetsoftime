@@ -1,6 +1,9 @@
 from logictypes import Location, BaselineLocation, LocationGroup, \
     LinkedLocation, Game
 
+# For grabbing random key items in some game modes
+import random
+
 from ctenums import TreasureID as TID, CharID as Characters, ItemID
 from treasuredata import TreasureLocTier as LootTiers
 import randosettings as rset
@@ -1042,6 +1045,22 @@ class IceAgeGameConfig(NormalGameConfig):
 
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
+
+        # Remove other go-mode items and replace them with good loot
+        removed_items = [
+            ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
+        ]
+
+        for item in removed_items:
+            self.keyItemList.remove(item)
+
+        replacement_pool = [
+            ItemID.PRISMSPECS, ItemID.RAINBOW, ItemID.CRISIS_ARM,
+            ItemID.TABAN_SUIT, ItemID.PRISMDRESS, ItemID.HASTE_HELM
+        ]
+
+        replacements = random.sample(replacement_pool, len(removed_items))
+        self.keyItemList.extend(replacements)
 
     def initLocations(self):
         NormalGameConfig.initLocations(self)
