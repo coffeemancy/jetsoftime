@@ -18,6 +18,7 @@ from ctenums import CharID, RecruitID, LocID
 import ctevent
 from ctrom import CTRom
 import freespace
+import legacyofcyrus
 from statcompute import PCStats as PC
 import scriptextend as scripts
 
@@ -28,35 +29,46 @@ import randosettings as rset
 # This needs to be called BEFORE assigning key items
 def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
     # First, choose the locations for each character
+    recruit_spots = config.char_assign_dict.keys()
+
     chars = [CharID(i) for i in range(7)]
     random.shuffle(chars)
+
+    key_val = zip(recruit_spots, chars)
+    loc_assign_dict = {recruit_id: char for recruit_id, char in key_val}
 
     char_man = config.char_manager
     lost_worlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
 
-    for ind, recruit_spot in enumerate(config.char_assign_dict.keys()):
-        # print(f"{ind}: {chars[ind]}")
-        config.char_assign_dict[recruit_spot].held_char = chars[ind]
+    if rset.GameFlags.LEGACY_OF_CYRUS in settings.gameflags:
+        loc_assign_dict = legacyofcyrus.get_character_assignment()
+
+    # Scale starting stats depending on the location assignment
+    for recruit_spot in config.char_assign_dict.keys():
+        chosen_char = loc_assign_dict[recruit_spot]
+        config.char_assign_dict[recruit_spot].held_char = chosen_char
 
         # Set level/tech level based on placed location
         # LW characters are lv 15, tech lv 3.  Same as proto, dactyl, frog.
         if lost_worlds or recruit_spot in [RecruitID.PROTO_DOME,
                                            RecruitID.DACTYL_NEST,
                                            RecruitID.FROGS_BURROW]:
-            char_man.pcs[chars[ind]].stats.set_level(15)
-            char_man.pcs[chars[ind]].stats.set_tech_level(3)
+            char_man.pcs[chosen_char].stats.set_level(15)
+            char_man.pcs[chosen_char].stats.set_tech_level(3)
         elif recruit_spot in [RecruitID.STARTER_1, RecruitID.STARTER_2,
                               RecruitID.CATHEDRAL]:
-            char_man.pcs[chars[ind]].stats.set_level(1)
-            char_man.pcs[chars[ind]].stats.set_tech_level(0)
+            char_man.pcs[chosen_char].stats.set_level(1)
+            char_man.pcs[chosen_char].stats.set_tech_level(0)
         elif recruit_spot == RecruitID.CASTLE:
-            char_man.pcs[chars[ind]].stats.set_level(5)
-            char_man.pcs[chars[ind]].stats.set_tech_level(2)
+            char_man.pcs[chosen_char].stats.set_level(5)
+            char_man.pcs[chosen_char].stats.set_tech_level(2)
         else:
             print("Error: Should never see this")
             exit()
 
-    # Now, reassign characters if duplicates is on
+    # Now, reassign characters if duplicates is on.
+    # It was important to do the scaling first so that we know what level
+    # and tech level to use when reassigning
     if rset.GameFlags.DUPLICATE_CHARS in settings.gameflags:
         # Catch bad char_choices here?
         choices = [CharID(random.choice(settings.char_choices[i]))
