@@ -4,7 +4,8 @@ from logictypes import Location, BaselineLocation, LocationGroup, \
 # For grabbing random key items in some game modes
 import random
 
-from ctenums import TreasureID as TID, CharID as Characters, ItemID
+from ctenums import TreasureID as TID, CharID as Characters, ItemID, \
+    RecruitID
 from treasuredata import TreasureLocTier as LootTiers
 import randosettings as rset
 import randoconfig as cfg
@@ -1036,6 +1037,90 @@ class LostWorldsGameConfig(GameConfig):
 # end LostWorldsGameCofig class
 
 
+class LegacyOfCyrusGameConfig(NormalGameConfig):
+
+    def initKeyItems(self):
+        NormalGameConfig.initKeyItems(self)
+
+        unavail_char = \
+            self.config.char_assign_dict[RecruitID.PROTO_DOME].held_char
+
+        removed_items = [
+            ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE,
+            ItemID.MOON_STONE
+        ]
+
+        if unavail_char == Characters.MARLE:
+            removed_items.append(ItemID.PRISMSHARD)
+        elif unavail_char == Characters.ROBO:
+            removed_items.append(ItemID.ROBORIBBON)
+
+        if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
+            removed_items.append(ItemID.DREAMSTONE)
+
+        for item in removed_items:
+            self.keyItemList.remove(item)
+
+        # Note that locations are configured before key items, so this is
+        # OK to do.
+        num_locs = 0
+        locs = self.getLocations()
+        for loc in locs:
+            num_locs += len(loc.locations)
+
+        num_items = len(self.keyItemList)
+
+        needed_items = num_locs - num_items
+
+        '''
+        print('Unavailable Char', unavail_char)
+        print('KI:', num_items)
+        for x in self.keyItemList:
+            print(x)
+
+        print('Locs:', num_locs)
+        for loc_grp in self.getLocations():
+            for spot in loc_grp.locations:
+                print(spot.getName())
+
+        print('Needed Items:', needed_items)
+        input()
+        '''
+
+        if needed_items < 0:
+            raise ValueError('Needed Items is negative (LoC)')
+
+        replacement_pool = [
+            ItemID.PRISMSPECS, ItemID.RAINBOW, ItemID.CRISIS_ARM,
+            ItemID.TABAN_SUIT, ItemID.PRISMDRESS, ItemID.HASTE_HELM,
+            ItemID.GLOOM_HELM,
+        ]
+
+        replacements = random.sample(replacement_pool, needed_items)
+        self.keyItemList.extend(replacements)
+
+    def initLocations(self):
+        NormalGameConfig.initLocations(self)
+
+        removed_names = ['FutureOpen', 'MelchiorRefinements']
+
+        unavail_char = \
+            self.config.char_assign_dict[RecruitID.PROTO_DOME].held_char
+        if unavail_char == Characters.ROBO:
+            removed_names.append('Fionashrine')
+        elif unavail_char == Characters.MARLE:
+            removed_names.append('GuardiaTreasury')
+
+        # Remove Future Locations
+        removed_ind = (
+            self.locationGroups.index(x) for x in self.locationGroups
+            if x.name in removed_names
+        )
+
+        for ind in sorted(removed_ind, reverse=True):
+            del(self.locationGroups[ind])
+
+
 class IceAgeGameConfig(NormalGameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
         NormalGameConfig.__init__(self, settings, config)
@@ -1098,6 +1183,7 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
     lostWorlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
     iceAge = rset.GameFlags.ICE_AGE in settings.gameflags
+    legacyofcyrus = rset.GameFlags.LEGACY_OF_CYRUS in settings.gameflags
 
     if chronosanity and lostWorlds:
         gameConfig = ChronosanityLostWorldsGameConfig(settings, config)
@@ -1107,6 +1193,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
         gameConfig = LostWorldsGameConfig(settings, config)
     elif iceAge:
         gameConfig = IceAgeGameConfig(settings, config)
+    elif legacyofcyrus:
+        gameConfig = LegacyOfCyrusGameConfig(settings, config)
     else:
         gameConfig = NormalGameConfig(settings, config)
 
