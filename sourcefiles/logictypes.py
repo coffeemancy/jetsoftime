@@ -26,6 +26,8 @@ class Game:
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
         self.lostWorlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
         self.charLocations = config.char_assign_dict
+        self.legacyofcyrus = \
+            rset.GameFlags.LEGACY_OF_CYRUS in settings.gameflags
 
         # In case we need to look something else up
         self.settings = settings
@@ -179,7 +181,8 @@ class Game:
                  self.hasKeyItem(ItemID.DREAMSTONE)))
 
     def canAccessFuture(self):
-        return self.hasKeyItem(ItemID.PENDANT) or self.lostWorlds
+        return not self.legacyofcyrus and \
+            (self.hasKeyItem(ItemID.PENDANT) or self.lostWorlds)
 
     def canAccessPrehistory(self):
         return self.hasKeyItem(ItemID.GATE_KEY) or self.lostWorlds
