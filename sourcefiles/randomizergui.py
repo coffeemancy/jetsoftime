@@ -241,8 +241,8 @@ class RandoGUI:
         filePath = self.get_settings_file()
         if filePath.exists():
             with open(str(filePath), 'rb') as infile:
-                [settings, input_file, output_dir] = pickle.load(infile)
                 try:
+                    [settings, input_file, output_dir] = pickle.load(infile)
                     self.settings = settings
                 except (ValueError, AttributeError):
                     tk.messagebox.showinfo(
@@ -251,6 +251,8 @@ class RandoGUI:
                         'happens after an update.  Loading defaults.'
                     )
                     self.settings = Settings.get_race_presets()
+                    input_file = ''
+                    output_dir = ''
 
                 self.input_file.set(input_file)
                 self.output_dir.set(output_dir)
@@ -1757,21 +1759,6 @@ class RandoGUI:
 
     def get_experimental_page(self):
         frame = ttk.Frame(self.notebook)
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Beta Logic',
-            variable=self.flag_dict[GameFlags.BETA_LOGIC]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Players can travel to 12,000 BC after reaching the End of Time. '
-            'Skyways are not enabled until either Black Tyrano or Magus is '
-            ' defeated. '
-            'Frog go mode no longer opens up 12,000 BC in the logic. '
-        )
 
         checkbox = tk.Checkbutton(
             frame,

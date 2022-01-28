@@ -56,7 +56,7 @@ class GameFlags(Flag):
     DUPLICATE_TECHS = auto()
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
-    BETA_LOGIC = auto()
+    # BETA_LOGIC = auto()
     BUCKET_FRAGMENTS = auto()
     GUARANTEED_DROPS = auto()
     BUFF_XSTRIKE = auto()

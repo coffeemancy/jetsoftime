@@ -374,22 +374,21 @@ class Randomizer:
         if rset.GameFlags.LOST_WORLDS not in self.settings.gameflags:
             telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
 
-            if rset.GameFlags.BETA_LOGIC in self.settings.gameflags:
-                # 3.1.1 Change:
-                # The only relevant script change with 3.1.1 is setting the
-                # 0x80 bit of 0x7f0057 for the skyway logic in the Telepod
-                # Exhibit script.
-                EC = ctevent.EC
-
-                # set flag cmd -- too lazy to make an EC function for this
-                cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
-                start = telepod_event.get_function_start(0x0E, 0x04)
-                end = telepod_event.get_function_end(0x0E, 0x04)
-
-                # Set the flag right before the screen darkens
-                pos = telepod_event.find_exact_command(EC.fade_screen(),
-                                                       start, end)
-                telepod_event.insert_commands(cmd.to_bytearray(), pos)
+            # 3.1.1 Change:
+            # The only relevant script change with 3.1.1 is setting the
+            # 0x80 bit of 0x7f0057 for the skyway logic in the Telepod
+            # Exhibit script.
+            EC = ctevent.EC
+            
+            # set flag cmd -- too lazy to make an EC function for this
+            cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
+            start = telepod_event.get_function_start(0x0E, 0x04)
+            end = telepod_event.get_function_end(0x0E, 0x04)
+            
+            # Set the flag right before the screen darkens
+            pos = telepod_event.find_exact_command(EC.fade_screen(),
+                                                   start, end)
+            telepod_event.insert_commands(cmd.to_bytearray(), pos)
 
             script_manager.set_script(telepod_event,
                                       ctenums.LocID.TELEPOD_EXHIBIT)
@@ -716,10 +715,7 @@ class Randomizer:
         #   - Tech data for TechDB
         #   - Item data (including prices) for shops
         # patch_codebase.txt may not be needed
-        if rset.GameFlags.BETA_LOGIC in settings.gameflags:
-            rom_data.patch_ips_file('./patch-beta.ips')
-        else:
-            rom_data.patch_ips_file('./patch.ips')
+        rom_data.patch_ips_file('./patch.ips')
 
         # 99.9% sure this patch is redundant now
         rom_data.patch_txt_file('./patches/patch_codebase.txt')
@@ -764,10 +760,7 @@ class Randomizer:
         # marked free space.  For now we keep with 3.1 and apply the
         # mysticmtnfix.ips to restore the event.
         if rset.GameFlags.LOST_WORLDS in flags:
-            if rset.GameFlags.BETA_LOGIC in flags:
-                rom_data.patch_ips_file('./patches/lost-beta.ips')
-            else:
-                rom_data.patch_ips_file('./patches/lost.ips')
+            rom_data.patch_ips_file('./patches/lost.ips')
             rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
