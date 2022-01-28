@@ -61,6 +61,7 @@ class GameFlags(Flag):
     GUARANTEED_DROPS = auto()
     BUFF_XSTRIKE = auto()
     ICE_AGE = auto()
+    LEGACY_OF_CYRUS = auto()
 
 
 class CosmeticFlags(Flag):
@@ -218,6 +219,7 @@ class Settings:
             GameFlags.FIX_GLITCH: 'g',
             GameFlags.LOST_WORLDS: 'l',
             GameFlags.ICE_AGE: 'ia',
+            GameFlags.LEGACY_OF_CYRUS: 'loc',
             GameFlags.BOSS_SCALE: 'b',
             GameFlags.BOSS_RANDO: 'ro',
             GameFlags.ZEAL_END: 'z',
