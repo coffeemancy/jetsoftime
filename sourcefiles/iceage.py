@@ -100,6 +100,34 @@ def set_ending_after_woe(ct_rom: ctrom.CTRom):
 
     script.insert_commands(func.get_bytearray(), pos)
 
+
+def lock_ocean_palace(ct_rom: ctrom.CTRom):
+
+    loc_id = ctenums.LocID.ZEAL_PALACE_REGAL_ANTECHAMBER
+    script = ct_rom.script_manager.get_script(loc_id)
+
+    obj_id = 0x0C
+    func_id = 0x02
+
+    new_str_id = script.add_string(
+        ctstrings.CTString.from_str(
+            'Lavos can wait!  We need to climb{line break}'
+            'Mt. Woe!{null}'
+        )
+    )
+
+    EC = eventcommand.EventCommand
+    EF = eventfunction.EventFunction
+
+    new_func = (
+        EF()
+        .add(EC.text_box(new_str_id))
+        .add(EC.return_cmd())
+    )
+
+    script.set_function(obj_id, func_id, new_func)
+
+
 def remove_darkages_from_eot(ct_rom: ctrom.CTRom):
     # Rather than lock Mt. Woe directly.  Revert to old logic by changing
     # the behavior when entering Mystic Mts and proto portals.
@@ -243,17 +271,18 @@ def lock_tyrano_lair(ct_rom: ctrom.CTRom,
             )
         )
 
-    func.append(orig_func)
-    script.set_function(0x09, 0x01, func)
+    orig_func.insert(func, 0)
+    script.set_function(0x09, 0x01, orig_func)
 
 
-def set_ice_age_dungon_locks(ct_rom: ctrom.CTRom,
-                             config: cfg.RandoConfig):
+def set_ice_age_dungeon_locks(ct_rom: ctrom.CTRom,
+                              config: cfg.RandoConfig):
     key_chars = get_key_chars_from_config(config)
     lock_mount_woe(ct_rom, key_chars)
     lock_tyrano_lair(ct_rom, key_chars)
     lock_magic_cave(ct_rom)
     remove_darkages_from_eot(ct_rom)
+    lock_ocean_palace(ct_rom)
 
 
 def set_ice_age_recruit_locks(ct_rom: ctrom.CTRom,
@@ -379,13 +408,20 @@ def main():
     ct_rom = ctrom.CTRom.from_file('./roms/jets_test.sfc', True)
 
     script_man = ct_rom.script_manager
-    script = script_man.get_script(0)
+    script = script_man.get_script(ctenums.LocID.GUARDIA_QUEENS_CHAMBER_600)
     func = script.get_function(0,0)
 
+    config = cfg.RandoConfig(bytearray(ct_rom.rom_data.getvalue()))
+    config.char_assign_dict[ctenums.RecruitID.CATHEDRAL].held_char = \
+        ctenums.CharID.AYLA
+    config.char_assign_dict[ctenums.RecruitID.DACTYL_NEST].held_char = \
+        ctenums.CharID.MARLE
+
+    set_ice_age_recruit_locks(ct_rom, config)
     # insert_char_lock(script, 0x19, char_set)
     # lock_tyrano_lair(ct_rom, char_set)
     # lock_magic_cave(ct_rom)
-    remove_darkages_from_eot(ct_rom)
+    # remove_darkages_from_eot(ct_rom)
 
     space_manager = ct_rom.rom_data.space_manager
     mark_free = freespace.FSWriteType.MARK_FREE
