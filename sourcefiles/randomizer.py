@@ -20,6 +20,7 @@ import qolhacks
 import cosmetichacks
 import bucketfragment
 import iceage
+import legacyofcyrus
 
 import ctenums
 import ctevent
@@ -445,8 +446,15 @@ class Randomizer:
         if rset.GameFlags.ICE_AGE in self.settings.gameflags:
             iceage.set_ice_age_recruit_locks(self.out_rom,
                                              self.config)
-            iceage.set_ice_age_dungon_locks(self.out_rom, self.config)
+            iceage.set_ice_age_dungeon_locks(self.out_rom, self.config)
             iceage.set_ending_after_woe(self.out_rom)
+
+        # Same for LoC
+        if rset.GameFlags.LEGACY_OF_CYRUS in self.settings.gameflags:
+            legacyofcyrus.write_loc_recruit_locks(self.out_rom,
+                                                  self.config)
+            legacyofcyrus.write_loc_dungeon_locks(self.out_rom)
+            legacyofcyrus.set_ending_after_ozzies_fort(self.out_rom)
 
         self.out_rom.write_all_scripts_to_rom()
         self.has_generated = True
@@ -763,8 +771,11 @@ class Randomizer:
             rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
-            if rset.GameFlags.LOST_WORLDS in flags:
-                fastpendant.apply_fast_pendant_lw(ctrom, settings)
+            if rset.GameFlags.LOST_WORLDS in flags or \
+               rset.GameFlags.LEGACY_OF_CYRUS in flags:
+                # Game modes where there is no pendant trial need to enforce
+                # fast pendant by changing scripts.
+                fastpendant.apply_fast_pendant_script(ctrom, settings)
             else:
                 rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
 
