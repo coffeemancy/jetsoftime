@@ -567,7 +567,7 @@ class Event:
         # function.  So our function goes to the end of the data.
         return len(self.data)
 
-    def get_function(self, obj_id: int, func_id: int) -> bytearray:
+    def get_function(self, obj_id: int, func_id: int) -> EF:
         start = self.get_function_start(obj_id, func_id)
         end = self.get_function_end(obj_id, func_id)
 
@@ -935,11 +935,17 @@ class Event:
         if end_pos is None or end_pos > len(self.data):
             end_pos = len(self.data)
 
+        jump_cmds = EC.fwd_jump_commands + EC.back_jump_commands
+
         pos = start_pos
         while pos < end_pos:
             cmd = get_command(self.data, pos)
 
             if cmd == find_cmd:
+                return pos
+            elif (cmd.command in jump_cmds and
+                  cmd.command == find_cmd.command and
+                  cmd.args[0:-1] == find_cmd.args[0:-1]):
                 return pos
 
             pos += len(cmd)
