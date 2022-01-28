@@ -128,7 +128,7 @@ class CTString(bytearray):
         'null', 'unused 0x01', 'unused 0x02', 'delay',
         'unused 0x04', 'linebreak+0', 'line break',
         'pause linebreak', 'pause linebreak+3',
-        'empty dialog', 'page break+3',
+        'instant full break', 'page break+3',
         'full break', 'page break',
         'value 8', 'value 16', 'value 32',
         'unused 0x10', 'prev substr', 'tech name',
@@ -159,8 +159,8 @@ class CTString(bytearray):
 
         while pos < len(string):
 
-            (char, pos) = cls.get_token(string, pos)
-            ct_str.append(char)
+            (ct_bytes, pos) = cls.get_token(string, pos)
+            ct_str.extend(ct_bytes)
 
         if compress:
             ct_str = cls.huffman_tree.compress(ct_str)
@@ -168,13 +168,14 @@ class CTString(bytearray):
         return ct_str
 
     @classmethod
-    def get_token(cls, string: str, pos: int) -> (int, int):
+    def get_token(cls, string: str, pos: int) -> (bytes, int):
         '''
         Gets the next byte of data for a ct string.  Returns that byte and the
         position of where the byte after begins.
         '''
 
         char = string[pos]
+        ct_bytes = None
         # print(char, pos)
         if char.isupper():
             # Upper case chars are in range(0xA0, 0xBA)
@@ -220,7 +221,11 @@ class CTString(bytearray):
             elif keyword in CTString.symbols:
                 # quotation marks are in there too as {"1} and {"2}
                 ct_char = CTString.symbols.index(keyword) + 0xDE
+            elif keyword.split(' ')[0] == 'delay':
+                vals = [0x03, int(keyword.split(' ')[1], 16)]
+                ct_bytes = bytes(vals)
             else:
+                print(keyword.split(' ')[0])
                 print(f"unknown keyword \'{keyword}\'")
                 exit()
         elif char == '\r' and pos+1 < len(string) and string[pos+1] == '\n':
@@ -233,7 +238,10 @@ class CTString(bytearray):
         # print(f"char={char}, pos={pos}, ctchar={ct_char:02X}")
         # returning new position instead of length so that we can do things
         # like (char, pos) = get_token(str, pos) to update in a loop.
-        return (ct_char, pos+length)
+        if ct_bytes is None:
+            ct_bytes = bytes([ct_char])
+
+        return (ct_bytes, pos+length)
 
     @classmethod
     def from_ascii(cls, string: str):
@@ -243,8 +251,8 @@ class CTString(bytearray):
         pos = 0
         while pos < len(string):
 
-            (char, pos) = cls.get_token(string, pos)
-            ret_str.append(char)
+            (ct_bytes, pos) = cls.get_token(string, pos)
+            ret_str.extend(ct_bytes)
 
         return ret_str
 
