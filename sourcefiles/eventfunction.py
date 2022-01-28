@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from eventcommand import get_command, EventCommand
 
@@ -8,9 +8,11 @@ class EventFunction:
 
     @dataclass
     class JumpRecord:
-        from_index: int = -1
-        from_pos: int = -1
+        from_label: str = ''
         to_label: str = ''
+
+        def copy(self) -> EventFunction.JumpRecord:
+            return EventFunction.JumpRecord(self.from_label, self.to_label)
 
     def __init__(self):
         self.data = bytearray()
@@ -21,6 +23,105 @@ class EventFunction:
         self.jumps = []
 
         self.pos = 0
+
+    def copy(self) -> EventFunction:
+        ret_ef = EventFunction()
+        ret_ef.data = self.data[:]
+        ret_ef.commands = self.commands[:]
+        ret_ef.offsets = self.offsets[:]
+        ret_ef.labels = {k: v for k, v in self.labels.items()}
+        ret_ef.jumps = [replace(x) for x in self.jumps]
+
+        return ret_ef
+
+    # This feels really silly because we're almost having to repeat the
+    # logic from ctevent.  But that's just where we are now.
+    def __shift_jumps(self,
+                      before_pos: int,
+                      after_pos: int,
+                      shift_magnitude: int):
+
+        # for label in self.labels:
+        #     print(label, ':', self.labels[label])
+
+        # print(f'__shift_jumps({before_pos:04X}, {after_pos:04X}, '
+        #       f'{shift_magnitude:04X})')
+        del_inds = []
+
+        for ind, jump in enumerate(self.jumps):
+
+            # from_label should always be valid
+            orig_from_pos = self.labels[jump.from_label]
+            from_jump_cmd = self.data[orig_from_pos]
+
+            if from_jump_cmd in EventCommand.conditional_commands and \
+               shift_magnitude > 0:
+                # It's easier if the default behavior is to not extend an
+                # if block when inserting at the very end of one.
+
+                # When deleting (shift is negative) we should shift the
+                # conditional's end label back
+                to_after_pos = after_pos + 1
+            else:
+                to_after_pos = after_pos
+
+            # When a label involved in a jump is not set yet, that's ok.
+            # just set the from and/or to pos to -1 so that it avoids shifting
+            if jump.from_label in self.labels:
+                orig_from_pos = self.labels[jump.from_label]
+            else:
+                orig_from_pos = -1
+
+            if jump.to_label in self.labels:
+                orig_to_pos = self.labels[jump.to_label]
+            else:
+                orig_to_pos = -1
+
+            if before_pos <= orig_from_pos < after_pos or \
+               before_pos <= orig_to_pos < after_pos:
+                del_inds.append(ind)
+            else:
+                if orig_from_pos >= after_pos and jump.from_label[0] == '[':
+                    new_from_pos = orig_from_pos + shift_magnitude
+                    jump.from_label = f'[{new_from_pos:04X}]'
+
+                if orig_to_pos >= to_after_pos and jump.to_label[0] == '[':
+                    new_to_pos = orig_to_pos + shift_magnitude
+                    jump.to_label = f'[{new_to_pos:04X}]'
+
+            # print(jump)
+
+        for ind in del_inds:
+            self.jumps.delete(ind)
+
+    def __shift_labels(self,
+                       before_pos: int,
+                       after_pos: int,
+                       shift_magnitude: int):
+
+        labels_to_delete = []
+        shifted_label_dict = dict()
+
+        for label in self.labels:
+            if before_pos <= self.labels[label] < after_pos:
+                labels_to_delete.append(label)
+            elif self.labels[label] >= after_pos:
+                new_pos = self.labels[label] + shift_magnitude
+                if label[0] == '[':
+                    labels_to_delete.append(label)
+
+                    new_label = f'[{new_pos:04X}]'
+                    shifted_label_dict[new_label] = new_pos
+                else:
+                    self.labels[label] = new_pos
+
+        for label in labels_to_delete:
+            del(self.labels[label])
+
+        self.labels.update(shifted_label_dict)
+
+    def __get_cmd_index_from_pos(self, pos: int):
+        return self.offsets.index(pos)
 
     def from_bytearray(func_bytes: bytearray):
         ret = EventFunction()
@@ -33,19 +134,149 @@ class EventFunction:
 
         return ret
 
-    def add(self, event_command):
+    def add(self, event_command: EventCommand,
+            register_jump: bool = True) -> EventFunction:
+
         self.commands.append(event_command)
         self.offsets.append(self.pos)
-        self.pos += len(event_command)
         self.data.extend(event_command.to_bytearray())
+
+        if register_jump and \
+           event_command.command in EventCommand.jump_commands:
+
+            is_back_jump = \
+                event_command.command in EventCommand.back_jump_commands
+            jump_mult = 1 - 2*(is_back_jump)
+
+            target = (
+                self.pos + len(event_command) +
+                jump_mult*event_command.args[-1] - 1
+            )
+
+            # self.__set_pos_label(target)
+            self.jumps.append(
+                EventFunction.JumpRecord(
+                    self.__get_label(self.pos),
+                    self.__get_label(target)
+                )
+            )
+
+        self.pos += len(event_command)
 
         return self
 
-    def append(self, event_function):
+    def delete_at_index(self, ind: int):
 
-        ins_pos = self.pos
-        ins_index = len(self.commands)
+        del_pos = self.offsets[ind]
+        cmd_len = len(self.commands[ind])
+        self.__shift_jumps(del_pos, del_pos+cmd_len,
+                           -cmd_len)
+        self.__shift_labels(del_pos, del_pos+cmd_len,
+                            -cmd_len)
 
+        for i in range(ind+1, len(self.offsets)):
+            self.offsets[i] -= cmd_len
+
+        del(self.offsets[ind])
+        del(self.commands[ind])
+        del(self.data[del_pos:del_pos+cmd_len])
+
+        self.pos -= cmd_len
+
+    def insert(self, event_function: EventFunction, pos: int):
+
+        # print('inserting:')
+        # print(event_function)
+        # print('into')
+        # print(self)
+        # print(self.jumps)
+        # print(f'at {pos:04X}')
+        # Shift all of the function's jumps and labels
+        # After shifting, we should be able to just append the function's
+        # labels and jumps into self
+        ins_function = event_function.copy()
+        ins_function.__shift_jumps(0, 0, pos)
+        ins_function.__shift_labels(0, 0, pos)
+
+        for ind, _ in enumerate(ins_function.offsets):
+            ins_function.offsets[ind] += pos
+
+        if pos == self.pos:
+            ins_index = len(self.commands)
+        else:
+            ins_index = self.offsets.index(pos)
+
+        self.__shift_jumps(pos, pos, len(ins_function))
+        self.__shift_labels(pos, pos, len(ins_function))
+
+        self.data[pos:pos] = ins_function.get_bytearray()
+
+        for i in range(ins_index, len(self.offsets)):
+            self.offsets[i] += len(ins_function)
+        self.offsets[ins_index:ins_index] = ins_function.offsets[:]
+
+        self.commands[ins_index:ins_index] = ins_function.commands[:]
+
+        self.jumps.extend(ins_function.jumps)
+        self.labels.update(ins_function.labels)
+
+        self.pos += len(ins_function)
+
+        return self
+
+        '''
+        print('Warning: This is probably buggy.  Avoid using.')
+        ins_pos = pos
+
+        # find the index of the command where we're inserting
+        # update the offset for commands past the insertion point
+        cur_pos = 0
+        ins_index = None
+        for ind, cmd in enumerate(self.commands):
+            if cur_pos == ins_pos:
+                ins_index = ind
+            elif cur_pos > ins_pos:
+                if ins_index is None:
+                    print('Error: insertion position is not a command start')
+                    quit()
+
+                self.offsets[ind] += ins_index
+
+            cur_pos += len(cmd)
+
+        # We need to fix positional label names.  Store updated labels in
+        # new_labels dict.  Afterwards, we'll update the original dictionary.
+        new_labels = dict()
+
+        # Do jump records first so we can look up the jump position in the
+        # label dict.
+        for jump in self.jumps:
+            if jump.from_index >= ins_index:
+                jump.from_index += ins_index
+                jump.from_pos += ins_pos
+
+            if jump.to_label[0] == '[':
+                orig_pos = self.labels[jump.to_label]
+                if orig_pos >= ins_pos:
+                    new_pos = orig_pos + len(event_function)
+                else:
+                    new_pos = orig_pos
+
+                jump.to_label = f'[{new_pos}]'
+
+        # Now update the labels
+        for label in self.labels:
+            if self.labels[label] >= ins_pos:
+                new_pos = self.labels[label] + len(event_function)
+                if self.labels[0] == '[':
+                    new_label = f'[{new_pos:04X}]'
+                else:
+                    new_label = label
+
+                del(self.labels[label])
+                new_labels[new_label] = new_pos
+
+        # Put the inserted function's labels and jumps in
         for label in event_function.labels:
             new_pos = event_function.labels[label] + ins_pos
 
@@ -54,7 +285,7 @@ class EventFunction:
             else:
                 new_label = f'[{new_pos:04X}]'
 
-            self.labels[new_label] = new_pos
+            new_labels[new_label] = new_pos
 
         for jump in event_function.jumps:
             jump.from_index += ins_index
@@ -66,8 +297,42 @@ class EventFunction:
                 jump.to_label = f'[{new_pos:04X}]'
             self.jumps.append(jump)
 
-        for command in event_function.commands:
-            self.add(command)
+        # Finally copy the data in
+        self.data[ins_pos:ins_pos] = event_function.data[:]
+        self.offsets[ins_index:ins_index] = [
+            x + ins_pos for x in event_function.offsets
+            ]
+
+        # Update the current end position for insertions
+        self.pos += ins_pos
+        '''
+
+    def append(self, event_function: EventFunction):
+
+        return self.insert(event_function, self.pos)
+
+    def find_command(self, command_ids: list[int]) -> list[int]:
+
+        ret_ind = [self.commands.index(x) for x in self.commands
+                   if x.command in command_ids]
+        return ret_ind
+
+    def find_exact_command(self, event_command: EventCommand,
+                           loose_match_jumps: bool = True) -> int:
+
+        for ind, cmd in enumerate(self.commands):
+
+            if event_command.command in EventCommand.jump_commands and \
+               loose_match_jumps:
+                if event_command.command == cmd.command and \
+                   event_command.args[0:-1] == cmd.args[0:-1]:
+                    return ind
+                else:
+                    pass
+            elif cmd == event_command:
+                return ind
+
+        return None
 
     @classmethod
     def if_do(cls, if_command: EventCommand,
@@ -93,6 +358,13 @@ class EventFunction:
             pos = self.pos
 
         self.labels[label] = pos
+
+    def __set_pos_label(self, pos: int = None):
+        if pos is None:
+            pos = self.pos
+
+        label = f'[{pos:04X}]'
+        self.__set_label(label, pos)
 
     def __get_label(self, pos: int = None) -> str:
         if pos is None:
@@ -127,22 +399,49 @@ class EventFunction:
                 f'Error: {event_command.cmd:02X} is not a jump command'
             )
 
-        cmd_ind = len(self.commands)
-        self.jumps.append(self.JumpRecord(cmd_ind, self.pos, label))
+        from_label = self.__get_label()
 
-        self.add(event_command)
-        # print(self.jumps)
-        # input('here')
+        self.add(event_command, register_jump=False)
+        self.__add_jump(from_label, label)
+
         return self
+
+    def __add_jump(self, from_label, to_label):
+
+        from_pos = self.labels[from_label]
+        from_cmd = self.data[from_pos]
+
+        jump_cmds = (
+            EventCommand.fwd_jump_commands +
+            EventCommand.back_jump_commands
+        )
+
+        if from_cmd not in jump_cmds:
+            raise SystemExit(
+                f'Error: {from_cmd:02X} is not a jump command'
+            )
+
+        self.jumps.append(self.JumpRecord(from_label, to_label))
+
+        return self
+
+    def __add_jump_from_pos(self, from_pos, to_pos):
+        from_label = self.__get_label(from_pos)
+        to_label = self.__get_label(to_pos)
+
+        self.__add_jump(from_label, to_label)
 
     # if (if command):
     #     if_block
     # rest of eventfunction
     def add_if(self, if_command, if_block: EventFunction):
-        label = f'[{self.pos+len(if_block)+len(if_command):04X}]'
-        self.jump_to_label(if_command, label)
+        from_label = self.__get_label()
+        self.add(if_command, register_jump=False)
+
         self.append(if_block)
-        self.__set_label(label)
+        to_label = self.__get_label()
+
+        self.__add_jump(from_label, to_label)
 
         return self
 
@@ -155,16 +454,26 @@ class EventFunction:
                     if_block: EventFunction,
                     else_block: EventFunction):
 
-        if_block.add(EventCommand.jump_forward(0))
-        self.add_if(if_command, if_block)
+        if_start_pos = self.pos
+        if_block.add(EventCommand.jump_forward(0),
+                     register_jump=False)
+        self.add(if_command, register_jump=False)
+        self.append(if_block)
 
-        jump_pos = self.pos - len(EventCommand.jump_forward(0))
-        jump_ind = len(self.commands) - 1
+        jump_over_else_pos = self.pos - len(EventCommand.jump_forward(0))
+        else_start_pos = self.pos
 
         self.append(else_block)
-        label = self.__get_label()
+        after_else_pos = self.pos
 
-        self.jumps.append(self.JumpRecord(jump_ind, jump_pos, label))
+        self.__add_jump(
+            self.__get_label(if_start_pos),
+            self.__get_label(else_start_pos)
+        )
+        self.__add_jump(
+            self.__get_label(jump_over_else_pos),
+            self.__get_label(after_else_pos)
+        )
 
         return self
 
@@ -174,16 +483,16 @@ class EventFunction:
     #  label2:
     def add_while(self, if_command, while_block: EventFunction):
 
-        start_label = f'[{self.pos:04X}]'
-        self.set_label(start_label)
-        while_block.add(EventCommand.jump_back(0))
+        start_loop_label = self.__get_label()
+        while_block.add(EventCommand.jump_back(0),
+                        register_jump=False)
         self.add_if(if_command, while_block)
 
         from_pos = self.pos - len(EventCommand.jump_back(0))
-        from_index = len(self.commands) - 1
+        from_label = self.__get_label(from_pos)
 
         self.jumps.append(
-            self.JumpRecord(from_index, from_pos, start_label)
+            self.JumpRecord(from_label, start_loop_label)
         )
 
         return self
@@ -197,7 +506,10 @@ class EventFunction:
 
         self.resolve_jumps()
         reverse_labels = {pos: label for label, pos in self.labels.items()}
-        jump_pos = [x.from_pos for x in self.jumps]
+        # jump_pos = [x.from_pos for x in self.jumps]
+        # jump_labels = (x.from_label for x in self.jumps)
+        jump_pos = [self.labels[x]
+                    for x in (y.from_label for y in self.jumps)]
 
         indent_level = 0
         decr_indent_positions = []
@@ -238,7 +550,7 @@ class EventFunction:
                 decr_indent_positions.append(target)
 
             pos += len(self.commands[i])
-            if pos in decr_indent_positions:
+            while pos in decr_indent_positions:
                 indent_level -= 1
                 decr_indent_positions.remove(pos)
 
@@ -246,43 +558,52 @@ class EventFunction:
 
     def resolve_jumps(self):
 
-        # print(self.jumps)
-        # print(self.labels)
-        # input()
-
         for jump_record in self.jumps:
-            jump_record: self.JumpRecord
-            command = self.commands[jump_record.from_index]
-            cmd_id = command.command  # gross
-            from_pos = jump_record.from_pos
-            jump_label = jump_record.to_label
+            # print(jump_record)
 
-            to_pos = self.labels[jump_label]
+            if jump_record.from_label not in self.labels or \
+               jump_record.to_label not in self.labels:
+                # print('Ignoring')
+                # input()
+                # Ignore labels that don't exist.  Assume they are in the
+                # outer scope.
+                continue
+
+            # print('From:', self.labels[jump_record.from_label])
+            # print('  To:', self.labels[jump_record.to_label])
+            from_pos = self.labels[jump_record.from_label]
+            from_index = self.__get_cmd_index_from_pos(from_pos)
+            command = self.commands[from_index]
+
+            cmd_id = command.command  # gross
+
+            to_pos = self.labels[jump_record.to_label]
 
             jump_length = (to_pos - (from_pos+len(command)))
-
-            if jump_length == 0:
-                print(
-                    f'Error: jump from {from_pos} to {to_pos} '
-                    f'(\'{jump_label}\') is zero.'
-                )
 
             jump_cmds = \
                 EventCommand.fwd_jump_commands + \
                 EventCommand.back_jump_commands
 
             if cmd_id not in jump_cmds:
+                print(jump_record)
+                for i, x in enumerate(self.offsets):
+                    print(f'[{x:04X}]\t{self.commands[i]}')
                 raise SystemExit('JumpRecord does not point to a jump cmd')
 
             if cmd_id in EventCommand.back_jump_commands and jump_length > 0:
                 raise SystemExit('Back jump jumps to forward label')
 
             if cmd_id in EventCommand.fwd_jump_commands and jump_length < 0:
-                raise SystemExit('Fowrard jump jumps to backward label')
+                print('jump error?')
+                # raise SystemExit('Forward jump jumps to backward label')
 
             jump_length = abs(jump_length + 1)
             command.args[-1] = jump_length
-            self.data[from_pos+len(command)-1] = jump_length
+            try:
+                self.data[from_pos+len(command)-1] = jump_length
+            except IndexError:
+                pass
 
     def get_bytearray(self):
 
@@ -294,7 +615,6 @@ def main():
 
     EC = EventCommand
     EF = EventFunction
-
     '''
     func = EF()
 
@@ -346,7 +666,7 @@ def main():
 
     func = EF()
     func.add(EC.assign_val_to_mem(0x0, 0x7F01DF, 1))
-    replace_label = func.get_label()
+    func.set_label('repl')
     func.add(EC.replace_characters())
 
     error_string_index = 0
@@ -360,7 +680,7 @@ def main():
                 (
                     EF()
                     .add(EC.text_box(error_string_index))
-                    .jump_to_label(EC.jump_back(0), replace_label)
+                    .jump_to_label(EC.jump_back(0), 'repl')
                 )
             )
         )
