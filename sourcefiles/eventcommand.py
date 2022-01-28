@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 
 from byteops import to_little_endian, get_value_from_bytes
 from enum import Enum, IntEnum, auto
@@ -38,6 +39,10 @@ class EventCommand:
 
     back_jump_commands = [0x11]
     back_jump_arg_pos = [-1]
+
+    conditional_commands = [x for x in fwd_jump_commands
+                            if x != 0x10]
+    jump_commands = fwd_jump_commands + back_jump_commands
 
     def __init__(self, command, num_args,
                  arg_lens, arg_descs,
@@ -123,6 +128,47 @@ class EventCommand:
         slot_arg = slot_number | 0x80*(is_static)
         x = EventCommand.generic_two_arg(0x83, enemy_id, slot_arg)
         return x
+
+    def set_reset_bit(address: int, bit: int, set_bit: bool) -> EventCommand:
+
+        # For addresses in [0x7F0000, 0x7F0200) we can access any byte.
+        # For bytes past 0x7F00FF we set the 0x80 bit of the byte indicating
+        # the bit to set.
+        if 0x7F0000 <= address < 0x7F0200:
+            overflow = 0x80 * (address >= 0x7F0100)
+            offset = address % 0x100
+            if set_bit:
+                cmd_id = 0x65
+            else:
+                cmd_id = 0x66
+        # For addresses in script memory, [0x7F0200, 0x7F0400), we can only
+        # access the even bytes.
+        elif 0x7F0200 <= address < 0x7F0400:
+            overflow = 0
+            if address % 2 == 1:
+                print(
+                    'Warning: Script memory addresses must be even.  '
+                    'Rounding down.'
+                )
+                address -= 1
+            offset = (address - 0x7F0200)//2
+            if set_bit:
+                cmd_id = 0x63
+            else:
+                cmd_id = 0x64
+        else:
+            raise SystemExit(f'Error: Address {address:06X} out of range.')
+
+        bit_byte = overflow | int(math.log2(bit))
+        ret_cmd = EventCommand.generic_two_arg(cmd_id, bit_byte, offset)
+
+        return ret_cmd
+
+    def set_bit(address: int, bit: int) -> EventCommand:
+        return EventCommand.set_reset_bit(address, bit, True)
+
+    def reset_bit(address: int, bit: int) -> EventCommand:
+        return EventCommand.set_reset_bit(address, bit, False)
 
     def set_object_drawing_status(obj_id: int, is_drawn: bool) -> EventCommand:
         if is_drawn:
@@ -251,6 +297,9 @@ class EventCommand:
     def end_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
 
+    def if_has_item(item_id: int, jump_bytes: int) -> EventCommand:
+        return EventCommand.generic_two_arg(0xC9, int(item_id), jump_bytes)
+
     def if_mem_op_value(
             address: int, operation: Operation,
             value: int, num_bytes: int,  bytes_jump: int
@@ -268,7 +317,6 @@ class EventCommand:
 
             # Accessing the upper 0x100 bytes is done by ORing the operation
             # with 0x80
-            
             if address >= 0x7F0100:
                 operator |= 0x80
 
@@ -296,7 +344,7 @@ class EventCommand:
 
     def set_storyline_counter(val: int) -> EventCommand:
         return EventCommand.assign_val_to_mem(val, 0x7F0000, 1)
-    
+
     def assign_val_to_mem(
             val: int, address: int, num_bytes: int
     ) -> EventCommand:
@@ -388,8 +436,8 @@ class EventCommand:
 
         return out_cmd
 
-    # Jumps in CT are always encoded as jump-1 because there are no jumps
-    # of 0 bytes.  For now, preserve this behavior in the commands.
+    # Reminder that jumps in CT are always computed as being a jump from the
+    # last byte of the jump command.  This is what the jump_bytes argument is.
     def jump_back(jump_bytes: int) -> EventCommand:
         return EventCommand.generic_one_arg(0x11, jump_bytes)
 
@@ -443,7 +491,7 @@ class EventCommand:
         if top:
             return EventCommand.generic_one_arg(0xC1, string_id)
         else:
-            return EventCommand.generic_two_arg(0xC2, string_id)
+            return EventCommand.generic_one_arg(0xC2, string_id)
 
     def copy(self) -> EventCommand:
         ret_command = EventCommand(-1, 0, [], [], '', '')
