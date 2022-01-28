@@ -15,11 +15,8 @@ class ObjectRef:
     func_id: int = 0
 
 
-def apply_fast_pendant_lw(ctrom: CTRom,
-                          settings: rset.Settings):
-    if not (rset.GameFlags.LOST_WORLDS in settings.gameflags and
-            rset.GameFlags.FAST_PENDANT in settings.gameflags):
-        return
+def apply_fast_pendant_script(ctrom: CTRom,
+                              settings: rset.Settings):
 
     # The strategy is just to change every 'if pendant charged' to
     # 'if has pendant' since there's no well-defined event to add a scene
