@@ -9,7 +9,6 @@ import randoconfig as cfg
 import randosettings as rset
 
 import treasuredata as td
-import enemywriter as ew
 
 # We do not want to be reconstructing these lists every time that
 # get_distributions is called.  They are _named to avoid importing with

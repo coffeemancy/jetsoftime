@@ -9,7 +9,6 @@
 import copy
 import techrandomizer
 import random
-import ipswriter
 
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
@@ -2111,80 +2110,6 @@ def extend_techs(rom):
                             '5C 9F BD C2')
 
     rom[rt3_st:rt3_st+len(rt3)] = rt3[:]
-
-
-def fix_burrow(rom, outfile):
-    '''
-    Old refs:  All of them should have the pc-index except for the one which
-    loads the PC into the party.
-    0x38932D
-    0x389275
-    0x389323
-    0x389336
-    0x389352 <-- known to be PC id
-    0x389353 <-- load PC in party
-    '''
-
-    # Use the old references to read the pc that should be in the burrow
-    pc = rom[0x389352:0x389352+1]
-    pc_load = rom[0x389353:0x389353+1]
-
-    pc_refs = [0x3892A3, 0x389350, 0x38935A, 0x389363, 0x38937F]
-
-    for (i, x) in enumerate(pc_refs):
-        outfile.seek(x)
-
-        # The enter name dialog has the upper 4 bits as C and the lower four
-        # as the pc index
-        if i == 2:
-            temp = pc[0]
-            pc[0] |= 0xC0
-            outfile.write(pc)
-            pc[0] = temp
-        else:
-            outfile.write(pc)
-
-    outfile.seek(0x389380)
-    outfile.write(pc_load)
-
-    # Now do the key item
-    # old key refs are 0x3891DE 0x3891E0.  Both hold the key item id
-
-    key = rom[0x3891DE:0x3891DE+1]
-
-    key_refs = [0x38920C, 0x38920E]
-
-    for x in key_refs:
-        outfile.seek(x)
-        outfile.write(key)
-
-
-def reassign_characters_file(filename, char_choices, dup_duals,
-                             tech_rando_type, lost_worlds):
-    with open(filename, 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    extend_techs(rom)
-
-    reassign = [random.choice(char_choices[i]) for i in range(7)]
-    reassign_characters(rom, reassign, dup_duals, tech_rando_type, lost_worlds)
-
-    with open(filename, 'wb') as outfile,\
-         open('patches/chardup_telepod_patch.ips', 'rb') as telepod_patch,\
-         open('patches/chardup_spekkio_patch.ips', 'rb') as spek_patch, \
-         open('patches/chardup_burrow_patch.ips', 'rb') as burrow_patch, \
-         open('patches/chardup_choras_inn_patch.ips', 'rb') as choras_patch:
-
-        outfile.write(rom)
-
-        if not lost_worlds:
-            ipswriter.write_patch_objs(spek_patch, outfile)
-
-            ipswriter.write_patch_objs(telepod_patch, outfile)
-            ipswriter.write_patch_objs(burrow_patch, outfile)
-            ipswriter.write_patch_objs(choras_patch, outfile)
-
-            fix_burrow(rom, outfile)
 
 
 def fix_kings_trial_anim(ctrom: CTRom, config: cfg.RandoConfig):
