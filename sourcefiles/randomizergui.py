@@ -423,18 +423,41 @@ class RandoGUI:
     # have been chosen
     def verify_settings(self):
 
+        # For elements that can be set/reset by various flags, we need to
+        # set them all normal, and then disable as needed.
+
+        checkboxes = (
+            self.lost_worlds_checkbox, self.chronosanity_checkbox,
+            self.zeal_end_checkbox, self.boss_scaling_checkbox,
+            self.bucket_fragment_checkbox, self.unlocked_magic_checkbox,
+            self.ice_age_checkbox, self.loc_checkbox,
+            self.locked_chars_checkbox, self.fast_pendant_checkbox
+        )
+
+        scales = (
+            self.bucket_frag_extra_scale, self.bucket_frag_required_scale,
+            self.tab_prob_scale
+        )
+
+        for checkbox in checkboxes:
+            checkbox.config(state=tk.NORMAL)
+
+        for scale in scales:
+            scale.config(state=tk.NORMAL, fg='grey')
+
         # TODO: Dicts for disabling, etc so this can be streamlined
         GF = GameFlags
         ia_disabled_flags = [
             GF.LOST_WORLDS, GF.CHRONOSANITY, GF.ZEAL_END,
-            GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS
+            GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS, GF.LEGACY_OF_CYRUS
         ]
 
         ia_disabled_elements = [
             self.lost_worlds_checkbox, self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
-            self.bucket_frag_required_scale
+            self.bucket_frag_required_scale, self.loc_checkbox,
+            self.unlocked_magic_checkbox
         ]
 
         if self.flag_dict[GameFlags.ICE_AGE].get() == 1:
@@ -442,33 +465,50 @@ class RandoGUI:
             for flag in ia_disabled_flags:
                 self.flag_dict[flag].set(0)
 
+            self.flag_dict[GameFlags.UNLOCKED_MAGIC].set(1)
+
             for element in ia_disabled_elements:
                 element.config(state=tk.DISABLED)
 
             self.bucket_frag_extra_scale.config(fg='grey')
             self.bucket_frag_required_scale.config(fg='grey')
 
-        else:
-            for element in ia_disabled_elements:
-                element.config(state=tk.NORMAL)
+        loc_disabled_flags = [
+            GF.LOST_WORLDS, GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.BUCKET_FRAGMENTS, GF.ICE_AGE,
+            GF.BOSS_RANDO, GF.BOSS_SCALE, GF.BOSS_RANDO
+        ]
 
-            self.bucket_frag_extra_scale.config(fg='black')
-            self.bucket_frag_required_scale.config(fg='black')
+        loc_disabled_elements = [
+            self.lost_worlds_checkbox, self.chronosanity_checkbox,
+            self.zeal_end_checkbox, self.boss_scaling_checkbox,
+            self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
+            self.bucket_frag_required_scale, self.ice_age_checkbox,
+            self.boss_rando_checkbox
+        ]
+
+        if self.flag_dict[GameFlags.LEGACY_OF_CYRUS].get() == 1:
+            for flag in loc_disabled_flags:
+                self.flag_dict[flag].set(0)
+
+            self.flag_dict[GameFlags.UNLOCKED_MAGIC].set(1)
+
+            for element in loc_disabled_elements:
+                element.config(state=tk.DISABLED)
+
+            self.bucket_frag_extra_scale.config(fg='grey')
+            self.bucket_frag_required_scale.config(fg='grey')
 
         if self.flag_dict[GameFlags.LOST_WORLDS].get() == 1:
             self.flag_dict[GameFlags.ICE_AGE].set(0)
             self.ice_age_checkbox.config(state=tk.DISABLED)
             # self.flag_dict[GameFlags.FAST_PENDANT].set(0)
             # self.fast_pendant_checkbox.config(state=tk.DISABLED)
-        else:
-            self.fast_pendant_checkbox.config(state=tk.NORMAL)
-            self.ice_age_checkbox.config(state=tk.NORMAL)
 
         if self.flag_dict[GameFlags.CHRONOSANITY].get() == 1:
             self.flag_dict[GameFlags.BOSS_SCALE].set(0)
             self.boss_scaling_checkbox.config(state=tk.DISABLED)
-        else:
-            self.boss_scaling_checkbox.config(state=tk.NORMAL)
+
 
         # Check DC Page
         if self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
@@ -1771,6 +1811,20 @@ class RandoGUI:
             self.ice_age_checkbox,
             'Get Ayla.  Get the Dactyl Nest character.  Use them to defeat '
             'the Black Tyrano and a (buffed) Giga Gaia to win.'
+        )
+
+        self.loc_checkbox = tk.Checkbutton(
+            frame,
+            text='Legacy of Cyrus',
+            variable=self.flag_dict[GameFlags.LEGACY_OF_CYRUS],
+            command=self.verify_settings
+        )
+        self.loc_checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            self.loc_checkbox,
+            'Get Frog and Magus, visit Cyrus\'s grave, defeat Magus, and '
+            'finish by clearing Ozzie\'s Fort.'
         )
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
