@@ -143,7 +143,8 @@ class Randomizer:
         # Boss Rando
         bossrando.write_assignment_to_config(self.settings, self.config)
 
-        # This updates the enemy dict in the config with new stats.
+        # This updates the enemy dict in the config with new stats depending
+        # on bossrando.write_assignment_to_config().
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
 
         # Key item Boss scaling (done after boss rando).  Also updates stats.
@@ -161,7 +162,7 @@ class Randomizer:
         # Omen elevator
         self.__set_omen_elevators_config()
 
-        # Ice age GG buffs
+        # Ice age GG buffs if IA flag is present in settings.
         iceage.write_config(self.settings, self.config)
 
     def rescale_bosses(self):
@@ -195,7 +196,7 @@ class Randomizer:
         bossscaler.set_boss_power(self.settings, self.config)
 
     def __set_omen_elevators_config(self):
-        '''Determine which omen up elevator encounters a seed gets.'''
+        '''Determine which omen elevator encounters a seed gets.'''
         # Ruminators, goons, cybots
         fight_thresh_up = [0xA0, 0x60, 0x80]
         fight_thresh_down = [0x80, 0x60, 0xA0]
@@ -273,6 +274,26 @@ class Randomizer:
         else:
             print('failed to find mm flag')
 
+
+    def __try_mystic_mtn_portal_fix(self):
+        '''
+        Removes touch == activate from dactyl portal.  Maybe this fixes?
+        '''
+        loc_id = ctenums.LocID.MYSTIC_MTN_PORTAL
+        script = self.out_rom.script_manager.get_script(loc_id)
+
+        EF = ctevent.EF
+        EC = ctevent.EC
+
+        # Make a function that's just a return
+        func = EF()
+        func.add(EC.return_cmd())
+
+        # Set the touch (0x02) function of the portal activation obj (0x0A)
+        # to just return.
+        script.set_function(0x0A, 0x02, func)
+
+
     def __try_proto_dome_fix(self):
         '''Removes touch == activate from proto recruit.  Maybe this fixes?'''
         script_man = self.out_rom.script_manager
@@ -290,6 +311,9 @@ class Randomizer:
         script.set_function(0x18, 0x02, func)
 
     def generate_rom(self):
+        '''
+        Turns settings + config into self.out_rom.
+        '''
         if self.settings is None:
             raise NoSettingsException
 
@@ -303,7 +327,9 @@ class Randomizer:
         self.__write_out_rom()
 
     def __write_config_to_out_rom(self):
-
+        '''
+        Writes elements of the config to self.out_rom
+        '''
         config = self.config
         ctrom = self.out_rom
 
@@ -334,10 +360,6 @@ class Randomizer:
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
 
-        if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
-            # fastmagic.process_ctrom(ctrom, self.settings)
-            pass
-
         # Write out the bosses and midbossses
         bossrando.write_bosses_to_ctrom(ctrom, config)
         bossrando.write_midbosses_to_ctrom(ctrom, config)
@@ -351,14 +373,17 @@ class Randomizer:
     def __write_out_rom(self):
         '''Given config and settings, write to self.out_rom'''
         self.out_rom = CTRom(self.base_ctrom.rom_data.getvalue(), True)
+
+        # TODO:  Consider working some of the always-applied script changes
+        #        Into patch.ips to improve generation speed.
         self.__apply_basic_patches(self.out_rom, self.settings)
         self.__apply_settings_patches(self.out_rom, self.settings)
         self.__apply_cosmetic_patches(self.out_rom, self.settings)
 
-        # This makes copies of heckran cave passagesways and king's trial
-        # so that bosses can go there.  There's no reason not do just do this
-        # regardless of whether boss rando is on.
-
+        # This makes copies of heckran cave passagesways, king's trial,
+        # and now Zenan Bridge so that all bosses can go there.
+        # There's no reason not do just do this regardless of whether
+        # boss rando is on.
         bossrando.duplicate_maps_on_ctrom(self.out_rom)
         bossrando.duplicate_zenan_bridge(self.out_rom,
                                          ctenums.LocID.ZENAN_BRIDGE_BOSS)
@@ -366,7 +391,8 @@ class Randomizer:
         # Script changes which can always be made
         Event = ctevent.Event
         script_manager = self.out_rom.script_manager
-        # Some dc flag patches can be added regardless.  No reason not to.
+
+        # Three dc flag patches can be added regardless.  No reason not to.
 
         # 1) Set magic learning at game start depending on character assignment
         #    unless LW...because telepod exhibit now has the LW portal change.
@@ -379,12 +405,12 @@ class Randomizer:
             # 0x80 bit of 0x7f0057 for the skyway logic in the Telepod
             # Exhibit script.
             EC = ctevent.EC
-            
+
             # set flag cmd -- too lazy to make an EC function for this
             cmd = EC.generic_two_arg(0x65, 0x07, 0x57)
             start = telepod_event.get_function_start(0x0E, 0x04)
             end = telepod_event.get_function_end(0x0E, 0x04)
-            
+
             # Set the flag right before the screen darkens
             pos = telepod_event.find_exact_command(EC.fade_screen(),
                                                    start, end)
@@ -433,22 +459,30 @@ class Randomizer:
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
 
+        # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
+        # rolled into patch.ips.
+
+        # Two potential softlocks caused by (presumably) touch == activate.
         self.__try_proto_dome_fix()
+        self.__try_mystic_mtn_portal_fix()
+
+        # Enable NG+ by defeating Lavos without doing Omen.
         self.__lavos_ngplus()
 
+        # Everything prior was purely based on settings, not the randomization.
+        # Now, write the information from the config to the rom.
         self.__write_config_to_out_rom()
 
-        # Ice Age needs to go after characters are in their spot.
-        # Technically, this shouldn't be needed, but the recruit spot setter
-        # just mashes all character recruit commands into the recruit's version
-        # so the inserted code will get altered by them.
+        # Ice Age/LoC script changes need to go after the config is written
+        # because the recruit spot works by changing all character recruit
+        # commands into the recruit's version.  The code inserted by theen
+        # recruit locks would get incorrectly changed by this.
         if rset.GameFlags.ICE_AGE in self.settings.gameflags:
             iceage.set_ice_age_recruit_locks(self.out_rom,
                                              self.config)
             iceage.set_ice_age_dungeon_locks(self.out_rom, self.config)
             iceage.set_ending_after_woe(self.out_rom)
 
-        # Same for LoC
         if rset.GameFlags.LEGACY_OF_CYRUS in self.settings.gameflags:
             legacyofcyrus.write_loc_recruit_locks(self.out_rom,
                                                   self.config)
@@ -548,8 +582,6 @@ class Randomizer:
 
             file_object.write('Tech Order:\n')
             for tech_num in range(8):
-                # TODO:  Is it OK to randomize the DB early?  We're trying it.
-                # tech_num = char_man.pcs[char_id].tech_permutation[tech_num]
                 tech_id = 1 + 8*char_id + tech_num
                 tech = techdb.get_tech(tech_id)
                 name = ctstrings.CTString.ct_bytes_to_techname(tech['name'])
@@ -695,7 +727,8 @@ class Randomizer:
         file_object.write('\n')
 
     # Because switching logic is a feature now, we need a settings object.
-    # Ugly.
+    # Ugly.  BETA_LOGIC flag is gone now, but keeping it as-is in case of
+    # logic changes to test.
     @classmethod
     def __apply_basic_patches(cls, ctrom: CTRom,
                               settings: rset.Settings = None):
@@ -757,7 +790,7 @@ class Randomizer:
         # Patching with lost.ips does not give a valid event for
         # mystic mountains.  I could fix the event by applying a flux file,
         # but I'm worried about what might happen when the invalid event is
-        # marked free space.  For now we keep with 3.1 and apply the
+        # marked free space.  For now we keep with older versions and apply the
         # mysticmtnfix.ips to restore the event.
         if rset.GameFlags.LOST_WORLDS in flags:
             rom_data.patch_ips_file('./patches/lost.ips')
@@ -1124,77 +1157,14 @@ def test_json():
     rando.set_random_config()
     rando.config.to_json('./json/json_test.json')
 
+
 def main():
-
-    with open('./roms/ct.sfc', 'rb') as infile:
-        rom = infile.read()
-
-    settings = rset.Settings.get_race_presets()
-    # settings.gameflags |= rset.GameFlags.DUPLICATE_CHARS
-    # settings.char_choices = [[i for i in range(7)] for j in range(7)]
-    # settings.char_choices = [[j] for j in range(7)]
-    # settings.gameflags |= rset.GameFlags.BOSS_SCALE
-    settings.gameflags |= rset.GameFlags.CHRONOSANITY
-    settings.gameflags |= rset.GameFlags.VISIBLE_HEALTH
-    settings.gameflags |= rset.GameFlags.FAST_TABS
-    settings.gameflags |= rset.GameFlags.GUARANTEED_DROPS
-    # settings.gameflags |= rset.GameFlags.LOCKED_CHARS
-    # settings.gameflags |= rset.GameFlags.UNLOCKED_MAGIC
-    # settings.gameflags |= rset.GameFlags.LOST_WORLDS
-
-    settings.cosmetic_flags |= rset.CosmeticFlags.ZENAN_ALT_MUSIC
-    settings.cosmetic_flags |= rset.CosmeticFlags.DEATH_PEAK_ALT_MUSIC
-
-    settings.ro_settings.enable_sightscope = True
-
-    settings.seed = 'testtesttest'
-    rando = Randomizer(rom, is_vanilla=True,
-                       settings=settings,
-                       config=None)
-    rando.set_random_config()
-
-    rando.generate_rom()
-    out_ctrom = rando.out_rom
-
-    rando.write_spoiler_log('bucket_spoilers.txt')
-
-    with open('./roms/bucket_test_out.sfc', 'wb') as outfile:
-        outfile.write(out_ctrom.rom_data.getvalue())
-
-    '''
-    # Force a given boss in cathedral for testing
-    LocID = ctenums.LocID
-    BossID = ctenums.BossID
-    cath_boss = rando.config.boss_assign_dict[LocID.MANORIA_COMMAND]
-
-    boss_dict = rando.config.boss_assign_dict
-
-    target_boss = BossID.MUD_IMP
-
-    for key in boss_dict:
-        if boss_dict[key] == target_boss:
-            boss_dict[key] = cath_boss
-
-    rando.config.boss_assign_dict[LocID.MANORIA_COMMAND] = target_boss
-    rando.rescale_bosses()
-    '''
-
-    quit()
-
-    out_rom = rando.get_generated_rom()
-
-    seed = settings.seed
-    # rando.out_rom.rom_data.space_manager.print_blocks()
-    rando.write_spoiler_log(f'spoiler_log_{seed}.txt')
-
-    with open(f'./roms/ct_out_{seed}.sfc', 'wb') as outfile:
-        outfile.write(out_rom)
-
-
-if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "-c":
         generate_from_command_line()
     else:
         print("Please run randomizergui.py for a graphical interface. \n"
               "Either randomizer.py or randomizergui.py can be run with the "
               "-c option to use\nthe command line.")
+
+if __name__ == "__main__":
+    main()
