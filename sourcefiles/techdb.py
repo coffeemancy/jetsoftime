@@ -616,10 +616,13 @@ class TechDB:
 
         ret_tech['desc'] = self.descs[start:end]
 
-        first_dual_tech = self.group_sizes[self.first_dual_grp]
+        # Getting the thresholds for dual/triple/rock techs is a little dicey
+        # when there are none.  This all needs to be reconsidered.
+        if self.first_dual_grp < len(self.group_sizes):
+            first_dual_tech = self.group_sizes[self.first_dual_grp]
+        else:
+            first_dual_tech = self.group_sizes[-1]+8
 
-        # Getting the thresholds for triple/rock techs is a little dicey when
-        # there are none.  This all needs to be reconsidered.
         if self.first_trip_grp < len(self.group_sizes):
             first_trip_tech = self.group_sizes[self.first_trip_grp]
         else:
