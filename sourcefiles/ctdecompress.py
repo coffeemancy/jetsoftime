@@ -1,6 +1,16 @@
 # Copied from Gieger's (Michael Springer, evilpeer@hotmail.com) C version
-from byteops import get_value_from_bytes, to_file_ptr, print_bytes, \
-    to_little_endian
+from byteops import get_value_from_bytes, to_little_endian
+
+# ctcompress is the fast C library.  If it's not present, use the python
+# implementation.
+try:
+    from ctcompress import compress
+    print('Using C compression implementation.')
+except ImportError:
+    print('C compression module not found.  Falling back to python.')
+
+    def compress(source):
+        return compress_py(source)
 
 
 def decompress(rom, start):
@@ -281,12 +291,14 @@ def CTCopyBytes(rom, WorkingBuffer, nBytePos, nWorkPos,  bSmallerBitWidth):
 # than the original game's compression.  This happens when you almost fill up
 # the addendum packet but then have to add another 2 bytes for the compressed
 # length prior to the addendum.
-def compress(source):
+def compress_py(source):
 
     # We have to try compressing in two configurations and then return the
     # better of the two.
     compressed_data = [bytearray([0 for i in range(0x10000)])
                        for j in range(2)]
+
+    best_size = 0x10000
 
     for i in range(2):
         # i=0: use 0x07FF for the range, 0xF800 for the max copy length
@@ -297,6 +309,8 @@ def compress(source):
         max_copy_length = (0xFFFF ^ lookback_range) >> (16-(5-i))
         max_copy_length += 3
 
+        # print(f'Iteration: i={i}')
+        # print(f'{lookback_range:04X} {max_copy_length:04X}')
         src_pos = 0
 
         # First two bytes are main body length
@@ -304,7 +318,6 @@ def compress(source):
         out_pos = 2
 
         done = False
-        best_size = 0x10000
 
         # print('i =', i)
 
@@ -312,6 +325,8 @@ def compress(source):
             # Fill up a compressed packet
             header_pos = out_pos
             out_pos += 1
+
+            # print(f'out_pos: {out_pos:04X}')
 
             for bit in range(8):
 
@@ -327,6 +342,7 @@ def compress(source):
                     else:
                         # Otherwise, we're mid-packet.  The packet becomes
                         # the addendum.
+                        # print("Addendum.")
 
                         # set unused bits of header for addendum header
                         mask = (0xFF << bit) & 0xFF
@@ -354,7 +370,7 @@ def compress(source):
 
                     done = True
                     break
-                
+
                 lookback_st = max(0, src_pos - lookback_range)
                 lookback_end = src_pos
 
@@ -409,6 +425,7 @@ def compress(source):
                 '''
 
                 if best_len > 2:
+                    # print(f'Best len: {best_len:02X}')
                     # We matched at least 3 bytes, so we'll use compression
 
                     # Mark the header to use compression for this bit
@@ -435,6 +452,7 @@ def compress(source):
                     out_pos += 1
                     src_pos += 1
             # End of for loop to fill packet
+            # print(f'Header: {compressed_data[i][header_pos]:02X}')
         # End of while not done loop
 
         if len(compressed_data[i]) < best_size:
@@ -444,71 +462,3 @@ def compress(source):
         return compressed_data[0]
     else:
         return compressed_data[1]
-
-
-if __name__ == '__main__':
-    with open('ct.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    # Try to read a compressed event script.
-
-    # Location events pointers are located on the rom starting at 0x3CF9F0
-    # Each location has (I think) an index into this list of pointers.  The
-    # pointers definitely do not occur in the same order as locations.
-
-    event_ptr_st = 0x3CF9F0
-
-    # Each event pointer is an absolute, 3 byte pointer
-    event_ptr = get_value_from_bytes(rom[event_ptr_st:event_ptr_st+3])
-    event_ptr = to_file_ptr(event_ptr)
-
-    print('Reading from %X.' % event_ptr)
-
-    decompressed_event = decompress_geiger(rom, event_ptr)
-    decompressed_event2 = decompress(rom, event_ptr)
-
-    if len(decompressed_event) != len(decompressed_event2):
-        print("Error: Length mismatch")
-    else:
-        for i in range(len(decompressed_event)):
-            if decompressed_event[i] != decompressed_event2[i]:
-                print(f"Error at byte {i}")
-
-    exit()
-
-    # decompressed_event = bytearray([0 for i in range(0x30)])
-
-    recompressed_event = compress(decompressed_event)
-    derecompressed_event = decompress(recompressed_event)
-
-    if len(derecompressed_event) != len(decompressed_event):
-        print("Error: Length mismatch")
-    else:
-        for i in range(len(decompressed_event)):
-            if derecompressed_event[i] != decompressed_event[i]:
-                print(f"Error at byte {i}")
-
-    for i in range(len(recompressed_event)):
-        if rom[event_ptr+2+i] != recompressed_event[2+i]:
-            print(f"Difference at {i:04X}")
-            break
-
-    compressed_event = rom[event_ptr:
-                           event_ptr+get_compressed_length(rom, event_ptr)]
-
-    print(f"{get_compressed_length(rom, event_ptr):04X}")
-    print(f"{len(recompressed_event):04X}")
-    input()
-
-    with open('decompressed.txt', 'wb') as outfile:
-        outfile.write(decompressed_event)
-
-    with open('decompressed2.txt', 'wb') as outfile:
-        outfile.write(derecompressed_event)
-
-    with open('compressed.txt', 'wb') as outfile:
-        outfile.write(recompressed_event)
-
-    with open('compressed2.txt', 'wb') as outfile:
-        outfile.write(rom[event_ptr:
-                          event_ptr+get_compressed_length(rom, event_ptr)])
