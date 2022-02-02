@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
 
-from ctenums import BossID, LocID
+import ctenums
 
 
 class StrIntEnum(IntEnum):
@@ -64,6 +64,73 @@ class GameFlags(Flag):
     LEGACY_OF_CYRUS = auto()
 
 
+# Dictionary for what flags force what other flags off.
+# Note that this is NOT symmetric.  For example Lost Worlds will force
+# Boss Scaling off, but not vice versa because it's annoying to have to
+# click off every minor flag to select a major flag like a game mode.
+_GF = GameFlags
+_forced_off_dict: dict[_GF, _GF] = {
+    _GF.FIX_GLITCH: _GF(0),
+    _GF.LOST_WORLDS: (
+        _GF.LOST_WORLDS | _GF.ICE_AGE | _GF.LEGACY_OF_CYRUS | _GF.BOSS_SCALE
+    ),
+    _GF.BOSS_SCALE: _GF(0),
+    _GF.ZEAL_END: _GF(0),
+    _GF.FAST_PENDANT: _GF(0),
+    _GF.LOCKED_CHARS: _GF(0),
+    _GF.UNLOCKED_MAGIC: _GF(0),
+    _GF.QUIET_MODE: _GF(0),
+    _GF.CHRONOSANITY: _GF(0),
+    _GF.TAB_TREASURES: _GF(0),
+    _GF.BOSS_RANDO: _GF(0),
+    _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.VISIBLE_HEALTH: _GF(0),
+    _GF.FAST_TABS: _GF(0),
+    _GF.BUCKET_FRAGMENTS: (
+        _GF.LEGACY_OF_CYRUS | _GF.LOST_WORLDS | _GF.ICE_AGE
+    ),
+    _GF.GUARANTEED_DROPS: _GF(0),
+    _GF.BUFF_XSTRIKE: _GF(0),
+    _GF.ICE_AGE: (
+        _GF.LOST_WORLDS | _GF.CHRONOSANITY | _GF.ZEAL_END |
+        _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS | _GF.LEGACY_OF_CYRUS
+    ),
+    _GF.LEGACY_OF_CYRUS: (
+        _GF.LOST_WORLDS | _GF.CHRONOSANITY | _GF.ZEAL_END |
+        _GF.BUCKET_FRAGMENTS | _GF.ICE_AGE |
+        _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
+    )
+}
+
+
+# Similar dictionary for forcing flags on
+_forced_on_dict = {
+    _GF.FIX_GLITCH: _GF(0),
+    _GF.LOST_WORLDS: _GF(0),
+    _GF.BOSS_SCALE: _GF(0),
+    _GF.ZEAL_END: _GF(0),
+    _GF.FAST_PENDANT: _GF(0),
+    _GF.LOCKED_CHARS: _GF(0),
+    _GF.UNLOCKED_MAGIC: _GF(0),
+    _GF.QUIET_MODE: _GF(0),
+    _GF.CHRONOSANITY: _GF(0),
+    _GF.TAB_TREASURES: _GF(0),
+    _GF.BOSS_RANDO: _GF(0),
+    _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.VISIBLE_HEALTH: _GF(0),
+    _GF.FAST_TABS: _GF(0),
+    _GF.BUCKET_FRAGMENTS: _GF(0),
+    _GF.GUARANTEED_DROPS: _GF(0),
+    _GF.BUFF_XSTRIKE: _GF(0),
+    _GF.ICE_AGE: [_GF.UNLOCKED_MAGIC],
+    _GF.LEGACY_OF_CYRUS: [_GF.UNLOCKED_MAGIC]
+}
+
+
+def get_forced_off(flag: GameFlags) -> GameFlags:
+    return _forced_off_dict[flag]
+
+
 class CosmeticFlags(Flag):
     ZENAN_ALT_MUSIC = auto()
     DEATH_PEAK_ALT_MUSIC = auto()
@@ -88,8 +155,8 @@ class TabSettings:
 
 @dataclass
 class ROSettings:
-    loc_list: list[BossID] = field(default_factory=list)
-    boss_list: list[BossID] = field(default_factory=list)
+    loc_list: list[ctenums.BossID] = field(default_factory=list)
+    boss_list: list[ctenums.BossID] = field(default_factory=list)
     preserve_parts: bool = False
     enable_sightscope: bool = False
 
@@ -113,6 +180,7 @@ class Settings:
         self.gameflags = GameFlags.FIX_GLITCH
         self.char_choices = [[i for i in range(7)] for j in range(7)]
 
+        BossID = ctenums.BossID
         boss_list = \
             BossID.get_one_part_bosses() + BossID.get_two_part_bosses()
 
@@ -120,7 +188,7 @@ class Settings:
                       BossID.MOTHER_BRAIN, BossID.GIGA_GAIA,
                       BossID.GUARDIAN]
 
-        loc_list = LocID.get_boss_locations()
+        loc_list = ctenums.LocID.get_boss_locations()
         # loc_list.remove(LocID.SUN_PALACE)
         # loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
