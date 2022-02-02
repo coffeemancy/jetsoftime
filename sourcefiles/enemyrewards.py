@@ -4,7 +4,6 @@ import random
 
 from ctenums import ItemID, EnemyID
 
-from ctrom import CTRom
 import randoconfig as cfg
 import randosettings as rset
 
@@ -330,53 +329,3 @@ def write_enemy_rewards_to_config(settings: rset.Settings,
             config.enemy_dict[enemy].charm_item = charm
 
             # print(f"Enemy: {enemy} assigned drop={drop}, charm={charm}")
-
-
-def main():
-
-    '''
-    en_list = ew.late_boss_ids
-
-    for x in en_list:
-        enemy_id = repr(EnemyID(x))[1:].split(':')[0]
-        print(f"{enemy_id}, ")
-
-    quit()
-    '''
-
-    # Test randomizer configuration
-    ctrom = CTRom.from_file('./roms/jets_test.sfc', True)
-    settings = rset.Settings.get_race_presets()
-    config = cfg.RandoConfig(ctrom.rom_data.getbuffer())
-
-    process_ctrom(ctrom, settings, config)
-
-    exit()
-
-    # Test for overlaps
-    enemy_classes = [common_enemies, uncommon_enemies, rare_enemies,
-                     rarest_enemies, early_bosses, midgame_bosses,
-                     late_bosses]
-
-    for ind, group in enumerate(enemy_classes):
-        complement = []
-        other_groups = [x for x in enemy_classes if x is not group]
-        for x in other_groups:
-            complement += x
-
-        overlap = [x for x in group if x in complement]
-        print(f"Group {ind} overlaps:")
-        print(overlap)
-        print()
-
-    total_assigned = []
-    for x in enemy_classes:
-        total_assigned += x
-
-    for x in list(EnemyID):
-        if x not in total_assigned:
-            print(f"{x} [0x{int(x):02X}] not assigned")
-
-
-if __name__ == '__main__':
-    main()

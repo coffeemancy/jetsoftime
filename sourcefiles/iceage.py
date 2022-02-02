@@ -11,7 +11,6 @@ import ctrom
 import ctstrings
 import eventfunction
 import eventcommand
-import freespace
 
 import randoconfig as cfg
 import randosettings as rset
@@ -399,39 +398,3 @@ def insert_char_lock(script: ctevent.Event,
 
     # for string in script.strings:
     #     print(ctstrings.CTString.ct_bytes_to_ascii(string))
-
-
-def main():
-    CharID = ctenums.CharID
-    char_set = set((CharID.CRONO, CharID.MAGUS, CharID.LUCCA))
-
-    ct_rom = ctrom.CTRom.from_file('./roms/jets_test.sfc', True)
-
-    script_man = ct_rom.script_manager
-    script = script_man.get_script(ctenums.LocID.GUARDIA_QUEENS_CHAMBER_600)
-    func = script.get_function(0,0)
-
-    config = cfg.RandoConfig(bytearray(ct_rom.rom_data.getvalue()))
-    config.char_assign_dict[ctenums.RecruitID.CATHEDRAL].held_char = \
-        ctenums.CharID.AYLA
-    config.char_assign_dict[ctenums.RecruitID.DACTYL_NEST].held_char = \
-        ctenums.CharID.MARLE
-
-    set_ice_age_recruit_locks(ct_rom, config)
-    # insert_char_lock(script, 0x19, char_set)
-    # lock_tyrano_lair(ct_rom, char_set)
-    # lock_magic_cave(ct_rom)
-    # remove_darkages_from_eot(ct_rom)
-
-    space_manager = ct_rom.rom_data.space_manager
-    mark_free = freespace.FSWriteType.MARK_FREE
-    space_manager.mark_block((0x4F8000, 0x5F0000), mark_free)
-    ct_rom.write_all_scripts_to_rom()
-    input('outrom')
-
-    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
-        outfile.write(ct_rom.rom_data.getvalue())
-
-
-if __name__ == '__main__':
-    main()

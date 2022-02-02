@@ -273,24 +273,3 @@ def rank_up_stats(stats: EnemyStats, rank: int) -> list[int]:
     stat_list[5] = orig_def
 
     return stat_list
-
-
-def main():
-    # set up a barebones randomizer environment and test the boss scaling
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    settings = rset.Settings.get_race_presets()
-    settings.gameflags |= rset.GameFlags.LOCKED_CHARS
-    settings.ro_settings.preserve_parts = True
-    config = cfg.RandoConfig(rom)
-
-    # Write the key items
-    config.logic_config = logicfactory.getGameConfig(settings, config)
-    logicwriter.commitKeyItems(settings, config)
-
-    set_boss_power(settings, config)
-
-
-if __name__ == '__main__':
-    main()

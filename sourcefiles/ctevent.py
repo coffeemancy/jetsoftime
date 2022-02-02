@@ -4,7 +4,7 @@ from ctdecompress import compress, decompress, get_compressed_length, \
     get_compressed_packet
 from ctenums import LocID
 from byteops import get_value_from_bytes, to_little_endian, to_file_ptr, \
-    to_rom_ptr, print_bytes
+    to_rom_ptr
 import ctstrings
 from eventcommand import EventCommand as EC, get_command
 from eventfunction import EventFunction as EF
@@ -1299,123 +1299,7 @@ class ScriptManager:
 
 
 def main():
-
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    ptr = get_loc_event_ptr(rom, LocID.FROGS_BURROW)
-    event = Event.from_rom(rom, ptr)
-
-    for string in event.strings:
-        print_bytes(string, 32)
-        ascii_string = ctstrings.CTString.ct_bytes_to_ascii(string)
-        print(ascii_string)
-
-    event = Event.from_flux('./flux/cr_burrow.Flux')
-
-    for x in event.strings:
-        print_bytes(x, 16)
-        ascii_string = ctstrings.CTString.ct_bytes_to_ascii(x)
-        print(ascii_string)
-        print()
-
-    quit()
-
-    with open('./roms/locked_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    for loc in range(0x0, 0x1EF+1):
-        st = get_loc_event_ptr(rom, loc)
-        size = get_compressed_event_length(rom, loc)
-
-        print(f"({st:06X}, {st+size:06X})")
-        if 0x372A73 in range(st, st+size+1):
-            print(f"found: {loc:04X}")
-            input()
-
-    quit()
-
-    # Try to get an event from a flux
-    script = Event.from_flux('./flux/normal-spekkio.flux')
-
-    for x in script.strings:
-        print_bytes(x, 16)
-
-        print()
-
-    input()
-
-    # Inspect spekkio strings for comparison to flux
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    spekkio_script = Event.from_rom_location(rom, 0x1D1)
-
-    for ind, x in enumerate(spekkio_script.strings):
-        print(f"String {ind:02X}")
-        print_bytes(x, 16)
-        print(ctstrings.CTString.ct_bytes_to_ascii(x))
-
-        y = script.strings[ind]
-        print_bytes(y, 16)
-        print(ctstrings.CTString.ct_bytes_to_ascii(y))
-        print()
-
-    exit()
-
-    # track string dups
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    ptr_track = dict()
-    # Read every script...
-    for i in range(0x0, 0x1EF+1):
-        # print(f"{i:04X}")
-        script = Event.from_rom_location(rom, i)
-
-        if script.orig_str_index is None:
-            continue
-
-        # print(f"String index: {script.orig_str_index:06X}")
-        # print(f"Indices used: {script.orig_str_indices}")
-
-        for x in script.orig_str_indices:
-            ptr = script.orig_str_index + 2*x
-            if ptr in ptr_track.keys():
-                (loc, str_ind, ind) = ptr_track[ptr]
-                if script.orig_str_index != str_ind:
-                    print('Duplicate string found:')
-                    print(f"Prev: Location {loc:04X}, Str Ind {str_ind:06X} ,"
-                          f"index {ind:02X}")
-                    print(f" Now: Location {i:04X}, "
-                          f"Str Ind {script.orig_str_index:04X}, "
-                          f"index {x:02X}")
-                # exit()
-            else:
-                ptr_track[script.orig_str_index + 2*x] = \
-                    (i, script.orig_str_index, x)
-
-    exit()
-
-    # experimentally determined from randomizerfs.py
-    fsrom = FS(rom, False)
-    fsrom.mark_block((0x41107C, 0x4F0000), True)
-    fsrom.mark_block((0x4F2100, 0x5B8000), True)
-    fsrom.mark_block((0x5B80C8, 0x5DBB68), True)
-    fsrom.mark_block((0x5DBB85, 0x5F0000), True)
-
-    sm = ScriptManager(fsrom, [])
-
-    x = sm.get_script(LocID.ZENAN_BRIDGE)
-
-    print(x.num_objects)
-    x.remove_object(0)
-
-    x = sm.get_script(LocID.ZENAN_BRIDGE)
-    print(x.num_objects)
-
-    # with open('./roms/jets_test_out.sfc', 'wb') as outfile:
-    #    outfile.write(fs.getbuffer())
+    pass
 
 
 if __name__ == '__main__':

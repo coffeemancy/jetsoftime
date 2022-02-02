@@ -1,16 +1,13 @@
 # Python libraries
 from __future__ import annotations
-import enum
 import random as rand
-import struct as st
+
 
 # jets of time libraries
 import logicfactory
 import logictypes
-import treasurewriter as treasure
 import treasuredata
 
-from ctrom import CTRom
 import randoconfig as cfg
 import randosettings as rset
 
@@ -24,6 +21,7 @@ import randosettings as rset
 
 # Script variables
 locationGroups = []
+
 
 #
 # Get a list of LocationGroups that are available for key item placement.
@@ -286,22 +284,6 @@ def commitKeyItems(settings: rset.Settings,
 
 
 def main():
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    settings = rset.Settings.get_lost_worlds_presets()
-    settings.gameflags |= rset.GameFlags.CHRONOSANITY
-
-    config = cfg.RandoConfig(rom)
-    config.logic_config = logicfactory.getGameConfig(settings, config)
-
-    commitKeyItems(settings, config)
-
-    key_item_dict = {(loc, config.treasure_assign_dict[loc].held_item)
-                     for loc in config.treasure_assign_dict.keys()
-                     if config.treasure_assign_dict[loc].held_item
-                     in config.logic_config.keyItemList}
-    print(key_item_dict)
     pass
 
 

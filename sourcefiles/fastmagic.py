@@ -146,21 +146,3 @@ def set_fast_magic(rom):
     for x in magic_learners:
         # Set the threshold to 8
         rom[thresh_ptr + x] = 0x08
-
-
-def main():
-    with open("test.sfc", 'rb') as file:
-        rom = bytearray(file.read())
-        with open("test-out-2.sfc", 'w+b') as outfile2:
-            outfile2.write(rom)
-
-        set_fast_magic(rom)
-
-        with open('test-out-1.sfc', 'wb') as outfile:
-            outfile.write(rom)
-
-        set_fast_magic_file("test-out-2.sfc")
-
-
-if __name__ == '__main__':
-    main()

@@ -480,4 +480,3 @@ class SonOfSunScaleBoss(Boss):
         ]
 
         return scaled_stats
-

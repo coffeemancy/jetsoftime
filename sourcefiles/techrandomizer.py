@@ -192,22 +192,3 @@ def randomize_pc_techs(db, char_id, perm, preserve_magic=True):
             db.menu_mp_reqs[i] = pc*8+tech_num+1
 
     # Is that it?
-
-
-if __name__ == '__main__':
-
-    # test.sfc should be a CT rom without any tech randomization
-    # The only thing that breaks if the techs are already randomized is that
-    # the menu-usable techs will be broken
-    with open('test.sfc', 'r+b') as infile, \
-         open('test-out.sfc', 'wb') as outfile:
-        rom = bytearray(infile.read())
-        db = TechDB.get_default_db(rom)
-
-        random.seed(12345)
-        randomize_single_techs_balanced(db)
-        TechDB.write_db_internal(db, rom)
-
-        # print_bytes(db.controls, TechDB.control_size)
-
-        outfile.write(rom)

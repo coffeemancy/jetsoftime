@@ -97,7 +97,6 @@ class EnemyStats:
                           xp, gp, drop_item, charm_item, tp, can_sightscope,
                           name)
 
-
     # The stream will just about always be a BytesIO from CTRom.
     # Since we don't have all of the extra flags in EnemyStats, we need
     # to read and modify the flags, hence BufferedRWPair.
@@ -158,56 +157,3 @@ def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
         stat_dict[enemy_id] = EnemyStats.from_rom(rom, enemy_id)
 
     return stat_dict
-
-
-def main():
-
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = infile.read()
-
-    # Grab the original stats from the rom.
-    EnemyID = ctenums.EnemyID
-    left_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_LEFT)
-    right_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_RIGHT)
-    head = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_HEAD)
-
-    # So you can see the original stats
-    print('Original:')
-    print(left_arm)
-    print(right_arm)
-    print(head)
-
-    # Do whatever with stats here.
-    # Do not exceed 255 for most stats.
-    # HP should not exceed 32k or so I think.
-    # Do not exceed 16 speed.
-
-    left_arm.magic = 100
-    left_arm.hp = 10000
-
-    right_arm.magic = 255
-
-    # You need w+b because EnemyStats doesn't handle all flags
-    with open('./roms/jets_test_out.sfc', 'w+b') as outfile:
-        outfile.write(rom)
-        left_arm.write_to_stream(outfile, EnemyID.GIGA_GAIA_LEFT)
-        right_arm.write_to_stream(outfile, EnemyID.GIGA_GAIA_RIGHT)
-        head.write_to_stream(outfile, EnemyID.GIGA_GAIA_HEAD)
-
-        outfile.seek(0)
-        rom = outfile.read()
-
-    # Test to make sure it worked
-    left_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_LEFT)
-    right_arm = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_RIGHT)
-    head = EnemyStats.from_rom(rom, EnemyID.GIGA_GAIA_HEAD)
-
-    # So you can see the original stats
-    print('Altered:')
-    print(left_arm)
-    print(right_arm)
-    print(head)
-
-
-if __name__ == '__main__':
-    main()

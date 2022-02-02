@@ -5,7 +5,6 @@ import pathlib
 import pickle
 import random
 import sys
-from time import sleep
 import threading
 import tkinter as tk
 from tkinter import ttk
@@ -101,6 +100,8 @@ class RandoGUI:
         self.cosmetic_flag_dict = dict()
         for x in list(CosmeticFlags):
             self.cosmetic_flag_dict[x] = tk.IntVar()
+
+        self.flag_checkboxes = dict()
 
         self.item_difficulty = tk.StringVar()
         self.enemy_difficulty = tk.StringVar()
@@ -433,7 +434,8 @@ class RandoGUI:
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.unlocked_magic_checkbox,
             self.ice_age_checkbox, self.loc_checkbox,
-            self.locked_chars_checkbox, self.fast_pendant_checkbox
+            self.locked_chars_checkbox, self.fast_pendant_checkbox,
+            self.boss_rando_checkbox
         )
 
         scales = (

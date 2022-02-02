@@ -136,20 +136,3 @@ def scale_xp(ctrom: CTRom, mem_addr: int, scale_factor: int):
 
     fsrom.seek(rt_addr)
     fsrom.write(rt, FSWriteType.MARK_USED)
-
-
-def test_xp_scale():
-
-    ctrom = CTRom.from_file('./roms/ct.sfc')
-    ctrom.rom_data.patch_ips_file('./patch.ips')
-
-    space_man = ctrom.rom_data.space_manager
-    space_man.mark_block((0x5F0000, 0x600000), FSWriteType.MARK_FREE)
-
-    double_xp(ctrom)
-
-    with open('./roms/xp_test_out.sfc', 'wb') as outfile:
-        outfile.write(ctrom.rom_data.getvalue())
-
-if __name__ == '__main__':
-    test_xp_scale()

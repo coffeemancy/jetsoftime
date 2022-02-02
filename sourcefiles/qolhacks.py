@@ -244,14 +244,3 @@ def attempt_all_qol_hacks(ctrom: CTRom, settings: rset.Settings):
     force_sightscope_on(ctrom, settings)
     fast_tab_pickup(ctrom, settings)
     set_guaranteed_drops(ctrom, settings)
-
-
-def main():
-    ctrom = CTRom.from_file("test1.sfc")
-    settings = rset.Settings.get_new_player_presets()
-    attempt_all_qol_hacks(ctrom, settings)
-
-
-# Testing
-if __name__ == "__main__":
-    main()

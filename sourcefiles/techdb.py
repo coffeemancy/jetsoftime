@@ -4,7 +4,7 @@
 #    from hardcoded loop bounds.
 
 import copy
-from byteops import get_record, set_record, print_bytes, \
+from byteops import get_record, set_record, \
     get_value_from_bytes, to_little_endian, to_file_ptr, to_rom_ptr,\
     file_ptr_from_rom
 from techrefs import fix_tech_refs
@@ -1738,49 +1738,3 @@ class TechDB:
 
             outfile.seek(0)
             outfile.write(rom)
-
-
-# Main method to test the techdb
-# This is just a sanity check that reading and rewriting the existing db
-# does not change the rom.
-if __name__ == '__main__':
-    with open('ct_vanilla.sfc', 'rb') as infile, \
-         open('test-out.sfc', 'wb') as outfile:
-
-        rom = bytearray(infile.read())
-        db = TechDB.get_default_db(rom)
-
-        TechDB.db_from_rom_internal(rom)
-        quit()
-
-        testrom = rom[:]
-
-        # FF over the data
-        TechDB.write_db_ff_internal(db, testrom)
-        # Write it back.
-        TechDB.write_db_internal(db, testrom)
-
-        # get a single, dual, trip, rock
-        tech1 = db.get_tech(5)
-        tech2 = db.get_tech(0x45)
-        tech3 = db.get_tech(0x68)
-        tech4 = db.get_tech(0x71)
-
-        # write them back
-        db.set_tech(tech1, 5)
-        db.set_tech(tech2, 0x45)
-        db.set_tech(tech3, 0x68)
-        db.set_tech(tech4, 0x71)
-
-        is_diff = False
-
-        for i in range(0, len(rom)):
-            if rom[i] != testrom[i]:
-                is_diff = True
-                print("Difference in byte %6.6X.  Old = %2.2X, New= %2.2X"
-                      % (i, rom[i], testrom[i]))
-
-        if not is_diff:
-            print("Rewriting default db did not alter the rom. Pass.")
-        else:
-            print("Unexpected change to rom. Fail.")

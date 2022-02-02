@@ -1,8 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from byteops import get_value_from_bytes, to_file_ptr, to_little_endian,\
-    update_ptrs, print_bytes
-from freespace import FSRom, FSWriteType
+
+import byteops
+import freespace
 
 
 # Location Data (above):
@@ -42,9 +42,9 @@ class LocationData:
         tile_l3 = rom[ptr_st+2]
         palette = rom[ptr_st+3]
 
-        map_id = get_value_from_bytes(rom[ptr_st+4: ptr_st+6])
+        map_id = byteops.get_value_from_bytes(rom[ptr_st+4: ptr_st+6])
         # bytes 6,7 ignored
-        event_id = get_value_from_bytes(rom[ptr_st+8: ptr_st+0xA])
+        event_id = byteops.get_value_from_bytes(rom[ptr_st+8: ptr_st+0xA])
 
         left = rom[ptr_st+0xA]
         top = rom[ptr_st+0xB]
@@ -60,8 +60,8 @@ class LocationData:
         x[1] = self.tile_l12
         x[2] = self.tile_l3
         x[3] = self.palette
-        x[4:6] = to_little_endian(self.map_id, 2)
-        x[8:0xA] = to_little_endian(self.event_id, 2)
+        x[4:6] = byteops.to_little_endian(self.map_id, 2)
+        x[8:0xA] = byteops.to_little_endian(self.event_id, 2)
         x[0xA] = self.left
         x[0xB] = self.top
         x[0xC] = self.right
@@ -108,7 +108,7 @@ class LocationExit:
         ret[2] |= 0x80*self.vertical
         ret[2] |= (self.width & 0x7F)
 
-        ret[3:5] = to_little_endian(self.dest_loc, 2)
+        ret[3:5] = byteops.to_little_endian(self.dest_loc, 2)
         ret[4] |= ((self.dest_facing & 0x3) << 1)
         ret[4] |= 0x8*self.half_left
         ret[4] |= 0x10*self.half_top
@@ -125,7 +125,7 @@ class LocationExit:
         width = byte2 & 0x7F
         vertical = bool(byte2 & 0x80)
 
-        dest_loc = get_value_from_bytes(rom[ptr+3:ptr+5]) & 0x1FF
+        dest_loc = byteops.get_value_from_bytes(rom[ptr+3:ptr+5]) & 0x1FF
 
         byte4 = rom[ptr+4]
         facing = byte4 & 0x06
@@ -200,14 +200,14 @@ class LocExits:
 
         return ret
 
-    def from_rom(fsrom: FSRom) -> LocExits:
+    def from_rom(fsrom: freespace.FSRom) -> LocExits:
         # get the ptr from the rom
 
         rom = fsrom.getbuffer()
 
         ptr_loc = 0x00A69E
-        exit_ptr_st = get_value_from_bytes(rom[ptr_loc:ptr_loc+3])
-        exit_ptr_st = to_file_ptr(exit_ptr_st)
+        exit_ptr_st = byteops.get_value_from_bytes(rom[ptr_loc:ptr_loc+3])
+        exit_ptr_st = byteops.to_file_ptr(exit_ptr_st)
         bank = (exit_ptr_st >> 16) << 16
 
         # Now read the 0x200 ptrs for the 0x1FF locations.  The last ptr is
@@ -216,10 +216,10 @@ class LocExits:
         num_ptrs = 0x200
 
         exit_ptrs = []
-        first = get_value_from_bytes(rom[exit_ptr_st:exit_ptr_st+2])
+        first = byteops.get_value_from_bytes(rom[exit_ptr_st:exit_ptr_st+2])
 
         for x in range(exit_ptr_st, exit_ptr_st + 2*num_ptrs, 2):
-            exit_ptrs.append(get_value_from_bytes(rom[x:x+2])-first)
+            exit_ptrs.append(byteops.get_value_from_bytes(rom[x:x+2])-first)
 
         data_st = exit_ptrs[0] + first + bank
         data_end = exit_ptrs[-1] + first + bank
@@ -231,12 +231,12 @@ class LocExits:
         ptr_len = len(self.ptrs*2)  # should always be 0x400
         data_len = len(self.data)
 
-        ptr_bytes = b''.join(to_little_endian(x, 2) for x in self.ptrs)
+        ptr_bytes = b''.join(byteops.to_little_endian(x, 2) for x in self.ptrs)
         rom[ptr_st:ptr_st+ptr_len] = ptr_bytes[:]
 
         rom[data_st:data_st+data_len] = self.data[:]
 
-    def write_to_fsrom(self, fsrom: FSRom):
+    def write_to_fsrom(self, fsrom: freespace.FSRom):
 
         rom = fsrom.getbuffer()
         space_man = fsrom.space_manager
@@ -244,16 +244,19 @@ class LocExits:
         # Get the existing data's bounds
         # ptr_loc = 0x009CD4
         ptr_loc = 0x00A69E
-        exit_ptr_st = get_value_from_bytes(rom[ptr_loc:ptr_loc+3])
+        exit_ptr_st = byteops.get_value_from_bytes(rom[ptr_loc:ptr_loc+3])
 
-        exit_ptr_st = to_file_ptr(exit_ptr_st)
+        exit_ptr_st = byteops.to_file_ptr(exit_ptr_st)
         bank = (exit_ptr_st >> 16) << 16
 
         first_ptr = \
-            get_value_from_bytes(rom[exit_ptr_st:exit_ptr_st+2]) + bank
+            byteops.get_value_from_bytes(rom[exit_ptr_st:exit_ptr_st+2]) + bank
 
         last_addr = exit_ptr_st + 0x1FF*2
-        last_ptr = get_value_from_bytes(rom[last_addr:last_addr+2]) + bank
+        last_ptr = (
+            byteops.get_value_from_bytes(rom[last_addr:last_addr+2])
+            + bank
+        )
 
         num_exits = (last_ptr-first_ptr) / 7
 
@@ -273,7 +276,7 @@ class LocExits:
             if num_exits > self.num_records:
                 space_man.mark_block(
                     (out_data_st+len(self.data), last_ptr),
-                    FSWriteType.MARK_FREE
+                    freespace.FSWriteType.MARK_FREE
                 )
         else:
             # Insufficient space, need a new start
@@ -283,10 +286,11 @@ class LocExits:
 
             # Free the old space
             space_man.mark_block(
-                (exit_ptr_st, exit_ptr_st+0x400), FSWriteType.MARK_FREE
+                (exit_ptr_st, exit_ptr_st+0x400),
+                freespace.FSWriteType.MARK_FREE
             )
             space_man.mark_block((first_ptr, first_ptr+7*num_exits),
-                                 FSWriteType.MARK_FREE)
+                                 freespace.FSWriteType.MARK_FREE)
             # Get new starts
             starts = space_man.get_same_bank_free_addrs([len(self.data),
                                                          2*len(self.ptrs)])
@@ -296,7 +300,7 @@ class LocExits:
         # delay writing until we do some tests
 
         ptr_offset = out_data_st % 0x10000
-        ptr_bytes = b''.join(to_little_endian(x+ptr_offset, 2)
+        ptr_bytes = b''.join(byteops.to_little_endian(x+ptr_offset, 2)
                              for x in self.ptrs)
 
         ptr_refs = [0x00A69E, 0x00A6A6]
@@ -316,20 +320,20 @@ class LocExits:
 
         # Make sure that this mirroring is enforced before we alter things.
         for i, x in enumerate(ptr_refs):
-            val1 = get_value_from_bytes(rom[x:x+3])
+            val1 = byteops.get_value_from_bytes(rom[x:x+3])
 
             y = ptr_mirror[i]
-            val2 = get_value_from_bytes(rom[y:y+3])
+            val2 = byteops.get_value_from_bytes(rom[y:y+3])
 
             if val1 != val2:
                 print(f'Error mirroring {x:06X}')
                 input()
 
         for i, x in enumerate(data_refs):
-            val1 = get_value_from_bytes(rom[x:x+3])
+            val1 = byteops.get_value_from_bytes(rom[x:x+3])
 
             y = data_mirror[i]
-            val2 = get_value_from_bytes(rom[y:y+3])
+            val2 = byteops.get_value_from_bytes(rom[y:y+3])
 
             if val1 != val2:
                 print(f'Error mirroring {x:06X}')
@@ -343,22 +347,24 @@ class LocExits:
         del(rom)
 
         fsrom.seek(out_ptr_st)
-        fsrom.write(ptr_bytes, FSWriteType.MARK_USED)
+        fsrom.write(ptr_bytes, freespace.FSWriteType.MARK_USED)
 
         fsrom.seek(out_data_st)
-        fsrom.write(self.data, FSWriteType.MARK_USED)
+        fsrom.write(self.data, freespace.FSWriteType.MARK_USED)
 
         # update ptrs wants both ptrs to be file ptrs.  It converts to
         # rom ptrs when writing
-        update_ptrs(fsrom.getbuffer(), ptr_refs, exit_ptr_st, out_ptr_st)
+        byteops.update_ptrs(fsrom.getbuffer(),
+                            ptr_refs, exit_ptr_st, out_ptr_st)
 
         # All of the data pointers are based off of the bank.
         new_bank = (out_data_st >> 16) << 16
-        update_ptrs(fsrom.getbuffer(), data_refs, bank, new_bank)
+        byteops.update_ptrs(fsrom.getbuffer(), data_refs, bank, new_bank)
 # End class LocExits
 
 
-def duplicate_map(fsrom: FSRom, exits: LocExits, orig_loc_id, dup_loc_id):
+def duplicate_map(fsrom: freespace.FSRom,
+                  exits: LocExits, orig_loc_id, dup_loc_id):
     '''Duplicates a map and the exits.'''
     orig_exits = exits.get_exits(orig_loc_id)
     exits.delete_exits(dup_loc_id)
@@ -367,7 +373,8 @@ def duplicate_map(fsrom: FSRom, exits: LocExits, orig_loc_id, dup_loc_id):
     duplicate_location_data(fsrom, orig_loc_id, dup_loc_id)
 
 
-def duplicate_heckran_map(fsrom: FSRom, exits: LocExits, dup_loc_id):
+def duplicate_heckran_map(fsrom: freespace.FSRom,
+                          exits: LocExits, dup_loc_id):
     '''Duplicates the map the Heckran is on and alters the exits to match.'''
     # Change the exit leading into Heckran to go to the new map
     hc_river_exits = exits.get_exits(0x31)
@@ -388,7 +395,7 @@ def duplicate_heckran_map(fsrom: FSRom, exits: LocExits, dup_loc_id):
 
 
 # Except for events
-def duplicate_location_data(fsrom: FSRom, loc_id, dup_loc_id):
+def duplicate_location_data(fsrom: freespace.FSRom, loc_id, dup_loc_id):
     # I think all you have to do is change the LocationData and update the
     # exits?
     orig_data = LocationData.from_rom(fsrom.getbuffer(), loc_id)
@@ -398,24 +405,7 @@ def duplicate_location_data(fsrom: FSRom, loc_id, dup_loc_id):
 
 
 def main():
-    with open('jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    fsrom = FSRom(rom, False)
-    space_man = fsrom.space_manager
-    space_man.mark_block((0x41107C, 0x4F0000), True)
-    space_man.mark_block((0x4F2100, 0x5B8000), True)
-    space_man.mark_block((0x5B80C8, 0x5DBB68), True)
-    space_man.mark_block((0x5DBB85, 0x5F0000), True)
-
-    exits = LocExits.from_rom(fsrom)
-
-    duplicate_heckran_map(fsrom, exits, 0xC0)
-    exits.write_to_fsrom(fsrom)
-
-    with open('jets_test_out.sfc', 'wb') as outfile:
-        fsrom.seek(0)
-        outfile.write(fsrom.read())
+    pass
 
 
 if __name__ == '__main__':

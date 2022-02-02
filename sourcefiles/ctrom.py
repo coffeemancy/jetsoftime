@@ -1,14 +1,8 @@
 
 import hashlib
-from io import BytesIO
 
-from byteops import get_value_from_bytes, get_value_from_bytes_be, \
-    to_little_endian, to_rom_ptr
-from ctdecompress import compress
-from ctenums import LocID
-from ctevent import Event, ScriptManager, get_loc_event_ptr
-from eventcommand import get_command
-from freespace import FSRom, FSWriteType
+import ctevent
+import freespace
 
 
 class InvalidRomException(Exception):
@@ -31,8 +25,8 @@ class CTRom():
         if not ignore_checksum and not CTRom.validate_ct_rom_bytes(rom):
             raise InvalidRomException('Bad checksum.')
 
-        self.rom_data = FSRom(rom, False)
-        self.script_manager = ScriptManager(self.rom_data, [])
+        self.rom_data = freespace.FSRom(rom, False)
+        self.script_manager = ctevent.ScriptManager(self.rom_data, [])
 
     @classmethod
     def from_file(cls, filename: str, ignore_checksum=False):
@@ -88,29 +82,7 @@ class CTRom():
 
 
 def main():
-    filename = './roms/jets_test.sfc'
-
-    ctrom = CTRom.from_file(filename, True)
-    space_manager = ctrom.rom_data.space_manager
-
-    ctrom.rom_data.patch_ips_file('./patches/hard.ips')
-
-    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
-        ctrom.rom_data.seek(0)
-        outfile.write(ctrom.rom_data.read())
-
-    quit()
-
-    # Set up some safe free blocks.
-    space_manager.mark_block((0, 0x40FFFF),
-                             FSWriteType.MARK_USED)
-    space_manager.mark_block((0x411007, 0x5B8000),
-                             FSWriteType.MARK_FREE)
-
-    script_manager = ctrom.script_manager
-    script = script_manager.get_script(LocID.ARRIS_DOME)
-    ctrom.write_script_to_rom(LocID.ARRIS_DOME)
-
+    pass
 
 if __name__ == '__main__':
     main()

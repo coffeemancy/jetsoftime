@@ -3,11 +3,10 @@ from __future__ import annotations
 from byteops import to_little_endian
 import copy
 from collections.abc import Callable
-from freespace import FSWriteType
 import random
 
 # from ctdecompress import compress, decompress, get_compressed_length
-from bossdata import Boss, BossScheme, get_default_boss_assignment
+from bossdata import BossScheme, get_default_boss_assignment
 from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect
 from enemystats import EnemyStats
 from ctevent import Event, free_event, get_loc_event_ptr
@@ -1881,26 +1880,3 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # 0xC7AC9 + 0xC*0x58 + 0x2 = 0xC7EEB
     ctrom.rom_data.seek(0xC7EEB)
     ctrom.rom_data.write(bytes([config.obstacle_status]))
-
-
-def main():
-    with open('./roms/ct.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    ctrom = CTRom(rom, True)
-    ctrom.rom_data.patch_ips_file('./patch-beta.ips')
-
-    ctrom.rom_data.space_manager.mark_block(
-        (0x4f8000, 0x5f0000),
-        FSWriteType.MARK_FREE
-    )
-
-    set_mt_woe_boss(ctrom, Boss.MOTHER_BRAIN().scheme)
-    ctrom.write_all_scripts_to_rom()
-
-    with open('./roms/woe_test.sfc', 'wb') as outfile:
-        outfile.write(ctrom.rom_data.getvalue())
-
-
-if __name__ == '__main__':
-    main()

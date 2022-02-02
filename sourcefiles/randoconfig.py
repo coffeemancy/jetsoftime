@@ -5,23 +5,18 @@
 from __future__ import annotations
 import json
 
-from byteops import to_little_endian, get_value_from_bytes, to_file_ptr
-
-from bossdata import get_boss_data_dict
-from ctenums import ItemID, LocID, TreasureID as TID, CharID, ShopID, \
-    RecruitID, BossID, Element, StatusEffect, EnemyID
-from dataclasses import asdict
-import techdb
-# from ctevent import ScriptManager as SM, Event
-from ctrom import CTRom
-from freespace import FSWriteType  # Only for the test main() code
+import byteops
+import bossdata
 import enemystats
+import ctenums
+import ctrom
 import statcompute
+import techdb
 
 
 class PlayerChar:
 
-    def __init__(self, rom: bytearray, pc_id: CharID,
+    def __init__(self, rom: bytearray, pc_id: ctenums.CharID,
                  stat_start: int = 0x0C0000,
                  hp_growth_start: int = 0x0C258A,
                  mp_growth_start: int = 0x0C25C2,
@@ -42,14 +37,14 @@ class PlayerChar:
         self.assigned_char = pc_id
 
     # Being explicit here that we only write out the stats.
-    def write_stats_to_ctrom(self, ctrom: CTRom,
+    def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom,
                              stat_start: int = 0x0C0000,
                              hp_growth_start: int = 0x0C258A,
                              mp_growth_start: int = 0x0C25C2,
                              stat_growth_start: int = 0x0C25FA,
                              tp_thresh_start: int = 0x0C26FA):
         # TODO: Try to read these x_start pointers from the rom
-        self.stats.write_to_rom(ctrom.rom_data.getbuffer(),
+        self.stats.write_to_rom(ct_rom.rom_data.getbuffer(),
                                 self.pc_id,
                                 stat_start,
                                 hp_growth_start,
@@ -83,14 +78,14 @@ class CharManager:
 
         self.pcs = [
             PlayerChar(
-                rom, CharID(i), self.stat_start, self.hp_growth_start,
+                rom, ctenums.CharID(i), self.stat_start, self.hp_growth_start,
                 self.mp_growth_start, self.stat_growth_start,
                 self.xp_thresh_start, self.tp_thresh_start
             ) for i in range(7)]
 
-    def write_stats_to_ctrom(self, ctrom: CTRom):
+    def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom):
         for pc in self.pcs:
-            pc.write_stats_to_ctrom(ctrom)
+            pc.write_stats_to_ctrom(ct_rom)
 
 
 # Class that handles storing and manipulating item prices
@@ -99,34 +94,34 @@ class PriceManager:
     def __init__(self, rom: bytearray):
         self.price_dict = dict()
 
-        for item in list(ItemID):
+        for item in list(ctenums.ItemID):
             price_addr = self.__get_price_addr(item)
-            price = get_value_from_bytes(rom[price_addr:price_addr+2])
+            price = byteops.get_value_from_bytes(rom[price_addr:price_addr+2])
             self.price_dict[item] = price
             # Note:  In the future we could be adding a per-shop price
-            #        multiplier to go along with the item list.
+            #        multiplier to along go with the item list.
 
-    def get_price(self, item: ItemID):
+    def get_price(self, item: ctenums.ItemID):
         return self.price_dict[item]
 
-    def set_price(self, item: ItemID, price: int):
+    def set_price(self, item: ctenums.ItemID, price: int):
         if price > 0xFFFF:
             print('Error: price exceeds 0xFFFF.  Not Changing.')
             input()
         else:
             self.price_dict[item] = price
 
-    def write_to_ctrom(self, ctrom: CTRom):
-        rom = ctrom.rom_data
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        rom = ct_rom.rom_data
 
         for item, price in self.price_dict.items():
             addr = self.__get_price_addr(item)
             rom.seek(addr)
-            rom.write(to_little_endian(price, 2))
+            rom.write(byteops.to_little_endian(price, 2))
 
     # Following pointers from original shopwriter
     @classmethod
-    def __get_price_addr(cls, item: ItemID) -> int:
+    def __get_price_addr(cls, item: ctenums.ItemID) -> int:
         # We're assuming this is all vanilla.  Otherwise we need to pass
         # a rom in here too.
 
@@ -174,10 +169,12 @@ class ShopManager:
         self.shop_dict = dict()
 
         # The sort shouldn't be necessary, but be explicit.
-        for shop in sorted(list(ShopID)):
+        for shop in sorted(list(ctenums.ShopID)):
             index = int(shop)
             ptr_start = shop_ptr_start + 2*index
-            shop_ptr_local = get_value_from_bytes(rom[ptr_start:ptr_start+2])
+            shop_ptr_local = byteops.get_value_from_bytes(
+                rom[ptr_start:ptr_start+2]
+            )
             shop_ptr = shop_ptr_local + shop_data_bank
             shop_ptr = shop_ptr
 
@@ -186,51 +183,52 @@ class ShopManager:
 
             # Items in the shop are a 0-terminated list
             while rom[pos] != 0:
-                # print(ItemID(rom[pos]))
-                self.shop_dict[shop].append(ItemID(rom[pos]))
+                # print(ctenums.ItemID(rom[pos]))
+                self.shop_dict[shop].append(ctenums.ItemID(rom[pos]))
                 pos += 1
 
     # Returns start of shop pointers, start of bank of shop data
     @classmethod
     def __get_shop_pointers(cls, rom: bytearray):
-        shop_data_bank = to_file_ptr(rom[cls.shop_data_bank_ptr] << 16)
+        shop_data_bank = byteops.to_file_ptr(rom[cls.shop_data_bank_ptr] << 16)
         shop_ptr_start = \
-            to_file_ptr(
-                get_value_from_bytes(rom[cls.shop_ptr:cls.shop_ptr+3])
+            byteops.to_file_ptr(
+                byteops.get_value_from_bytes(rom[cls.shop_ptr:cls.shop_ptr+3])
             )
         return shop_data_bank, shop_ptr_start
 
-    def write_to_ctrom(self, ctrom: CTRom):
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
         # The space used/freed by TF isn't available to me.  I just have to
         # assume that the space currently allotted is enough.
 
         shop_data_bank, shop_ptr_start = \
-            ShopManager.__get_shop_pointers(ctrom.rom_data.getbuffer())
+            ShopManager.__get_shop_pointers(ct_rom.rom_data.getbuffer())
 
-        rom = ctrom.rom_data
+        rom = ct_rom.rom_data
 
         ptr_loc = shop_ptr_start
         rom.seek(ptr_loc)
-        data_loc = get_value_from_bytes(rom.read(2)) + shop_data_bank
+        data_loc = byteops.get_value_from_bytes(rom.read(2)) + shop_data_bank
 
         max_index = max(self.shop_dict.keys())
 
         for shop_id in range(max_index+1):
-            shop = ShopID(shop_id)
+            shop = ctenums.ShopID(shop_id)
 
             rom.seek(ptr_loc)
             ptr = data_loc % 0x010000
-            ptr_loc += rom.write(to_little_endian(ptr, 2))
+            ptr_loc += rom.write(byteops.to_little_endian(ptr, 2))
 
             if shop in self.shop_dict.keys():
                 items = bytearray(self.shop_dict[shop]) + b'\x00'
             else:
-                items = bytearray([ItemID.MOP]) + b'\x00'
+                items = bytearray([ctenums.ItemID.MOP]) + b'\x00'
 
             rom.seek(data_loc)
             data_loc += rom.write(items)
 
-    def set_shop_items(self, shop: ShopID, items: list[ItemID]):
+    def set_shop_items(self, shop: ctenums.ShopID,
+                       items: list[ctenums.ItemID]):
         self.shop_dict[shop] = items[:]
 
     def print_with_prices(self, price_manager: PriceManager):
@@ -239,8 +237,8 @@ class ShopManager:
     def __str__(self, price_manager: PriceManager = None):
         ret = ''
         for shop in sorted(self.shop_dict.keys()):
-            if shop in [ShopID.EMPTY_12, ShopID.EMPTY_14,
-                        ShopID.LAST_VILLAGE_UPDATED]:
+            if shop in [ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14,
+                        ctenums.ShopID.LAST_VILLAGE_UPDATED]:
                 continue
 
             ret += str(shop)
@@ -264,11 +262,12 @@ class ShopManager:
 # load_obj_id and the code that adds the character is recruit_obj_id
 class CharRecruit:
 
-    # Indexed by CharID, so load_cmds[CharID.Crono] is Crono's load cmd
+    # Indexed by ctenums.CharID, so load_cmds[ctenums.CharID.Crono]
+    # is Crono's load cmd
     load_cmds = [0x57, 0x5C, 0x62, 0x6A, 0x68, 0x6C, 0x6D]
 
-    def __init__(self, held_char: CharID,
-                 loc_id: LocID,
+    def __init__(self, held_char: ctenums.CharID,
+                 loc_id: ctenums.LocID,
                  load_obj_id: int,
                  recruit_obj_id: int):
         self.held_char = held_char
@@ -277,9 +276,9 @@ class CharRecruit:
         self.recruit_obj_id = recruit_obj_id
 
     # This might be poor naming, but the writing goes to the script manager
-    # of the ctrom.  A separate call has to commit those changes to the rom.
-    def write_to_ctrom(self, ctrom: CTRom):
-        script_manager = ctrom.script_manager
+    # of the ct_rom.  A separate call has to commit those changes to the rom.
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        script_manager = ct_rom.script_manager
         script = script_manager.get_script(self.loc_id)
 
         start = script.get_object_start(self.load_obj_id)
@@ -298,7 +297,7 @@ class CharRecruit:
 
         script.data[pos+1] = int(self.held_char)
 
-        # orig_char = CharID(cmd.args[0])
+        # orig_char = ctenums.CharID(cmd.args[0])
         # orig_load_cmd = CharRecruit.load_cmds[orig_char]
         target_load_cmd = CharRecruit.load_cmds[self.held_char]
 
@@ -347,10 +346,10 @@ class CharRecruit:
 class StarterChar:
 
     def __init__(self,
-                 loc_id: LocID = LocID.LOAD_SCREEN,
+                 loc_id: ctenums.LocID = ctenums.LocID.LOAD_SCREEN,
                  object_id: int = 0,
                  function_id: int = 0,
-                 held_char: CharID = CharID.CRONO,
+                 held_char: ctenums.CharID = ctenums.CharID.CRONO,
                  starter_num=0):
         self.loc_id = loc_id
         self.object_id = object_id
@@ -358,8 +357,8 @@ class StarterChar:
         self.held_char = held_char
         self.starter_num = starter_num
 
-    def write_to_ctrom(self, ctrom: CTRom):
-        script_manager = ctrom.script_manager
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        script_manager = ct_rom.script_manager
         script = script_manager.get_script(self.loc_id)
 
         start = script.get_function_start(self.object_id, self.function_id)
@@ -402,10 +401,10 @@ class StarterChar:
 
 class Treasure:
 
-    def __init__(self, held_item: ItemID = ItemID.MOP):
+    def __init__(self, held_item: ctenums.ItemID = ctenums.ItemID.MOP):
         self.held_item = held_item
 
-    def write_to_ctrom(self, ctrom: CTRom):
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
         raise NotImplementedError
 
 
@@ -422,25 +421,26 @@ class ChestTreasure(Treasure):
 
     treasure_ptr = 0x35F402
 
-    def __init__(self, chest_index, held_item=ItemID.MOP):
+    def __init__(self, chest_index, held_item=ctenums.ItemID.MOP):
         super().__init__(held_item)
         self.chest_index = chest_index
 
     # Unlike script-based treasures, the ChestTreasure actually writes the
     # changes directly to the rom.
-    def write_to_ctrom(self, ctrom: CTRom):
-        fsrom = ctrom.rom_data
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        fsrom = ct_rom.rom_data
         fsrom.seek(ChestTreasure.treasure_ptr+4*self.chest_index + 2)
 
         # write two bytes to clear the gold/empty flags
-        ctrom.rom_data.write(to_little_endian(self.held_item, 2))
+        ct_rom.rom_data.write(byteops.to_little_endian(self.held_item, 2))
 
 
 # Treasures that are obtained by the script adding it to your inventory
 class ScriptTreasure(Treasure):
 
-    def __init__(self, location: LocID, object_id: int, function_id: int,
-                 held_item: ItemID = ItemID.MOP, item_num=0):
+    def __init__(self, location: ctenums.LocID,
+                 object_id: int, function_id: int,
+                 held_item: ctenums.ItemID = ctenums.ItemID.MOP, item_num=0):
         super().__init__(held_item)
         self.location = location
         self.object_id = object_id
@@ -456,9 +456,9 @@ class ScriptTreasure(Treasure):
         )
         return x
 
-    def write_to_ctrom(self, ctrom: CTRom):
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
 
-        script_manager = ctrom.script_manager
+        script_manager = ct_rom.script_manager
         script = script_manager.get_script(self.location)
 
         pos = script.get_function_start(self.object_id,
@@ -513,6 +513,8 @@ class RandoConfig:
     # patches to the rom before we can extract the proper jets data.
     def __init__(self, rom: bytearray = None):
 
+        LocID = ctenums.LocID
+        TID = ctenums.TreasureID
         self.treasure_assign_dict = {
             TID.TRUCE_MAYOR_1F: ChestTreasure(0x02),
             TID.TRUCE_MAYOR_2F: ChestTreasure(0x03),
@@ -1068,6 +1070,8 @@ class RandoConfig:
         # char assignments are completely arbitrary here
         # the keys can be different since there's some redundancy in the
         # key and the arg to CharRecruit
+        CharID = ctenums.CharID
+        RecruitID = ctenums.RecruitID
         self.char_assign_dict = {
             RecruitID.STARTER_1: StarterChar(
                 held_char=CharID.CRONO,
@@ -1109,6 +1113,7 @@ class RandoConfig:
             )
         }
 
+        BossID = ctenums.BossID
         self.boss_assign_dict = {
             LocID.PRISON_CATWALKS: BossID.DRAGON_TANK,
             LocID.FACTORY_RUINS_SECURITY_CENTER: BossID.R_SERIES,
@@ -1137,12 +1142,12 @@ class RandoConfig:
             LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR
         }
 
-        self.boss_data_dict = get_boss_data_dict()
+        self.boss_data_dict = bossdata.get_boss_data_dict()
         self.boss_rank = dict()
 
         self.magus_char = CharID.MAGUS
-        self.black_tyrano_element = Element.FIRE
-        self.obstacle_status = StatusEffect.CHAOS
+        self.black_tyrano_element = ctenums.Element.FIRE
+        self.obstacle_status = ctenums.StatusEffect.CHAOS
 
         self.key_item_locations = []
 
@@ -1254,43 +1259,7 @@ class RandoConfig:
 
 
 def main():
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    ctrom = CTRom(rom, ignore_checksum=True)
-    space_manager = ctrom.rom_data.space_manager
-
-    # Set up some safe free blocks.
-    space_manager.mark_block((0, 0x40FFFF),
-                             FSWriteType.MARK_USED)
-    space_manager.mark_block((0x411007, 0x5B8000),
-                             FSWriteType.MARK_FREE)
-    config = RandoConfig(rom)
-
-    # Try out PriceManager
-    price_manager = PriceManager(rom)
-
-    # Try out ShopManager
-    shop_manager = ShopManager(rom)
-    shop_manager.set_shop_items(ShopID.MELCHIOR_FAIR,
-                                [ItemID.MOP])
-
-    shop_manager.write_to_ctrom(ctrom)
-    shop_manager = ShopManager(ctrom.rom_data.getbuffer())
-
-    shop_manager.print_with_prices(price_manager)
-
-    quit()
-
-    cath = config.char_assign_dict[LocID.MANORIA_SANCTUARY]
-    cath.held_char = CharID.LUCCA
-    cath.write_to_ctrom(ctrom)
-
-    ctrom.write_all_scripts_to_rom()
-
-    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
-        ctrom.rom_data.seek(0)
-        outfile.write(ctrom.rom_data.read())
+    pass
 
 
 if __name__ == '__main__':

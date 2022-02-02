@@ -2,7 +2,7 @@
 # Minimally reimplement functionality from Hi-Tech to parse tech scripts.
 # Provide some additional duplicate dual character tech scripts.
 
-from byteops import get_value_from_bytes, print_bytes, to_file_ptr,\
+from byteops import get_value_from_bytes, to_file_ptr,\
     to_rom_ptr, get_record, to_little_endian
 from techdb import TechDB
 
@@ -467,8 +467,6 @@ def add_dup_dual_scripts(rom, bank_st, scr_ptrs_st, scr_st):
 
 
 def get_ff_hex_mist_scr(rom, bank_st, scr_ptrs_st):
-
-    hex_cast_0 = TechScript.get_obj_script(rom, 0x0DC32C)
 
     hex_cast_2 = \
         bytearray.fromhex('720A' +  # facing
@@ -986,34 +984,3 @@ def get_aa_beast_toss_scr(rom, bank_st, scr_ptrs_st):
                           '00')
 
     return bt_scr
-
-
-def main():
-    with open('ct_vanilla_exp.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    db = TechDB.get_default_db(rom)
-
-    bank_st = 0x5F8100
-    ptr_st = 0x5F8200
-    script_extend(rom, bank_st, ptr_st)
-
-    # get_ll_prot_all_scr(rom, bank_st, ptr_st)
-
-    a2 = db.get_tech(0x49)
-    print_bytes(a2['control'], 16)
-    print_bytes(a2['gfx'], 16)
-
-    ptr = rom[ptr_st+2*0x0D:ptr_st+2*0x0D+2]
-    ptr = 0x0E0000 + get_value_from_bytes(ptr)
-
-    print('%X' % ptr)
-    haste_scr = TechScript.from_rom(rom, ptr)
-    haste_scr.print_data()
-
-    # with open('jets_test.sfc', 'rb') as infile:
-    #    rom = bytearray(infile.read())
-
-
-if __name__ == '__main__':
-    main()

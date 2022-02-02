@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-import freespace
 import ctenums
 import ctevent
 from ctrom import CTRom
@@ -95,26 +94,3 @@ def apply_fast_pendant_script(ctrom: CTRom,
 
         script.delete_commands(pos, 1)
         script.insert_commands(new_if.to_bytearray(), pos)
-
-
-def test():
-    with open('./roms/lwtest.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    ctrom = CTRom(rom, True)
-    space_man = ctrom.rom_data.space_manager
-    FSW = freespace.FSWriteType
-    space_man.mark_block((0x4F8000, 0x5F0000), FSW.MARK_FREE)
-
-    settings = rset.Settings.get_lost_worlds_presets()
-    settings.gameflags |= rset.GameFlags.FAST_PENDANT
-
-    apply_fast_pendant_lw(ctrom, settings)
-    ctrom.write_all_scripts_to_rom()
-
-    with open('./roms/lwtest_out.sfc', 'wb') as outfile:
-        outfile.write(ctrom.rom_data.getvalue())
-
-
-if __name__ == '__main__':
-    test()

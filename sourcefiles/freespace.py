@@ -1,10 +1,9 @@
-# I am fed up with hardcoding write locations.
 from __future__ import annotations
 from enum import Enum
 from io import BytesIO
 from typing import Tuple
 
-from byteops import get_value_from_bytes_be  # for ips marker
+import byteops
 
 
 class FSWriteType(Enum):
@@ -259,17 +258,17 @@ class FreeSpace():
 
             # Get the location of the payload
             addr_bytes = p.read(3)
-            addr = get_value_from_bytes_be(addr_bytes)
+            addr = byteops.get_value_from_bytes_be(addr_bytes)
 
             # Get the size of the payload
             size_bytes = p.read(2)
-            size = get_value_from_bytes_be(size_bytes)
+            size = byteops.get_value_from_bytes_be(size_bytes)
 
             mark = True
             if size == 0:
                 # RLE block
                 rle_size_bytes = p.read(2)
-                rle_size = get_value_from_bytes_be(rle_size_bytes)
+                rle_size = byteops.get_value_from_bytes_be(rle_size_bytes)
 
                 rle_byte = p.read(1)
 
@@ -284,9 +283,6 @@ class FreeSpace():
                 # Normal block
                 payload = p.read(size)
 
-            # Don't actually write!  Just mark!
-            # f.seek(addr)
-            # f.write(payload)
             if mark:
                 self.mark_block((addr, addr+len(payload)), False)
 
@@ -380,18 +376,18 @@ class FSRom(BytesIO):
 
             # Get the location of the payload
             addr_bytes = p.read(3)
-            addr = get_value_from_bytes_be(addr_bytes)
+            addr = byteops.get_value_from_bytes_be(addr_bytes)
 
             # Get the size of the payload
             size_bytes = p.read(2)
-            size = get_value_from_bytes_be(size_bytes)
+            size = byteops.get_value_from_bytes_be(size_bytes)
 
             mark_set = FSWriteType.MARK_USED
 
             if size == 0:
                 # RLE block
                 rle_size_bytes = p.read(2)
-                rle_size = get_value_from_bytes_be(rle_size_bytes)
+                rle_size = byteops.get_value_from_bytes_be(rle_size_bytes)
 
                 rle_byte = p.read(1)
 
@@ -453,30 +449,8 @@ class FSRom(BytesIO):
 
 
 def main():
-
-    with open('./roms/ct.sfc', 'rb') as infile:
-        fsrom = FSRom(infile.read(), True)
-
-    fsrom.space_manager.extend_end_marker(0x600000, True)
-    fsrom.space_manager.mark_blocks_ips('./patches/locked_chars.ips')
-    fsrom.space_manager.print_blocks()
-    input()
-    
-    fsrom.patch_ips_file('./patch.ips')
-    fsrom.patch_txt_file('./patches/patch_codebase.txt')
-    fsrom.patch_ips_file('./patches/lost.ips')
-
-    with open('./roms/lw_test_1.sfc', 'wb') as outfile:
-        fsrom.seek(0)
-        outfile.write(fsrom.read())
-
-    fsrom.patch_ips_file('./patches/mysticmtnfix.ips')
-
-    with open('./roms/lw_test_2.sfc', 'wb') as outfile:
-        fsrom.seek(0)
-        outfile.write(fsrom.read())
+    pass
 
 
-# Test using patch.ips and patch_codebase.txt
 if __name__ == '__main__':
     main()

@@ -36,7 +36,7 @@ def add_lw_key_item_gear(settings: rset.Settings,
 
     # Get a list of all LW TIDs where the gear can go.  For now we're going
     # to say that those are Chronosanity locations
-
+    
     # TODO: Can we read this from the logic?
     lw_tids = [
         TID.MYSTIC_MT_STREAM, TID.FOREST_MAZE_1, TID.FOREST_MAZE_2,
@@ -221,10 +221,3 @@ def find_script_ptrs(ptr_list):
         if 0 > chest_index or chest_index > 0xF8:
             print(f"{ptr:06X}")
 
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()

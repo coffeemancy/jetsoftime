@@ -2,10 +2,9 @@
 # https://bisqwit.iki.fi/jutut/ctcset.html
 
 from __future__ import annotations
-
 import pickle
 
-from byteops import get_value_from_bytes, print_bytes
+import byteops
 
 
 class Node:
@@ -329,7 +328,7 @@ def get_huffman_table(rom: bytearray) -> list[bytearray]:
 
     for i in range(128):
         ptr = ptr_table_addr + 2*i
-        start = get_value_from_bytes(rom[ptr:ptr+2]) + bank
+        start = byteops.get_value_from_bytes(rom[ptr:ptr+2]) + bank
 
         substr_len = rom[start]
         substr_start = start+1
@@ -341,79 +340,7 @@ def get_huffman_table(rom: bytearray) -> list[bytearray]:
 
 
 def main():
-
-    with open('./flux/normal-spekkio.flux', 'rb') as infile:
-        # for now just hardcode to the start of flux's string handling
-        infile.seek(0xCA1)
-        string_data = infile.read()
-
-    # num_strings = string_data[0]
-    pos = 4  # There are some 00s that I don't see any point to
-
-    cur_string_ind = 0
-    while pos < len(string_data):
-        print(f"Current string: {cur_string_ind:02X} at {pos+0xCA1:04X}")
-        string_ind = string_data[pos]
-        if string_ind != cur_string_ind:
-            print(f"Expected {cur_string_ind:02X}, found {string_ind:02X}")
-            exit()
-
-        string_len = string_data[pos+1]
-        pos += 2
-
-        # The byte after the string length byte is optional.  If present, value
-        # N means add 0x80*(N-1) to the length.  Being present means having
-        # a value in the unprintable range (<0x20).
-        if string_data[pos] < 0x20:
-            string_len += 0x80*(string_data[pos]-1)
-            pos += 1
-
-        string_end = pos + string_len
-        cur_string = string_data[pos:string_end]
-        cur_string =\
-            bytes([x for x in cur_string if x in range(0x20, 0x7F)])
-
-        ct_str = CTString.from_ascii(cur_string.decode('ascii'))
-        # print_bytes(ct_str, 16)
-        ct_str.compress()
-        # print_bytes(ct_str, 16)
-
-        print(cur_string.decode('ascii'))
-        print(ct_str.to_ascii())
-
-        pos += string_len
-        cur_string_ind += 1
-
-    exit()
-
-    htable = CTString.huffman_table
-    htree = CTHuffmanTree(htable)
-
-    for ind, substr in enumerate(htable):
-        htree.add_substring(substr, ind)
-        print(CTString.ct_bytes_to_ascii(substr))
-
-    # htree.root.print_tree()
-
-    print(' '.join(f"{x:02X}" for x in htree.root.children.keys()))
-
-    x = CTString.from_ascii('Therethe')
-    x.compress()
-
-    print(x.to_ascii())
-
-    '''
-    with open('./roms/jets_test.sfc', 'rb') as infile:
-        rom = infile.read()
-
-    table = get_huffman_table(rom)
-
-    with open('./pickles/huffman_table.pickle', 'wb') as outfile:
-        pickle.dump(table, outfile)
-
-    for x in table:
-        print(ct_string_to_ascii(x))
-    '''
+    pass
 
 
 if __name__ == '__main__':

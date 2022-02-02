@@ -157,17 +157,3 @@ def write_fragments_to_config(settings: rset.Settings,
     for x in fragment_locs:
         x.setKeyItem(ctenums.ItemID.BUCKETFRAG)
         x.writeKeyItem(config)
-
-
-def test():
-    # ctrom = CTRom.from_file('./roms/ct.sfc')
-    settings = rset.Settings.get_race_presets()
-    settings.gameflags |= rset.GameFlags.CHRONOSANITY
-    config = cfg.RandoConfig()
-
-    write_fragments_to_config(settings, config)
-    pass
-
-
-if __name__ == '__main__':
-    test()

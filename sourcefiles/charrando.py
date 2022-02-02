@@ -1,18 +1,10 @@
-# TODO List:
-#  -Fix Ayla fist loading -- Done in battle.  Menu?  Need to poke around.
-#     It is possible that the fist in battle just gets written back to Ayla
-#  -Junk shows up in triple tech list when there are no triple techs.
-#     Consider early RTS/NOP out routine when no triples (doubles?).
-#     This might be fixed, but has to be tested.
-
-
 import copy
 import techrandomizer
 import random
 
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
-    update_ptrs, to_rom_ptr, print_bytes
+    update_ptrs, to_rom_ptr
 from ctenums import CharID, RecruitID, LocID
 import ctevent
 from ctrom import CTRom
@@ -2249,59 +2241,4 @@ def reassign_characters(rom, reassign, dup_duals,
     if reassign[1] != 1:
         rom[0x36F1F2] = 0x1A  # Should be laughing now
 
-    # Probably need one for Frog cutting the mountain.
-
-
-# Main
-if __name__ == '__main__':
-
-    # jets_test.sfc should be a JoT rom with NOTHING extra done to techs
-    # No unlocked magic (but this might be OK) and definitely no tech
-    # randomization (but I might have fixed the techdb so this is OK).
-    with open('jets_test.sfc', 'rb') as infile:
-        rom = bytearray(infile.read())
-
-    orig_db = TechDB.get_default_db(rom)
-
-    x = get_ct_name('FlexgonMist')
-    print_bytes(x, 16)
-
-    quit()
-    # orig_db = TechDB.db_from_rom_internal(rom)
-
-    random.seed(1234567890)
-    reassign = [random.randrange(0, 7) for i in range(7)]
-
-    # print(reassign)
-    # reassign[2] = 1
-
-    new_db = get_reassign_techdb(orig_db, dup_duals, reassign)
-
-    # These actually do some work on the rom to fix references
-    reassign_tech_refs(rom, new_db, reassign)
-    # update_rock_techs(rom, new_db, reassign)
-    # update_targetting(rom, new_db, reassign)
-
-    # reassign magic is out of the tech_db because it influences the rom
-    reassign_magic(rom, new_db, reassign)
-
-    reassign_graphics(rom, 0x5F7000, 0x5F7200, reassign)
-    fix_menu_graphics(rom, reassign)
-
-    reassign_stats(rom, reassign)
-
-    # techrandomizer.randomize_single_techs_uniform(new_db)
-
-    TechDB.write_db_internal(new_db, rom)
-
-    # quick dirty hack to kill ATB delay
-    # new_rom[0x01BDF5:0x01BDF5+4] = bytearray.fromhex('A9 00 EA EA')
-    # new_rom[0x01BE71:0x01BE71+4] = bytearray.fromhex('A9 00 EA EA')
-    # new_rom[0x01BEEE:0x01BEEE+4] = bytearray.fromhex('A9 00 EA EA')
-
-    # print_bytes(new_db.lrn_reqs, 9)
-    # print_bytes(new_db.lrn_refs, 5)
-    # print_bytes(new_db.menu_grps, 16)
-
-    with open('jets_test-out.sfc', 'wb') as outfile:
-        outfile.write(rom)
+    # Probably need one for Frog cutting the mountain

@@ -486,26 +486,3 @@ def write_config(settings: rset.Settings,
     be done elsewhere.
     '''
     pass
-
-
-def main():
-    ct_rom = ctrom.CTRom.from_file('./roms/jets_test.sfc', True)
-    config = cfg.RandoConfig(bytearray(ct_rom.rom_data.getvalue()))
-
-    write_loc_recruit_locks(ct_rom, config)
-    force_chars_at_carpenter(ct_rom)
-    force_ruins_at_magic_cave_exterior(ct_rom)
-    force_castle_before_ozzies_fort(ct_rom)
-    lock_ocean_palace(ct_rom)
-
-    space_manager = ct_rom.rom_data.space_manager
-    mark_free = ctrom.FSWriteType.MARK_FREE
-    space_manager.mark_block((0x4F8000, 0x5F0000), mark_free)
-    ct_rom.write_all_scripts_to_rom()
-    input('outrom')
-    with open('./roms/jets_test_out.sfc', 'wb') as outfile:
-        outfile.write(ct_rom.rom_data.getvalue())
-
-
-if __name__ == '__main__':
-    main()

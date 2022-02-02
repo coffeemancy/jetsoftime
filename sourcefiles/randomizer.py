@@ -274,7 +274,6 @@ class Randomizer:
         else:
             print('failed to find mm flag')
 
-
     def __try_mystic_mtn_portal_fix(self):
         '''
         Removes touch == activate from dactyl portal.  Maybe this fixes?
@@ -292,7 +291,6 @@ class Randomizer:
         # Set the touch (0x02) function of the portal activation obj (0x0A)
         # to just return.
         script.set_function(0x0A, 0x02, func)
-
 
     def __try_proto_dome_fix(self):
         '''Removes touch == activate from proto recruit.  Maybe this fixes?'''
@@ -1165,6 +1163,7 @@ def main():
         print("Please run randomizergui.py for a graphical interface. \n"
               "Either randomizer.py or randomizergui.py can be run with the "
               "-c option to use\nthe command line.")
+
 
 if __name__ == "__main__":
     main()
