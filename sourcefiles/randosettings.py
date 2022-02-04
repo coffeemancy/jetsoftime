@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
+from typing import Union
 
 import ctenums
 
@@ -19,6 +20,13 @@ class StrIntEnum(IntEnum):
     @classmethod
     def inv_str_dict(cls) -> dict:
         return dict((str(x), x) for x in list(cls))
+
+
+class GameMode(StrIntEnum):
+    STANDARD = auto()
+    LOST_WORLDS = auto()
+    ICE_AGE = auto()
+    LEGACY_OF_CYRUS = auto()
 
 
 class Difficulty(StrIntEnum):
@@ -42,7 +50,6 @@ class ShopPrices(StrIntEnum):
 
 class GameFlags(Flag):
     FIX_GLITCH = auto()
-    LOST_WORLDS = auto()
     BOSS_SCALE = auto()
     ZEAL_END = auto()
     FAST_PENDANT = auto()
@@ -56,12 +63,10 @@ class GameFlags(Flag):
     DUPLICATE_TECHS = auto()
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
-    # BETA_LOGIC = auto()
     BUCKET_FRAGMENTS = auto()
     GUARANTEED_DROPS = auto()
     BUFF_XSTRIKE = auto()
-    ICE_AGE = auto()
-    LEGACY_OF_CYRUS = auto()
+    MYSTERY = auto()
 
 
 # Dictionary for what flags force what other flags off.
@@ -69,44 +74,10 @@ class GameFlags(Flag):
 # Boss Scaling off, but not vice versa because it's annoying to have to
 # click off every minor flag to select a major flag like a game mode.
 _GF = GameFlags
-_forced_off_dict: dict[_GF, _GF] = {
+_GM = GameMode
+_forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.FIX_GLITCH: _GF(0),
-    _GF.LOST_WORLDS: (
-        _GF.LOST_WORLDS | _GF.ICE_AGE | _GF.LEGACY_OF_CYRUS | _GF.BOSS_SCALE
-    ),
-    _GF.BOSS_SCALE: _GF(0),
-    _GF.ZEAL_END: _GF(0),
-    _GF.FAST_PENDANT: _GF(0),
-    _GF.LOCKED_CHARS: _GF(0),
-    _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.QUIET_MODE: _GF(0),
-    _GF.CHRONOSANITY: _GF(0),
-    _GF.TAB_TREASURES: _GF(0),
-    _GF.BOSS_RANDO: _GF(0),
-    _GF.DUPLICATE_CHARS: _GF(0),
-    _GF.VISIBLE_HEALTH: _GF(0),
-    _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_FRAGMENTS: (
-        _GF.LEGACY_OF_CYRUS | _GF.LOST_WORLDS | _GF.ICE_AGE
-    ),
-    _GF.GUARANTEED_DROPS: _GF(0),
-    _GF.BUFF_XSTRIKE: _GF(0),
-    _GF.ICE_AGE: (
-        _GF.LOST_WORLDS | _GF.CHRONOSANITY | _GF.ZEAL_END |
-        _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS | _GF.LEGACY_OF_CYRUS
-    ),
-    _GF.LEGACY_OF_CYRUS: (
-        _GF.LOST_WORLDS | _GF.CHRONOSANITY | _GF.ZEAL_END |
-        _GF.BUCKET_FRAGMENTS | _GF.ICE_AGE |
-        _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
-    )
-}
-
-
-# Similar dictionary for forcing flags on
-_forced_on_dict = {
-    _GF.FIX_GLITCH: _GF(0),
-    _GF.LOST_WORLDS: _GF(0),
+    _GF.NORMAL_GAME: _GF(0),
     _GF.BOSS_SCALE: _GF(0),
     _GF.ZEAL_END: _GF(0),
     _GF.FAST_PENDANT: _GF(0),
@@ -122,13 +93,52 @@ _forced_on_dict = {
     _GF.BUCKET_FRAGMENTS: _GF(0),
     _GF.GUARANTEED_DROPS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
-    _GF.ICE_AGE: [_GF.UNLOCKED_MAGIC],
-    _GF.LEGACY_OF_CYRUS: [_GF.UNLOCKED_MAGIC]
+    _GM.STANDARD: _GF(0),
+    _GM.LOST_WORLDS: _GF.BOSS_SCALE,
+    _GM.ICE_AGE: (
+        _GF.CHRONOSANITY | _GF.ZEAL_END |
+        _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
+    ),
+    _GM.LEGACY_OF_CYRUS: (
+        _GF.CHRONOSANITY | _GF.ZEAL_END |
+        _GF.BUCKET_FRAGMENTS |
+        _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
+    )
+}
+
+
+# Similar dictionary for forcing flags on
+_forced_on_dict = {
+    _GF.FIX_GLITCH: _GF(0),
+    _GF.NORMAL_GAME: _GF(0),
+    _GF.BOSS_SCALE: _GF(0),
+    _GF.ZEAL_END: _GF(0),
+    _GF.FAST_PENDANT: _GF(0),
+    _GF.LOCKED_CHARS: _GF(0),
+    _GF.UNLOCKED_MAGIC: _GF(0),
+    _GF.QUIET_MODE: _GF(0),
+    _GF.CHRONOSANITY: _GF(0),
+    _GF.TAB_TREASURES: _GF(0),
+    _GF.BOSS_RANDO: _GF(0),
+    _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.VISIBLE_HEALTH: _GF(0),
+    _GF.FAST_TABS: _GF(0),
+    _GF.BUCKET_FRAGMENTS: _GF(0),
+    _GF.GUARANTEED_DROPS: _GF(0),
+    _GF.BUFF_XSTRIKE: _GF(0),
+    _GM.STANDARD: _GF(0),
+    _GM.LOST_WORLDS: _GF.UNLOCKED_MAGIC,
+    _GM.ICE_AGE: _GF.UNLOCKED_MAGIC,
+    _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC
 }
 
 
 def get_forced_off(flag: GameFlags) -> GameFlags:
     return _forced_off_dict[flag]
+
+
+def get_forced_on(flag: GameFlags) -> GameFlags:
+    return _forced_on_dict[flag]
 
 
 class CosmeticFlags(Flag):
@@ -167,15 +177,57 @@ class BucketSettings:
     needed_fragments: int = 20
 
 
+class MysterySettings:
+    def __init__(self):
+        self.game_mode_freqs: dict[GameMode, int] = {
+            GameMode.STANDARD: 75,
+            GameMode.LOST_WORLDS: 25,
+            GameMode.LEGACY_OF_CYRUS: 0,
+            GameMode.ICE_AGE: 0
+        }
+        self.item_difficulty_freqs: dict[Difficulty, int] = {
+            Difficulty.EASY: 15,
+            Difficulty.NORMAL: 70,
+            Difficulty.HARD: 15
+        }
+        self.enemy_difficulty_freqs: dict[Difficulty, int] = {
+            Difficulty.NORMAL: 75,
+            Difficulty.HARD: 25
+        }
+        self.tech_order_freqs: dict[TechOrder, int] = {
+            TechOrder.NORMAL: 10,
+            TechOrder.BALANCED_RANDOM: 10,
+            TechOrder.FULL_RANDOM: 80
+        }
+        self.shop_price_freqs: dict[ShopPrices, int] = {
+            ShopPrices.NORMAL: 70,
+            ShopPrices.MOSTLY_RANDOM: 10,
+            ShopPrices.FULLY_RANDOM: 10,
+            ShopPrices.FREE: 10
+        }
+        self.flag_prob_dict: dict[GameFlags, float] = {
+            GameFlags.TAB_TREASURES: 0.10,
+            GameFlags.BUCKET_FRAGMENTS: 0.15,
+            GameFlags.CHRONOSANITY: 0.30,
+            GameFlags.BOSS_RANDO: 0.50,
+            GameFlags.BOSS_SCALE: 0.30,
+            GameFlags.LOCKED_CHARS: 0.25,
+            GameFlags.DUPLICATE_CHARS: 0.25
+        }
+
+
 class Settings:
 
     def __init__(self):
 
+        self.game_mode = GameMode.STANDARD
         self.item_difficulty = Difficulty.NORMAL
         self.enemy_difficulty = Difficulty.NORMAL
 
         self.techorder = TechOrder.FULL_RANDOM
         self.shopprices = ShopPrices.NORMAL
+
+        self.mystery_settings = MysterySettings()
 
         self.gameflags = GameFlags.FIX_GLITCH
         self.char_choices = [[i for i in range(7)] for j in range(7)]
@@ -239,15 +291,14 @@ class Settings:
     def get_lost_worlds_presets():
         ret = Settings()
 
+        ret.game_mode = GameMode.LOST_WORLDS
         ret.item_difficulty = Difficulty.NORMAL
         ret.enemy_difficulty = Difficulty.NORMAL
 
         ret.shopprices = ShopPrices.NORMAL
         ret.techorder = TechOrder.FULL_RANDOM
 
-        ret.gameflags = (GameFlags.FIX_GLITCH |
-                         GameFlags.LOST_WORLDS |
-                         GameFlags.ZEAL_END)
+        ret.gameflags = (GameFlags.FIX_GLITCH | GameFlags.ZEAL_END)
 
         ret.seed = ''
         return ret
@@ -269,7 +320,7 @@ class Settings:
         return ret
 
     def get_flag_string(self):
-        # Flag string is based only on main game flags
+        # Flag string is based only on main game flags and game mode
 
         diff_str_dict = {
             Difficulty.EASY: 'e',
@@ -283,11 +334,15 @@ class Settings:
             TechOrder.NORMAL: ''
         }
 
+        game_mode_dict = {
+            GameMode.STANDARD: 'st',
+            GameMode.LOST_WORLDS: 'lw',
+            GameMode.ICE_AGE: 'ia',
+            GameMode.LEGACY_OF_CYRUS: 'loc'
+        }
+
         flag_str_dict = {
             GameFlags.FIX_GLITCH: 'g',
-            GameFlags.LOST_WORLDS: 'l',
-            GameFlags.ICE_AGE: 'ia',
-            GameFlags.LEGACY_OF_CYRUS: 'loc',
             GameFlags.BOSS_SCALE: 'b',
             GameFlags.BOSS_RANDO: 'ro',
             GameFlags.ZEAL_END: 'z',
@@ -307,17 +362,19 @@ class Settings:
             ShopPrices.NORMAL: ''
         }
 
-        flag_string = ''
+        if GameFlags.MYSTERY in self.gameflags:
+            flag_string = 'mystery'
+        else:
+            # Now we have difficulty for enemies and items separated, but to
+            # match the old flag string, just use enemy difficulty.
+            flag_string = ''
+            flag_string += game_mode_dict[self.game_mode]
+            flag_string += diff_str_dict[self.enemy_difficulty]
 
-        # Now we have difficulty for enemies and items separated, but to
-        # match the old flag string, just use enemy difficulty.
-        flag_string += diff_str_dict[self.enemy_difficulty]
-
-        for flag in flag_str_dict:
-            if flag in self.gameflags:
-                flag_string += flag_str_dict[flag]
-
-        flag_string += tech_str_dict[self.techorder]
-        flag_string += shop_str_dict[self.shopprices]
+            for flag in flag_str_dict:
+                if flag in self.gameflags:
+                    flag_string += flag_str_dict[flag]
+                    flag_string += tech_str_dict[self.techorder]
+                    flag_string += shop_str_dict[self.shopprices]
 
         return flag_string

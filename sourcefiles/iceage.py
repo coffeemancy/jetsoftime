@@ -18,7 +18,7 @@ import randosettings as rset
 
 def get_key_chars_from_config(config: cfg.RandoConfig) -> set[ctenums.CharID]:
 
-    RecruitID = cfg.RecruitID
+    RecruitID = ctenums.RecruitID
     key_chars = set(
         [config.char_assign_dict[RecruitID.DACTYL_NEST].held_char,
          ctenums.CharID.AYLA]
@@ -36,7 +36,7 @@ def write_config(settings: rset.Settings,
     verify that GG is on Woe where he ought to be.
     '''
 
-    if rset.GameFlags.ICE_AGE not in settings.gameflags:
+    if settings.game_mode != rset.GameMode.ICE_AGE:
         return
 
     BossID = ctenums.BossID
@@ -292,7 +292,7 @@ def set_ice_age_recruit_locks(ct_rom: ctrom.CTRom,
 
     key_chars = get_key_chars_from_config(config)
 
-    RecruitID = cfg.RecruitID
+    RecruitID = ctenums.RecruitID
     recruit_ids_to_lock = [
         RecruitID.CATHEDRAL,
         RecruitID.CASTLE,

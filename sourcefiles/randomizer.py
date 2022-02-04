@@ -395,7 +395,7 @@ class Randomizer:
         # 1) Set magic learning at game start depending on character assignment
         #    unless LW...because telepod exhibit now has the LW portal change.
 
-        if rset.GameFlags.LOST_WORLDS not in self.settings.gameflags:
+        if self.settings.game_mode == rset.GameMode.LOST_WORLDS:
             telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
 
             # 3.1.1 Change:
@@ -432,9 +432,10 @@ class Randomizer:
         #   - Locked characters changes to proto dome and dactyl nest
         #   - Duplicate characters changes to Spekkio when not in LW
         flags = self.settings.gameflags
+        mode = self.settings.game_mode
         dup_chars = rset.GameFlags.DUPLICATE_CHARS in flags
         locked_chars = rset.GameFlags.LOCKED_CHARS in flags
-        lost_worlds = rset.GameFlags.LOST_WORLDS in flags
+        lost_worlds = rset.GameMode.LOST_WORLDS == mode
 
         if dup_chars and not lost_worlds:
             # Lets Spekkio give magic properly to duplicates
@@ -475,13 +476,14 @@ class Randomizer:
         # because the recruit spot works by changing all character recruit
         # commands into the recruit's version.  The code inserted by theen
         # recruit locks would get incorrectly changed by this.
-        if rset.GameFlags.ICE_AGE in self.settings.gameflags:
+        mode = self.settings.game_mode
+        if mode == rset.GameMode.ICE_AGE:
             iceage.set_ice_age_recruit_locks(self.out_rom,
                                              self.config)
             iceage.set_ice_age_dungeon_locks(self.out_rom, self.config)
             iceage.set_ending_after_woe(self.out_rom)
 
-        if rset.GameFlags.LEGACY_OF_CYRUS in self.settings.gameflags:
+        if mode == rset.GameMode.LEGACY_OF_CYRUS:
             legacyofcyrus.write_loc_recruit_locks(self.out_rom,
                                                   self.config)
             legacyofcyrus.write_loc_dungeon_locks(self.out_rom)
@@ -771,6 +773,7 @@ class Randomizer:
 
         rom_data = ctrom.rom_data
         flags = settings.gameflags
+        mode = settings.game_mode
 
         if rset.GameFlags.FIX_GLITCH in flags:
             rom_data.patch_txt_file('./patches/save_anywhere_patch.txt')
@@ -790,13 +793,13 @@ class Randomizer:
         # but I'm worried about what might happen when the invalid event is
         # marked free space.  For now we keep with older versions and apply the
         # mysticmtnfix.ips to restore the event.
-        if rset.GameFlags.LOST_WORLDS in flags:
+        if rset.GameMode.LOST_WORLDS == mode:
             rom_data.patch_ips_file('./patches/lost.ips')
             rom_data.patch_ips_file('./patches/mysticmtnfix.ips')
 
         if rset.GameFlags.FAST_PENDANT in flags:
-            if rset.GameFlags.LOST_WORLDS in flags or \
-               rset.GameFlags.LEGACY_OF_CYRUS in flags:
+            if mode in (rset.GameMode.LOST_WORLDS,
+                        rset.GameMode.LEGACY_OF_CYRUS):
                 # Game modes where there is no pendant trial need to enforce
                 # fast pendant by changing scripts.
                 fastpendant.apply_fast_pendant_script(ctrom, settings)
@@ -1030,7 +1033,7 @@ def get_settings_from_command_line() -> rset.Settings:
     lost_worlds = input("Would you want to activate Lost Worlds(l)? Y/N ")
     lost_worlds = lost_worlds.upper()
     if lost_worlds == "Y":
-        settings.gameflags |= rset.GameFlags.LOST_WORLDS
+        settings.game_mode = rset.GameMode.LOST_WORLDS
 
     boss_scaler = input(
         "Do you want bosses to scale with progression(b)? Y/N "
