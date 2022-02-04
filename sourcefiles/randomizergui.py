@@ -18,7 +18,7 @@ import randomizer
 import bossdata
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags, \
-    BucketSettings
+    BucketSettings, GameMode
 from ctenums import LocID, BossID
 import ctrom
 
@@ -107,6 +107,9 @@ class RandoGUI:
         self.enemy_difficulty = tk.StringVar()
         self.shop_prices = tk.StringVar()
         self.tech_order = tk.StringVar()
+        self.game_mode = tk.StringVar()
+
+        # Game Mode
 
         # Tab stuff
         self.power_tab_max = tk.IntVar()
@@ -268,6 +271,10 @@ class RandoGUI:
         # Seed
         self.settings.seed = self.seed.get()
 
+        # Game Mode
+        self.settings.game_mode = \
+            GameMode.inv_str_dict()[self.game_mode.get()]
+
         # Look up difficulty enum given string
         inv_diff_dict = Difficulty.inv_str_dict()
 
@@ -277,6 +284,10 @@ class RandoGUI:
 
         self.settings.enemy_difficulty = \
             inv_diff_dict[self.enemy_difficulty.get()]
+
+        # Shop Prices
+        self.settings.shopprices = \
+            ShopPrices.inv_str_dict()[self.shop_prices.get()]
 
         # Main flags
         flags = [x for x in list(GameFlags)
@@ -340,6 +351,11 @@ class RandoGUI:
         # print(self.settings.gameflags)
 
     def update_gui_vars(self):
+
+        # Set game mode
+        self.game_mode.set(
+            GameMode.str_dict()[self.settings.game_mode]
+        )
 
         # Update the flags
         for x in self.flag_dict.keys():
@@ -430,10 +446,9 @@ class RandoGUI:
         # set them all normal, and then disable as needed.
 
         checkboxes = (
-            self.lost_worlds_checkbox, self.chronosanity_checkbox,
+            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.unlocked_magic_checkbox,
-            self.ice_age_checkbox, self.loc_checkbox,
             self.locked_chars_checkbox, self.fast_pendant_checkbox,
             self.boss_rando_checkbox
         )
@@ -451,20 +466,34 @@ class RandoGUI:
 
         # TODO: Dicts for disabling, etc so this can be streamlined
         GF = GameFlags
+
+        lw_disabled_flags = [GF.BOSS_SCALE]
+        lw_disabled_elements = [self.boss_scaling_checkbox,
+                                self.unlocked_magic_checkbox]
+
+        if self.game_mode.get() == GameMode.str_dict()[GameMode.LOST_WORLDS]:
+            for flag in lw_disabled_flags:
+                self.flag_dict[flag].set(0)
+
+            self.flag_dict[GF.UNLOCKED_MAGIC].set(1)
+
+            for element in lw_disabled_elements:
+                element.config(state=tk.DISABLED)
+
         ia_disabled_flags = [
-            GF.LOST_WORLDS, GF.CHRONOSANITY, GF.ZEAL_END,
-            GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS, GF.LEGACY_OF_CYRUS
+            GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS,
         ]
 
         ia_disabled_elements = [
-            self.lost_worlds_checkbox, self.chronosanity_checkbox,
+            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
-            self.bucket_frag_required_scale, self.loc_checkbox,
+            self.bucket_frag_required_scale,
             self.unlocked_magic_checkbox
         ]
 
-        if self.flag_dict[GameFlags.ICE_AGE].get() == 1:
+        if self.game_mode.get() == GameMode.str_dict()[GameMode.ICE_AGE]:
 
             for flag in ia_disabled_flags:
                 self.flag_dict[flag].set(0)
@@ -478,20 +507,21 @@ class RandoGUI:
             self.bucket_frag_required_scale.config(fg='grey')
 
         loc_disabled_flags = [
-            GF.LOST_WORLDS, GF.CHRONOSANITY, GF.ZEAL_END,
-            GF.BUCKET_FRAGMENTS, GF.ICE_AGE,
+            GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.BUCKET_FRAGMENTS,
             GF.BOSS_RANDO, GF.BOSS_SCALE, GF.BOSS_RANDO
         ]
 
         loc_disabled_elements = [
-            self.lost_worlds_checkbox, self.chronosanity_checkbox,
+            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
-            self.bucket_frag_required_scale, self.ice_age_checkbox,
+            self.bucket_frag_required_scale,
             self.boss_rando_checkbox
         ]
 
-        if self.flag_dict[GameFlags.LEGACY_OF_CYRUS].get() == 1:
+        if self.game_mode.get() == \
+           GameMode.str_dict()[GameMode.LEGACY_OF_CYRUS]:
             for flag in loc_disabled_flags:
                 self.flag_dict[flag].set(0)
 
@@ -503,16 +533,9 @@ class RandoGUI:
             self.bucket_frag_extra_scale.config(fg='grey')
             self.bucket_frag_required_scale.config(fg='grey')
 
-        if self.flag_dict[GameFlags.LOST_WORLDS].get() == 1:
-            self.flag_dict[GameFlags.ICE_AGE].set(0)
-            self.ice_age_checkbox.config(state=tk.DISABLED)
-            # self.flag_dict[GameFlags.FAST_PENDANT].set(0)
-            # self.fast_pendant_checkbox.config(state=tk.DISABLED)
-
         if self.flag_dict[GameFlags.CHRONOSANITY].get() == 1:
             self.flag_dict[GameFlags.BOSS_SCALE].set(0)
             self.boss_scaling_checkbox.config(state=tk.DISABLED)
-
 
         # Check DC Page
         if self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
@@ -841,6 +864,26 @@ class RandoGUI:
         label.grid(row=row, column=0, sticky=tk.W)
         row = row + 1
 
+        # Game Mode
+        game_mode_values = GameMode.str_dict().values()
+
+        # We want to call self.verify_settings after the OptionMenu is
+        # updated.  The command= option forces a string argument of the
+        # current selection to the callback.
+        # We wrap in a lambda to discard the argument.
+        self.game_mode_dropdown = tk.OptionMenu(
+            frame,
+            self.game_mode,
+            *game_mode_values,
+            command=lambda x: self.verify_settings()
+        )
+
+        self.game_mode_dropdown.config(width=20)
+        self.game_mode_dropdown.grid(
+            row=row, column=0, sticky=tk.W, columnspan=2
+        )
+
+        '''
         # Lost Worlds
         self.lost_worlds_checkbox = tk.Checkbutton(
             frame, text="Lost Worlds (l)",
@@ -850,7 +893,6 @@ class RandoGUI:
         self. lost_worlds_checkbox.grid(
             row=row, column=0, sticky=tk.W, columnspan=2
         )
-
         CreateToolTip(
             self.lost_worlds_checkbox,
             'An alternate game mode where you start with access to '
@@ -860,7 +902,7 @@ class RandoGUI:
             'through the Ocean Palace. 600AD and 1000AD are unavailable '
             'until the very end of the game.'
         )
-
+        '''
         # Boss Rando
         self.boss_rando_checkbox = tk.Checkbutton(
             frame,
@@ -1788,33 +1830,19 @@ class RandoGUI:
             'Change X-Strike to use Spincut + Leapslash.'
         )
 
-        self.ice_age_checkbox = tk.Checkbutton(
-            frame,
-            text='Ice Age',
-            variable=self.flag_dict[GameFlags.ICE_AGE],
-            command=self.verify_settings
-        )
-        self.ice_age_checkbox.pack(anchor=tk.W)
-
+        '''
         CreateToolTip(
             self.ice_age_checkbox,
             'Get Ayla.  Get the Dactyl Nest character.  Use them to defeat '
             'the Black Tyrano and a (buffed) Giga Gaia to win.'
         )
 
-        self.loc_checkbox = tk.Checkbutton(
-            frame,
-            text='Legacy of Cyrus',
-            variable=self.flag_dict[GameFlags.LEGACY_OF_CYRUS],
-            command=self.verify_settings
-        )
-        self.loc_checkbox.pack(anchor=tk.W)
-
         CreateToolTip(
             self.loc_checkbox,
             'Get Frog and Magus, visit Cyrus\'s grave, defeat Magus, and '
             'finish by clearing Ozzie\'s Fort.'
         )
+        '''
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,

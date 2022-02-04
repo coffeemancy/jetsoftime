@@ -24,10 +24,10 @@ class Game:
         self.keyItems = set()
         self.earlyPendant = rset.GameFlags.FAST_PENDANT in settings.gameflags
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
-        self.lostWorlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
+        self.lostWorlds = rset.GameMode.LOST_WORLDS == settings.game_mode
         self.charLocations = config.char_assign_dict
         self.legacyofcyrus = \
-            rset.GameFlags.LEGACY_OF_CYRUS in settings.gameflags
+            rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
 
         # In case we need to look something else up
         self.settings = settings

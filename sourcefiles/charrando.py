@@ -29,9 +29,10 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
     loc_assign_dict = {recruit_id: char for recruit_id, char in key_val}
 
     char_man = config.char_manager
-    lost_worlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
+    lost_worlds = (rset.GameMode.LOST_WORLDS == settings.game_mode)
+    loc = (rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode)
 
-    if rset.GameFlags.LEGACY_OF_CYRUS in settings.gameflags:
+    if loc:
         loc_assign_dict = legacyofcyrus.get_character_assignment()
 
     # Scale starting stats depending on the location assignment

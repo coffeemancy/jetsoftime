@@ -79,7 +79,7 @@ scaling_data = {
 def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
     # First, boss scaling only works for normal logic
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
-    lost_worlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
+    lost_worlds = settings.game_mode == rset.GameMode.LOST_WORLDS
     boss_scaling = rset.GameFlags.BOSS_SCALE in settings.gameflags
 
     if not boss_scaling:

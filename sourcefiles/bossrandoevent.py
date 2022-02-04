@@ -1658,7 +1658,7 @@ def write_assignment_to_config(settings: rset.Settings,
             config.boss_assign_dict[locations[i]] = bosses[i]
 
         # Force GG on Woe for Ice Age
-        if rset.GameFlags.ICE_AGE in settings.gameflags:
+        if settings.game_mode == rset.GameMode.ICE_AGE:
             woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
             if woe_boss != BossID.GIGA_GAIA:
                 if BossID.GIGA_GAIA in config.boss_assign_dict.values():

@@ -18,7 +18,7 @@ ItemID = ctenums.ItemID
 def add_lw_key_item_gear(settings: rset.Settings,
                          config: cfg.RandoConfig):
 
-    if rset.GameFlags.LOST_WORLDS not in settings.gameflags:
+    if settings.game_mode != rset.GameMode.LOST_WORLDS:
         return
 
     # RecruitID = ctenums.RecruitID

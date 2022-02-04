@@ -1181,9 +1181,9 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
     gameConfig = None
 
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
-    lostWorlds = rset.GameFlags.LOST_WORLDS in settings.gameflags
-    iceAge = rset.GameFlags.ICE_AGE in settings.gameflags
-    legacyofcyrus = rset.GameFlags.LEGACY_OF_CYRUS in settings.gameflags
+    lostWorlds = rset.GameMode.LOST_WORLDS == settings.game_mode
+    iceAge = rset.GameMode.ICE_AGE == settings.game_mode
+    legacyofcyrus = rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
 
     if chronosanity and lostWorlds:
         gameConfig = ChronosanityLostWorldsGameConfig(settings, config)
