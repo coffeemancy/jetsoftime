@@ -366,13 +366,14 @@ class Settings:
             # Now we have difficulty for enemies and items separated, but to
             # match the old flag string, just use enemy difficulty.
             flag_string = ''
-            flag_string += game_mode_dict[self.game_mode]
+            flag_string += (game_mode_dict[self.game_mode] + '.')
             flag_string += diff_str_dict[self.enemy_difficulty]
 
             for flag in flag_str_dict:
                 if flag in self.gameflags:
                     flag_string += flag_str_dict[flag]
-                    flag_string += tech_str_dict[self.techorder]
-                    flag_string += shop_str_dict[self.shopprices]
+
+            flag_string += tech_str_dict[self.techorder]
+            flag_string += shop_str_dict[self.shopprices]
 
         return flag_string
