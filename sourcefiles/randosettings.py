@@ -77,10 +77,6 @@ _GF = GameFlags
 _GM = GameMode
 _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.FIX_GLITCH: _GF(0),
-<<<<<<< HEAD
-=======
-    _GF.NORMAL_GAME: _GF(0),
->>>>>>> 412a2d50fa026be100bf0296073e69eadcd4ab02
     _GF.BOSS_SCALE: _GF(0),
     _GF.ZEAL_END: _GF(0),
     _GF.FAST_PENDANT: _GF(0),
@@ -108,15 +104,11 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
     )
 }
-
+ 
 
 # Similar dictionary for forcing flags on
 _forced_on_dict = {
     _GF.FIX_GLITCH: _GF(0),
-<<<<<<< HEAD
-=======
-    _GF.NORMAL_GAME: _GF(0),
->>>>>>> 412a2d50fa026be100bf0296073e69eadcd4ab02
     _GF.BOSS_SCALE: _GF(0),
     _GF.ZEAL_END: _GF(0),
     _GF.FAST_PENDANT: _GF(0),
