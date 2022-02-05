@@ -18,7 +18,7 @@ import randomizer
 import bossdata
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags, \
-    BucketSettings, GameMode
+    BucketSettings, GameMode, MysterySettings
 from ctenums import LocID, BossID
 import ctrom
 
@@ -109,8 +109,6 @@ class RandoGUI:
         self.tech_order = tk.StringVar()
         self.game_mode = tk.StringVar()
 
-        # Game Mode
-
         # Tab stuff
         self.power_tab_max = tk.IntVar()
         self.power_tab_min = tk.IntVar()
@@ -143,6 +141,40 @@ class RandoGUI:
         self.bucket_frag_extra_scale = None
         self.bucket_frag_extra = tk.IntVar(value=10)
 
+        # Mystery Settings.
+        # We have to make tk variable copies of the data structure.
+        # There must be a better way.
+        ms = MysterySettings()
+        ms_mode_keys = ms.game_mode_freqs.keys()
+        self.mys_game_mode_freqs = {
+            key: tk.StringVar(value='0') for key in ms_mode_keys
+        }
+
+        self.mys_item_diff_freqs = {
+            key: tk.StringVar(value='0')
+            for key in ms.item_difficulty_freqs.keys()
+        }
+
+        self.mys_enemy_diff_freqs = {
+            key: tk.StringVar(value='0')
+            for key in ms.enemy_difficulty_freqs.keys()
+        }
+
+        self.mys_tech_order_freqs = {
+            key: tk.StringVar(value='0')
+            for key in ms.tech_order_freqs.keys()
+        }
+
+        self.mys_shop_price_freqs = {
+            key: tk.StringVar(value='0')
+            for key in ms.shop_price_freqs.keys()
+        }
+
+        self.mys_flag_prob_dict = {
+            key: tk.StringVar(value=0.5)
+            for key in ms.flag_prob_dict.keys()
+        }
+
         # generation variables
         self.seed = tk.StringVar()
         self.input_file = tk.StringVar()
@@ -160,6 +192,7 @@ class RandoGUI:
         self.qol_page = self.get_qol_page()
         self.cosmetic_page = self.get_cosmetic_page()
         self.experimental_page = self.get_experimental_page()
+        self.mystery_page = self.get_mystery_page()
 
         # The boss rando page is a little different because the Tk.Listbox
         # does not use an underlying variable.  Instead the
@@ -195,6 +228,7 @@ class RandoGUI:
         self.notebook.add(self.qol_page, text='QoL')
         self.notebook.add(self.cosmetic_page, text='Cos')
         self.notebook.add(self.experimental_page, text='Exp')
+        self.notebook.add(self.mystery_page, text='Mys')
 
         # This can only be called after all of the widgets are initialized
         self.load_settings_file()
@@ -348,6 +382,34 @@ class RandoGUI:
             needed_fragments=self.bucket_frag_required.get()
         )
 
+        # Mystery settings
+        ms = MysterySettings()
+        for mode in ms.game_mode_freqs:
+            ms.game_mode_freqs[mode] = \
+                int(self.mys_game_mode_freqs[mode].get())
+
+        for diff in ms.item_difficulty_freqs:
+            ms.item_difficulty_freqs[diff] = \
+                int(self.mys_item_diff_freqs[diff].get())
+
+        for diff in ms.enemy_difficulty_freqs:
+            ms.enemy_difficulty_freqs[diff] = \
+                int(self.mys_enemy_diff_freqs[diff].get())
+
+        for tech_ord in ms.tech_order_freqs:
+            ms.tech_order_freqs[tech_ord] = \
+                int(self.mys_tech_order_freqs[tech_ord].get())
+
+        for shop_price in ms.shop_price_freqs:
+            ms.shop_price_freqs[shop_price] = \
+                int(self.mys_shop_price_freqs[shop_price].get())
+
+        for flag in ms.flag_prob_dict:
+            ms.flag_prob_dict[flag] = \
+                float(self.mys_flag_prob_dict[flag].get())
+
+        self.settings.mystery_settings = ms
+
         # print(self.settings.gameflags)
 
     def update_gui_vars(self):
@@ -435,6 +497,30 @@ class RandoGUI:
 
         self.bucket_frag_extra.set(int(extra_frags))
         self.bucket_frag_required.set(int(bucket_settings.needed_fragments))
+
+        # Mystery Settings
+        mys_settings = self.settings.mystery_settings
+
+        settings_dicts = (
+            mys_settings.game_mode_freqs,
+            mys_settings.item_difficulty_freqs,
+            mys_settings.enemy_difficulty_freqs,
+            mys_settings.tech_order_freqs,
+            mys_settings.shop_price_freqs,
+            mys_settings.flag_prob_dict
+        )
+        gui_dicts = (
+            self.mys_game_mode_freqs,
+            self.mys_item_diff_freqs,
+            self.mys_enemy_diff_freqs,
+            self.mys_tech_order_freqs,
+            self.mys_shop_price_freqs,
+            self.mys_flag_prob_dict
+        )
+
+        for set_dict, gui_dict in zip(settings_dicts, gui_dicts):
+            for key in set_dict:
+                gui_dict[key].set(str(set_dict[key]))
 
         self.verify_settings()
 
@@ -548,6 +634,12 @@ class RandoGUI:
             self.notebook.tab(self.ro_page, state=tk.NORMAL)
         else:
             self.notebook.tab(self.ro_page, state=tk.DISABLED)
+
+        # Check Mys Page
+        if self.flag_dict[GameFlags.MYSTERY].get() == 1:
+            self.notebook.tab(self.mystery_page, state=tk.NORMAL)
+        else:
+            self.notebook.tab(self.mystery_page, state=tk.DISABLED)
 
         # check the tab rando slider
         if self.tab_rando_scheme.get() == \
@@ -884,15 +976,8 @@ class RandoGUI:
         )
 
         '''
-        # Lost Worlds
-        self.lost_worlds_checkbox = tk.Checkbutton(
-            frame, text="Lost Worlds (l)",
-            variable=self.flag_dict[GameFlags.LOST_WORLDS],
-            command=self.verify_settings
-        )
-        self. lost_worlds_checkbox.grid(
-            row=row, column=0, sticky=tk.W, columnspan=2
-        )
+        # TODO: Redo tool tip for game mode dropdown.  Can tool tips change
+        #       dynamically?
         CreateToolTip(
             self.lost_worlds_checkbox,
             'An alternate game mode where you start with access to '
@@ -1049,6 +1134,19 @@ class RandoGUI:
             'character.')
         row = row + 1
 
+        # Mystery seed checkbox
+        self.mystery_checkbox = tk.Checkbutton(
+            frame,
+            text='Mystery Seed',
+            variable=self.flag_dict[GameFlags.MYSTERY],
+            command=self.verify_settings,
+        )
+        self.mystery_checkbox.grid(
+            row=row, column=0, sticky=tk.W, columnspan=2
+        )
+
+        row += 1
+
         # Shop Prices dropdown
         shop_price_values = ShopPrices.str_dict().values()
         label = tk.Label(frame, text="Shop Prices:")
@@ -1176,21 +1274,37 @@ class RandoGUI:
         return frame
 
     def settings_valid(self):
+
+        # First check the mystery settings page.  Perhaps we can use it to
+        # better inform error message.
+        if self.flag_dict[GameFlags.MYSTERY].get() == 1 or True:
+            mys_valid = self.mys_settings_valid()
+            if not mys_valid:
+                return
+
         # Check for bad input from DC page
-        if self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1 \
-           and not self.dc_settings_valid():
-            messagebox.showerror(
-                'DC Settings Error',
-                'Each character must have at least one choice selected.'
-            )
-            self.notebook.select(self.dc_page)
-            return
+        if not self.dc_settings_valid():
+            if self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
+                messagebox.showerror(
+                    'DC Settings Error',
+                    'Each character must have at least one choice selected.'
+                )
+                self.notebook.select(self.dc_page)
+                return
+            elif self.flag_dict[GameFlags.MYSTERY].get() == 1:
+                messagebox.showerror(
+                    'DC+Mystery Settings Error',
+                    'Each character must have at least one choice selected. '
+                    'Enable dc flag and adjust the settings.'
+                )
+                return
 
         # Check for bad input from RO page
 
         boss_loc_dict = bossdata.get_default_boss_assignment()
 
-        if self.flag_dict[GameFlags.BOSS_RANDO].get() == 1:
+        if self.flag_dict[GameFlags.BOSS_RANDO].get() == 1 or \
+           self.flag_dict[GameFlags.MYSTERY].get() == 1:
             loc_selection_ind = self.boss_location_listbox.curselection()
             boss_selection_ind = self.boss_listbox.curselection()
 
@@ -1315,6 +1429,67 @@ class RandoGUI:
             return False
 
         # Failed to find an error
+        return True
+
+    def mys_settings_valid(self) -> bool:
+        format_error = False
+
+        dists = (self.mys_game_mode_freqs,
+                 self.mys_item_diff_freqs,
+                 self.mys_enemy_diff_freqs,
+                 self.mys_tech_order_freqs,
+                 self.mys_shop_price_freqs)
+
+        for dist in dists:
+            dist_sum = 0
+            for key in dist:
+                val = dist[key]
+                try:
+                    int_val = int(val.get())
+                except ValueError:
+                    format_error = True
+                    int_val = 0
+
+                if int_val < 0:
+                    format_error = True
+
+                if format_error:
+                    messagebox.showerror(
+                        'Mystery Settings Error',
+                        'Relative frequencies must be nonnegative integers.'
+                    )
+                    self.notebook.select(self.mystery_page)
+                    return False
+
+                dist_sum += int_val
+
+            if dist_sum == 0:
+                messagebox.showerror(
+                    'Mystery Settings Error',
+                    'Each category must have at least one positive frequency.'
+                )
+                self.notebook.select(self.mystery_page)
+                return False
+
+        prob_error = False
+        for flag in self.mys_flag_prob_dict:
+            try:
+                flag_prob = float(self.mys_flag_prob_dict[flag].get())
+            except ValueError:
+                flag_prob = 0
+                prob_error = True
+
+            if not (0 <= flag_prob < 1):
+                prob_error = True
+
+            if prob_error:
+                messagebox.showerror(
+                    'Mystery Settings Error',
+                    'Each probability must be a decimal number between 0 '
+                    'and 1 (inclusive).'
+                )
+                return False
+
         return True
 
     def get_rom_from_file(self) -> bytearray:
@@ -1940,6 +2115,160 @@ class RandoGUI:
         )
 
         return frame
+
+    def get_mystery_page(self):
+        mys_page = ttk.Frame(self.notebook)
+
+        label = tk.Label(
+            mys_page,
+            text='Relative Frequencies of Selections'
+        )
+        label.pack(anchor=tk.W)
+
+        # Give boxes for relative frequencies of game modes
+        mode_strs = {
+            GameMode.STANDARD: "Std",
+            GameMode.LOST_WORLDS: "LW",
+            GameMode.LEGACY_OF_CYRUS: "LoC",
+            GameMode.ICE_AGE: "IA"
+        }
+
+        game_mode_frame = self.get_rel_freq_frame(
+            mys_page,
+            'Game Modes:',
+            mode_strs,
+            self.mys_game_mode_freqs)
+        game_mode_frame.pack(fill=tk.X)
+
+        # Item Difficulty
+        mode_strs = {diff: str(diff)
+                     for diff in self.mys_item_diff_freqs}
+        item_diff_frame = self.get_rel_freq_frame(
+            mys_page,
+            'Item Difficulty:',
+            mode_strs,
+            self.mys_item_diff_freqs
+        )
+        item_diff_frame.pack(fill=tk.X)
+
+        # Enemy Difficulty
+        mode_strs = {diff: str(diff)
+                     for diff in self.mys_enemy_diff_freqs}
+        item_diff_frame = self.get_rel_freq_frame(
+            mys_page,
+            'Enemy Difficulty:',
+            mode_strs,
+            self.mys_enemy_diff_freqs
+        )
+        item_diff_frame.pack(fill=tk.X)
+
+        # Tech Order
+        mode_strs = {to: str(to) for to in TechOrder}
+        self.get_rel_freq_frame(
+            mys_page,
+            'Tech Order:',
+            mode_strs,
+            self.mys_tech_order_freqs
+        ).pack(fill=tk.X)
+
+        # Shop Prices
+        mode_strs = {
+            ShopPrices.NORMAL: 'Norm',
+            ShopPrices.FULLY_RANDOM: 'Random',
+            ShopPrices.MOSTLY_RANDOM: 'MostlyRand',
+            ShopPrices.FREE: 'Free'
+        }
+        self.get_rel_freq_frame(
+            mys_page,
+            'Shop Prices:',
+            mode_strs,
+            self.mys_shop_price_freqs
+        ).pack(fill=tk.X)
+
+        # Flag Prob settings
+        label = tk.Label(
+            mys_page,
+            text='Probability to Enable Flag'
+        )
+        label.pack(anchor=tk.W)
+        label = tk.Label(
+            mys_page,
+            text='Note: Flags not listed below will be given whatever value\n'
+            'they are set to elsewhere in the gui.  If a flag is chosen, its\n'
+            'settings will be as in that flag\'s settings page.',
+            anchor=tk.W,
+            justify=tk.LEFT
+        )
+        label.pack(padx=10, anchor=tk.W)
+
+        flag_frame = tk.Frame(mys_page)
+
+        row = 0
+        col = 0
+
+        flag_strs = {
+            GameFlags.BOSS_RANDO: 'Boss Rando',
+            GameFlags.BOSS_SCALE: 'Boss Scale',
+            GameFlags.BUCKET_FRAGMENTS: 'BucketFrag',
+            GameFlags.CHRONOSANITY: 'Chronosanity',
+            GameFlags.DUPLICATE_CHARS: 'DupeChars',
+            GameFlags.LOCKED_CHARS: 'LockChars',
+            GameFlags.TAB_TREASURES: 'TabTreas'
+        }
+
+        for flag in self.mys_flag_prob_dict:
+            string = flag_strs[flag]
+            label = tk.Label(flag_frame, text=string)
+            label.grid(row=row, column=col)
+
+            col += 1
+
+            tk.Entry(
+                flag_frame,
+                width=5,
+                textvariable=self.mys_flag_prob_dict[flag]
+            ).grid(row=row, column=col)
+            col += 1
+
+            if col == 6:
+                row += 1
+                col = 0
+
+        flag_frame.pack()
+
+        return mys_page
+
+    def get_rel_freq_frame(self, parent,
+                           desc_text,
+                           cat_labels,
+                           cat_values) -> ttk.Frame:
+
+        outer_frame = ttk.Frame(parent)
+
+        label = tk.Label(
+            outer_frame,
+            text=desc_text
+        )
+        label.pack(padx=10, side=tk.TOP, anchor=tk.W)
+
+        frame = ttk.Frame(outer_frame)
+        for item in cat_labels:
+            # cat_labels item -> name
+            # cat_values item -> tk variable
+            label_text = cat_labels[item]
+            label_var = cat_values[item]
+
+            tklabel = tk.Label(frame, text=label_text)
+            tklabel.pack(side=tk.LEFT)
+
+            tkEntry = tk.Entry(
+                frame,
+                textvariable=label_var,
+                width=5)
+            tkEntry.pack(side=tk.LEFT)
+
+        frame.pack(padx=20, anchor=tk.W, side=tk.TOP)
+        return outer_frame
 
 
 def main():

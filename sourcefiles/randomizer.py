@@ -21,6 +21,7 @@ import cosmetichacks
 import bucketfragment
 import iceage
 import legacyofcyrus
+import mystery
 
 import ctenums
 import ctevent
@@ -89,6 +90,11 @@ class Randomizer:
         if self.settings is None:
             raise NoSettingsException
 
+        rand.seed(self.settings.seed)
+
+        if rset.GameFlags.MYSTERY in self.settings.gameflags:
+            self.settings = mystery.generate_mystery_settings(self.settings)
+
         # Some of the config defaults (prices, techdb, enemy stats) are
         # read from the rom.  This routine partially patches a copy of the
         # base rom, gets the data, and builds the base config.
@@ -108,8 +114,6 @@ class Randomizer:
             with open('./pickles/enemy_dict_hard.pickle', 'rb') as infile:
                 self.config.enemy_dict = pickle.load(infile)
         '''
-
-        rand.seed(self.settings.seed)
 
         # Character config.  Includes tech randomization.
         charrando.write_pcs_to_config(self.settings, self.config)
@@ -512,6 +516,7 @@ class Randomizer:
             self.write_price_spoilers(outfile)
 
     def write_settings_spoilers(self, file_object):
+        file_object.write(f"Game Mode: {self.settings.game_mode}\n")
         file_object.write(f"Flags: {self.settings.gameflags}\n\n")
 
     def write_tab_spoilers(self, file_object):

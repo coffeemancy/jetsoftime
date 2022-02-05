@@ -213,6 +213,17 @@ class MysterySettings:
             GameFlags.DUPLICATE_CHARS: 0.25
         }
 
+    def __str__(self):
+        ret_str = ''
+        ret_str += str(self.game_mode_freqs) + '\n'
+        ret_str += str(self.item_difficulty_freqs) + '\n'
+        ret_str += str(self.enemy_difficulty_freqs) + '\n'
+        ret_str += str(self.tech_order_freqs) + '\n'
+        ret_str += str(self.shop_price_freqs) + '\n'
+        ret_str += str(self.flag_prob_dict) + '\n'
+
+        return ret_str
+
 
 class Settings:
 
