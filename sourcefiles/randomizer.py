@@ -399,7 +399,7 @@ class Randomizer:
         # 1) Set magic learning at game start depending on character assignment
         #    unless LW...because telepod exhibit now has the LW portal change.
 
-        if self.settings.game_mode == rset.GameMode.LOST_WORLDS:
+        if self.settings.game_mode != rset.GameMode.LOST_WORLDS:
             telepod_event = Event.from_flux('./flux/cr_telepod_exhibit.flux')
 
             # 3.1.1 Change:
@@ -420,6 +420,19 @@ class Randomizer:
 
             script_manager.set_script(telepod_event,
                                       ctenums.LocID.TELEPOD_EXHIBIT)
+        else:
+            # The LW mode sets the magic-learned bits on the load screen.
+            # We will just set them all.
+            load_screen_event = script_manager.get_script(
+                ctenums.LocID.LOAD_SCREEN
+                )
+
+            cmd = ctevent.EC.set_bit(0x7F01E0, 0x01)
+            pos = load_screen_event.find_exact_command(cmd)
+
+            new_cmd = ctevent.EC.assign_val_to_mem(0x7F, 0x7F01E0, 1)
+            load_screen_event.insert_commands(new_cmd.to_bytearray(),
+                                              pos)
 
         # 2) Allows left chest when medal is on non-Frog Frogs
         burrow_event = Event.from_flux('./flux/cr_burrow.Flux')
