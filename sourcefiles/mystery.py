@@ -20,10 +20,12 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
     ret_settings = rset.Settings()
 
     ret_flags = GF(0)
-    qol_options = [GF.FAST_TABS, GF.VISIBLE_HEALTH]
+    qol_cosm_options = [GF.FAST_TABS, GF.VISIBLE_HEALTH,
+                        GF.FAST_PENDANT, GF.ZEAL_END,
+                        GF.QUIET_MODE, GF.FIX_GLITCH]
 
     # Set the qol flags specified in base settings
-    for x in qol_options:
+    for x in qol_cosm_options:
         if x in base_settings.gameflags:
             ret_flags |= x
 
@@ -44,7 +46,7 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
     # Really, once game mode is determined, it's just chronosanity that
     # blocks off boss scaling.
     flags = [GF.TAB_TREASURES, GF.BUCKET_FRAGMENTS, GF.CHRONOSANITY,
-             GF.BOSS_RANDO,
+             GF.BOSS_RANDO, GF.UNLOCKED_MAGIC,
              GF.BOSS_SCALE, GF.LOCKED_CHARS, GF.DUPLICATE_CHARS]
 
     for flag in flags:

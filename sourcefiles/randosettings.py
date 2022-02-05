@@ -205,6 +205,7 @@ class MysterySettings:
         }
         self.flag_prob_dict: dict[GameFlags, float] = {
             GameFlags.TAB_TREASURES: 0.10,
+            GameFlags.UNLOCKED_MAGIC: 0.5,
             GameFlags.BUCKET_FRAGMENTS: 0.15,
             GameFlags.CHRONOSANITY: 0.30,
             GameFlags.BOSS_RANDO: 0.50,

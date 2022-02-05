@@ -2209,6 +2209,7 @@ class RandoGUI:
         flag_strs = {
             GameFlags.BOSS_RANDO: 'Boss Rando',
             GameFlags.BOSS_SCALE: 'Boss Scale',
+            GameFlags.UNLOCKED_MAGIC: 'UnlockMag',
             GameFlags.BUCKET_FRAGMENTS: 'BucketFrag',
             GameFlags.CHRONOSANITY: 'Chronosanity',
             GameFlags.DUPLICATE_CHARS: 'DupeChars',
