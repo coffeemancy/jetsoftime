@@ -54,6 +54,13 @@ class BossID(StrIntEnum):
     MAGUS = auto()
     BLACK_TYRANO = auto()
 
+    # End Bosses
+    LAVOS_SHELL = auto()
+    INNER_LAVOS = auto()
+    LAVOS_CORE = auto()
+    ZEAL = auto()
+    ZEAL_2 = auto()
+
     @classmethod
     def get_extra_bosses(cls):
         return (
