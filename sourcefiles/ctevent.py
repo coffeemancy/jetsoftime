@@ -763,7 +763,7 @@ class Event:
     def set_function(self, obj_id: int, func_id: int,
                      ev_func: EF):
         '''Sets the given EventFunction in the script.'''
-
+        
         # The main difficulty is figuring out where the function should
         # actually begin.  The default behavior of CT scripts is that
         # unused functions are given the starting point of the last used
@@ -774,6 +774,8 @@ class Event:
         func_st_ptr = 32*obj_id + 2*func_id
         func_st = \
             get_value_from_bytes(self.data[func_st_ptr:func_st_ptr+2])
+
+        # print(f"func start: {func_st+1:04X}")
 
         empty_func = False
         # +1 to match TF for debug
@@ -825,18 +827,22 @@ class Event:
         new_size = len(ev_func.get_bytearray())
         shift = new_size - old_size
 
-        self.data[func_st_ptr:func_st_ptr+2] = to_little_endian(func_st, 2)
-        self.data[func_st:func_end] = ev_func.get_bytearray()
+        # print(f"{func_st+1:04X} to {func_end+1:04X}")
 
-        for ptr in range(func_st_ptr+2, last_ptr, 2):
-            self.data[ptr:ptr+2] = to_little_endian(func_st, 2)
+        self.data[func_st:func_end] = ev_func.get_bytearray()
 
         # Now shift all of the pointers after the one for the function we set
         # TODO: Make sure that function starts are really monotone
         for ptr in range(0, 32*self.num_objects, 2):
             ptr_loc = get_value_from_bytes(self.data[ptr:ptr+2])
-            if ptr_loc > func_st:
+            if ptr_loc >= func_st:
                 self.data[ptr:ptr+2] = to_little_endian(ptr_loc+shift, 2)
+
+        # Go back and rewrite the target function pointer and all empty
+        # functions afterwards.
+        for ptr in range(func_st_ptr, last_ptr, 2):
+            self.data[ptr:ptr+2] = to_little_endian(func_st, 2)
+
 
     # End set_function
 
