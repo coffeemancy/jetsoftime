@@ -196,6 +196,34 @@ class Boss:
     def HECKRAN(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.HECKRAN, 3, 12)
 
+
+    @classmethod
+    def LAVOS_SHELL(cls: Type[T]) -> T:
+        return cls.generic_one_spot(
+            EnemyID.LAVOS_OCEAN_PALACE, 5, 100
+        )
+
+    @classmethod
+    def INNER_LAVOS(cls: type[T]) -> T:
+        return cls.generic_multi_spot(
+            [EnemyID.LAVOS_2_HEAD, EnemyID.LAVOS_2_LEFT,
+             EnemyID.LAVOS_2_RIGHT],
+            [(0, 0), (-0x32, 0xE), (0x32, 0xE)],
+            [0xA, 0x6, 0x3],
+            100
+        )
+
+    # Fake disps for now.
+    @classmethod
+    def LAVOS_CORE(cls: type[T]) -> T:
+        return cls.generic_multi_spot(
+            [EnemyID.LAVOS_3_CORE, EnemyID.LAVOS_3_LEFT,
+             EnemyID.LAVOS_3_RIGHT],
+            [(0, 0), (0, 0), (0, 0)],
+            [3, 7, 9],
+            100
+        )
+
     # TODO: Check on this.  It should be the displacement is -8 but that
     #       doesn't work...sometimes?  It's weird.
     @classmethod
@@ -325,6 +353,21 @@ class Boss:
         return cls.generic_one_spot(EnemyID.YAKRA_XIII, 3, 15)
 
     @classmethod
+    def ZEAL(cls: Type[T]) -> T:
+        return cls.generic_one_spot(EnemyID.ZEAL, 9, 100)
+
+    # fake disps, slots
+    @classmethod
+    def ZEAL_2(cls: Type[T]) -> T:
+        return cls.generic_multi_spot(
+            [EnemyID.ZEAL_2_CENTER, EnemyID.ZEAL_2_LEFT,
+             EnemyID.ZEAL_2_RIGHT],
+            [(0, 0), (0, 0), (0, 0)],
+            [3, 6, 9],
+            100
+        )
+
+    @classmethod
     def ZOMBOR(cls: Type[T]) -> T:
         return cls.generic_multi_spot([EnemyID.ZOMBOR_TOP,
                                        EnemyID.ZOMBOR_BOTTOM],
@@ -398,7 +441,12 @@ def get_boss_data_dict():
         BossID.YAKRA_XIII: LinearScaleBoss.YAKRA_XIII(),
         BossID.ZOMBOR: LinearScaleBoss.ZOMBOR(),
         BossID.MAGUS: LinearScaleBoss.MAGUS(),
-        BossID.BLACK_TYRANO: LinearScaleBoss.BLACK_TYRANO()
+        BossID.BLACK_TYRANO: LinearScaleBoss.BLACK_TYRANO(),
+        BossID.LAVOS_SHELL: Boss.LAVOS_SHELL(),
+        BossID.INNER_LAVOS: Boss.INNER_LAVOS(),
+        BossID.LAVOS_CORE: Boss.LAVOS_CORE(),
+        BossID.ZEAL: Boss.ZEAL(),
+        BossID.ZEAL_2: Boss.ZEAL_2()
     }
 
 
