@@ -530,6 +530,10 @@ class Randomizer:
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
+        file_object.write(f"Enemies: {self.settings.enemy_difficulty}\n")
+        file_object.write(f"Items: {self.settings.item_difficulty}\n")
+        file_object.write(f"Techs: {self.settings.techorder}\n")
+        file_object.write(f"Shops: {self.settings.shopprices}\n")
         file_object.write(f"Flags: {self.settings.gameflags}\n\n")
 
     def write_tab_spoilers(self, file_object):
@@ -669,8 +673,13 @@ class Randomizer:
         file_object.write("Boss Stats\n")
         file_object.write("----------\n")
 
+        endboss_ids = [
+            BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE,
+            BossID.ZEAL, BossID.ZEAL_2
+        ]
+
         boss_ids = list(self.config.boss_assign_dict.values()) + \
-            [BossID.MAGUS, BossID.BLACK_TYRANO]
+            [BossID.MAGUS, BossID.BLACK_TYRANO] + endboss_ids
 
         for boss_id in boss_ids:
             file_object.write(str(boss_id)+':')
