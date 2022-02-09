@@ -22,7 +22,9 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
     ret_flags = GF(0)
     qol_cosm_options = [GF.FAST_TABS, GF.VISIBLE_HEALTH,
                         GF.FAST_PENDANT, GF.ZEAL_END,
-                        GF.QUIET_MODE, GF.FIX_GLITCH]
+                        GF.QUIET_MODE, GF.FIX_GLITCH,
+                        GF.DUPLICATE_TECHS, GF.BUFF_XSTRIKE,
+                        GF.GUARANTEED_DROPS]
 
     # Set the qol flags specified in base settings
     for x in qol_cosm_options:
