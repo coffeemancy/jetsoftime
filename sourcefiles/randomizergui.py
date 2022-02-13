@@ -322,6 +322,10 @@ class RandoGUI:
         # Shop Prices
         self.settings.shopprices = \
             ShopPrices.inv_str_dict()[self.shop_prices.get()]
+            
+        # Tech randomization
+        self.settings.techorder = \
+            TechOrder.inv_str_dict()[self.tech_order.get()]
 
         # Main flags
         flags = [x for x in list(GameFlags)
