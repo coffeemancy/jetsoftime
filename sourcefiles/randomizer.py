@@ -23,6 +23,7 @@ import iceage
 import legacyofcyrus
 import mystery
 
+import byteops
 import ctenums
 import ctevent
 from ctrom import CTRom
@@ -199,6 +200,33 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+    def __disable_xmenu_charlocks(self, ct_rom):
+        '''Ignore the charlock byte when in the X-menu but not Y-menu.'''
+
+        rom = ct_rom.rom_data
+        space_man = rom.space_manager
+
+        rt = bytearray.fromhex(
+            'AD 36 0D'    # LDA $0D36  [$7E:0D36]  (will be FF in Y-menu, 0 X)
+            '10 04'       # BPL foo
+            'A9 00'       # LDA #$00 (no charlock byte)
+            '80 04'       # BRA bar
+            'AF DF 01 7F' # LDA $7F01DF[$7F:01DF] (charlock byte) [foo]
+            '6B'          # RTL [bar]
+        )
+
+        start = space_man.get_free_addr(len(rt))
+        rom_start = byteops.to_rom_ptr(start)
+        rom_start_b = rom_start.to_bytes(3, 'little')
+        jsl = b'\x22' + rom_start_b
+
+        rom.seek(0x02CD55)
+        rom.write(jsl)
+
+        mark_used = ctevent.FSWriteType.MARK_USED
+        rom.seek(start)
+        rom.write(rt, mark_used)
+
     def __set_omen_elevators_config(self):
         '''Determine which omen elevator encounters a seed gets.'''
         # Ruminators, goons, cybots
@@ -371,6 +399,8 @@ class Randomizer:
 
         # Omen elevator
         self.__set_omen_elevators_ctrom(ctrom, config)
+
+        self.__disable_xmenu_charlocks(ctrom)
 
     def __write_out_rom(self):
         '''Given config and settings, write to self.out_rom'''
