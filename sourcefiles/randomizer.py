@@ -207,12 +207,12 @@ class Randomizer:
         space_man = rom.space_manager
 
         rt = bytearray.fromhex(
-            'AD 36 0D'    # LDA $0D36  [$7E:0D36]  (will be FF in Y-menu, 0 X)
-            '10 04'       # BPL foo
-            'A9 00'       # LDA #$00 (no charlock byte)
-            '80 04'       # BRA bar
-            'AF DF 01 7F' # LDA $7F01DF[$7F:01DF] (charlock byte) [foo]
-            '6B'          # RTL [bar]
+            'AD 36 0D'     # LDA $0D36  [$7E:0D36]  (will be FF in Y-menu, 0 X)
+            '10 04'        # BPL foo
+            'A9 00'        # LDA #$00 (no charlock byte)
+            '80 04'        # BRA bar
+            'AF DF 01 7F'  # LDA $7F01DF[$7F:01DF] (charlock byte) [foo]
+            '6B'           # RTL [bar]
         )
 
         start = space_man.get_free_addr(len(rt))
@@ -400,6 +400,8 @@ class Randomizer:
         # Omen elevator
         self.__set_omen_elevators_ctrom(ctrom, config)
 
+        # Disabling xmenu character locks is only relevant in LoC and IA, but
+        # there's no reason not to just do it always.
         self.__disable_xmenu_charlocks(ctrom)
 
     def __write_out_rom(self):
@@ -564,7 +566,8 @@ class Randomizer:
         file_object.write(f"Items: {self.settings.item_difficulty}\n")
         file_object.write(f"Techs: {self.settings.techorder}\n")
         file_object.write(f"Shops: {self.settings.shopprices}\n")
-        file_object.write(f"Flags: {self.settings.gameflags}\n\n")
+        file_object.write(f"Flags: {self.settings.gameflags}\n")
+        file_object.write(f"Cosmetic: {self.settings.cosmetic_flags}\n\n")
 
     def write_tab_spoilers(self, file_object):
         file_object.write("Tab Properties\n")
@@ -957,6 +960,24 @@ class Randomizer:
             x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
             x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
             techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
+
+        if rset.GameFlags.AYLA_REBALANCE in settings.gameflags:
+            # Apply Ayla Changes
+            combo_tripkick_effect_id = 0x3D
+            rock_tech_effect_id = int(ctenums.TechID.ROCK_THROW)
+
+            techdb = config.techdb
+            effects = techdb.effects
+            power_byte = 9
+
+            # Triple Kick combo power set to 0x2B=43 to match single tech power
+            trip_pwr = combo_tripkick_effect_id*techdb.effect_size + power_byte
+            effects[trip_pwr] = 0x2B
+
+            # Rock throw getting the 15% boost that single tech tripkick got
+            # From 0x1E=30 to 0x23=35
+            rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
+            effects[rock_pwr] = 0x23
 
         return config
 
