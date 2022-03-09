@@ -1477,7 +1477,7 @@ class RandoGUI:
                 flag_prob = 0
                 prob_error = True
 
-            if not (0 <= flag_prob < 1):
+            if not (0 <= flag_prob <= 1):
                 prob_error = True
 
             if prob_error:
