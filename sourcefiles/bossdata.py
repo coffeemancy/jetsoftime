@@ -337,8 +337,8 @@ class Boss:
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
-    def TWIN_GOLEM(cls: Type[T]) -> T:
-        ids = [EnemyID.TWIN_GOLEM, EnemyID.TWIN_GOLEM]
+    def TWIN_BOSS(cls: Type[T]) -> T:
+        ids = [EnemyID.TWIN_BOSS, EnemyID.TWIN_BOSS]
         slots = [3, 6]
         disps = [(0, 0), (0x20, 0)]
         power = 40  # Should match mutant power
@@ -399,7 +399,7 @@ def get_default_boss_assignment():
         LocID.SUN_PALACE: BossID.SON_OF_SUN,
         LocID.OZZIES_FORT_SUPER_SLASH: BossID.SUPER_SLASH,
         LocID.BLACK_OMEN_TERRA_MUTANT: BossID.TERRA_MUTANT,
-        LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_GOLEM,
+        LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_BOSS,
         LocID.MANORIA_COMMAND: BossID.YAKRA,
         LocID.KINGS_TRIAL_NEW: BossID.YAKRA_XIII,
         LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR,
@@ -436,7 +436,7 @@ def get_boss_data_dict():
         BossID.SON_OF_SUN: SonOfSunScaleBoss.SON_OF_SUN(),
         BossID.SUPER_SLASH: LinearScaleBoss.SUPER_SLASH(),
         BossID.TERRA_MUTANT: LinearScaleBoss.TERRA_MUTANT(),
-        BossID.TWIN_GOLEM: LinearScaleBoss.TWIN_GOLEM(),
+        BossID.TWIN_BOSS: LinearScaleBoss.TWIN_BOSS(),
         BossID.YAKRA: LinearScaleBoss.YAKRA(),
         BossID.YAKRA_XIII: LinearScaleBoss.YAKRA_XIII(),
         BossID.ZOMBOR: LinearScaleBoss.ZOMBOR(),
@@ -489,9 +489,19 @@ def linear_scale_stats(stats: EnemyStats,
     if hp < 1:
         hp = 1
 
-    return replace(stats, hp=hp, level=level, speed=speed, magic=magic,
-                   mdef=mdef, offense=offense, defense=defense, xp=xp,
-                   gp=gp, tp=tp)
+    new_stats = stats.get_copy()
+    new_stats.hp = hp
+    new_stats.level = level
+    new_stats.speed = speed
+    new_stats.magic = magic
+    new_stats.mdef = mdef
+    new_stats.offense = offense
+    new_stats.defense = defense
+    new_stats.xp = xp
+    new_stats.gp = gp
+    new_stats.tp = tp
+
+    return new_stats
 
 
 class LinearScaleBoss(Boss):

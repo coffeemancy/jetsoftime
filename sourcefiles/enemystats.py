@@ -1,48 +1,116 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from io import BufferedRWPair
 
-from byteops import get_value_from_bytes, to_little_endian
-import ctstrings
 import ctenums
+import ctrom
+import ctstrings
 
 
-@dataclass
 class EnemyStats:
-    hp: int = 0
-    level: int = 0
-    speed: int = 0
-    magic: int = 0
-    mdef: int = 0
-    offense: int = 0
-    defense: int = 0
-    # rewards
-    xp: int = 0
-    gp: int = 0
-    drop_item: ctenums.ItemID = ctenums.ItemID.MOP
-    charm_item: ctenums.ItemID = ctenums.ItemID.MOP
-    tp: int = 0
+    element_offsets = {
+        ctenums.Element.LIGHTNING: 0,
+        ctenums.Element.SHADOW: 1,
+        ctenums.Element.ICE: 2,
+        ctenums.Element.FIRE: 3
+    }
 
-    # There are more special flags, but I'm ignoring them for now
-    can_sightscope: bool = False
+    def __init__(self,
+                 stat_data: bytes = None,
+                 name_bytes: bytes = None,
+                 reward_bytes: bytes = None,
+                 hide_name: bool = False):
+        # Just to list the actual class members in one place
+        self._stat_data = None
+        self._name_bytes = None
+        self._reward_data = None
+        self.hide_name = hide_name
 
-    name: str = 'Nu'
+        if stat_data is None:
+            stat_data = bytes([0 for i in range(0x17)])
+
+        if name_bytes is None:
+            name_bytes = ctstrings.CTString.from_str('No Name')
+        else:
+            name_bytes = ctstrings.CTString(name_bytes)
+
+        if reward_bytes is None:
+            reward_bytes = bytes([0 for i in range(7)])
+
+        self._set_stats(stat_data)
+        self._set_name(name_bytes)
+        self._set_rewards(reward_bytes)
 
     def __str__(self):
         ret = ''
         stats = [str.rjust(str(x), 3)
                  for x in [self.speed, self.offense, self.defense,
-                           self.magic, self.mdef]]
+                           self.magic, self.mdef, self.hit, self.evade]]
         stat_string = ' '.join(x for x in stats)
         ret += (f"Name: {self.name}\n"
                 f"HP = {self.hp}\tLevel = {self.level}\n"
                 f"XP = {self.xp}\tTP = {self.tp}\tGP = {self.gp}\n"
-                "Spd Off Def Mag Mdf\n" +
-                stat_string + '\n'
-                f"Drop = {self.drop_item}\n"
-                f"Charm = {self.charm_item}")
+                f"Drop = {self.drop_item}\t"
+                f"Charm = {self.charm_item}\n"
+                "Spd Off Def Mag Mdf Hit Evd\n" +
+                stat_string + '\n')
+
+        Elem = ctenums.Element
+        resists = [self.get_resistance(Elem.LIGHTNING),
+                   self.get_resistance(Elem.SHADOW),
+                   self.get_resistance(Elem.ICE),
+                   self.get_resistance(Elem.FIRE)]
+        
+        for ind, x in enumerate(resists):
+            sign =  1 - 2*(x > 127)
+            mag = x & 0x7F
+            if mag > 0:
+                mag = 400 / (x & 0x7F)
+            else:
+                mag = 0
+            val = sign*mag
+            resists[ind] = f'{val:3.0f}'
+
+        res_str = ' '.join(str.rjust(str(x), 4) for x in resists)
+
+        ret += 'Elemental Resistances:\n'
+        ret += (' Lit  Shd  Ice  Fir\n' + res_str + '\n')
+        ret += (f'Hide name: {self.hide_name}')
 
         return ret
+
+    def get_copy(self) -> EnemyStats:
+        return EnemyStats(self._stat_data, self._name_bytes,
+                          self._reward_data, self.hide_name)  
+
+    @classmethod
+    def from_ctrom(cls, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
+        ct_rom.rom_data.seek(0x0C4700 + 0x17*enemy_id)
+        data = ct_rom.rom_data.read(0x17)
+
+        ct_rom.rom_data.seek(0x0C6500 + 0xB*enemy_id)
+        name = ct_rom.rom_data.read(0xB)
+
+        ct_rom.rom_data.seek(0x0C5E00 + 7*enemy_id)
+        rewards = ct_rom.rom_data.read(7)
+
+        ct_rom.rom_data.seek(0x21DE80+enemy_id)
+        hide_name = ct_rom.rom_data.read(1)[0]
+        hide_name = bool(hide_name)
+
+        return EnemyStats(data, name, rewards, hide_name)
+
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
+        ct_rom.rom_data.seek(0x0C4700 + 0x17*enemy_id)
+        ct_rom.rom_data.write(self._stat_data)
+
+        ct_rom.rom_data.seek(0x0C6500 + 0xB*enemy_id)
+        ct_rom.rom_data.write(self._name_bytes)
+
+        ct_rom.rom_data.seek(0x0C5E00 + 7*enemy_id)
+        ct_rom.rom_data.write(self._reward_data)
+
+        ct_rom.rom_data.seek(0x21DE80+enemy_id)
+        ct_rom.rom_data.write(self.hide_name.to_bytes(1, 'little'))
+
 
     # bossscaler.py uses lists of stats to do the scaling.  This method takes
     # one of those lists and replaces the relevant stats in the class.
@@ -64,96 +132,241 @@ class EnemyStats:
             self.defense, self.xp, self.gp, self.tp
         ] = new_stats[:]
 
-    def from_rom(rom: bytearray, enemy_id: int):
-        # enemy stat data is a 23 byte structure beginning at 0x0C4700
-        stat_addr = 0x0C4700 + 23*enemy_id
 
-        hp = get_value_from_bytes(rom[stat_addr:stat_addr+2])
-        level = rom[stat_addr+2]
-        speed = rom[stat_addr+9]
-        magic = rom[stat_addr+0xA]
-        mdef = rom[stat_addr+0xD]
-        offense = rom[stat_addr+0xE]
-        defense = rom[stat_addr+0xF]
+    def _set_stats(self, stat_bytes: bytes):
+        if len(stat_bytes) != 0x17:
+            print('Error: stat data must be exactly 17 bytes')
+            exit()
 
-        can_sightscope = not bool(rom[stat_addr+0x15] & 0x2)
+        self._stat_data = bytearray(stat_bytes)
 
-        # enemy rewards data is a 7 byte structure beginning at 0x0C5E00
-        reward_addr = 0x0C5E00 + 7*enemy_id
+    def _set_name(self, name_bytes: ctstrings.CTString):
+        if len(name_bytes) < 0xB:
+            slack = 0xB - len(name_bytes)
+            name_bytes.extend(bytearray([0xEF]*slack))
+        elif len(name_bytes) > 0xB:
+            # Truncate long names instead of erroring
+            name_bytes = name_bytes[0:0xB]
 
-        xp = get_value_from_bytes(rom[reward_addr:reward_addr+2])
-        gp = get_value_from_bytes(rom[reward_addr+2:reward_addr+4])
-        drop_item = ctenums.ItemID(rom[reward_addr+4])
-        charm_item = ctenums.ItemID(rom[reward_addr+5])
-        tp = rom[reward_addr+6]
+        self._name_bytes = name_bytes
 
-        # enemy name starts at 0x0C6500
-        # TODO: read pointer from rom
-        name_start = 0x0C6500
-        name_b = rom[name_start+enemy_id*11:name_start+(enemy_id+1)*11]
-        name = ctstrings.CTString.ct_bytes_to_ascii(name_b)
+    def _set_rewards(self, reward_bytes: bytes):
+        if len(reward_bytes) != 7:
+            print('Error: reward data must be exactly 7 bytes')
+            exit()
 
-        return EnemyStats(hp, level, speed, magic, mdef, offense, defense,
-                          xp, gp, drop_item, charm_item, tp, can_sightscope,
-                          name)
+        self._reward_data = bytearray(reward_bytes)
 
-    # The stream will just about always be a BytesIO from CTRom.
-    # Since we don't have all of the extra flags in EnemyStats, we need
-    # to read and modify the flags, hence BufferedRWPair.
-    def write_to_stream(self, stream: BufferedRWPair, enemy_id: int):
-        # enemy stat data is a 23 byte structure beginning at 0x0C4700
-        stat_addr = 0x0C4700 + 23*enemy_id
+    # Property for getting/setting name
+    @property
+    def name(self) -> str:
+        return self._name_bytes.to_ascii()
 
-        stream.seek(stat_addr)
-        stream.write(to_little_endian(self.hp, 2))
+    @name.setter
+    def name(self, string):
+        ct_string = ctstrings.CTString.from_str(string)
+        self._set_name(ct_string)
 
-        stream.write(to_little_endian(self.level, 1))
+    # Properties for getting/setting stats    
+    @property
+    def hp(self):
+        return int.from_bytes(self._stat_data[0:2], 'little')
 
-        stream.seek(stat_addr+9)
-        stream.write(to_little_endian(self.speed, 1))
-        stream.write(to_little_endian(self.magic, 1))
+    @hp.setter
+    def hp(self, val: int):
+        self._stat_data[0:2] = val.to_bytes(2, 'little')
 
-        stream.seek(stat_addr+0xD)
-        stream.write(to_little_endian(self.mdef, 1))
-        stream.write(to_little_endian(self.offense, 1))
-        stream.write(to_little_endian(self.defense, 1))
+    @property
+    def level(self):
+        return int(self._stat_data[2])
 
-        stream.seek(stat_addr + 0x15)
-        flags = stream.read()[0]
-        # 0x02 is the "sightscope fails" flag.
-        if self.can_sightscope:
-            flags &= 0xFD  # Unset the flag
+    @level.setter
+    def level(self, val: int):
+        self._stat_data[2] = val
 
-            # The name/hp doesn't show up unless the following is set to 0.
-            stream.seek(0x21DE80+enemy_id)
-            stream.write(b'\x00')
+    def get_is_immune(self, status: ctenums.StatusEffect):
+        return bool(self._stat_data[4] & int(status))
+
+    def set_is_immune(self, status: ctenums.StatusEffect, is_immune: bool):
+        if is_immune:
+            self._stat_data[4] |= int(status)
         else:
-            flags |= 0x02
+            self._stat_data[4] &= 0xFF ^ int(status)
 
-        stream.seek(stat_addr + 0x15)
-        stream.write(bytes([flags]))
+    @property
+    def stamina(self):
+        return int(self._stat_data[8])
 
-        # enemy rewards data is a 7 byte structure beginning at 0x0C5E00
-        reward_addr = 0x0C5E00 + 7*enemy_id
+    @stamina.setter
+    def stamina(self, value: int):
+        self._stat_data[8] = value
 
-        stream.seek(reward_addr)
-        stream.write(to_little_endian(self.xp, 2))
-        stream.write(to_little_endian(self.xp, 2))
-        stream.write(to_little_endian(self.drop_item, 1))
-        stream.write(to_little_endian(self.charm_item, 1))
-        stream.write(to_little_endian(self.tp, 1))
+    @property
+    def speed(self):
+        return int(self._stat_data[9])
 
-        # I'm going to skip writing the name out for now.
-        # We shouldn't be changing those, right?
+    @speed.setter
+    def speed(self, value: int):
+        self._stat_data[9] = value
+
+    @property
+    def magic(self):
+        return int(self._stat_data[0xA])
+
+    @magic.setter
+    def magic(self, value: int):
+        self._stat_data[0xA] = value
+
+    @property
+    def hit(self):
+        return int(self._stat_data[0xB])
+
+    @hit.setter
+    def hit(self, value: int):
+        self._stat_data[0xB] = value
+
+    @property
+    def evade(self):
+        return int(self._stat_data[0xC])
+
+    @evade.setter
+    def evade(self, value: int):
+        self._stat_data[0xC] = value
+
+    @property
+    def mdef(self):
+        return int(self._stat_data[0xD])
+
+    @mdef.setter
+    def mdef(self, value: int):
+        self._stat_data[0xD] = value
+
+    @property
+    def offense(self):
+        return int(self._stat_data[0xE])
+
+    @offense.setter
+    def offense(self, value: int):
+        self._stat_data[0xE] = value
+
+    @property
+    def defense(self):
+        return int(self._stat_data[0xF])
+
+    @defense.setter
+    def defense(self, value: int):
+        self._stat_data[0xF] = value
+
+    def get_resistance(self, element: ctenums.Element):
+        offset = 0x10 + self.element_offsets[element]
+        return self._stat_data[offset]
+
+    def set_resistance(self, element: ctenums.Element, value):
+        offset = 0x10 + self.element_offsets[element]
+        self._stat_data[offset] = value
+
+    # confusing becaues data[0x15] & 0x02 is the sightscope fails flag
+    @property
+    def can_sightscope(self):
+        sightscope_fails = self._stat_data[0x15] & 0x02
+        return not sightscope_fails
+
+    @can_sightscope.setter
+    def can_sightscope(self, val: bool):
+        if val:
+            self._stat_data[0x15] &= 0xFD
+            self.hide_name = False
+        else:
+            self._stat_data[0x15] &= 0x02
+
+    # Properties for getting/setting rewards
+    @property
+    def xp(self):
+        return int.from_bytes(self._reward_data[0:2], 'little')
+
+    @xp.setter
+    def xp(self, val: int):
+        self._reward_data[0:2] = val.to_bytes(2, 'little')
+
+    @property
+    def gp(self):
+        return int.from_bytes(self._reward_data[2:4], 'little')
+
+    @gp.setter
+    def gp(self, val: int):
+        self._reward_data[2:4] = val.to_bytes(2, 'little')
+
+    @property
+    def drop_item(self):
+        return ctenums.ItemID(self._reward_data[4])
+
+    @drop_item.setter
+    def drop_item(self, val: ctenums.ItemID):
+        self._reward_data[4] = val
+
+    @property
+    def charm_item(self):
+        return ctenums.ItemID(self._reward_data[5])
+
+    @charm_item.setter
+    def charm_item(self, val: ctenums.ItemID):
+        self._reward_data[5] = val
+
+    @property
+    def tp(self):
+        return int(self._reward_data[6])
+
+    @tp.setter
+    def tp(self, val: int):
+        self._reward_data[6] = val
 
 
 def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
                                           ctenums.EnemyID:EnemyStats]:
-
-    EnemyID = ctenums.EnemyID
     stat_dict = dict()
-    for enemy_id in list(EnemyID):
-        # print(f"{int(enemy_id):02X}: {enemy_id}")
-        stat_dict[enemy_id] = EnemyStats.from_rom(rom, enemy_id)
+    ct_rom = ctrom.CTRom(rom, True)
+
+    for enemy_id in list(ctenums.EnemyID):
+        stat_dict[enemy_id] = EnemyStats.from_ctrom(ct_rom, enemy_id)
 
     return stat_dict
+
+
+if __name__ == '__main__':
+    ct_rom = ctrom.CTRom.from_file('./roms/ct.sfc', True)
+    rom = ct_rom.rom_data
+
+    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.NU)
+    print(stats)
+
+    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.FLEA)
+    print(stats)
+
+    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.SLASH_SWORD)
+    print(stats)
+    
+
+    # Byte 0,1 - hp
+    # Byte 2 - level
+    # Byte 3 - constant statuses
+    # Byte 4 - status immunities
+    # Byte 5 - unused 0x05
+    # Byte 6 - constant statuses 2
+    # Byte 7 - constant statuses 3
+    # Byte 8 - stamina (only used for ai conditions)
+    # Byte 9 - speed
+    # Byte 0xA - magic
+    # Byte 0xB - hit
+    # Byte 0xC - evade
+    # Byte 0xD - mdef
+    # Byte 0xE - offense
+    # Byte 0xF - defense
+    # Byte 0x10 - lit resist
+    # Byte 0x11 - shadow resist
+    # Byte 0x12 - water resist
+    # Byte 0x13 - fire resist
+    # Byte 0x14 - tech immunities
+    # Byte 0x15 - special flags and types
+    # Byte 0x16 - Attack 2 index
+
+    
