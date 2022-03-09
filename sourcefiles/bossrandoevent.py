@@ -50,7 +50,6 @@ def no_scale_fn(stats: EnemyStats, from_power: int,
 
 def linear_scale_fn(stats: EnemyStats, from_power: int,
                     to_power: int) -> EnemyStats:
-    print(stats)
     base_stats = [stats.hp, stats.level, stats.magic, stats.offense,
                   stats.xp, stats.gp, stats.tp]
     max_stats = [0xFFFF, 0xFF, 0xFF, 0xF, 0xFFFF, 0xFFFF, 0xFF]
@@ -59,7 +58,6 @@ def linear_scale_fn(stats: EnemyStats, from_power: int,
            for i in range(len(base_stats))]
     ret = EnemyStats(hp, level, stats.speed, magic, stats.mdef, offense,
                      stats.defense, xp, gp, tp)
-    print(ret)
     return ret
 
 
@@ -854,7 +852,7 @@ def set_twin_golem_spot(ctrom: CTRom, boss: BossScheme):
         first_x, first_y = 0x60, 0xE0
     else:
         # Somewhat center the multi_spot boss
-        # 1) Change the move command to have an x-coord of 0x80 + display
+        # 1) Change the move command to have an x-coord of 0x80 + displacement
         # Only twin golem has a displacement on its first part though.
         move_cmd = EC.generic_two_arg(0x96, 0x6, 0xE)
         pos = script.find_exact_command(move_cmd,
@@ -1566,6 +1564,65 @@ def duplicate_maps(fsrom: FS):
     Event.write_to_rom_fs(fsrom, 0xC1, script)
 
 
+# Write the new EnemyID and slots into the Twin Boss data.
+# This is also a convenient time to do the scaling, but it does make it weird
+# when doing the rest of the scaling.
+def set_twin_boss_in_config(one_spot_boss: BossID,
+                            settings: rset.Settings,
+                            config: cfg.RandoConfig):
+    # If the base boss is golem, then we don't have to do anything because
+    # patch.ips writes a super-golem in to the twin boss slot.
+    if one_spot_boss != BossID.GOLEM:
+        twin_boss = config.boss_data_dict[BossID.TWIN_BOSS]
+        base_boss = config.boss_data_dict[one_spot_boss]
+        base_id = base_boss.scheme.ids[0]
+        base_slot = base_boss.scheme.slots[0]
+
+        config.twin_boss_type = base_id
+
+        # The enemy slot for the twin is finnicky.  There is a general rule
+        # that works based on the base boss's slot.
+        if base_slot == 3:
+            alt_slot = 7
+        elif base_slot == 6:
+            alt_slot = 3
+        elif base_slot == 7:
+            alt_slot = 9
+        else:
+            new_slot = 7
+
+        # And there are some special cases.
+        if base_id == EnemyID.GOLEM_BOSS:
+            new_slot == 8
+        elif base_id in (EnemyID.NIZBEL, EnemyID.NIZBEL_II,
+                         EnemyID.RUST_TYRANO):
+            new_slot = 6
+
+        # Set the twin boss scheme
+        # Note, we do not change the EnemyID from EnemyID.TWIN_BOSS.
+        # The stats, graphics, etc will all be copies from the original boss
+        # into the Twin spot.
+        twin_scheme = twin_boss.scheme
+        twin_scheme.slots = [base_slot, alt_slot]
+
+        # Scale the stats and write them to the twin boss spot in the config
+        # scale each part to 75% of the twin boss's desired power level
+        # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
+        orig_power = twin_boss.power
+        twin_boss.power = int(twin_boss.power * 0.75)
+        orig_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
+        drop, charm = orig_stats.drop_item, orig_stats.charm_item
+
+        scaled_stats = base_boss.scale_relative_to(
+            twin_boss, config.enemy_dict)[0]
+        scaled_stats.drop_item = drop
+        scaled_stats.charm_item = charm
+
+        twin_boss.power = orig_power
+        scaled_stats.can_sightscope = settings.ro_settings.enable_sightscope
+        config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
+
+
 # This function needs to write the boss assignment to the config respecting
 # the provided settings.
 def write_assignment_to_config(settings: rset.Settings,
@@ -1601,7 +1658,16 @@ def write_assignment_to_config(settings: rset.Settings,
         one_part_locations = [loc for loc in boss_settings.loc_list
                               if loc in LocID.get_one_spot_boss_locations()]
 
-        if len(one_part_bosses) < len(one_part_locations):
+        # Now, we're allowing a repeat assignment to ocean palace, so it does
+        # not require a unique boss to go there.
+        if LocID.OCEAN_PALACE_TWIN_GOLEM in one_part_locations:
+            has_twin_spot = True
+            num_one_part_locs = len(one_part_locations) - 1
+        else:
+            has_twin_spot = False
+            num_one_part_locs = len(one_part_locations)
+
+        if len(one_part_bosses) < num_one_part_locs:
             print("Legacy Boss Randomization Error: "
                   f"{len(one_part_locations)} "
                   "one part locations provided but "
@@ -1622,17 +1688,25 @@ def write_assignment_to_config(settings: rset.Settings,
             exit()
 
         # Now do the assignment
-        random.shuffle(one_part_bosses)
-        # print(one_part_bosses)
 
+        # First make an assignment to the twin spot and remove that location
+        # from the list.
+        if has_twin_spot:
+            twin_boss = random.choice(one_part_bosses)
+            set_twin_boss_in_config(twin_boss, settings, config)
+            config.boss_assign_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] = \
+                BossID.TWIN_BOSS
+            one_part_locations.remove(LocID.OCEAN_PALACE_TWIN_GOLEM)
+
+        # Shuffle the bosses and assign the head of the list to the remaining
+        # locations.
+        random.shuffle(one_part_bosses)
         for i in range(len(one_part_locations)):
             boss = one_part_bosses[i]
             location = one_part_locations[i]
             config.boss_assign_dict[location] = boss
 
         random.shuffle(two_part_bosses)
-        # print(two_part_bosses)
-        # input()
 
         for i in range(len(two_part_locations)):
             boss = two_part_bosses[i]
@@ -1647,13 +1721,36 @@ def write_assignment_to_config(settings: rset.Settings,
         # and locations should not change the randomized output.
         # Boss/location enums IntEnums so it's fine to sort.
         bosses = sorted(bosses)
-        locations = sorted(locations)
-        random.shuffle(bosses)
+        locations = list(sorted(locations))  # Copy because we'll edit it
+
+        # Make a special assignment for Twin Golem Spot
+        if LocID.OCEAN_PALACE_TWIN_GOLEM in locations:
+            # Make a decision on how frequently to see a multi-part boss
+            # in the twin spot.  For now, always choose a one-parter if
+            # there is one.
+
+            one_part_bosses = [boss for boss in bosses if
+                               boss in BossID.get_one_part_bosses()]
+
+            if one_part_bosses:
+                twin_boss = random.choice(one_part_bosses)
+                twin_boss = BossID.DALTON_PLUS
+                set_twin_boss_in_config(twin_boss, settings, config)
+                config.boss_data_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] = \
+                    BossID.TWIN_BOSS
+
+                # Remove twin spot from the list.
+                # Do not remove the boss.  It can be assigned elsewhere too.
+                locations.remove(LocID.OCEAN_PALACE_TWIN_GOLEM)
+
+            # If no one part bosses have been provided, then make no special
+            # assignment.  Just proceed as usual.
 
         if len(bosses) < len(locations):
             print('RO Error: Fewer bosses than locations given.')
             exit()
 
+        random.shuffle(bosses)
         for i in range(len(locations)):
             config.boss_assign_dict[locations[i]] = bosses[i]
 
@@ -1707,14 +1804,6 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     for location in settings.ro_settings.loc_list:
         orig_boss = orig_data[default_assignment[location]]
         new_boss = orig_data[current_assignment[location]]
-
-        # When a one part boss is put into the twin golem spot, instead of
-        # scaling to power AND doubling, scale to 75% of twin golem power,
-        # and then double.
-        if EnemyID.TWIN_GOLEM in orig_boss.scheme.ids and \
-           len(new_boss.scheme.ids) > 1:
-            orig_boss.power = int(orig_boss.power*0.75)
-
         scaled_stats = new_boss.scale_relative_to(orig_boss,
                                                   config.enemy_dict)
         # Put the stats in scaled_dict
@@ -1796,6 +1885,66 @@ def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
         rom.patch_txt_file('./patches/tyrano_n.txt')
 
 
+def write_twin_boss_to_ctrom(ct_rom: CTRom, config: cfg.RandoConfig):
+
+    # Do nothing if we have the vanilla twin golem
+    if config.boss_assign_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] == \
+       BossID.GOLEM:
+        return
+
+    twin_boss = config.boss_assign_dict[LocID.OCEAN_PALACE_TWIN_GOLEM]
+
+    # There's nothing to do if a multi-part was assigned here
+    if twin_boss != BossID.TWIN_BOSS:
+        return
+
+    # Otherwise, we need to
+    # 1) Copy the new twin boss's graphics data to the twin boss id
+    # 2) Update the twin boss's AI pointer
+    # 3) Copy basic attack control headers
+    # 4) Copy basic attack graphics headers
+    # 5) Pray that's it.  There may be weird things like boss death anims, but
+    #    The twin golem has no death anim, so it should be ok.
+
+    # 1) Copy the new twin boss's graphics data to the twin boss id
+    one_spot_id = config.twin_boss_type
+    one_spot_sprite_start = 0x24F600 + 10*one_spot_id
+    ct_rom.rom_data.seek(one_spot_sprite_start)
+    one_spot_sprite_data = ct_rom.rom_data.read(10)
+
+    twin_boss_sprite_start = 0x24F600 + 10*EnemyID.TWIN_BOSS
+    ct_rom.rom_data.seek(twin_boss_sprite_start)
+    ct_rom.rom_data.write(one_spot_sprite_data)
+
+    # 2) Update the twin boss's AI pointer to the one spot boss's pointer
+    ai_ptr_start = 0x0C8B08
+    ct_rom.rom_data.seek(ai_ptr_start + 2*one_spot_id)
+    one_spot_ai_ptr = ct_rom.rom_data.read(2)
+
+    ct_rom.rom_data.seek(ai_ptr_start + 2*EnemyID.TWIN_BOSS)
+    ct_rom.rom_data.write(one_spot_ai_ptr)
+
+    # 3) Copy basic attack control header
+    ct_rom.rom_data.seek(0x0C6FC9 + 11*one_spot_id)
+    control = ct_rom.rom_data.read(11)
+
+    ct_rom.rom_data.seek(0x0C6FC9 + 11*EnemyID.TWIN_BOSS)
+    ct_rom.rom_data.write(control)
+
+    # 4) Copy basic attack graphics headers (there are two!)
+    ct_rom.rom_data.seek(0x0D4926 + 6*one_spot_id)
+    gfx1 = ct_rom.rom_data.read(7)
+
+    ct_rom.rom_data.seek(0x0D4926 + 6*EnemyID.TWIN_BOSS)
+    ct_rom.rom_data.write(gfx1)
+
+    ct_rom.rom_data.seek(0x0D4F26 + 6*one_spot_id)
+    gfx2 = ct_rom.rom_data.read(7)
+
+    ct_rom.rom_data.seek(0x0D4F26 + 6*EnemyID.TWIN_BOSS)
+    ct_rom.rom_data.write(gfx2)
+
+
 def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
     # Config should have a list of what bosses are to be placed where, so
@@ -1870,6 +2019,9 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
                 # print(f"Writing {boss_id} to {loc}")
                 # print(f"{boss_scheme}")
                 assign_fn(ctrom, boss_scheme)
+
+    # Update Twin Boss stats
+    write_twin_boss_to_ctrom(ctrom, config)
 
     # Jam in the obstacle writing here
     # Enemy tech effects start at 0xC7AC9, 12 bytes each.
