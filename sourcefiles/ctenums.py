@@ -40,7 +40,7 @@ class BossID(StrIntEnum):
     SUPER_SLASH = auto()
     SON_OF_SUN = auto()
     TERRA_MUTANT = auto()
-    TWIN_GOLEM = auto()
+    TWIN_BOSS = auto()
     YAKRA = auto()
     YAKRA_XIII = auto()
     ZOMBOR = auto()
@@ -95,7 +95,7 @@ class BossID(StrIntEnum):
         return [
             cls.ELDER_SPAWN,
             cls.GIGA_MUTANT, cls.LAVOS_SPAWN, cls.MEGA_MUTANT,
-            cls.TERRA_MUTANT, cls.ZOMBOR, cls.TWIN_GOLEM
+            cls.TERRA_MUTANT, cls.ZOMBOR
         ]
 
     @classmethod
@@ -907,7 +907,7 @@ class EnemyID(StrIntEnum):
     # Boss IDs
     KRAWLIE = 0x04
     YAKRA = 0x90
-    TWIN_GOLEM = 0x4F
+    TWIN_BOSS = 0x4F
     MASA_MUNE = 0x99
     NIZBEL = 0x9B
     NIZBEL_II = 0x9C
@@ -1366,8 +1366,10 @@ class TechID(StrIntEnum):
 
 
 class StatusEffect(StrIntEnum):
+    BLIND = 0x1
     SLEEP = 0x2
     CHAOS = 0x4
     LOCK = 0x8
     SLOW = 0x20
+    POISON = 0x40
     STOP = 0x80
