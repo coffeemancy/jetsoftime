@@ -1014,6 +1014,9 @@ class Randomizer:
             rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
             effects[rock_pwr] = 0x23
 
+        if rset.GameFlags.BOSS_SIGHTSCOPE:
+            qolhacks.enable_boss_sightscope(config)
+
         return config
 
     @classmethod

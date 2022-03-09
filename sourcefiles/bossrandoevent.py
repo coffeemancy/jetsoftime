@@ -1619,7 +1619,6 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         scaled_stats.charm_item = charm
 
         twin_boss.power = orig_power
-        scaled_stats.can_sightscope = settings.ro_settings.enable_sightscope
         config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
 
 
@@ -1795,12 +1794,6 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # to the config at the very end.
     scaled_dict = dict()
 
-    # Make sure can_sightscope is not applied except when Boss Rando is on
-    can_sightscope = (
-        settings.ro_settings.enable_sightscope and
-        rset.GameFlags.BOSS_RANDO in settings.gameflags
-    )
-
     for location in settings.ro_settings.loc_list:
         orig_boss = orig_data[default_assignment[location]]
         new_boss = orig_data[current_assignment[location]]
@@ -1808,7 +1801,6 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                                                   config.enemy_dict)
         # Put the stats in scaled_dict
         for ind, part_id in enumerate(new_boss.scheme.ids):
-            scaled_stats[ind].can_sightscope = can_sightscope
             scaled_dict[part_id] = scaled_stats[ind]
 
     # Write all of the scaled stats back to config's dict
@@ -1820,24 +1812,14 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 # Black Tyrano gets random hp and a random element (ctenums.Element)
 def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
 
-    # Make sure can_sightscope is not applied except when Boss Rando is on
-    can_sightscope = (
-        settings.ro_settings.enable_sightscope and
-        rset.GameFlags.BOSS_RANDO in settings.gameflags
-    )
-
     # Random hp from 10k to 15k
     config.enemy_dict[EnemyID.MAGUS].hp = random.randrange(10000, 15001, 1000)
-    config.enemy_dict[EnemyID.MAGUS].can_sightscope = can_sightscope
     config.magus_char = random.choice(list(CharID))
 
     config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
         random.randrange(8000, 13001, 1000)
     config.black_tyrano_element = \
         random.choice(list(Element))
-
-    config.enemy_dict[EnemyID.BLACKTYRANO].can_sightscope = can_sightscope
-    config.enemy_dict[EnemyID.AZALA].can_sightscope = can_sightscope
 
     # We're going to jam obstacle randomization here
     # Small block to randomize status inflicted by Obstacle/Chaotic Zone
