@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Tuple, Type, TypeVar
+from typing import Tuple, Type, TypeVar, ClassVar
 
 from enemystats import EnemyStats
 
@@ -195,7 +195,6 @@ class Boss:
     @classmethod
     def HECKRAN(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.HECKRAN, 3, 12)
-
 
     @classmethod
     def LAVOS_SHELL(cls: Type[T]) -> T:
@@ -410,38 +409,38 @@ def get_default_boss_assignment():
 # Associate BossID with the Boss data structure.
 def get_boss_data_dict():
     return {
-        BossID.ATROPOS_XR: LinearScaleBoss.ATROPOS_XR(),
-        BossID.DALTON_PLUS: LinearScaleBoss.DALTON_PLUS(),
-        BossID.DRAGON_TANK: LinearScaleBoss.DRAGON_TANK(),
-        BossID.ELDER_SPAWN: LinearScaleBoss.ELDER_SPAWN(),
-        BossID.FLEA: LinearScaleBoss.FLEA(),
-        BossID.FLEA_PLUS: LinearScaleBoss.FLEA_PLUS(),
-        BossID.GIGA_GAIA: LinearScaleBoss.GIGA_GAIA(),
-        BossID.GIGA_MUTANT: LinearScaleBoss.GIGA_MUTANT(),
-        BossID.GOLEM: LinearScaleBoss.GOLEM(),
-        BossID.GOLEM_BOSS: LinearScaleBoss.GOLEM_BOSS(),
-        BossID.GUARDIAN: LinearScaleBoss.GUARDIAN(),
-        BossID.HECKRAN: LinearScaleBoss.HECKRAN(),
-        BossID.LAVOS_SPAWN: LinearScaleBoss.LAVOS_SPAWN(),
-        BossID.MASA_MUNE: LinearScaleBoss.MASA_MUNE(),
-        BossID.MEGA_MUTANT: LinearScaleBoss.MEGA_MUTANT(),
-        BossID.MOTHER_BRAIN: LinearScaleBoss.MOTHER_BRAIN(),
-        BossID.MUD_IMP: LinearScaleBoss.MUD_IMP(),
-        BossID.NIZBEL: LinearScaleBoss.NIZBEL(),
-        BossID.NIZBEL_2: LinearScaleBoss.NIZBEL_II(),
-        BossID.RETINITE: LinearScaleBoss.RETINITE(),
-        BossID.R_SERIES: LinearScaleBoss.R_SERIES(),
-        BossID.RUST_TYRANO: LinearScaleBoss.RUST_TYRANO(),
-        BossID.SLASH_SWORD: LinearScaleBoss.SLASH_SWORD(),
+        BossID.ATROPOS_XR: PowerScaleBoss.ATROPOS_XR(),
+        BossID.DALTON_PLUS: PowerScaleBoss.DALTON_PLUS(),
+        BossID.DRAGON_TANK: PowerScaleBoss.DRAGON_TANK(),
+        BossID.ELDER_SPAWN: PowerScaleBoss.ELDER_SPAWN(),
+        BossID.FLEA: PowerScaleBoss.FLEA(),
+        BossID.FLEA_PLUS: PowerScaleBoss.FLEA_PLUS(),
+        BossID.GIGA_GAIA: PowerScaleBoss.GIGA_GAIA(),
+        BossID.GIGA_MUTANT: PowerScaleBoss.GIGA_MUTANT(),
+        BossID.GOLEM: PowerScaleBoss.GOLEM(),
+        BossID.GOLEM_BOSS: PowerScaleBoss.GOLEM_BOSS(),
+        BossID.GUARDIAN: PowerScaleBoss.GUARDIAN(),
+        BossID.HECKRAN: PowerScaleBoss.HECKRAN(),
+        BossID.LAVOS_SPAWN: PowerScaleBoss.LAVOS_SPAWN(),
+        BossID.MASA_MUNE: PowerScaleBoss.MASA_MUNE(),
+        BossID.MEGA_MUTANT: PowerScaleBoss.MEGA_MUTANT(),
+        BossID.MOTHER_BRAIN: PowerScaleBoss.MOTHER_BRAIN(),
+        BossID.MUD_IMP: PowerScaleBoss.MUD_IMP(),
+        BossID.NIZBEL: PowerScaleBoss.NIZBEL(),
+        BossID.NIZBEL_2: PowerScaleBoss.NIZBEL_II(),
+        BossID.RETINITE: PowerScaleBoss.RETINITE(),
+        BossID.R_SERIES: PowerScaleBoss.R_SERIES(),
+        BossID.RUST_TYRANO: PowerScaleBoss.RUST_TYRANO(),
+        BossID.SLASH_SWORD: PowerScaleBoss.SLASH_SWORD(),
         BossID.SON_OF_SUN: SonOfSunScaleBoss.SON_OF_SUN(),
-        BossID.SUPER_SLASH: LinearScaleBoss.SUPER_SLASH(),
-        BossID.TERRA_MUTANT: LinearScaleBoss.TERRA_MUTANT(),
-        BossID.TWIN_BOSS: LinearScaleBoss.TWIN_BOSS(),
-        BossID.YAKRA: LinearScaleBoss.YAKRA(),
-        BossID.YAKRA_XIII: LinearScaleBoss.YAKRA_XIII(),
-        BossID.ZOMBOR: LinearScaleBoss.ZOMBOR(),
-        BossID.MAGUS: LinearScaleBoss.MAGUS(),
-        BossID.BLACK_TYRANO: LinearScaleBoss.BLACK_TYRANO(),
+        BossID.SUPER_SLASH: PowerScaleBoss.SUPER_SLASH(),
+        BossID.TERRA_MUTANT: PowerScaleBoss.TERRA_MUTANT(),
+        BossID.TWIN_BOSS: PowerScaleBoss.TWIN_BOSS(),
+        BossID.YAKRA: PowerScaleBoss.YAKRA(),
+        BossID.YAKRA_XIII: PowerScaleBoss.YAKRA_XIII(),
+        BossID.ZOMBOR: PowerScaleBoss.ZOMBOR(),
+        BossID.MAGUS: PowerScaleBoss.MAGUS(),
+        BossID.BLACK_TYRANO: PowerScaleBoss.BLACK_TYRANO(),
         BossID.LAVOS_SHELL: Boss.LAVOS_SHELL(),
         BossID.INNER_LAVOS: Boss.INNER_LAVOS(),
         BossID.LAVOS_CORE: Boss.LAVOS_CORE(),
@@ -502,6 +501,28 @@ def linear_scale_stats(stats: EnemyStats,
     new_stats.tp = tp
 
     return new_stats
+
+
+class PowerScaleBoss(Boss):
+    scale_exponent: ClassVar[float] = 1.25
+
+    def scale_relative_to(
+            self, other: Boss,
+            stat_dict: dict[EnemyID, EnemyStats]
+    ) -> list[EnemyStats]:
+        if self.power == 0:
+            scale_factor = 0
+            new_power = self.power
+        else:
+            scale_factor = (other.power/self.power) ** self.scale_exponent
+            new_power = self.power*scale_factor
+
+        scaled_stats = [
+            linear_scale_stats(stat_dict[part], self.power, new_power)
+            for part in self.scheme.ids
+        ]
+
+        return scaled_stats
 
 
 class LinearScaleBoss(Boss):
