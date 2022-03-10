@@ -383,7 +383,7 @@ class Randomizer:
 
         # Write enemies out
         for enemy_id, stats in config.enemy_dict.items():
-            stats.write_to_stream(ctrom.rom_data, enemy_id)
+            stats.write_to_ctrom(ctrom, enemy_id)
 
         # Write treasures out -- this includes key items
         # for treasure in config.treasure_assign_dict.values():
@@ -708,12 +708,20 @@ class Randomizer:
         file_object.write("--------------\n")
 
         boss_dict = self.config.boss_assign_dict
+        boss_data_dict = self.config.boss_data_dict
+        twin_type = boss_data_dict[ctenums.BossID.TWIN_BOSS].scheme.ids[0]
+        twin_name = self.config.enemy_dict[twin_type].name
         width = max(len(str(x)) for x in boss_dict.keys()) + 8
 
         for location in boss_dict.keys():
+            if boss_dict[location] == ctenums.BossID.TWIN_BOSS:
+                boss_name = 'Twin ' + str(twin_name)
+            else:
+                boss_name = str(boss_dict[location])
+
             file_object.write(
                 str.ljust(str(location), width) +
-                str(boss_dict[location]) +
+                boss_name +
                 '\n'
             )
 
@@ -1005,6 +1013,9 @@ class Randomizer:
             # From 0x1E=30 to 0x23=35
             rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
             effects[rock_pwr] = 0x23
+
+        if rset.GameFlags.BOSS_SIGHTSCOPE:
+            qolhacks.enable_boss_sightscope(config)
 
         return config
 

@@ -131,7 +131,6 @@ class RandoGUI:
 
         # ro settings
         self.preserve_part_count = tk.IntVar(value=0)
-        self.enable_sightscope = tk.IntVar(value=0)
 
         # bucket stuff
         # I cannot create the scales until I have an object to attach them
@@ -201,14 +200,11 @@ class RandoGUI:
         self.boss_locations = LocID.get_boss_locations()
         self.bosses = list(BossID)
 
-        # no_shuffle_bosses = [
-        #     BossID.DRAGON_TANK, BossID.GIGA_GAIA, BossID.MOTHER_BRAIN,
-        #     BossID.R_SERIES, BossID.MUD_IMP, BossID.GUARDIAN
-        # ]
-
         no_shuffle_bosses = [
             BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
-            BossID.MAGUS, BossID.BLACK_TYRANO
+            BossID.MAGUS, BossID.BLACK_TYRANO,
+            BossID.LAVOS_CORE, BossID.LAVOS_SHELL, BossID.INNER_LAVOS,
+            BossID.ZEAL, BossID.ZEAL_2, BossID.TWIN_BOSS
         ]
 
         for x in no_shuffle_bosses:
@@ -374,7 +370,6 @@ class RandoGUI:
             loc_list,
             boss_list,
             self.preserve_part_count.get() == 1,
-            self.enable_sightscope.get() == 1
         )
 
         # Bucket
@@ -492,7 +487,6 @@ class RandoGUI:
             self.boss_location_listbox.select_set(index)
 
         self.preserve_part_count.set(int(ro_settings.preserve_parts))
-        self.enable_sightscope.set(int(ro_settings.enable_sightscope))
 
         # Bucket Settings
         bucket_settings = self.settings.bucket_settings
@@ -1924,18 +1918,6 @@ class RandoGUI:
             'be placed in locations which normally contain an N part boss. '
         )
 
-        checkbox = tk.Checkbutton(
-            outerframe,
-            text='Enable Sightscope',
-            variable=self.enable_sightscope
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Enables sightscope to work on randomized bosses.'
-        )
-
         extraoptionframe.pack()
 
         return outerframe
@@ -1962,6 +1944,17 @@ class RandoGUI:
             'The sightscope effect will always be present in battle.  '
             'Note that this does change which enemies can have their HP seen '
             'by the sightscope.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Boss Sightscope',
+            variable=self.flag_dict[GameFlags.BOSS_SIGHTSCOPE]
+        )
+        checkbox.pack(anchor=tk.W)
+        CreateToolTip(
+            checkbox,
+            'Enable the sightscope to see boss HP values.'
         )
 
         checkbox = tk.Checkbutton(

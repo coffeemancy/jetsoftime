@@ -279,7 +279,7 @@ _midgame_bosses = [
 ]
 
 _late_bosses = [
-    EnemyID.MAMMON_M, EnemyID.ZEAL, EnemyID.TWIN_GOLEM, EnemyID.GOLEM,
+    EnemyID.MAMMON_M, EnemyID.ZEAL, EnemyID.TWIN_BOSS, EnemyID.GOLEM,
     EnemyID.AZALA, EnemyID.ELDER_SPAWN_HEAD, EnemyID.ELDER_SPAWN_SHELL,
     EnemyID.ZEAL_2_CENTER, EnemyID.ZEAL_2_LEFT, EnemyID.ZEAL_2_RIGHT,
     EnemyID.GIGA_MUTANT_HEAD, EnemyID.GIGA_MUTANT_BOTTOM,

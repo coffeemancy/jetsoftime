@@ -1136,11 +1136,15 @@ class RandoConfig:
             LocID.SUN_PALACE: BossID.SON_OF_SUN,
             LocID.OZZIES_FORT_SUPER_SLASH: BossID.SUPER_SLASH,
             LocID.BLACK_OMEN_TERRA_MUTANT: BossID.TERRA_MUTANT,
-            LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_GOLEM,
+            LocID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_BOSS,
             LocID.MANORIA_COMMAND: BossID.YAKRA,
             LocID.KINGS_TRIAL_NEW: BossID.YAKRA_XIII,
             LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR
         }
+
+        # The twin boss defaults to twin golem, but boss rando may change
+        # this data.
+        self.twin_boss_type = ctenums.EnemyID.GOLEM
 
         self.boss_data_dict = bossdata.get_boss_data_dict()
         self.boss_rank = dict()

@@ -387,27 +387,27 @@ class TechDB:
         db = TechDB()
 
         control_end = control_start + TechDB.control_size*control_count
-        db.controls = rom[control_start:control_end]
+        db.controls = bytearray(rom[control_start:control_end])
         db.control_count = control_count
         db.control_start = control_start
 
         effect_end = effect_start + TechDB.effect_size*effect_count
-        db.effects = rom[effect_start:effect_end]
+        db.effects = bytearray(rom[effect_start:effect_end])
         db.effect_count = effect_count
         db.effect_start = effect_start
 
         gfx_end = gfx_start+TechDB.gfx_size*gfx_count
-        db.gfx = rom[gfx_start:gfx_end]
+        db.gfx = bytearray(rom[gfx_start:gfx_end])
         db.gfx_count = gfx_count
         db.gfx_start = gfx_start
 
         target_end = target_start+TechDB.target_size*target_count
-        db.targets = rom[target_start:target_end]
+        db.targets = bytearray(rom[target_start:target_end])
         db.target_count = target_count
         db.target_start = target_start
 
         bat_grp_end = bat_grp_start + TechDB.bat_grp_size*bat_grp_count
-        db.bat_grps = rom[bat_grp_start:bat_grp_end]
+        db.bat_grps = bytearray(rom[bat_grp_start:bat_grp_end])
         db.bat_grp_count = bat_grp_count
         db.bat_grp_start = bat_grp_start
 
@@ -420,50 +420,52 @@ class TechDB:
         # determine how many rock groups there are by looking at the rom.
         # We just assume that it's 5 when reading from the rom, but this
         # should be redone if we want to correctly read an altered db
-        db.set_menu_grps(rom[menu_grp_start:menu_grp_end], 5)
+        db.set_menu_grps(bytearray(rom[menu_grp_start:menu_grp_end]), 5)
         db.menu_grp_start = menu_grp_start
 
         names_end = name_start + TechDB.name_size*name_count
-        db.names = rom[name_start:names_end]
+        db.names = bytearray(rom[name_start:names_end])
         db.name_count = name_count
         db.name_start = name_start
 
         desc_ptr_end = desc_ptr_start+TechDB.desc_ptr_size*desc_ptr_count
-        db.desc_ptrs = rom[desc_ptr_start:desc_ptr_end]
+        db.desc_ptrs = bytearray(rom[desc_ptr_start:desc_ptr_end])
         db.desc_ptr_count = desc_ptr_count
         db.desc_ptr_start = desc_ptr_start
 
         db.desc_start = desc_start
-        db.descs = rom[desc_start:desc_end]
+        db.descs = bytearray(rom[desc_start:desc_end])
 
         # 7 bytes for current tech levels and then one byte per menu group
         techs_learned_size = 7+menu_grp_count
-        db.techs_learned = rom[lrn_start:lrn_start+techs_learned_size]
+        db.techs_learned = bytearray(
+            rom[lrn_start:lrn_start+techs_learned_size]
+        )
         db.techs_learned_start = lrn_start
 
         lrn_req_end = lrn_req_start + lrn_req_count*TechDB.lrn_req_size
-        db.lrn_reqs = rom[lrn_req_start:lrn_req_end]
+        db.lrn_reqs = bytearray(rom[lrn_req_start:lrn_req_end])
         db.lrn_req_count = lrn_req_count
         db.lrn_req_start = lrn_req_start
 
         lrn_ref_end = lrn_ref_start+TechDB.lrn_ref_size*lrn_ref_count
-        db.lrn_refs = rom[lrn_ref_start:lrn_ref_end]
+        db.lrn_refs = bytearray(rom[lrn_ref_start:lrn_ref_end])
         db.lrn_ref_count = lrn_ref_count
         db.lrn_ref_start = lrn_ref_start
 
-        db.mps = rom[mp_start:mp_start+mp_count]
+        db.mps = bytearray(rom[mp_start:mp_start+mp_count])
         db.mp_count = mp_count
         db.mp_start = mp_start
 
-        db.menu_mp_reqs = rom[menu_mp_start:menu_mp_end]
+        db.menu_mp_reqs = bytearray(rom[menu_mp_start:menu_mp_end])
         db.menu_req_start = menu_mp_start
 
         group_length_end = group_length_start+group_length_count
-        db.group_sizes = rom[group_length_start:group_length_end]
+        db.group_sizes = bytearray(rom[group_length_start:group_length_end])
         db.group_sizes_start = group_length_start
 
         atb_pen_end = atb_pen_start+TechDB.atb_pen_size*atb_pen_count
-        db.atb_pens = rom[atb_pen_start:atb_pen_end]
+        db.atb_pens = bytearray(rom[atb_pen_start:atb_pen_end])
         db.atb_pen_count = atb_pen_count
         db.atb_pen_start = atb_pen_start
 

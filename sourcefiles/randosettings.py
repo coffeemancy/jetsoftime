@@ -68,6 +68,7 @@ class GameFlags(Flag):
     BUFF_XSTRIKE = auto()
     MYSTERY = auto()
     AYLA_REBALANCE = auto()
+    BOSS_SIGHTSCOPE = auto()
 
 
 # Dictionary for what flags force what other flags off.
@@ -167,7 +168,6 @@ class ROSettings:
     loc_list: list[ctenums.BossID] = field(default_factory=list)
     boss_list: list[ctenums.BossID] = field(default_factory=list)
     preserve_parts: bool = False
-    enable_sightscope: bool = False
 
 
 @dataclass
@@ -255,7 +255,7 @@ class Settings:
         # loc_list.remove(LocID.SUN_PALACE)
         # loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
-        self.ro_settings = ROSettings(loc_list, boss_list, False, False)
+        self.ro_settings = ROSettings(loc_list, boss_list, False)
         self.bucket_settings = BucketSettings(30, 20)
 
         self.tab_settings = TabSettings()
