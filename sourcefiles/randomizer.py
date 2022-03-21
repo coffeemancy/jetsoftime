@@ -385,6 +385,9 @@ class Randomizer:
         for enemy_id, stats in config.enemy_dict.items():
             stats.write_to_ctrom(ctrom, enemy_id)
 
+        config.enemy_aidb.write_to_ctrom(ctrom)
+        config.enemy_atkdb.write_to_ctrom(ctrom)
+
         # Write treasures out -- this includes key items
         # for treasure in config.treasure_assign_dict.values():
         for tid in config.treasure_assign_dict:
@@ -737,7 +740,7 @@ class Randomizer:
 
         endboss_ids = [
             BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE,
-            BossID.ZEAL, BossID.ZEAL_2
+            BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2
         ]
 
         boss_ids = list(self.config.boss_assign_dict.values()) + \
@@ -975,11 +978,20 @@ class Randomizer:
             bytearray(ctrom.rom_data.getvalue())
         )
 
+        # Why is Dalton worth so few TP?
+        config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
+
         # Fix Falcon Hit to use Spincut as a prerequisite
         techdb = config.techdb
         falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
         falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
         techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
+
+        # Note for future (?) Marle changes
+        # Statuses have different types.  Haste is type 3, everything else
+        # just about is type 4.
+        # Type 4: berserk, barrier, Mp regen, unk, specs, shield, shades, unk
+        # Araise is in another type altogether.
 
         # Make X-Strike use Spincut+Leapslash
         if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
