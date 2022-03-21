@@ -202,7 +202,7 @@ class RandoGUI:
 
         no_shuffle_bosses = [
             BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
-            BossID.MAGUS, BossID.BLACK_TYRANO,
+            BossID.MAGUS, BossID.BLACK_TYRANO, BossID.MAMMON_M,
             BossID.LAVOS_CORE, BossID.LAVOS_SHELL, BossID.INNER_LAVOS,
             BossID.ZEAL, BossID.ZEAL_2, BossID.TWIN_BOSS
         ]
