@@ -163,11 +163,11 @@ class Boss:
 
     @classmethod
     def FLEA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA, 7, 15)
+        return cls.generic_one_spot(EnemyID.FLEA, 7, 18)
 
     @classmethod
     def FLEA_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 20)
+        return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 15)
 
     @classmethod
     def GIGA_GAIA(cls: Type[T]) -> T:
@@ -330,11 +330,11 @@ class Boss:
 
     @classmethod
     def SLASH_SWORD(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 15)
+        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 18)
 
     @classmethod
     def SUPER_SLASH(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SUPER_SLASH, 7, 20)
+        return cls.generic_one_spot(EnemyID.SUPER_SLASH, 7, 15)
 
     @classmethod
     def SON_OF_SUN(cls: Type[T]) -> T:
