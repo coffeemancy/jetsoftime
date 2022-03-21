@@ -28,6 +28,7 @@ class BossID(StrIntEnum):
     GOLEM_BOSS = auto()
     HECKRAN = auto()
     LAVOS_SPAWN = auto()
+    MAMMON_M = auto()
     MASA_MUNE = auto()
     MEGA_MUTANT = auto()
     MUD_IMP = auto()
@@ -227,6 +228,7 @@ class LocID(StrIntEnum):
     ZEAL_PALACE_REGAL_ANTECHAMBER = 0x149
     MAGUS_CASTLE_DUNGEONS = 0x1D7
     PRISON_SUPERVISORS_OFFICE = 0x1D
+    CREDITS_4 = 0x5E
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
