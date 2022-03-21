@@ -7,6 +7,8 @@ import json
 
 import byteops
 import bossdata
+import enemyai
+import enemytechdb
 import enemystats
 import ctenums
 import ctrom
@@ -1170,12 +1172,16 @@ class RandoConfig:
             self.price_manager = None  # PriceManager(rom)
             self.char_manager = None  # CharManager(rom)
             self.techdb = None  # techdb.TechDB.get_default_db(rom)
+            self.enemy_atkdb = None  # enemytechdb.EnemyAttackDB.from_rom(rom)
+            self.enemy_aidb = None  # enemyai.EnemyAIDB.from_rom(rom)
         else:
             self.enemy_dict = enemystats.get_stat_dict(rom)
             self.shop_manager = ShopManager(rom)
             self.price_manager = PriceManager(rom)
             self.char_manager = CharManager(rom)
             self.techdb = techdb.TechDB.get_default_db(rom)
+            self.enemy_atkdb = enemytechdb.EnemyAttackDB.from_rom(rom)
+            self.enemy_aidb = enemyai.EnemyAIDB.from_rom(rom)
 
     def to_json(self, outfile_name):
         # Make key item dict
@@ -1244,6 +1250,8 @@ class RandoConfig:
         ret_cfg.price_manager = PriceManager(rom)
         ret_cfg.char_manager = CharManager(rom)
         ret_cfg.techdb = techdb.TechDB.get_default_db(rom)
+        ret_cfg.enemy_aidb = enemyai.EnemyAIDB.from_rom(rom)
+        ret_cfg.enemy_atkdb = enemytechdb.EnemyAttackDB.from_rom(rom)
         return ret_cfg
 
     def write_spoiler_log(self, filename):
