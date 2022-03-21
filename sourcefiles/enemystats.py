@@ -13,6 +13,17 @@ class EnemyStats:
         ctenums.Element.FIRE: 3
     }
 
+    MAX_HP = 0x7FFF
+    MAX_LEVEL = 0xFF
+    MAX_MAGIC = 0xFF
+    MAX_HIT = 100
+    MAX_EVADE = 100
+    MAX_DEFENSE = 0xFF
+    MAX_OFFENSE = 0xFF
+    MAX_XP = 0x7FFF
+    MAX_TP = 0xFF
+    MAX_GP = 0x7FFF
+
     def __init__(self,
                  stat_data: bytes = None,
                  name_bytes: bytes = None,
@@ -58,9 +69,9 @@ class EnemyStats:
                    self.get_resistance(Elem.SHADOW),
                    self.get_resistance(Elem.ICE),
                    self.get_resistance(Elem.FIRE)]
-        
+
         for ind, x in enumerate(resists):
-            sign =  1 - 2*(x > 127)
+            sign = 1 - 2*(x > 127)
             mag = x & 0x7F
             if mag > 0:
                 mag = 400 / (x & 0x7F)
@@ -82,21 +93,24 @@ class EnemyStats:
                           self._reward_data, self.hide_name)  
 
     @classmethod
-    def from_ctrom(cls, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
-        ct_rom.rom_data.seek(0x0C4700 + 0x17*enemy_id)
-        data = ct_rom.rom_data.read(0x17)
+    def from_rom(cls, rom: bytearray, enemy_id: ctenums.EnemyID):
+        data_st = 0x0C4700 + 0x17*enemy_id
+        data = bytes(rom[data_st:data_st+0x17])
 
-        ct_rom.rom_data.seek(0x0C6500 + 0xB*enemy_id)
-        name = ct_rom.rom_data.read(0xB)
+        name_st = 0x0C6500 + 0xB*enemy_id
+        name = bytes(rom[name_st:name_st+0xB])
 
-        ct_rom.rom_data.seek(0x0C5E00 + 7*enemy_id)
-        rewards = ct_rom.rom_data.read(7)
+        rewards_st = 0x0C5E00 + 7*enemy_id
+        rewards = bytes(rom[rewards_st: rewards_st+7])
 
-        ct_rom.rom_data.seek(0x21DE80+enemy_id)
-        hide_name = ct_rom.rom_data.read(1)[0]
-        hide_name = bool(hide_name)
+        hide_name_st = 0x21DE80+enemy_id
+        hide_name = bool(rom[hide_name_st])
 
         return EnemyStats(data, name, rewards, hide_name)
+
+    @classmethod
+    def from_ctrom(cls, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
+        return cls.from_rom(ct_rom.rom_data.getbuffer(), enemy_id)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
         ct_rom.rom_data.seek(0x0C4700 + 0x17*enemy_id)
@@ -110,7 +124,6 @@ class EnemyStats:
 
         ct_rom.rom_data.seek(0x21DE80+enemy_id)
         ct_rom.rom_data.write(self.hide_name.to_bytes(1, 'little'))
-
 
     # bossscaler.py uses lists of stats to do the scaling.  This method takes
     # one of those lists and replaces the relevant stats in the class.
@@ -231,7 +244,7 @@ class EnemyStats:
 
     @evade.setter
     def evade(self, value: int):
-        self._stat_data[0xC] = value
+        self._stat_data[0xC] = min(value, 100)
 
     @property
     def mdef(self):
@@ -239,7 +252,7 @@ class EnemyStats:
 
     @mdef.setter
     def mdef(self, value: int):
-        self._stat_data[0xD] = value
+        self._stat_data[0xD] = min(value, 100)
 
     @property
     def offense(self):
@@ -247,7 +260,7 @@ class EnemyStats:
 
     @offense.setter
     def offense(self, value: int):
-        self._stat_data[0xE] = value
+        self._stat_data[0xE] = min(value, 0xFF)
 
     @property
     def defense(self):
@@ -255,7 +268,7 @@ class EnemyStats:
 
     @defense.setter
     def defense(self, value: int):
-        self._stat_data[0xF] = value
+        self._stat_data[0xF] = min(value, 0xFF)
 
     def get_resistance(self, element: ctenums.Element):
         offset = 0x10 + self.element_offsets[element]
@@ -319,6 +332,14 @@ class EnemyStats:
     @tp.setter
     def tp(self, val: int):
         self._reward_data[6] = val
+
+    @property
+    def secondary_attack_id(self):
+        return self._stat_data[0x16]
+
+    @secondary_attack_id.setter
+    def secondary_attack_id(self, val):
+        self._stat_data[0x16] = val
 
 
 def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
