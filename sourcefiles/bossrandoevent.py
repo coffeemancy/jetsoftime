@@ -1572,6 +1572,8 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
                             config: cfg.RandoConfig):
     # If the base boss is golem, then we don't have to do anything because
     # patch.ips writes a super-golem in to the twin boss slot.
+
+    # print(f'Writing {one_spot_boss} to twin boss.')
     if one_spot_boss != BossID.GOLEM:
         twin_boss = config.boss_data_dict[BossID.TWIN_BOSS]
         base_boss = config.boss_data_dict[one_spot_boss]
@@ -1606,15 +1608,15 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         twin_scheme.slots = [base_slot, alt_slot]
 
         # Scale the stats and write them to the twin boss spot in the config
-        # scale each part to 75% of the twin boss's desired power level
         # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
         orig_power = twin_boss.power
-        twin_boss.power = int(twin_boss.power * 0.75)
+        twin_boss.power = int(0.75*twin_boss.power)
         orig_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
         drop, charm = orig_stats.drop_item, orig_stats.charm_item
 
         scaled_stats = base_boss.scale_relative_to(
-            twin_boss, config.enemy_dict)[0]
+            twin_boss, config.enemy_dict,
+            config.enemy_atkdb, config.enemy_aidb)[0]
         scaled_stats.drop_item = drop
         scaled_stats.charm_item = charm
 
@@ -1733,7 +1735,6 @@ def write_assignment_to_config(settings: rset.Settings,
 
             if one_part_bosses:
                 twin_boss = random.choice(one_part_bosses)
-                twin_boss = BossID.DALTON_PLUS
                 set_twin_boss_in_config(twin_boss, settings, config)
                 config.boss_data_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] = \
                     BossID.TWIN_BOSS
@@ -1798,7 +1799,9 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         orig_boss = orig_data[default_assignment[location]]
         new_boss = orig_data[current_assignment[location]]
         scaled_stats = new_boss.scale_relative_to(orig_boss,
-                                                  config.enemy_dict)
+                                                  config.enemy_dict,
+                                                  config.enemy_atkdb,
+                                                  config.enemy_aidb)
         # Put the stats in scaled_dict
         for ind, part_id in enumerate(new_boss.scheme.ids):
             scaled_dict[part_id] = scaled_stats[ind]
@@ -2004,6 +2007,21 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
     # Update Twin Boss stats
     write_twin_boss_to_ctrom(ctrom, config)
+
+    # New fun sprite bug:  Enemy 0x4F was a frog before it was turned into
+    # the twin golem.  Turning it into other bosses can make for pink screens
+    # in the LW credits.
+
+    # Put a different frog sprite in there.
+    script = ctrom.script_manager.get_script(LocID.CREDITS_4)
+    frog1_load = EC.load_enemy(0x4F, 9, False)
+    frog2_load = EC.load_enemy(0x4F, 8, False)
+
+    pos = script.find_exact_command(frog1_load)
+    script.data[pos+1] = int(EnemyID.T_POLE)
+
+    pos = script.find_exact_command(frog2_load)
+    script.data[pos+1] = int(EnemyID.T_POLE)
 
     # Jam in the obstacle writing here
     # Enemy tech effects start at 0xC7AC9, 12 bytes each.
