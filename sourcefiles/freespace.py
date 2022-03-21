@@ -405,6 +405,11 @@ class FSRom(BytesIO):
             self.seek(addr)
             self.write(payload, mark_set)
 
+    def mark(self, num_bytes: int, mark_type: FSWriteType):
+        start = self.tell()
+        end = start+num_bytes
+        self.space_manager.mark_block((start, end), mark_type)
+
     def write(self, payload,
               write_mark: FSWriteType = FSWriteType.NO_MARK):
         # avoid long names
@@ -433,7 +438,7 @@ class FSRom(BytesIO):
     # returns the address where the data gets written
     def write_data_to_freespace(self, data, hint=0):
         spaceman = self.space_manager
-        write_addr = spaceman.get_free_addr(self, len(data), hint)
+        write_addr = spaceman.get_free_addr(len(data), hint)
 
         if write_addr is None and hint != 0:
             print('Warning: Insufficient free space.  Ignoring hint.')
@@ -444,7 +449,7 @@ class FSRom(BytesIO):
             quit()
         else:
             self.seek(write_addr)
-            self.write(write_addr, FSWriteType.MARK_USED)
+            self.write(data, FSWriteType.MARK_USED)
             return write_addr
 
 
