@@ -285,6 +285,9 @@ class CTString(bytearray):
             if cur_byte in range(0, 0x21):
                 # special symbols
                 keyword = self.keywords[cur_byte]
+                if keyword == 'delay':
+                    pos += 1
+                    keyword += ' ' + str(self[pos])
                 ret_str += f"{{{keyword}}}"
             elif cur_byte in range(0x21, 0xA0):
                 if techname and cur_byte == 0x2F:
