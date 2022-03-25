@@ -250,7 +250,7 @@ class EnemyAttackDB:
 
     def get_atk_control(self, atk_id: int):
         return EnemyAtkControlHeader(self._atk_controls,
-                                  atk_id*EnemyControlHeader.SIZE)
+                                     atk_id*EnemyControlHeader.SIZE)
 
     def get_atk_effect(self, atk_id: int):
         return EnemyEffectHeader(self._atk_effects,
@@ -261,6 +261,19 @@ class EnemyAttackDB:
         effect = self.get_atk_effect(atk_id)
 
         return EnemyAttack(control, effect)
+
+    def copy_atk_gfx(self,
+                     changed_enemy_id: ctenums.EnemyID,
+                     copied_enemy_id: ctenums.EnemyID):
+        new_gfx_1 = EnemyAtkGfxHeader(self._atk_gfx_1,
+                                      copied_enemy_id*EnemyAtkGfxHeader.SIZE)
+        new_gfx_2 = EnemyAtkGfxHeader(self._atk_gfx_2,
+                                      copied_enemy_id*EnemyAtkGfxHeader.SIZE)
+
+        self._set_atk_gfx(new_gfx_1, changed_enemy_id,
+                          is_secondary_attack=False)
+        self._set_atk_gfx(new_gfx_2, changed_enemy_id,
+                          is_secondary_attack=True)
 
     def _set_data_record(self,
                          data: _FixedLengthRecord,
