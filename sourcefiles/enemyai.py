@@ -1,4 +1,8 @@
 from __future__ import annotations
+import typing
+
+import byteops
+from ctenums import EnemyID
 import ctrom
 
 _action_lens = [
@@ -6,8 +10,12 @@ _action_lens = [
     10, 16, 12
 ]
 
-def print_bytes(data: bytes, pos: int = None, length: int = None):
 
+def print_bytes(data: bytes, pos: int = None, length: int = None):
+    print(bytes_to_str(data, pos, length))
+
+
+def bytes_to_str(data: bytes, pos: int = None, length: int = None):
     if pos is None:
         start = 0
     else:
@@ -18,7 +26,8 @@ def print_bytes(data: bytes, pos: int = None, length: int = None):
     else:
         end = start+length
 
-    print(' '.join(f'{x:02X}' for x in data[start:end]))
+    return ' '.join(f'{x:02X}' for x in data[start:end])
+
 
 # From https://www.chronocompendium.com/Term/Enemy_AI.html
 _target_str = {
@@ -81,215 +90,303 @@ _target_str = {
     0x38: 'Random other enemy'
 }
 
-# Very limited initial form.
-# The only functionality that we need right now is to change tech usage.
-# Printing out AI scripts might be useful too.
+
+# TODO: Avoid repeating the parsing code in every method.
+#       (1) Put the script data into a higher level structure that's more
+#           simple to interate through.
+#       ...OR...
+#       (2) Make one parsing function with hooks for other callables to be
+#           called during parsing.
+#       Probably (1).
+class AIScript:
+
+    def __init__(self,
+                 script_bytes: bytes = b'\xFF\xFF',
+                 start_pos: int = 0):
+        self.uses_secondary_atk = False
+        self.tech_usage = []
+        self._data = None
+
+        # Actually sets the above.  In its own function because it may need
+        # to be called outside of object construction.
+        self._parse_bytes(script_bytes, start_pos)
+
+    def get_copy(self) -> AIScript:
+        new_script = AIScript()
+        new_script._data = bytearray(self._data)
+        new_script.tech_usage = list(self.tech_usage)
+        new_script.uses_secondary_atk = self.uses_secondary_atk
+
+        return new_script
+
+    def change_tech_usage(self, from_tech_id, to_tech_id) -> int:
+        '''
+        Change the tech used in the script.  Returns number of changes made.
+        '''
+        pos = 0
+        num_changes = 0
+
+        if from_tech_id not in self.tech_usage:
+            print('Warning: tech not in self.tech_usage.')
+
+        for block in range(2):
+            while self._data[pos] != 0xFF:
+                while self._data[pos] != 0xFE:  # Conditions
+                    pos += 4
+
+                pos += 1  # Skip terminal 0xFE
+                while self._data[pos] != 0xFE:  # Actions
+                    action_id = self._data[pos]
+
+                    # The actual tech changing bit
+                    if action_id in (2, 0x12):
+                        tech_id = self._data[pos+1]
+                        if tech_id == from_tech_id:
+                            self._data[pos+1] = to_tech_id
+                            num_changes += 1
+
+                    if action_id == 0xFF:
+                        break
+                    else:
+                        size = _action_lens[action_id]
+                        pos += size
+                pos += 1  # Skip terminal 0xFE
+            pos += 1  # Skip terminal 0xFF
+
+        if num_changes > 0 and from_tech_id not in self.tech_usage:
+            print('Warning: Made changes when tech not in self.tech_usage')
+
+        if num_changes > 0:
+            if from_tech_id in self.tech_usage:
+                self.tech_usage.remove(from_tech_id)
+            self.tech_usage.append(to_tech_id)
+
+        return num_changes
+
+    def get_as_bytearray(self):
+        return bytearray(self._data)
+
+    def _parse_bytes(self, data: bytes, start_pos: int = 0):
+        pos = start_pos
+        tech_usage = list()
+        uses_secondary_atk = False
+
+        FE_ins_pos = []
+
+        for block in range(2):
+            while data[pos] != 0xFF:
+                while data[pos] != 0xFE:  # Conditions
+                    pos += 4
+
+                pos += 1  # Skip terminal 0xFE
+                while data[pos] != 0xFE:  # Actions
+                    action_id = data[pos]
+
+                    if action_id == 1 and data[pos+1] == 1:
+                        uses_secondary_atk = True
+
+                    if action_id in (2, 0x12):
+                        tech_used = data[pos+1]
+                        tech_usage.append(tech_used)
+
+                    if action_id == 0xFF:
+                        # insert at start so list is in reverse order
+                        FE_ins_pos.insert(0, pos)
+                        break
+                    else:
+                        size = _action_lens[action_id]
+                        pos += size
+                pos += 1  # Skip terminal 0xFE
+            pos += 1  # Skip terminal 0xFF
+
+        # Fix buggy ai scripts that don't have a terminal 0xFE.
+        # Only 0x7F (Red Beast)
+        new_data = bytearray(data[start_pos:pos])
+        for ins_pos in FE_ins_pos:
+            new_data.insert(ins_pos, 0xFE)
+
+        self._data = new_data
+        self.tech_usage = list(set(tech_usage))
+        self.uses_secondary_atk = uses_secondary_atk
+
+    def __len__(self):
+        return len(self._data)
+
+    def __str__(self):
+        ret_str = ''
+        pos = 0
+        for block in range(2):
+
+            if block == 0:
+                ret_str += 'Actions:\n'
+            else:
+                ret_str += 'Reactions:\n'
+
+            while self._data[pos] != 0xFF:
+                while self._data[pos] != 0xFE:  # Conditions
+                    ret_str += bytes_to_str(self._data[pos:pos+4])
+                    ret_str += '\n'
+                    pos += 4
+
+                pos += 1  # Skip terminal 0xFE
+                while self._data[pos] != 0xFE:  # Actions
+                    action_id = self._data[pos]
+                    if action_id == 0xFF:
+                        break
+                    else:
+                        size = _action_lens[action_id]
+                        ret_str += '\t'
+                        ret_str += bytes_to_str(self._data[pos:pos+size])
+                        ret_str += '\n'
+                        pos += size
+                pos += 1  # Skip terminal 0xFE
+            pos += 1  # Skip terminal 0xFF
+
+        return ret_str
+
+
 class EnemyAIDB:
+    PTR_TO_AI_PTRS = 0x01AFD7
 
-    def __init__(self, ptrs: list[int], ai_data: bytes):
-        self.ptrs = list(ptrs)
-        self._orig_ptrs = list(ptrs)  # May need for swapping enemies
+    unused_enemies = (
+        EnemyID.LAVOS_3_CENTER_UNK_0B, EnemyID.LAVOS_GIGA_GAIA_RIGHT,
+        EnemyID.LAVOS_GIGA_GAIA_LEFT, EnemyID.LAVOS_SUPPORT_UNK_1F,
+        EnemyID.LAVOS_SUPPORT_UNK_21, EnemyID.OCTOBINO,
+        EnemyID.UNKNOWN_3C, EnemyID.UNKNOWN_44, EnemyID.UNKNOWN_5A,
+        EnemyID.UNKNOWN_60, EnemyID.LAVOS_SUPPORT_UNK_67,
+        EnemyID.LAVOS_SUPPORT_UNK_77, EnemyID.LAVOS_SUPPORT_UNK_78,
+        EnemyID.UNKNOWN_BF, EnemyID.LAVOS_GUARDIAN, EnemyID.LAVOS_HECKRAN,
+        EnemyID.LAVOS_ZOMBOR_UPPER, EnemyID.LAVOS_MASA_MUNE,
+        EnemyID.LAVOS_NIZBEL, EnemyID.LAVOS_MAGUS, EnemyID.LAVOS_TANK_HEAD,
+        EnemyID.LAVOS_TANK_LEFT, EnemyID.LAVOS_TANK_RIGHT,
+        EnemyID.LAVOS_GUARDIAN_LEFT, EnemyID.LAVOS_GUARDIAN_RIGHT,
+        EnemyID.LAVOS_ZOMBOR_BOTTOM, EnemyID.LAVOS_TYRANO_AZALA,
+        EnemyID.LAVOS_TYRANO, EnemyID.LAVOS_GIGA_GAIA_HEAD,
+        EnemyID.LAVOS_UNK_E8, EnemyID.LAVOS_UNK_E9, EnemyID.LAVOS_UNK_EA,
+        EnemyID.JOHNNY, EnemyID.MAGUS_NO_NAME, EnemyID.UNUSED_FC,
+        EnemyID.UNUSED_FD, EnemyID.UNUSED_FE, EnemyID.UNUSED_FF)
 
-        self.data = ai_data
+    def __init__(self, scripts: dict[EnemyID, AIScript]):
+
+        self.scripts = {x: AIScript() for x in list(EnemyID)}
+        for enemy_id in scripts:
+            self.scripts[enemy_id] = scripts[enemy_id].get_copy()
 
         self.tech_to_enemy_usage = {x: [] for x in range(0x100)}
-        self.enemy_to_tech_usage = {x: [] for x in range(0x100)}
-        self.enemy_atk_usage = {x: [] for x in range(0x100)}
-        self.unused_techs = []
         self._build_tech_usage()
 
     def _build_tech_usage(self):
+        used_enemy_ids = (x for x in self.scripts
+                          if x not in self.unused_enemies)
 
-        for enemy_id in range(0x100):
+        for enemy_id in used_enemy_ids:
+            script = self.scripts[enemy_id]
+            for tech in script.tech_usage:
+                self.tech_to_enemy_usage[tech].append(enemy_id)
 
-            # print(enemy_id)
-            pos = self.ptrs[enemy_id]
-            # See comments in change_tech_in_ai
-            for block in range(2):
-                # print('Block', block)
-                while self.data[pos] != 0xFF:  # Conditions
-                    while self.data[pos] != 0xFE:
-                        pos += 4
-
-                    pos += 1  # Skip terminal 0xFE
-                    while self.data[pos] != 0xFE:  # Actions
-                        action_id = self.data[pos]
-                        tech_pos = None
-                        if action_id == 2:
-                            # Use Tech action, tech_id in byte 1
-                            tech_pos = pos+1
-                        elif action_id == 0x12:
-                            # Use Tech and change stats, tech_id in byte 1 too
-                            tech_pos = pos+1
-
-                        if tech_pos is not None:
-                            tech_id = self.data[tech_pos]
-                            self.enemy_to_tech_usage[enemy_id].append(tech_id)
-                            self.tech_to_enemy_usage[tech_id].append(enemy_id)
-
-                        if action_id == 1:
-                            atk_index = self.data[pos+1]
-                            if atk_index not in self.enemy_atk_usage[enemy_id]:
-                                self.enemy_atk_usage[enemy_id].append(
-                                    atk_index)
-
-                        if action_id == 0xFF:
-                            break
-                        else:
-                            pos += _action_lens[action_id]
-                    pos += 1  # Skip terminal 0xFE
-                pos += 1  # Skip terminal 0xFF
-
-        # Remove duplicates in the dicts
-        for enemy in self.enemy_to_tech_usage:
-            self.enemy_to_tech_usage[enemy] = \
-                list(set(self.enemy_to_tech_usage[enemy]))
-
-        for tech in self.tech_to_enemy_usage:
-            self.tech_to_enemy_usage[tech] = \
-                list(set(self.tech_to_enemy_usage[tech]))
-
-        self.unused_techs = [tech for tech in self.tech_to_enemy_usage
-                             if not self.tech_to_enemy_usage[tech]
-                             and tech not in (0xFF, 0xFE)]
-
-        # print(self.unused_techs)
-
-    # Uses original pointers to avoid circular swap issues.
-    def change_enemy_ai(self, enemy_id, to_orig_enemy_id):
-        self.ptrs[enemy_id] = self._orig_ptrs[to_orig_enemy_id]
-
-        # Update Tech Usage
-        techs_used = self.enemy_to_tech_usage[enemy_id]
-        for tech in techs_used:
-            self.tech_to_enemy_usage[tech].remove(enemy_id)
-
-        techs_used_to = self.enemy_to_tech_usage[to_orig_enemy_id]
-        for tech in techs_used_to:
-            self.tech_to_enemy_usage[tech].append(enemy_id)
-
-        self.enemy_to_tech_usage[enemy_id] = \
-            list(self.enemy_to_tech_usage[to_orig_enemy_id])
-
-        self.enemy_atk_usage = \
-            list(self.enemy_atk_usage[to_orig_enemy_id])
+        self.unused_techs = [
+            tech_id for tech_id in range(0x100)
+            if not self.tech_to_enemy_usage[tech_id]
+            and tech_id not in (0xFE, 0xFF)
+        ]
 
     def change_tech_in_ai(self,
                           enemy_id: int,
                           from_tech_id: int,
                           to_tech_id: int):
+        # print(f'Changing {enemy_id} tech {from_tech_id:02X} '
+        #       f'to {to_tech_id:02X}')
+        script = self.scripts[enemy_id]
+        num_changes = script.change_tech_usage(from_tech_id, to_tech_id)
 
-        pos = self.ptrs[enemy_id]
-
-        made_update = False
-        # Action/Reaction block are identical.
-        for block in range(2):
-            # Block terminates with a 0xFF
-            while self.data[pos] != 0xFF:
-
-                # Skip through the conditions
-                while self.data[pos] != 0xFE:
-                    # Read the condition and do something, if desired
-                    # Conditions are all 4 bytes
-                    pos += 4
-
-                # Skip past the 0xFE that terminates the condition block
-                pos += 1
-
-                # Read through the actions
-                while self.data[pos] != 0xFE:
-                    action_id = self.data[pos]
-                    tech_pos = None
-                    if action_id == 2:
-                        # Use Tech action, tech_id in byte 1
-                        tech_pos = pos+1
-                    elif action_id == 0x12:
-                        # Use Tech and change stats, tech_id in byte 1 too
-                        tech_pos = pos+1
-
-                    if tech_pos is not None:
-                        tech_id = self.data[tech_pos]
-                        if tech_id == from_tech_id:
-                            made_update = True
-                            self.data[tech_pos] = to_tech_id
-                    # Bug: Some blocks are FF terminated instead of FE FF
-                    if action_id == 0xFF:
-                        break
-                    else:
-                        pos += _action_lens[action_id]
-                pos += 1  # Skip terminal 0xFE
-            pos += 1  # Skip terminal 0xFF
-
-        if made_update:
-            # Now update the usage information
+        if num_changes > 0:
             if to_tech_id in self.unused_techs:
                 self.unused_techs.remove(to_tech_id)
 
             self.tech_to_enemy_usage[from_tech_id].remove(enemy_id)
             if enemy_id not in self.tech_to_enemy_usage[to_tech_id]:
                 self.tech_to_enemy_usage[to_tech_id].append(enemy_id)
-            self.enemy_to_tech_usage[enemy_id].remove(from_tech_id)
 
-            if from_tech_id not in self.enemy_to_tech_usage[enemy_id]:
-                self.enemy_to_tech_usage[enemy_id].append(from_tech_id)
+    def change_enemy_ai(self, changed_enemy_id, copied_enemy_id):
+        new_script = self.scripts[copied_enemy_id].get_copy()
+        orig_script = self.scripts[changed_enemy_id]
 
-    def get_ai_script(self, enemy_id: int):
-        pos = self.ptrs[enemy_id]
-        for block in range(2):
-            if block == 0:
-                print('Actions:')
-            else:
-                print('Reactions:')
+        self.scripts[changed_enemy_id] = new_script
 
-            while self.data[pos] != 0xFF:  # Conditions
-                while self.data[pos] != 0xFE:
-                    print_bytes(self.data[pos:pos+4])
-                    pos += 4
+        for tech_id in orig_script.tech_usage:
+            self.tech_to_enemy_usage[tech_id].remove(changed_enemy_id)
 
-                pos += 1  # Skip terminal 0xFE
-                while self.data[pos] != 0xFE:  # Actions
-                    action_id = self.data[pos]
+            if not self.tech_to_enemy_usage[tech_id] \
+               and tech_id not in self.unused_techs:
+                self.unused_techs.append(tech_id)
 
-                    if action_id == 0xFF:
-                        break
-                    else:
-                        size = _action_lens[action_id]
-                        print('\t', end ='')
-                        print_bytes(self.data[pos:pos+size])
-                        pos += size
-                pos += 1  # Skip terminal 0xFE
-            pos += 1  # Skip terminal 0xFF
+        for tech_id in new_script.tech_usage:
+            self.tech_to_enemy_usage[tech_id].append(changed_enemy_id)
 
+    def get_total_length(self):
+        length = 0
+        for enemy_id in list(EnemyID):
+            if enemy_id not in self.unused_enemies:
+                length += len(self.scripts[enemy_id])
 
+        return length
+
+    # Note: Every script is OK except for Johnny (0xF4) which spills into the
+    #       next script.  No pointers go to the same script.
     @classmethod
-    def from_rom(cls, rom: bytes) -> EnemyAIDB:
-        ptr_bytes = bytes(rom[0x0C8B08:0x0C8D08])
+    def from_rom(cls, rom: bytes):
+        ai_ptr_start = int.from_bytes(
+            rom[cls.PTR_TO_AI_PTRS:cls.PTR_TO_AI_PTRS+3],
+            'little'
+        )
+        ai_ptr_start = byteops.to_file_ptr(ai_ptr_start)
 
-        ptrs = [
-            int.from_bytes(ptr_bytes[x:x+2], 'little') - 0x8D08
-            for x in range(0, len(ptr_bytes), 2)
-        ]
+        scripts = dict()
+        for enemy_id in list(EnemyID):
+            if enemy_id not in cls.unused_enemies:
+                ptr_st = ai_ptr_start + 2*enemy_id
+                ptr = int.from_bytes(rom[ptr_st:ptr_st+2], 'little')
+                ptr += 0x0C0000
+                scripts[enemy_id] = AIScript(rom, ptr)
 
-        # print(' '.join(f'{x:04X}' for x in ptrs))
-        # print(len(ptrs))
-        # input(f'{ptrs[127]:04X}')
-
-        ai_data = bytearray(rom[0x0C8D08:0x0CCBC9])
-        # print(f'{len(ai_data):04X}')
-
-        return EnemyAIDB(ptrs, ai_data)
+        return cls(scripts)
 
     @classmethod
     def from_ctrom(cls, ct_rom: ctrom.CTRom):
         return cls.from_rom(ct_rom.rom_data.getbuffer())
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        # For now, we are confident that removing the unused enemies will
+        # leave space for whatever we do.
+
+        # TODO:  Write the pointers anywhere free (contiguous) in bank 0C.
+        #        Write the scripts anywhere free (wherever) in bank 0C.
         rom = ct_rom.rom_data
-        rom.seek(0x0C8B08)
+        ai_ptr_start = int.from_bytes(
+            rom.getbuffer()[self.PTR_TO_AI_PTRS:self.PTR_TO_AI_PTRS+3],
+            'little'
+        )
+        ai_ptr_pos = byteops.to_file_ptr(ai_ptr_start)
 
-        ptr_bytes = b''.join(int.to_bytes(x+0x8D08, 2, 'little')
-                             for x in self.ptrs)
-        rom.write(ptr_bytes)
+        ai_data_pos = 0x0C8D08
+        ai_data_end = 0x0CCBC9
 
-        rom.seek(0x0C8D08)
-        rom.write(self.data)
+        # This should never be an issue with the removed
+        write_length = self.get_total_length()
+        if write_length > ai_data_end - ai_data_pos:
+            print('Error: No room for AI')
+            exit()
+
+        for i in range(0x100):
+            enemy_id = EnemyID(i)
+            ptr = ai_data_pos & 0x00FFFF
+
+            rom.seek(ai_ptr_pos)
+            rom.write(ptr.to_bytes(2, 'little'))
+            ai_ptr_pos += 2
+
+            rom.seek(ai_data_pos)
+            if enemy_id not in self.unused_enemies:
+                script = self.scripts[enemy_id]
+                rom.write(script.get_as_bytearray())
+                ai_data_pos += len(script)
