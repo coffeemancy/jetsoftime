@@ -95,7 +95,6 @@ class Boss:
             for part in self.scheme.ids
         ]
 
-
     # Make a subclass to implement scaling styles
     # Need stats, atk/tech, ai to fully scale.
     def scale_relative_to(
@@ -525,7 +524,7 @@ def progressive_scale_stats(
     def get_prop_scale_factor(
             from_power: int, to_power: int, prop: float
     ) -> float:
-        # Using a (arbitrary) working value of max boss power being 40
+        # Using a (arbitrary) working value of max boss power being 35
         max_power = 35 / prop
 
         if from_power*to_power == 0:

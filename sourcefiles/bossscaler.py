@@ -248,14 +248,13 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
     config.boss_rank = boss_rank
 
     for boss in boss_rank.keys():
-        # print(f"{boss} has rank {boss_rank[boss]}")
         boss_data = config.boss_data_dict[boss]
+        part_ids = list(set(boss_data.scheme.ids))
         rank = boss_rank[boss]
 
         has_scaling_data = boss_data.scheme.ids[0] in scaling_data
 
         if has_scaling_data:
-            part_ids = list(set(boss_data.scheme.ids))
             for part in part_ids:
                 stat_list = scaling_data[part][rank-1]
                 config.enemy_dict[part].replace_from_stat_list(stat_list)
@@ -263,9 +262,12 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
             orig_power = boss_data.power
             new_power = orig_power + 4*rank
 
-            boss_data.scale_to_power(
+            new_stats = boss_data.scale_to_power(
                 new_power,
                 config.enemy_dict,
                 config.enemy_atkdb,
                 config.enemy_aidb
             )
+
+            for ind, part_id in enumerate(boss_data.scheme.ids):
+                config.enemy_dict[part_id] = new_stats[ind]
