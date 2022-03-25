@@ -82,6 +82,20 @@ class Boss:
                     from_power: int, to_power: int) -> EnemyStats:
         raise NotImplementedError
 
+    def scale_to_power(
+            self, new_power,
+            stat_dict: dict[EnemyID, EnemyStats],
+            atk_db: enemytechdb.EnemyAttackDB,
+            ai_db: enemyai.EnemyAIDB
+    ) -> list[EnemyStats]:
+        return [
+            self.scale_stats(part, stat_dict[part],
+                             atk_db, ai_db,
+                             self.power, new_power)
+            for part in self.scheme.ids
+        ]
+
+
     # Make a subclass to implement scaling styles
     # Need stats, atk/tech, ai to fully scale.
     def scale_relative_to(
@@ -163,7 +177,7 @@ class Boss:
 
     @classmethod
     def FLEA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA, 7, 18)
+        return cls.generic_one_spot(EnemyID.FLEA, 7, 20)
 
     @classmethod
     def FLEA_PLUS(cls: Type[T]) -> T:
@@ -298,11 +312,11 @@ class Boss:
 
     @classmethod
     def NIZBEL(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.NIZBEL, 3, 15)
+        return cls.generic_one_spot(EnemyID.NIZBEL, 3, 18)
 
     @classmethod
     def NIZBEL_II(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.NIZBEL_II, 3, 18)
+        return cls.generic_one_spot(EnemyID.NIZBEL_II, 3, 20)
 
     @classmethod
     def RETINITE(cls: Type[T]) -> T:
@@ -330,7 +344,7 @@ class Boss:
 
     @classmethod
     def SLASH_SWORD(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 18)
+        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 20)
 
     @classmethod
     def SUPER_SLASH(cls: Type[T]) -> T:
@@ -598,9 +612,8 @@ def set_stats_offense(enemy_id: EnemyID,
         # print(f'{enemy_id}: scaling techs/atk')
         if scale_techs:
             # Need to ensure uniqueness in list to not double scale.
-            used_tech_ids = list(
-                set(ai_db.enemy_to_tech_usage[int(enemy_id)])
-            )
+            ai_script = ai_db.scripts[enemy_id]
+            used_tech_ids = list(set(ai_script.tech_usage))
             for tech_id in used_tech_ids:
                 tech = atk_db.get_tech(tech_id)
                 usage = ai_db.tech_to_enemy_usage[tech_id]
