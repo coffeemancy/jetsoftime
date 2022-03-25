@@ -371,7 +371,7 @@ class EnemyAIDB:
         ai_data_pos = 0x0C8D08
         ai_data_end = 0x0CCBC9
 
-        # This should never be an issue with the removed
+        # This should never be an issue with the removed enemies
         write_length = self.get_total_length()
         if write_length > ai_data_end - ai_data_pos:
             print('Error: No room for AI')

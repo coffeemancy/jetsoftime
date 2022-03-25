@@ -22,45 +22,6 @@ import randosettings as rset
 import randoconfig as cfg
 
 
-# Original exponential scaling
-def orig_exp_scale(stat: int, from_power, int, to_power: int):
-    tier_diff = to_power - from_power
-
-    exp_dict = {
-        -3: 0.7,
-        -2: 0.85,
-        -1: 0.95,
-        0: 1,
-        1: 1.15,
-        2: 1.25
-    }
-
-    if tier_diff < -3:
-        exp = exp_dict[-3]
-    elif tier_diff > 2:
-        exp = exp_dict[2]
-
-    return int(pow(stat, exp))
-
-
-def no_scale_fn(stats: EnemyStats, from_power: int,
-                to_power: int) -> EnemyStats:
-    return stats
-
-
-def linear_scale_fn(stats: EnemyStats, from_power: int,
-                    to_power: int) -> EnemyStats:
-    base_stats = [stats.hp, stats.level, stats.magic, stats.offense,
-                  stats.xp, stats.gp, stats.tp]
-    max_stats = [0xFFFF, 0xFF, 0xFF, 0xF, 0xFFFF, 0xFFFF, 0xFF]
-    [hp, level, magic, offense, xp, gp, tp] \
-        = [min(base_stats[i]*(to_power/from_power), max_stats[i])
-           for i in range(len(base_stats))]
-    ret = EnemyStats(hp, level, stats.speed, magic, stats.mdef, offense,
-                     stats.defense, xp, gp, tp)
-    return ret
-
-
 def set_manoria_boss(ctrom: CTRom, boss: BossScheme):
     # 0xC6 is Yakra's map - Manoria Command
     loc_id = 0xC6
