@@ -250,45 +250,22 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
     for boss in boss_rank.keys():
         # print(f"{boss} has rank {boss_rank[boss]}")
         boss_data = config.boss_data_dict[boss]
-        part_ids = list(set(boss_data.scheme.ids))
         rank = boss_rank[boss]
 
-        for part in part_ids:
-            if part in scaling_data.keys():
+        has_scaling_data = boss_data.scheme.ids[0] in scaling_data
+
+        if has_scaling_data:
+            part_ids = list(set(boss_data.scheme.ids))
+            for part in part_ids:
                 stat_list = scaling_data[part][rank-1]
-                # print(f"{part} has defined stats {stat_list}")
-            else:
-                # When there is no bespoke stat scaling, fall back to each
-                # rank adding X% over the previous rank.
-                stats = config.enemy_dict[part]
-                stat_list = rank_up_stats(stats, rank)
-                # print(f"{part} gets computed stats {stat_list}")
+                config.enemy_dict[part].replace_from_stat_list(stat_list)
+        else:
+            orig_power = boss_data.power
+            new_power = orig_power + 4*rank
 
-            config.enemy_dict[part].replace_from_stat_list(stat_list)
-
-
-# Just add 15% with each rank up.
-# TODO: This doesn't give you what you want.  The scaled stats are supposed
-#       to start at hard mode stats I think?  Maybe this needs to start by
-#       loading up the hard-mode stats (from a pickle?) and then scaling.
-def rank_up_stats(stats: EnemyStats, rank: int) -> list[int]:
-    scale_factor = 1.15 ** rank
-    orig_mdef = stats.mdef
-    orig_def = stats.defense
-
-    stat_list = [stats.hp, stats.level, stats.magic,
-                 stats.mdef, stats.offense, stats.defense,
-                 stats.xp, stats.gp, stats.tp]
-
-    stat_max = [0x7FFF, 0xFF, 0xFF,
-                0xFF, 0xFF, 0xFF,
-                0xFFFF, 0xFFFF, 0xFF]
-
-    stat_list = [int(min(stat_list[i]*scale_factor, stat_max[i]))
-                 for i in range(len(stat_list))]
-
-    # set mdef/def back to normal range
-    stat_list[3] = orig_mdef
-    stat_list[5] = orig_def
-
-    return stat_list
+            boss_data.scale_to_power(
+                new_power,
+                config.enemy_dict,
+                config.enemy_atkdb,
+                config.enemy_aidb
+            )
