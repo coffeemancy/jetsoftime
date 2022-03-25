@@ -1196,6 +1196,10 @@ class EnemyID(StrIntEnum):
     MAGUS = 0xF9
     MAGUS_NORTH_CAPE = 0xFA
     MAGUS_NO_NAME = 0xFB
+    UNUSED_FC = 0xFC
+    UNUSED_FD = 0xFD
+    UNUSED_FE = 0xFE
+    UNUSED_FF = 0xFF
 
 
 class ShopID(StrIntEnum):
