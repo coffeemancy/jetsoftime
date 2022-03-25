@@ -138,7 +138,7 @@ class Boss:
 
     @classmethod
     def ATROPOS_XR(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 20)
+        return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 15)
 
     @classmethod
     def BLACK_TYRANO(cls: Type[T]) -> T:
@@ -171,7 +171,7 @@ class Boss:
                EnemyID.ELDER_SPAWN_HEAD]
         slots = [3, 9]
         disps = [(0, 0), (-8, 1)]
-        power = 40
+        power = 35
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -205,7 +205,7 @@ class Boss:
 
     @classmethod
     def GOLEM(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.GOLEM, 3, 20)
+        return cls.generic_one_spot(EnemyID.GOLEM, 3, 25)
 
     @classmethod
     def GOLEM_BOSS(cls: Type[T]) -> T:
@@ -220,7 +220,7 @@ class Boss:
         slots = [3, 7, 8]
         # disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
         disps = [(0, 0), (-0x3A, -0x08), (0x40, -0x08)]
-        power = 20
+        power = 18
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -268,7 +268,7 @@ class Boss:
 
     @classmethod
     def MAMMON_MACHINE(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.MAMMON_M, 3, 40)
+        return cls.generic_one_spot(EnemyID.MAMMON_M, 3, 35)
 
     @classmethod
     def MASA_MUNE(cls: Type[T]) -> T:
@@ -324,7 +324,7 @@ class Boss:
                EnemyID.RETINITE_BOTTOM]
         slots = [3, 9, 6]
         disps = [(0, 0), (0, -0x8), (0, 0x28)]
-        power = 15
+        power = 18
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -367,7 +367,7 @@ class Boss:
         ids = [EnemyID.TERRA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 40
+        power = 35
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -376,7 +376,7 @@ class Boss:
         ids = [EnemyID.TWIN_BOSS, EnemyID.TWIN_BOSS]
         slots = [3, 6]
         disps = [(0, 0), (0x20, 0)]
-        power = 40  # Should match mutant power
+        power = 35  # Should match mutant power
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
@@ -520,13 +520,13 @@ def progressive_scale_stats(
     # Interpet these as 'at endgame level, players at best have the given
     # percentage of the max defensive stat.'
     def_prop = 0.65
-    mdef_prop = 0.5
+    mdef_prop = 0.45
 
     def get_prop_scale_factor(
             from_power: int, to_power: int, prop: float
     ) -> float:
         # Using a (arbitrary) working value of max boss power being 40
-        max_power = 40 / prop
+        max_power = 35 / prop
 
         if from_power*to_power == 0:
             return 0
@@ -538,9 +538,10 @@ def progressive_scale_stats(
     off_scale_factor = get_prop_scale_factor(from_power, to_power, def_prop)
     mag_scale_factor = get_prop_scale_factor(from_power, to_power, mdef_prop)
 
-    new_offense = stats.offense * off_scale_factor
-    set_stats_offense(enemy_id, new_stats, new_offense, atk_db,
-                      ai_db, scale_techs, scale_atk)
+    if scale_offense:
+        new_offense = stats.offense * off_scale_factor
+        set_stats_offense(enemy_id, new_stats, new_offense, atk_db,
+                          ai_db, scale_techs, scale_atk)
 
     if scale_magic:
         new_stats.magic = int(min(stats.magic*mag_scale_factor, 0xFF))
