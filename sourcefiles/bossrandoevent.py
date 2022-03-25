@@ -827,27 +827,11 @@ def set_twin_golem_spot(ctrom: CTRom, boss: BossScheme):
     script = ctrom.script_manager.get_script(loc_id)
 
     if len(boss.ids) == 1:
-        # Turn the one spot boss into a two spot copy
-        # The only difficulty is that you need a new slot for the copy
+        # Now, it should be that single target bosses get copied into
+        # EnemyID.TWIN_BOSS.
 
-        if boss.slots[0] == 3:
-            new_slot = 7
-        elif boss.slots[0] == 6:
-            new_slot = 3
-        elif boss.slots[0] == 7:
-            new_slot = 9
-        # Weird exceptions
-        elif boss.ids[0] == EnemyID.GOLEM_BOSS:
-            new_slot = 8
-        elif boss.ids[0] in (EnemyID.NIZBEL, EnemyID.NIZBEL_II,
-                             EnemyID.RUST_TYRANO):
-            new_slot = 6
-        else:
-            new_slot = 7
-
-        boss.ids.append(boss.ids[0])
-        boss.disps.append((40, 0))
-        boss.slots.append(new_slot)
+        print('Error putting single boss in twin spot.')
+        exit()
 
         first_x, first_y = 0x60, 0xE0
     else:
@@ -1591,14 +1575,13 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         elif base_slot == 7:
             alt_slot = 9
         else:
-            new_slot = 7
+            alt_slot = 7
 
-        # And there are some special cases.
         if base_id == EnemyID.GOLEM_BOSS:
-            new_slot == 8
+            alt_slot = 8
         elif base_id in (EnemyID.NIZBEL, EnemyID.NIZBEL_II,
                          EnemyID.RUST_TYRANO):
-            new_slot = 6
+            alt_slot = 6
 
         # Set the twin boss scheme
         # Note, we do not change the EnemyID from EnemyID.TWIN_BOSS.
@@ -1606,6 +1589,10 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         # into the Twin spot.
         twin_scheme = twin_boss.scheme
         twin_scheme.slots = [base_slot, alt_slot]
+
+        # Give the twin boss the base boss's ai
+        config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
+        config.enemy_atkdb.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
 
         # Scale the stats and write them to the twin boss spot in the config
         # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
@@ -1885,13 +1872,7 @@ def write_twin_boss_to_ctrom(ct_rom: CTRom, config: cfg.RandoConfig):
 
     # Otherwise, we need to
     # 1) Copy the new twin boss's graphics data to the twin boss id
-    # 2) Update the twin boss's AI pointer
-    # 3) Copy basic attack control headers
-    # 4) Copy basic attack graphics headers
-    # 5) Pray that's it.  There may be weird things like boss death anims, but
-    #    The twin golem has no death anim, so it should be ok.
-
-    # 1) Copy the new twin boss's graphics data to the twin boss id
+    # Everythingn else is handled by the aidb and atkdb.
     one_spot_id = config.twin_boss_type
     one_spot_sprite_start = 0x24F600 + 10*one_spot_id
     ct_rom.rom_data.seek(one_spot_sprite_start)
@@ -1900,34 +1881,6 @@ def write_twin_boss_to_ctrom(ct_rom: CTRom, config: cfg.RandoConfig):
     twin_boss_sprite_start = 0x24F600 + 10*EnemyID.TWIN_BOSS
     ct_rom.rom_data.seek(twin_boss_sprite_start)
     ct_rom.rom_data.write(one_spot_sprite_data)
-
-    # 2) Update the twin boss's AI pointer to the one spot boss's pointer
-    ai_ptr_start = 0x0C8B08
-    ct_rom.rom_data.seek(ai_ptr_start + 2*one_spot_id)
-    one_spot_ai_ptr = ct_rom.rom_data.read(2)
-
-    ct_rom.rom_data.seek(ai_ptr_start + 2*EnemyID.TWIN_BOSS)
-    ct_rom.rom_data.write(one_spot_ai_ptr)
-
-    # 3) Copy basic attack control header
-    ct_rom.rom_data.seek(0x0C6FC9 + 11*one_spot_id)
-    control = ct_rom.rom_data.read(11)
-
-    ct_rom.rom_data.seek(0x0C6FC9 + 11*EnemyID.TWIN_BOSS)
-    ct_rom.rom_data.write(control)
-
-    # 4) Copy basic attack graphics headers (there are two!)
-    ct_rom.rom_data.seek(0x0D4926 + 6*one_spot_id)
-    gfx1 = ct_rom.rom_data.read(7)
-
-    ct_rom.rom_data.seek(0x0D4926 + 6*EnemyID.TWIN_BOSS)
-    ct_rom.rom_data.write(gfx1)
-
-    ct_rom.rom_data.seek(0x0D4F26 + 6*one_spot_id)
-    gfx2 = ct_rom.rom_data.read(7)
-
-    ct_rom.rom_data.seek(0x0D4F26 + 6*EnemyID.TWIN_BOSS)
-    ct_rom.rom_data.write(gfx2)
 
 
 def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
@@ -1970,7 +1923,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     current_assignment = config.boss_assign_dict
 
     for loc in current_assignment.keys():
-        if current_assignment[loc] == default_assignment[loc]:
+        if current_assignment[loc] == default_assignment[loc] and \
+           loc != LocID.OCEAN_PALACE_TWIN_GOLEM:
             # print(f"Not assigning to {loc}.  No change from default.")
             pass
         else:
