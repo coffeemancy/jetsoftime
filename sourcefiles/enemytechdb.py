@@ -396,7 +396,7 @@ class EnemyAttackDB:
 
         # print(f'Found 0x{max_atk_id:02X} attacks')
         num_enemies = 0x100
-        num_attacks = max_atk_id
+        num_attacks = max_atk_id + 1
 
         # Default 0x0C88CA
         atk_control_start = byteops.file_ptr_from_rom(
