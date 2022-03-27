@@ -152,6 +152,9 @@ class PriceManager:
             # 3 byte record, price is 2 bytes, offset 1
             return 0x0C0ABC + 3*(item_index-0xBC) + 1
 
+    def _jot_json(self):
+        return {str(k): v for (k,v) in self.price_dict.items() if k in range(1, ctenums.ItemID(0xD0))}
+
     def __str__(self):
         ret = ''
         for item, price in self.price_dict.items():
@@ -244,6 +247,10 @@ class ShopManager:
 
     def print_with_prices(self, price_manager: PriceManager):
         print(self.__str__(price_manager))
+
+    def _jot_json(self):
+        shops_ignored = [ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14, ctenums.ShopID.LAST_VILLAGE_UPDATED]
+        return {str(k): [str(i) for i in v] for (k,v) in self.shop_dict.items() if k not in shops_ignored }
 
     def __str__(self, price_manager: PriceManager = None):
         ret = ''
@@ -1261,7 +1268,9 @@ class RandoConfig:
                     'magic': self.magic_tab_amt,
                     'speed': self.speed_tab_amt
                 }
-            }
+            },
+            'shops': self.shop_manager,
+            'prices': self.price_manager
         }
 
     @classmethod
