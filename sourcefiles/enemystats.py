@@ -50,6 +50,24 @@ class EnemyStats:
         self._set_name(name_bytes)
         self._set_rewards(reward_bytes)
 
+    def _jot_json(self):
+        return {
+            'hp': self.hp,
+            'level': self.level,
+            'speed': self.speed,
+            'magic': self.magic,
+            'mdef': self.mdef,
+            'offense': self.offense,
+            'defense': self.defense,
+            'xp': self.xp,
+            'gp': self.gp,
+            'drop_item': str(self.drop_item),
+            'charm_item': str(self.charm_item),
+            'tp': self.tp,
+            'can_sightscope': self.can_sightscope,
+            'name': self.name.strip()
+        }
+
     def __str__(self):
         ret = ''
         stats = [str.rjust(str(x), 3)

@@ -254,6 +254,9 @@ class Location:
         self.treasure_id = treasure_id
         self.keyItem = None
 
+    def _jot_json(self):
+        return {self.getName(): str(self.getKeyItem())}
+
     #
     # Get the name of this location.
     #

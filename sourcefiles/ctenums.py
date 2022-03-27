@@ -8,6 +8,9 @@ class StrIntEnum(IntEnum):
         x = x.replace('_', ' ')
         return x
 
+    def _jot_json(self):
+        return str(self)
+
     @classmethod
     def str_dict(cls) -> dict:
         return dict((x, str(x)) for x in list(cls))

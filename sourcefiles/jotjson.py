@@ -4,8 +4,8 @@ import randosettings as rset
 
 class JOTJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, cfg.RandoConfig) or isinstance(obj, rset.Settings):
-            return obj.json_dict()
+        if hasattr(obj, '_jot_json'):
+            return obj._jot_json()
         elif isinstance(obj, rset.GameFlags):
             return [str(flag) for flag in rset.GameFlags if flag in obj]
         elif isinstance(obj, rset.CosmeticFlags):

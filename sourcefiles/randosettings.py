@@ -262,7 +262,7 @@ class Settings:
         self.cosmetic_flags = CosmeticFlags(False)
         self.seed = ''
 
-    def json_dict(self):
+    def _jot_json(self):
         return {
             "seed": self.seed,
             "mode": str(self.game_mode),

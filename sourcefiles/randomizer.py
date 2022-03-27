@@ -1291,20 +1291,6 @@ def get_settings_from_command_line() -> rset.Settings:
     return settings
 
 
-def test_json():
-    with open('./roms/ct.sfc', 'rb') as infile:
-        rom = infile.read()
-
-    settings = rset.Settings.get_race_presets()
-    settings.seed = 'asdfasf'
-
-    rando = Randomizer(rom, is_vanilla=True,
-                       settings=settings,
-                       config=None)
-    rando.set_random_config()
-    rando.config.to_json('./json/json_test.json')
-
-
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "-c":
         generate_from_command_line()
