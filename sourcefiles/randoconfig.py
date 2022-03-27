@@ -38,6 +38,9 @@ class PlayerChar:
         self.tech_permutation = [x for x in range(8)]
         self.assigned_char = pc_id
 
+    def _jot_json(self):
+        return {str(self.pc_id): str(self.assigned_char)}
+
     # Being explicit here that we only write out the stats.
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom,
                              stat_start: int = 0x0C0000,
@@ -84,6 +87,9 @@ class CharManager:
                 self.mp_growth_start, self.stat_growth_start,
                 self.xp_thresh_start, self.tp_thresh_start
             ) for i in range(7)]
+
+    def _jot_json(self):
+        return {k: v for d in self.pcs for k, v in d._jot_json().items()}
 
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom):
         for pc in self.pcs:
@@ -1203,37 +1209,38 @@ class RandoConfig:
             one."""
             return {k: v for d in l for k, v in d._jot_json().items()}
 
-        ### bosses currently weird because of twin bosses
-        # make boss rando dict
-        # don't add 'Twin' to the twin boss, consumers can add themselves if they want
-        #boss_locations_dict = {
-        #        str(location): str(name)
-        #        for (location, name) in self.boss_assign_dict.items()
-        #}
+        def enum_enum_dict(d):
+            "For dicts with both keys and values that are StrIntEnums"
+            return { str(k): str(v) for (k,v) in d.items() }
 
         # make boss details dict
         # stats can be gotten from the enemies dict
-        #BossID = ctenums.BossID
-        #boss_ids = list(self.boss_assign_dict.values()) + \
-        #        [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2]
-        #boss_details_dict = {
-        #        str(boss_id): {
-        #            'scale': self.boss_rank[boss_id] if boss_id in self.boss_rank else None,
-        #            'parts': [str(part_id) for part_id in list(dict.fromkeys(self.boss_data_dict[boss_id].scheme.ids))]
-        #        }
-        #        for boss_id in boss_ids
-        #}
+        BossID = ctenums.BossID
+        boss_ids = list(self.boss_assign_dict.values()) + \
+                [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2]
+        boss_details_dict = {
+                str(boss_id): {
+                    'scale': self.boss_rank[boss_id] if boss_id in self.boss_rank else None,
+                    'parts': [str(part_id) for part_id in list(dict.fromkeys(self.boss_data_dict[boss_id].scheme.ids))]
+                }
+                for boss_id in boss_ids
+        }
 
-        #boss_details_dict[str(BossID.MAGUS)]['character'] = self.magus_char
-        #boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = self.black_tyrano_element
+        boss_details_dict[str(BossID.MAGUS)]['character'] = self.magus_char
+        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = self.black_tyrano_element
 
         return {
             'key_items': merged_list_dict(self.key_item_locations),
             'character_locations': enum_key_dict(self.char_assign_dict),
-            #'boss_locations': boss_locations_dict,
-            #'boss_details': boss_details_dict,
+            'character_assignments': self.char_manager,
+            # The boss in the twin golem spot will always be "Twin Boss"
+            # This can still be looked up in the boss details and enemies
+            # structures, the latter of which can provide its name.
+            'boss_locations': enum_enum_dict(self.boss_assign_dict),
+            'boss_details': boss_details_dict,
             'treasures': enum_key_dict(self.treasure_assign_dict),
             'enemies': enum_key_dict(self.enemy_dict),
+            'obstacle_status': str(self.obstacle_status),
             'tabs': {
                 'Power': self.power_tab_amt,
                 'Magic': self.magic_tab_amt,
