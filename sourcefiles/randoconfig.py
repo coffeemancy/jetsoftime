@@ -1236,8 +1236,8 @@ class RandoConfig:
                 for boss_id in boss_ids
         }
 
-        boss_details_dict[str(BossID.MAGUS)]['character'] = self.magus_char
-        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = self.black_tyrano_element
+        boss_details_dict[str(BossID.MAGUS)]['character'] = str(self.magus_char)
+        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = str(self.black_tyrano_element)
 
         chars = self.char_manager._jot_json()
         # the below is ugly, would be nice to have tech lists on PlayerChar objects maybe
