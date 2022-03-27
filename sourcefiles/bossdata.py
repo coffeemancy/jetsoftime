@@ -254,14 +254,14 @@ class Boss:
             100
         )
 
-    # TODO: Check on this.  It should be the displacement is -8 but that
+    # TODO: Check on this.  It should be the displacement is -8, 0 but that
     #       doesn't work...sometimes?  It's weird.
     @classmethod
     def LAVOS_SPAWN(cls: Type[T]) -> T:
         ids = [EnemyID.LAVOS_SPAWN_SHELL,
                EnemyID.LAVOS_SPAWN_HEAD]
         slots = [3, 9]
-        disps = [(0, 0), (-0x7, 0)]
+        disps = [(0, 0), (-0x8, 1)]
         power = 20
         return cls.generic_multi_spot(ids, disps, slots, power)
 
