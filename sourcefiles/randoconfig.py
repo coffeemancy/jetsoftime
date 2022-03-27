@@ -1183,7 +1183,7 @@ class RandoConfig:
             self.enemy_atkdb = enemytechdb.EnemyAttackDB.from_rom(rom)
             self.enemy_aidb = enemyai.EnemyAIDB.from_rom(rom)
 
-    def to_json(self, outfile_name):
+    def json_dict(self):
         # Make key item dict
         # self.key_item_locations uses logictypes.Location (and subclasses)
         # instead of tids because of linked locations
@@ -1203,6 +1203,38 @@ class RandoConfig:
             str(treasure_loc): str(treasure.held_item)
             for (treasure_loc, treasure) in self.treasure_assign_dict.items()
         }
+
+        # make tab dict
+        tab_dict = {
+            'Power': self.power_tab_amt,
+            'Magic': self.magic_tab_amt,
+            'Speed': self.speed_tab_amt
+        }
+
+
+        ### bosses currently weird because of twin bosses
+        # make boss rando dict
+        # don't add 'Twin' to the twin boss, consumers can add themselves if they want
+        #boss_locations_dict = {
+        #        str(location): str(name)
+        #        for (location, name) in self.boss_assign_dict.items()
+        #}
+
+        # make boss details dict
+        # stats can be gotten from the enemies dict
+        #BossID = ctenums.BossID
+        #boss_ids = list(self.boss_assign_dict.values()) + \
+        #        [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2]
+        #boss_details_dict = {
+        #        str(boss_id): {
+        #            'scale': self.boss_rank[boss_id] if boss_id in self.boss_rank else None,
+        #            'parts': [str(part_id) for part_id in list(dict.fromkeys(self.boss_data_dict[boss_id].scheme.ids))]
+        #        }
+        #        for boss_id in boss_ids
+        #}
+
+        #boss_details_dict[str(BossID.MAGUS)]['character'] = self.magus_char
+        #boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = self.black_tyrano_element
 
         # dataclasses.asdict will turn the enums into strings, so I'm doing
         # this.  It's awful.
@@ -1231,15 +1263,19 @@ class RandoConfig:
             for enemy in self.enemy_dict
         }
 
-        json_dict = {
+        return {
             'key_items': key_item_dict,
             'character_locations': char_assign_dict,
+            #'boss_locations': boss_locations_dict,
+            #'boss_details': boss_details_dict,
             'treasures': treasure_dict,
-            'enemies': enemy_dict
+            'enemies': enemy_dict,
+            'tabs': tab_dict
         }
 
+    def to_json(self, outfile_name):
         with open(outfile_name, 'w') as json_out:
-            json.dump(json_dict, json_out, indent=4)
+            json.dump(self.json_dict(), json_out, indent=4)
 
     @classmethod
     def get_config_from_rom(cls, rom: bytearray):

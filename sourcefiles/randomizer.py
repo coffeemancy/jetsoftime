@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pickle
 import sys
+import json
 
 import treasurewriter
 import shopwriter
@@ -34,6 +35,7 @@ import enemyrewards
 import randoconfig as cfg
 import randosettings as rset
 
+from jotjson import JOTJSONEncoder
 
 class NoSettingsException(Exception):
     pass
@@ -571,8 +573,11 @@ class Randomizer:
 
         return self.out_rom.rom_data.getvalue()
 
-    def write_spoiler_log(self, filename):
-        with open(filename, 'w') as outfile:
+    def write_spoiler_log(self, outfile):
+        if isinstance(outfile, str):
+            with open(outfile, 'w') as real_outfile:
+                self.write_spoiler_log(real_outfile)
+        else:
             self.write_settings_spoilers(outfile)
             self.write_tab_spoilers(outfile)
             self.write_key_item_spoilers(outfile)
@@ -583,6 +588,14 @@ class Randomizer:
             self.write_drop_charm_spoilers(outfile)
             self.write_shop_spoilers(outfile)
             self.write_price_spoilers(outfile)
+
+    def write_json_spoiler_log(self, outfile):
+        if isinstance(outfile, str):
+            with open(outfile, 'w') as real_outfile:
+                self.write_json_spoiler_log(real_outfile)
+        else:
+            json.dump({"configuration": self.config, "settings": self.settings}, outfile, cls=JOTJSONEncoder)
+
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")

@@ -262,6 +262,18 @@ class Settings:
         self.cosmetic_flags = CosmeticFlags(False)
         self.seed = ''
 
+    def json_dict(self):
+        return {
+            "seed": self.seed,
+            "mode": str(self.game_mode),
+            "enemy_difficulty": str(self.enemy_difficulty),
+            "item_difficulty": str(self.item_difficulty),
+            "tech_order": str(self.techorder),
+            "shops": str(self.shopprices),
+            "flags": self.gameflags,
+            "cosmetic_flags": self.cosmetic_flags
+        }
+
     def get_race_presets():
         ret = Settings()
 

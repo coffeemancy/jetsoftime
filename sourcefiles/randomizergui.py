@@ -1556,7 +1556,11 @@ class RandoGUI:
             spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.txt"
             spoiler_path = \
                 str(pathlib.Path(out_dir).joinpath(spoiler_filename))
+            json_spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.json"
+            json_spoiler_path = \
+                str(pathlib.Path(out_dir).joinpath(json_spoiler_filename))
             rando.write_spoiler_log(spoiler_path)
+            rando.write_json_spoiler_log(json_spoiler_path)
 
             tk.messagebox.showinfo(
                 title='Randomization Complete',
