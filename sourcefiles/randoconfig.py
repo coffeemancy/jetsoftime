@@ -12,6 +12,7 @@ import enemytechdb
 import enemystats
 import ctenums
 import ctrom
+import ctstrings
 import statcompute
 import techdb
 
@@ -39,7 +40,9 @@ class PlayerChar:
         self.assigned_char = pc_id
 
     def _jot_json(self):
-        return {str(self.pc_id): str(self.assigned_char)}
+        return {str(self.pc_id):
+                {'assignment': str(self.assigned_char),
+                 'stats': self.stats}}
 
     # Being explicit here that we only write out the stats.
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom,
@@ -1229,22 +1232,35 @@ class RandoConfig:
         boss_details_dict[str(BossID.MAGUS)]['character'] = self.magus_char
         boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = self.black_tyrano_element
 
+        chars = self.char_manager._jot_json()
+        # the below is ugly, would be nice to have tech lists on PlayerChar objects maybe
+        for char_id in range(7):
+            chars[str(ctenums.CharID(char_id))]['techs'] = [ctstrings.CTString.ct_bytes_to_techname(self.techdb.get_tech(1 + 8*char_id + i)['name']).strip(' *') for i in range(8)]
+
         return {
             'key_items': merged_list_dict(self.key_item_locations),
-            'character_locations': enum_key_dict(self.char_assign_dict),
-            'character_assignments': self.char_manager,
-            # The boss in the twin golem spot will always be "Twin Boss"
-            # This can still be looked up in the boss details and enemies
-            # structures, the latter of which can provide its name.
-            'boss_locations': enum_enum_dict(self.boss_assign_dict),
-            'boss_details': boss_details_dict,
-            'treasures': enum_key_dict(self.treasure_assign_dict),
-            'enemies': enum_key_dict(self.enemy_dict),
-            'obstacle_status': str(self.obstacle_status),
-            'tabs': {
-                'Power': self.power_tab_amt,
-                'Magic': self.magic_tab_amt,
-                'Speed': self.speed_tab_amt
+            'characters': {
+                'locations': enum_key_dict(self.char_assign_dict),
+                'details': chars
+            },
+            'enemies': {
+                'details': enum_key_dict(self.enemy_dict),
+                # The boss in the twin golem spot will always be "Twin Boss"
+                # This can still be looked up in the boss details and enemy
+                # details structures, the latter of which can provide its name.
+                'bosses': {
+                    'locations': enum_enum_dict(self.boss_assign_dict),
+                    'details': boss_details_dict,
+                },
+                'obstacle_status': str(self.obstacle_status)
+            },
+            'treasures': {
+                'assignments': enum_key_dict(self.treasure_assign_dict),
+                'tabs': {
+                    'power': self.power_tab_amt,
+                    'magic': self.magic_tab_amt,
+                    'speed': self.speed_tab_amt
+                }
             }
         }
 
