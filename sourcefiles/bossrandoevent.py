@@ -1767,10 +1767,69 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
     config.enemy_dict[EnemyID.MAGUS].hp = random.randrange(10000, 15001, 1000)
     config.magus_char = random.choice(list(CharID))
 
+    magus_nukes = {
+        CharID.CRONO: 0xBB,  # Luminaire
+        CharID.MARLE: 0x52,  # Hexagon Mist
+        CharID.LUCCA: 0xA9,  # Flare
+        CharID.ROBO: 0xBB,   # Luminaire
+        CharID.FROG: 0x52,   # Hexagon Mist
+        CharID.AYLA: 0x8E,   # Energy Release
+        CharID.MAGUS: 0x6B   # Dark Matter
+    }
+
+    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
+    magus_usage = magus_ai.tech_usage
+
+    orig_nukes = [x for x in magus_nukes.values()
+                  if x in magus_usage]
+
+    assert len(orig_nukes) == 1
+
+    orig_nuke = orig_nukes[0]
+    magus_ai.change_tech_usage(orig_nuke, magus_nukes[config.magus_char])
+
     config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
         random.randrange(8000, 13001, 1000)
-    config.black_tyrano_element = \
-        random.choice(list(Element))
+
+    tyrano_element = random.choice(list(Element))
+    config.black_tyrano_element = tyrano_element
+
+    # Update black tyrano AI to use the right elemental techs
+    tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
+    tyrano_usage = tyrano_ai.tech_usage
+    tyrano_nukes = {
+        Element.FIRE: 0x37,
+        Element.ICE: 0x52,
+        Element.LIGHTNING: 0xBB,
+        Element.NONELEMENTAL: 0x8E,
+        Element.SHADOW: 0x6B
+    }
+
+    tyrano_minor_techs = {
+        Element.FIRE: 0x0A,
+        Element.ICE: 0x2A,
+        Element.LIGHTNING: 0x2B,
+        Element.NONELEMENTAL: 0x14,
+        Element.SHADOW: 0x15  # Weird both 0x14 and 0x15 are lasers
+    }
+
+    # patch.ips makes tyrano ice.  Does lw do something else?
+    # Let's just find the right techs.
+    orig_nuke = [x for x in tyrano_nukes.values()
+                 if x in tyrano_usage]
+    orig_minor_tech = [x for x in tyrano_minor_techs.values()
+                       if x in tyrano_usage]
+
+    assert len(orig_nuke) == 1 and len(orig_minor_tech) == 1
+
+    orig_nuke = orig_nuke[0]
+    orig_minor_tech = orig_minor_tech[0]
+
+    new_nuke = tyrano_nukes[tyrano_element]
+    new_minor_tech = tyrano_minor_techs[tyrano_element]
+
+    tyrano_ai.change_tech_usage(orig_nuke, new_nuke)
+    tyrano_ai.change_tech_usage(orig_minor_tech, new_minor_tech)
 
     # We're going to jam obstacle randomization here
     # Small block to randomize status inflicted by Obstacle/Chaotic Zone
@@ -1793,6 +1852,11 @@ def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # These do not mess with stats or scripts or anything else, so I'm
     # going to keep these around.
 
+    # Magus's tech is set by the AIDB, but the changes to battle messages
+    # and Magus's name is done by this patch.
+    # TODO: Dismantle these patches.  Naming can be fixed with stat dict.
+    #       Battle messages can be handled with ctstrings, but new code is
+    #       needed to manage the pointers.
     rom = ctrom.rom_data
     if config.magus_char == CharID.CRONO:
         rom.patch_txt_file('./patches/magus_c.txt')
@@ -1807,15 +1871,7 @@ def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     elif config.magus_char == CharID.AYLA:
         rom.patch_txt_file('./patches/magus_a.txt')
 
-    elem = config.black_tyrano_element
-    if elem == Element.ICE:
-        rom.patch_txt_file('./patches/tyrano_i.txt')
-    elif elem == Element.LIGHTNING:
-        rom.patch_txt_file('./patches/tyrano_l.txt')
-    elif elem == Element.SHADOW:
-        rom.patch_txt_file('./patches/tyrano_s.txt')
-    elif elem == Element.NONELEMENTAL:
-        rom.patch_txt_file('./patches/tyrano_n.txt')
+    # Tyrano element is set with the AIDB now.
 
 
 def write_twin_boss_to_ctrom(ct_rom: CTRom, config: cfg.RandoConfig):
