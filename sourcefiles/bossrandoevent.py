@@ -8,7 +8,6 @@ import random
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import BossScheme, get_default_boss_assignment
 from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect
-from enemystats import EnemyStats
 from ctevent import Event, free_event, get_loc_event_ptr
 from ctrom import CTRom
 from eventcommand import EventCommand as EC, get_command, FuncSync
@@ -1702,22 +1701,35 @@ def write_assignment_to_config(settings: rset.Settings,
         for i in range(len(locations)):
             config.boss_assign_dict[locations[i]] = bosses[i]
 
-        # Force GG on Woe for Ice Age
-        if settings.game_mode == rset.GameMode.ICE_AGE:
-            woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
-            if woe_boss != BossID.GIGA_GAIA:
-                if BossID.GIGA_GAIA in config.boss_assign_dict.values():
-                    gg_loc = next(
-                        x for x in config.boss_assign_dict
-                        if config.boss_assign_dict[x] == BossID.GIGA_GAIA
-                    )
+    # Force GG on Woe for Ice Age
+    if settings.game_mode == rset.GameMode.ICE_AGE:
+        woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
+        if woe_boss != BossID.GIGA_GAIA:
+            if BossID.GIGA_GAIA in config.boss_assign_dict.values():
+                gg_loc = next(
+                    x for x in config.boss_assign_dict
+                    if config.boss_assign_dict[x] == BossID.GIGA_GAIA
+                )
+                config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
+                    BossID.GIGA_GAIA
+                config.boss_assign_dict[gg_loc] = woe_boss
+            else:
+                config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
+                    BossID.GIGA_GAIA
 
-                    config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
-                        BossID.GIGA_GAIA
-                    config.boss_assign_dict[gg_loc] = woe_boss
-                else:
-                    config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
-                        BossID.GIGA_GAIA
+    # Sprite data changes
+    # Guardian is given Nu's appearance outside of Arris Dome
+    arris_boss = config.boss_assign_dict[LocID.ARRIS_DOME_GUARDIAN_CHAMBER]
+    if arris_boss != BossID.GUARDIAN:
+        nu_sprite = config.enemy_dict[EnemyID.NU].sprite_data.get_copy()
+        guardian_data = config.enemy_dict[EnemyID.GUARDIAN]
+        guardian_data.sprite_data = nu_sprite
+
+    # GG needs to not affect Layer1 when it is outside of Woe
+    woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
+    if woe_boss != BossID.GIGA_GAIA:
+        gg_data = config.enemy_dict[EnemyID.GIGA_GAIA_HEAD]
+        gg_data.sprite_data.set_affect_layer_1(False)
 
 
 # Scale the bosses given (the game settings) and the current assignment of
@@ -1829,8 +1841,10 @@ def get_black_tyrano_element(config: cfg.RandoConfig) -> Element:
 def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
 
     # Random hp from 10k to 15k
-    config.enemy_dict[EnemyID.MAGUS].hp = random.randrange(10000, 15001, 1000)
-    config.magus_char = random.choice(list(CharID))
+    magus_stats = config.enemy_dict[EnemyID.MAGUS]
+    magus_stats.hp = random.randrange(10000, 15001, 1000)
+
+    magus_char = random.choice(list(CharID))
 
     magus_nukes = {
         CharID.CRONO: 0xBB,  # Luminaire
@@ -1842,6 +1856,16 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
         CharID.MAGUS: 0x6B   # Dark Matter
     }
 
+    nuke_strs = {
+        CharID.CRONO: 'Luminaire / Crono\'s strongest attack!',
+        CharID.MARLE: 'Hexagon Mist /Marle\'s strongest attack!',
+        CharID.LUCCA: 'Flare / Lucca\'s strongest attack!',
+        CharID.ROBO: 'Luminaire /Robo\'s strongest attack!',
+        CharID.FROG: 'Hexagon Mist /Frog\'s strongest attack.',
+        CharID.AYLA: 'Energy Flare /Ayla\'s strongest attack!',
+        CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
+    }
+
     magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
     magus_usage = magus_ai.tech_usage
 
@@ -1851,7 +1875,12 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
     assert len(orig_nukes) == 1
 
     orig_nuke = orig_nukes[0]
-    magus_ai.change_tech_usage(orig_nuke, magus_nukes[config.magus_char])
+    magus_ai.change_tech_usage(orig_nuke, magus_nukes[magus_char])
+    magus_stats.sprite_data.set_sprite_to_pc(magus_char)
+    magus_stats.name = str(magus_char)
+
+    battle_msgs = config.enemy_aidb.battle_msgs
+    battle_msgs.set_msg_from_str(0x23, nuke_strs[magus_char])
 
     config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
         random.randrange(8000, 13001, 1000)
@@ -1875,59 +1904,6 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
     obstacle = config.enemy_atkdb.get_tech(0x58)
     obstacle.effect.status_effect = status_effect
     config.enemy_atkdb.set_tech(obstacle, 0x58)
-
-
-def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
-    # There are .txt patches for overwriting Magus/Tyrano AI/Techs.
-    # These do not mess with stats or scripts or anything else, so I'm
-    # going to keep these around.
-
-    # Magus's tech is set by the AIDB, but the changes to battle messages
-    # and Magus's name is done by this patch.
-    # TODO: Dismantle these patches.  Naming can be fixed with stat dict.
-    #       Battle messages can be handled with ctstrings, but new code is
-    #       needed to manage the pointers.
-    rom = ctrom.rom_data
-    if config.magus_char == CharID.CRONO:
-        rom.patch_txt_file('./patches/magus_c.txt')
-    elif config.magus_char == CharID.MARLE:
-        rom.patch_txt_file('./patches/magus_m.txt')
-    elif config.magus_char == CharID.LUCCA:
-        rom.patch_txt_file('./patches/magus_l.txt')
-    elif config.magus_char == CharID.ROBO:
-        rom.patch_txt_file('./patches/magus_r.txt')
-    elif config.magus_char == CharID.FROG:
-        rom.patch_txt_file('./patches/magus_f.txt')
-    elif config.magus_char == CharID.AYLA:
-        rom.patch_txt_file('./patches/magus_a.txt')
-
-    # Tyrano element is set with the AIDB now.
-
-
-def write_twin_boss_to_ctrom(ct_rom: CTRom, config: cfg.RandoConfig):
-
-    # Do nothing if we have the vanilla twin golem
-    if config.boss_assign_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] == \
-       BossID.GOLEM:
-        return
-
-    twin_boss = config.boss_assign_dict[LocID.OCEAN_PALACE_TWIN_GOLEM]
-
-    # There's nothing to do if a multi-part was assigned here
-    if twin_boss != BossID.TWIN_BOSS:
-        return
-
-    # Otherwise, we need to
-    # 1) Copy the new twin boss's graphics data to the twin boss id
-    # Everythingn else is handled by the aidb and atkdb.
-    one_spot_id = config.twin_boss_type
-    one_spot_sprite_start = 0x24F600 + 10*one_spot_id
-    ct_rom.rom_data.seek(one_spot_sprite_start)
-    one_spot_sprite_data = ct_rom.rom_data.read(10)
-
-    twin_boss_sprite_start = 0x24F600 + 10*EnemyID.TWIN_BOSS
-    ct_rom.rom_data.seek(twin_boss_sprite_start)
-    ct_rom.rom_data.write(one_spot_sprite_data)
 
 
 def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
@@ -1975,24 +1951,6 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
             # print(f"Not assigning to {loc}.  No change from default.")
             pass
         else:
-
-            if current_assignment[loc] == BossID.GUARDIAN:
-                # Turn guardian's body into a Nu when not vanilla
-                # Enemy sprite data at 0x24F600.  10 bytes each
-                nu_sprite_start = 0x24F600 + 10*EnemyID.NU
-                ctrom.rom_data.seek(nu_sprite_start)
-                nu_sprite = ctrom.rom_data.read(10)
-
-                guardian_sprite_start = 0x24F600 + 10*EnemyID.GUARDIAN
-                ctrom.rom_data.seek(guardian_sprite_start)
-                ctrom.rom_data.write(nu_sprite)
-            elif current_assignment[loc] == BossID.GIGA_GAIA:
-                # Turn off the flag that says GG should effect layer1
-                # We can just zero out byte 4.
-                gg_sprite_start = 0x24F600 + 10*EnemyID.GIGA_GAIA_HEAD + 4
-                ctrom.rom_data.seek(gg_sprite_start)
-                ctrom.rom_data.write(b'\x00')
-
             if loc not in assign_fn_dict.keys():
                 raise SystemExit(
                     f"Error: Tried assigning to {loc}.  Location not "
@@ -2005,9 +1963,6 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
                 # print(f"Writing {boss_id} to {loc}")
                 # print(f"{boss_scheme}")
                 assign_fn(ctrom, boss_scheme)
-
-    # Update Twin Boss stats
-    write_twin_boss_to_ctrom(ctrom, config)
 
     # New fun sprite bug:  Enemy 0x4F was a frog before it was turned into
     # the twin golem.  Turning it into other bosses can make for pink screens
