@@ -1151,8 +1151,6 @@ class RandoConfig:
         self.boss_data_dict = bossdata.get_boss_data_dict()
         self.boss_rank = dict()
 
-        self.magus_char = CharID.MAGUS
-
         self.key_item_locations = []
         self.omen_elevator_fights = []
 
