@@ -5,6 +5,49 @@ import ctrom
 import ctstrings
 
 
+class EnemySpriteData:
+    def __init__(self, data: bytes):
+        if len(data) != 10:
+            print('Error: Sprite data must be 10 bytes')
+
+        self._data = bytearray(data)
+
+    def get_as_bytearray(self) -> bytearray:
+        return bytearray(self._data)
+
+    def get_copy(self) -> EnemySpriteData:
+        return EnemySpriteData(self._data)
+
+    def set_affect_layer_1(self, affects_layer_1: bool):
+        if affects_layer_1:
+            self._data[4] |= 0x04
+        else:
+            self._data[4] &= 0xFB
+
+    def set_sprite_to_pc(self, pc: ctenums.CharID):
+        for ind in range(4):
+            self._data[ind] = int(pc)
+
+    @classmethod
+    def from_rom(cls, rom: bytes, enemy_id: int):
+        sprite_st = 0x24F600 + 10*enemy_id
+        data = bytes(rom[sprite_st:sprite_st+10])
+
+        return cls(data)
+
+    def write_to_rom(self, rom: bytearray, enemy_id: int):
+        sprite_st = 0x24F600 + 10*enemy_id
+        rom[sprite_st:sprite_st+10] = self._data
+
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom, enemy_id):
+        self.write_to_rom(ct_rom.rom_data.getbuffer(), enemy_id)
+
+    def __str__(self):
+        ret_str = self.__class__.__name__
+        ret_str += ': '
+        ret_str += ' '.join(f'{x:02X}' for x in self._data)
+
+
 class EnemyStats:
     element_offsets = {
         ctenums.Element.LIGHTNING: 0,
@@ -28,11 +71,13 @@ class EnemyStats:
                  stat_data: bytes = None,
                  name_bytes: bytes = None,
                  reward_bytes: bytes = None,
+                 sprite_bytes: bytes = None,
                  hide_name: bool = False):
         # Just to list the actual class members in one place
         self._stat_data = None
         self._name_bytes = None
         self._reward_data = None
+        self._sprite_data = None
         self.hide_name = hide_name
 
         if stat_data is None:
@@ -46,9 +91,14 @@ class EnemyStats:
         if reward_bytes is None:
             reward_bytes = bytes([0 for i in range(7)])
 
+        if sprite_bytes is None:
+            sprite_bytes = bytes([0 for i in range(10)])
+
         self._set_stats(stat_data)
         self._set_name(name_bytes)
         self._set_rewards(reward_bytes)
+
+        self.sprite_data = EnemySpriteData(sprite_bytes)
 
     def __str__(self):
         ret = ''
@@ -86,11 +136,15 @@ class EnemyStats:
         ret += (' Lit  Shd  Ice  Fir\n' + res_str + '\n')
         ret += (f'Hide name: {self.hide_name}')
 
+        # Don't bother printing sprite data.
+
         return ret
 
     def get_copy(self) -> EnemyStats:
         return EnemyStats(self._stat_data, self._name_bytes,
-                          self._reward_data, self.hide_name)  
+                          self._reward_data,
+                          self.sprite_data.get_as_bytearray(),
+                          self.hide_name)
 
     @classmethod
     def from_rom(cls, rom: bytearray, enemy_id: ctenums.EnemyID):
@@ -106,7 +160,10 @@ class EnemyStats:
         hide_name_st = 0x21DE80+enemy_id
         hide_name = bool(rom[hide_name_st])
 
-        return EnemyStats(data, name, rewards, hide_name)
+        sprite_data = EnemySpriteData.from_rom(rom, enemy_id)
+        sprite_bytes = sprite_data.get_as_bytearray()
+
+        return EnemyStats(data, name, rewards, sprite_bytes, hide_name)
 
     @classmethod
     def from_ctrom(cls, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
@@ -121,6 +178,8 @@ class EnemyStats:
 
         ct_rom.rom_data.seek(0x0C5E00 + 7*enemy_id)
         ct_rom.rom_data.write(self._reward_data)
+
+        self.sprite_data.write_to_ctrom(ct_rom, enemy_id)
 
         ct_rom.rom_data.seek(0x21DE80+enemy_id)
         ct_rom.rom_data.write(self.hide_name.to_bytes(1, 'little'))
@@ -144,7 +203,6 @@ class EnemyStats:
             self.hp, self.level, self.magic, self.mdef, self.offense,
             self.defense, self.xp, self.gp, self.tp
         ] = new_stats[:]
-
 
     def _set_stats(self, stat_bytes: bytes):
         if len(stat_bytes) != 0x17:
@@ -180,7 +238,7 @@ class EnemyStats:
         ct_string = ctstrings.CTString.from_str(string)
         self._set_name(ct_string)
 
-    # Properties for getting/setting stats    
+    # Properties for getting/setting stats
     @property
     def hp(self):
         return int.from_bytes(self._stat_data[0:2], 'little')
@@ -365,7 +423,6 @@ if __name__ == '__main__':
 
     stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.SLASH_SWORD)
     print(stats)
-    
 
     # Byte 0,1 - hp
     # Byte 2 - level
@@ -389,5 +446,3 @@ if __name__ == '__main__':
     # Byte 0x14 - tech immunities
     # Byte 0x15 - special flags and types
     # Byte 0x16 - Attack 2 index
-
-    
