@@ -1759,6 +1759,71 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         config.enemy_dict[enemy_id] = scaled_dict[enemy_id]
 
 
+# getting/setting tyrano element share this data, so I'm putting here in a
+# private global.
+_tyrano_nukes = {
+    Element.FIRE: 0x37,
+    Element.ICE: 0x52,
+    Element.LIGHTNING: 0xBB,
+    Element.NONELEMENTAL: 0x8E,
+    Element.SHADOW: 0x6B
+}
+
+_tyrano_minor_techs = {
+    Element.FIRE: 0x0A,
+    Element.ICE: 0x2A,
+    Element.LIGHTNING: 0x2B,
+    Element.NONELEMENTAL: 0x14,
+    Element.SHADOW: 0x15  # Weird both 0x14 and 0x15 are lasers
+}
+
+
+def set_black_tyrano_element(tyrano_element: Element,
+                             config: cfg.RandoConfig):
+    # Update black tyrano AI to use the right elemental techs
+    tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
+    tyrano_usage = tyrano_ai.tech_usage
+
+    orig_nuke = [x for x in _tyrano_nukes.values()
+                 if x in tyrano_usage]
+    orig_minor_tech = [x for x in _tyrano_minor_techs.values()
+                       if x in tyrano_usage]
+
+    assert len(orig_nuke) == 1 and len(orig_minor_tech) == 1
+
+    orig_nuke = orig_nuke[0]
+    orig_minor_tech = orig_minor_tech[0]
+
+    new_nuke = _tyrano_nukes[tyrano_element]
+    new_minor_tech = _tyrano_minor_techs[tyrano_element]
+
+    tyrano_ai.change_tech_usage(orig_nuke, new_nuke)
+    tyrano_ai.change_tech_usage(orig_minor_tech, new_minor_tech)
+
+
+def get_black_tyrano_element(config: cfg.RandoConfig) -> Element:
+    # Update black tyrano AI to use the right elemental techs
+    tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
+    tyrano_usage = tyrano_ai.tech_usage
+
+    nuke_elem = [
+        elem for elem in _tyrano_nukes
+        if _tyrano_nukes[elem] in tyrano_usage
+    ]
+
+    assert len(nuke_elem) == 1, 'Multiple Tyrano nukes'
+
+    minor_elem = [
+        elem for elem in _tyrano_minor_techs
+        if _tyrano_minor_techs[elem] in tyrano_usage
+    ]
+
+    assert len(minor_elem) == 1, 'Multiple Tyrano minor attacks'
+    assert minor_elem[0] == nuke_elem[0], 'Element mismatch'
+
+    return minor_elem[0]
+
+
 # Magus gets random hp and a random character sprite (ctenums.CharID)
 # Black Tyrano gets random hp and a random element (ctenums.Element)
 def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
@@ -1792,44 +1857,7 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
         random.randrange(8000, 13001, 1000)
 
     tyrano_element = random.choice(list(Element))
-    config.black_tyrano_element = tyrano_element
-
-    # Update black tyrano AI to use the right elemental techs
-    tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
-    tyrano_usage = tyrano_ai.tech_usage
-    tyrano_nukes = {
-        Element.FIRE: 0x37,
-        Element.ICE: 0x52,
-        Element.LIGHTNING: 0xBB,
-        Element.NONELEMENTAL: 0x8E,
-        Element.SHADOW: 0x6B
-    }
-
-    tyrano_minor_techs = {
-        Element.FIRE: 0x0A,
-        Element.ICE: 0x2A,
-        Element.LIGHTNING: 0x2B,
-        Element.NONELEMENTAL: 0x14,
-        Element.SHADOW: 0x15  # Weird both 0x14 and 0x15 are lasers
-    }
-
-    # patch.ips makes tyrano ice.  Does lw do something else?
-    # Let's just find the right techs.
-    orig_nuke = [x for x in tyrano_nukes.values()
-                 if x in tyrano_usage]
-    orig_minor_tech = [x for x in tyrano_minor_techs.values()
-                       if x in tyrano_usage]
-
-    assert len(orig_nuke) == 1 and len(orig_minor_tech) == 1
-
-    orig_nuke = orig_nuke[0]
-    orig_minor_tech = orig_minor_tech[0]
-
-    new_nuke = tyrano_nukes[tyrano_element]
-    new_minor_tech = tyrano_minor_techs[tyrano_element]
-
-    tyrano_ai.change_tech_usage(orig_nuke, new_nuke)
-    tyrano_ai.change_tech_usage(orig_minor_tech, new_minor_tech)
+    set_black_tyrano_element(tyrano_element, config)
 
     # We're going to jam obstacle randomization here
     # Small block to randomize status inflicted by Obstacle/Chaotic Zone
@@ -1844,7 +1872,9 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
     else:
         status_effect = random.choice([SE.CHAOS, SE.STOP])     # Chaos, Stop
 
-    config.obstacle_status = status_effect
+    obstacle = config.enemy_atkdb.get_tech(0x58)
+    obstacle.effect.status_effect = status_effect
+    config.enemy_atkdb.set_tech(obstacle, 0x58)
 
 
 def write_midbosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
@@ -1993,13 +2023,3 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
     pos = script.find_exact_command(frog2_load)
     script.data[pos+1] = int(EnemyID.T_POLE)
-
-    # Jam in the obstacle writing here
-    # Enemy tech effects start at 0xC7AC9, 12 bytes each.
-    # Obstacle is tech 0x58 which happens to use effect header 0x58
-    # Byte 2 (0-ind) has the status bits.  These are reflected in the
-    # ctenums.StatusEffect values.
-
-    # 0xC7AC9 + 0xC*0x58 + 0x2 = 0xC7EEB
-    ctrom.rom_data.seek(0xC7EEB)
-    ctrom.rom_data.write(bytes([config.obstacle_status]))

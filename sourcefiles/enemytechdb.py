@@ -1,5 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from collections.abc import Iterable
+import typing
 
 import byteops
 
@@ -110,6 +112,30 @@ class EnemyEffectHeader(_FixedLengthRecord):
     @power.setter
     def power(self, val: int):
         self._data[9] = val
+
+    @property
+    def status_effect(self) -> list[ctenums.StatusEffect]:
+        status_byte = self._data[2]
+        statuses = []
+        for x in list(ctenums.StatusEffect):
+            if int(x) & status_byte:
+                statuses.append(x)
+        return statuses
+
+    @status_effect.setter
+    def status_effect(
+            self,
+            statuses: typing.Union(typing.Iterable[ctenums.StatusEffect],
+                                   ctenums.StatusEffect)
+    ):
+        if isinstance(statuses, ctenums.StatusEffect):
+            status_byte = int(statuses)
+        else:
+            status_byte = 0
+            for x in statuses:
+                status_byte |= int(x)
+
+        self._data[2] = status_byte
 
 
 class EnemyTechGfxHeader(_FixedLengthRecord):

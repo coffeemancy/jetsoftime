@@ -1152,11 +1152,8 @@ class RandoConfig:
         self.boss_rank = dict()
 
         self.magus_char = CharID.MAGUS
-        self.black_tyrano_element = ctenums.Element.FIRE
-        self.obstacle_status = ctenums.StatusEffect.CHAOS
 
         self.key_item_locations = []
-
         self.omen_elevator_fights = []
 
         self.power_tab_amt = 1

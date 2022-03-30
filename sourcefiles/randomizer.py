@@ -757,8 +757,9 @@ class Randomizer:
                     f" Assigned {self.config.magus_char}"
                 )
             if boss_id == BossID.BLACK_TYRANO:
+                tyrano_elem = bossrando.get_black_tyrano_element(self.config)
                 file_object.write(
-                    f" Element is {self.config.black_tyrano_element}"
+                    f" Element is {tyrano_elem}"
                 )
             file_object.write('\n')
 
@@ -773,7 +774,10 @@ class Randomizer:
                 file_object.write(part_str+'\n')
             file_object.write('\n')
 
-        file_object.write(f"Obstacle is {self.config.obstacle_status}\n\n")
+        obstacle = self.config.enemy_atkdb.get_tech(0x58)
+        obstacle_status = obstacle.effect.status_effect
+        status_string = ', '.join(str(x) for x in obstacle_status)
+        file_object.write(f"Obstacle is {status_string}\n\n")
 
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
