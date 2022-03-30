@@ -411,9 +411,8 @@ class Randomizer:
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
 
-        # Write out the bosses and midbossses
+        # Write out the bosses
         bossrando.write_bosses_to_ctrom(ctrom, config)
-        bossrando.write_midbosses_to_ctrom(ctrom, config)
 
         # tabs
         tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
