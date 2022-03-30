@@ -4,6 +4,7 @@ import typing
 import byteops
 from ctenums import EnemyID
 import ctrom
+import ctstrings
 
 _action_lens = [
     4, 4, 6, 1, 1, 3, 1, 4, 1, 2, 3, 5, 4, 3, 1, 2, 4, 10, 16, 3,
@@ -27,6 +28,137 @@ def bytes_to_str(data: bytes, pos: int = None, length: int = None):
         end = start+length
 
     return ' '.join(f'{x:02X}' for x in data[start:end])
+
+
+class BattleMessages:
+
+    PTR_TABLE_LOCAL_PTR = 0x0D0299
+    PTR_TABLE_ROM_BANK_PTR = 0x0D02A0
+
+    def __init__(self, strings: dict[int, ctstrings.CTString] = None):
+
+        if strings is None:
+            strings = dict()
+
+        str_dict = {
+            x: strings[x] for x in range(0x100)
+            if x in strings
+        }
+
+        self._strings = str_dict
+
+    def __getitem__(self, index) -> ctstrings.CTString:
+        return self._strings[index]
+
+    def __setitem__(self, index: int, string: ctstrings.CTString):
+        self._strings[index] = ctstrings.CTString(string)
+
+    def get_msg_as_str(self, index):
+        return self._strings[index].to_ascii()
+
+    def set_msg_from_str(self, index: int, value: str):
+        ct_str = ctstrings.CTString.from_str(value)
+        if ct_str[-1] != 0:
+            ct_str.append(0)
+        ct_str.compress()
+        self._strings[index] = ct_str
+
+    @classmethod
+    def get_ptr_table_file_ptr_from_rom(cls, rom: bytes) -> int:
+        # ASM Writes 0xCCCBC9 (start of battle msg pointer table) to memory
+        # $CD/0298 A2 C9 CB    LDX #$CBC9
+        # $CD/029B 8E 0D 02    STX $020D  [$7E:020D]
+        # $CD/029E 48          PHA
+        # $CD/029F A9 CC       LDA #$CC
+        # $CD/02A1 8D 0F 02    STA $020F  [$7E:020F]
+
+        local_ptr = int.from_bytes(rom[0x0D0299:0x0D0299+2], 'little')
+        bank = rom[0x0D02A0]
+        abs_rom_ptr = bank * 0x10000 + local_ptr
+        abs_file_ptr = byteops.to_file_ptr(abs_rom_ptr)
+
+        return abs_file_ptr
+
+    @classmethod
+    def set_ptr_table_ptr(cls, rom: bytes, new_file_ptr):
+
+        local_ptr = new_file_ptr & 0x00FFFF
+        bank = byteops.to_rom_ptr(new_file_ptr) >> 16
+
+        rom[cls.PTR_TABLE_LOCAL_PTR:cls.PTR_TABLE_LOCAL_PTR+2] = \
+            int.to_bytes(local_ptr, 2, 'little')
+        rom[cls.PTR_TABLE_ROM_BANK_PTR] = bank
+
+    @classmethod
+    def from_rom(cls, rom: bytes, aidb: EnemyAIDB = None):
+
+        # The only reliable way to determine how many strings there are is
+        # to scan through the enemy AI.
+        if aidb is None:
+            aidb = EnemyAIDB.from_rom(rom)
+
+        used_msg_ids = list(aidb.used_msgs)
+
+        abs_file_ptr = cls.get_ptr_table_file_ptr_from_rom(rom)
+        bank = abs_file_ptr & 0xFF0000
+        str_dict = dict()
+
+        for ind in sorted(used_msg_ids):
+            ptr_loc = abs_file_ptr + 2*ind
+            ptr = int.from_bytes(rom[ptr_loc:ptr_loc+2], 'little')
+            ptr += bank
+
+            end = ptr
+            while rom[end] != 0x00:
+                end += 1
+
+            ct_string = ctstrings.CTString(rom[ptr:end+1])
+            str_dict[ind] = ct_string
+
+        return cls(str_dict)
+
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        max_ptr_ind = max(self._strings.keys())
+        total_str_len = sum(len(x) for x in self._strings.values())
+        total_space_needed = 2*(max_ptr_ind+1) + total_str_len
+
+        # Vanilla size: 0x0CDDC6 - 0CCBC9 = 0x11FD
+        # Vanilla start: 0x0CCBC9
+        ptr_table_st = self.get_ptr_table_file_ptr_from_rom(
+            ct_rom.rom_data.getbuffer()
+        )
+
+        # Try vanilla location, otherwise use freespace.
+        # This maybe is an issue and we need to explicitly free the vanilla
+        # space and just let freespace do its thing.
+        if ptr_table_st == 0x0CCBC9 and total_space_needed <= 0x11FD:
+            write_pos = 0x0CCBC9
+        else:
+            space_man = ct_rom.rom_data.space_manager
+            write_pos = space_man.get_free_addr(total_space_needed)
+
+        rom = ct_rom.rom_data
+        data_pos = write_pos + 2*(max_ptr_ind+1)
+        for ind in range(max_ptr_ind):
+            ptr_loc = write_pos + 2*ind
+            rom.seek(ptr_loc)
+            rom.write(int.to_bytes(data_pos & 0x00FFFF, 2, 'little'))
+            ptr_loc += 2
+
+            if ind in self._strings:
+                rom.seek(data_pos)
+                string = self._strings[ind]
+                rom.write(string)
+                data_pos += len(string)
+
+        self.set_ptr_table_ptr(rom.getbuffer(), write_pos)
+
+    def __str__(self):
+        ret_str = ''
+        for ind in self._strings:
+            ret_str += f'{ind:02X}: {self._strings[ind].to_ascii()}\n'
+
+        return ret_str
 
 
 # From https://www.chronocompendium.com/Term/Enemy_AI.html
@@ -105,6 +237,7 @@ class AIScript:
                  start_pos: int = 0):
         self.uses_secondary_atk = False
         self.tech_usage = []
+        self.battle_msg_usage = []
         self._data = None
 
         # Actually sets the above.  In its own function because it may need
@@ -115,6 +248,7 @@ class AIScript:
         new_script = AIScript()
         new_script._data = bytearray(self._data)
         new_script.tech_usage = list(self.tech_usage)
+        new_script.battle_msg_usage = list(self.battle_msg_usage)
         new_script.uses_secondary_atk = self.uses_secondary_atk
 
         return new_script
@@ -169,6 +303,7 @@ class AIScript:
     def _parse_bytes(self, data: bytes, start_pos: int = 0):
         pos = start_pos
         tech_usage = list()
+        msg_usage = list()
         uses_secondary_atk = False
 
         FE_ins_pos = []
@@ -189,6 +324,12 @@ class AIScript:
                         tech_used = data[pos+1]
                         tech_usage.append(tech_used)
 
+                    if action_id in (0x02, 0x0A, 0x0B, 0x0C, 0x0D, 0x0F,
+                                     0x10, 0x11, 0x12, 0x14, 0x15, 0x16):
+                        size = _action_lens[action_id]
+                        msg_used = data[pos+size-1]
+                        msg_usage.append(msg_used)
+
                     if action_id == 0xFF:
                         # insert at start so list is in reverse order
                         FE_ins_pos.insert(0, pos)
@@ -207,6 +348,7 @@ class AIScript:
 
         self._data = new_data
         self.tech_usage = list(set(tech_usage))
+        self.battle_msg_usage = list(set(msg_usage))
         self.uses_secondary_atk = uses_secondary_atk
 
     def __len__(self):
@@ -266,21 +408,30 @@ class EnemyAIDB:
         EnemyID.JOHNNY, EnemyID.MAGUS_NO_NAME, EnemyID.UNUSED_FC,
         EnemyID.UNUSED_FD, EnemyID.UNUSED_FE, EnemyID.UNUSED_FF)
 
-    def __init__(self, scripts: dict[EnemyID, AIScript]):
+    def __init__(self,
+                 scripts: dict[EnemyID, AIScript],
+                 msgs: BattleMessages = None):
 
         self.scripts = {x: AIScript() for x in list(EnemyID)}
         for enemy_id in scripts:
             self.scripts[enemy_id] = scripts[enemy_id].get_copy()
 
-        self.tech_to_enemy_usage = {x: [] for x in range(0x100)}
-        self._build_tech_usage()
+        self.battle_msgs = msgs
 
-    def _build_tech_usage(self):
+        self.tech_to_enemy_usage = {x: [] for x in range(0x100)}
+        self._build_usage()
+
+    def _build_usage(self):
         used_enemy_ids = (x for x in self.scripts
                           if x not in self.unused_enemies)
 
+        used_msg_ids = list()
+
         for enemy_id in used_enemy_ids:
             script = self.scripts[enemy_id]
+
+            used_msg_ids.extend(script.battle_msg_usage)
+
             for tech in script.tech_usage:
                 self.tech_to_enemy_usage[tech].append(enemy_id)
 
@@ -289,6 +440,8 @@ class EnemyAIDB:
             if not self.tech_to_enemy_usage[tech_id]
             and tech_id not in (0xFE, 0xFF)
         ]
+
+        self.used_msgs = list(set(used_msg_ids))
 
     def change_tech_in_ai(self,
                           enemy_id: int,
@@ -334,7 +487,7 @@ class EnemyAIDB:
     # Note: Every script is OK except for Johnny (0xF4) which spills into the
     #       next script.  No pointers go to the same script.
     @classmethod
-    def from_rom(cls, rom: bytes):
+    def from_rom(cls, rom: bytes, restrict_enemies: bool = True):
         ai_ptr_start = int.from_bytes(
             rom[cls.PTR_TO_AI_PTRS:cls.PTR_TO_AI_PTRS+3],
             'little'
@@ -349,7 +502,11 @@ class EnemyAIDB:
                 ptr += 0x0C0000
                 scripts[enemy_id] = AIScript(rom, ptr)
 
-        return cls(scripts)
+        ret_aidb = cls(scripts)
+        battle_msgs = BattleMessages.from_rom(rom, ret_aidb)
+        ret_aidb.battle_msgs = battle_msgs
+
+        return ret_aidb
 
     @classmethod
     def from_ctrom(cls, ct_rom: ctrom.CTRom):
@@ -390,3 +547,6 @@ class EnemyAIDB:
                 script = self.scripts[enemy_id]
                 rom.write(script.get_as_bytearray())
                 ai_data_pos += len(script)
+
+        if self.battle_msgs is not None:
+            self.battle_msgs.write_to_ctrom(ct_rom)
