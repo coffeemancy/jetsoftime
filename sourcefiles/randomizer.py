@@ -751,10 +751,6 @@ class Randomizer:
                 file_object.write(
                     f" Key Item scale rank = {scale_dict[boss_id]}"
                 )
-            if boss_id == BossID.MAGUS:
-                file_object.write(
-                    f" Assigned {self.config.magus_char}"
-                )
             if boss_id == BossID.BLACK_TYRANO:
                 tyrano_elem = bossrando.get_black_tyrano_element(self.config)
                 file_object.write(
