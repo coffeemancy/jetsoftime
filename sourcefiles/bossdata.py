@@ -10,6 +10,7 @@ from enemystats import EnemyStats
 
 from ctenums import EnemyID, BossID, LocID
 
+import statcompute
 
 # Silly thing for typing classmethod return type from stackexchange
 # https://stackoverflow.com/questions/44640479
@@ -254,14 +255,14 @@ class Boss:
             100
         )
 
-    # TODO: Check on this.  It should be the displacement is -8 but that
+    # TODO: Check on this.  It should be the displacement is -8, 0 but that
     #       doesn't work...sometimes?  It's weird.
     @classmethod
     def LAVOS_SPAWN(cls: Type[T]) -> T:
         ids = [EnemyID.LAVOS_SPAWN_SHELL,
                EnemyID.LAVOS_SPAWN_HEAD]
         slots = [3, 9]
-        disps = [(0, 0), (-0x7, 0)]
+        disps = [(0, 0), (-0x8, 1)]
         power = 20
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -516,26 +517,55 @@ def progressive_scale_stats(
 
     new_stats = stats.get_copy()
 
-    # Interpet these as 'at endgame level, players at best have the given
-    # percentage of the max defensive stat.'
-    def_prop = 0.65
-    mdef_prop = 0.45
+    def get_hp(level: int):
+        # copying Crono
+        base_hp = 44
+        hp_growth = bytearray.fromhex('0A 0D 15 0F 30 15 63 0A')
 
-    def get_prop_scale_factor(
-            from_power: int, to_power: int, prop: float
-    ) -> float:
-        # Using a (arbitrary) working value of max boss power being 35
-        max_power = 35 / prop
+        return statcompute.compute_hpmp_growth(hp_growth, level) + base_hp
 
-        if from_power*to_power == 0:
-            return 0
+    def get_mdef(level: int):
+        BASE_MDEF = 15
+        MDEF_GROWTH = 0.46
+
+        return min(BASE_MDEF + (level-1)*MDEF_GROWTH, 100)
+
+    def get_phys_def(level: int):
+        BASE_STM = 8
+        STM_GROWTH = 1.65
+        LV1_ARMOR_DEF = 3 + 5  # hide cap + hide armor
+        LV15_ARMOR_DEF = 45 + 20  # ruby vest + rock helm
+        LV35_ARMOR_DEF = 75 + 35  # aeon suit + mermaid cap
+
+        stamina = BASE_STM + STM_GROWTH*(level-1)
+        if 1 <= level <= 15:
+            t = (level-1)/(15-1)
+            armor = (1-t)*LV1_ARMOR_DEF+(t)*LV15_ARMOR_DEF
+        elif 15 <= level <= 35:
+            t = (level-15)/(35-15)
+            armor = (1-t)*LV15_ARMOR_DEF+(t)*LV35_ARMOR_DEF
         else:
-            from_mark = from_power/(max_power-from_power)
-            to_mark = to_power/(max_power-to_power)
-            return to_mark/from_mark
+            armor = LV35_ARMOR_DEF
 
-    off_scale_factor = get_prop_scale_factor(from_power, to_power, def_prop)
-    mag_scale_factor = get_prop_scale_factor(from_power, to_power, mdef_prop)
+        return min(stamina + armor, 256)
+
+    def get_eff_phys_hp(level: int):
+        hp = get_hp(level)
+        defense = get_phys_def(level)
+        def_reduction = defense/256
+
+        return hp/(1-def_reduction)
+
+    def get_eff_mag_hp(level: int):
+        hp = get_hp(level)
+        mdef = get_mdef(level)
+
+        mag_reduction = 10*mdef/1024
+
+        return hp/(1-mag_reduction)
+
+    off_scale_factor = get_eff_phys_hp(to_power)/get_eff_phys_hp(from_power)
+    mag_scale_factor = get_eff_mag_hp(to_power)/get_eff_mag_hp(from_power)
 
     if scale_offense:
         new_offense = stats.offense * off_scale_factor
@@ -606,10 +636,10 @@ def set_stats_offense(enemy_id: EnemyID,
                       ai_db: enemyai.EnemyAIDB,
                       scale_techs: bool = True,
                       scale_atk: bool = True):
+
     if new_offense/0xFF > 1.05:
         remaining_scale = new_offense/0xFF
 
-        # print(f'{enemy_id}: scaling techs/atk')
         if scale_techs:
             # Need to ensure uniqueness in list to not double scale.
             ai_script = ai_db.scripts[enemy_id]
@@ -633,7 +663,7 @@ def set_stats_offense(enemy_id: EnemyID,
                             # print(f'Copying tech {tech_id:02X} '
                             #       f'to {new_id:02X}')
                             ai_db.change_tech_in_ai(enemy_id, tech_id, new_id)
-                            # print(ai_db.tech_to_enemy_usage[tech_id])
+                            tech.control.set_effect_index(0, new_id)
                             atk_db.set_tech(tech, new_id)
                         else:
                             print('Warning: No more unused techs.')

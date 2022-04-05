@@ -413,9 +413,8 @@ class Randomizer:
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
 
-        # Write out the bosses and midbossses
+        # Write out the bosses
         bossrando.write_bosses_to_ctrom(ctrom, config)
-        bossrando.write_midbosses_to_ctrom(ctrom, config)
 
         # tabs
         tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
@@ -765,13 +764,10 @@ class Randomizer:
                 file_object.write(
                     f" Key Item scale rank = {scale_dict[boss_id]}"
                 )
-            if boss_id == BossID.MAGUS:
-                file_object.write(
-                    f" Assigned {self.config.magus_char}"
-                )
             if boss_id == BossID.BLACK_TYRANO:
+                tyrano_elem = bossrando.get_black_tyrano_element(self.config)
                 file_object.write(
-                    f" Element is {self.config.black_tyrano_element}"
+                    f" Element is {tyrano_elem}"
                 )
             file_object.write('\n')
 
@@ -786,7 +782,10 @@ class Randomizer:
                 file_object.write(part_str+'\n')
             file_object.write('\n')
 
-        file_object.write(f"Obstacle is {self.config.obstacle_status}\n\n")
+        obstacle = self.config.enemy_atkdb.get_tech(0x58)
+        obstacle_status = obstacle.effect.status_effect
+        status_string = ', '.join(str(x) for x in obstacle_status)
+        file_object.write(f"Obstacle is {status_string}\n\n")
 
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
@@ -993,6 +992,22 @@ class Randomizer:
 
         # Why is Dalton worth so few TP?
         config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
+
+        # Add grandleon lowering magus's mdef
+        # Editing AI is ugly right now, so just use raw binary
+        magus_ai = config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS]
+        magus_ai_b = magus_ai.get_as_bytearray()
+        masa_hit = bytearray.fromhex(
+            '18 3D 04 29 FE'
+            '0B 3C 14 00 2E FE'
+        )
+
+        masa_hit_loc = magus_ai_b.find(masa_hit)
+        masa_hit[1] = 0x42  # Change MM (0x3D) to GL (0x42)
+        magus_ai_b[masa_hit_loc:masa_hit_loc] = masa_hit
+        new_magus_ai = cfg.enemyai.AIScript(magus_ai_b)
+
+        config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
 
         # Fix Falcon Hit to use Spincut as a prerequisite
         techdb = config.techdb

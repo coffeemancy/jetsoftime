@@ -1,5 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from collections.abc import Iterable
+import typing
 
 import byteops
 
@@ -110,6 +112,30 @@ class EnemyEffectHeader(_FixedLengthRecord):
     @power.setter
     def power(self, val: int):
         self._data[9] = val
+
+    @property
+    def status_effect(self) -> list[ctenums.StatusEffect]:
+        status_byte = self._data[2]
+        statuses = []
+        for x in list(ctenums.StatusEffect):
+            if int(x) & status_byte:
+                statuses.append(x)
+        return statuses
+
+    @status_effect.setter
+    def status_effect(
+            self,
+            statuses: typing.Union(typing.Iterable[ctenums.StatusEffect],
+                                   ctenums.StatusEffect)
+    ):
+        if isinstance(statuses, ctenums.StatusEffect):
+            status_byte = int(statuses)
+        else:
+            status_byte = 0
+            for x in statuses:
+                status_byte |= int(x)
+
+        self._data[2] = status_byte
 
 
 class EnemyTechGfxHeader(_FixedLengthRecord):
@@ -301,6 +327,10 @@ class EnemyAttackDB:
             print('Error: Enemy tech_id must be in range(0, 0x100)')
             exit()
 
+        if tech.control.get_effect_index(0) != tech_id:
+            print('Warning: effect index does not match tech_id.  Changing.')
+            tech.control.set_effect_index(0, tech_id)
+
         self._set_tech_control(tech.control, tech_id)
         self._set_tech_effect(tech.effect, tech_id)
         self._set_tech_gfx(tech.gfx, tech_id)
@@ -396,7 +426,7 @@ class EnemyAttackDB:
 
         # print(f'Found 0x{max_atk_id:02X} attacks')
         num_enemies = 0x100
-        num_attacks = max_atk_id
+        num_attacks = max_atk_id + 1
 
         # Default 0x0C88CA
         atk_control_start = byteops.file_ptr_from_rom(
