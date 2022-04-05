@@ -7,6 +7,7 @@ import json
 
 import byteops
 import bossdata
+import bossrandoevent as bossrando
 import enemyai
 import enemytechdb
 import enemystats
@@ -1231,13 +1232,16 @@ class RandoConfig:
                 for boss_id in boss_ids
         }
 
-        boss_details_dict[str(BossID.MAGUS)]['character'] = str(self.magus_char)
-        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = str(self.black_tyrano_element)
+        boss_details_dict[str(BossID.MAGUS)]['character'] = self.enemy_dict[ctenums.EnemyID.MAGUS].name.strip()
+        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = str(bossrando.get_black_tyrano_element(self))
 
         chars = self.char_manager._jot_json()
         # the below is ugly, would be nice to have tech lists on PlayerChar objects maybe
         for char_id in range(7):
             chars[str(ctenums.CharID(char_id))]['techs'] = [ctstrings.CTString.ct_bytes_to_techname(self.techdb.get_tech(1 + 8*char_id + i)['name']).strip(' *') for i in range(8)]
+
+        obstacle = self.enemy_atkdb.get_tech(0x58)
+        obstacle_status = ", ".join(str(x) for x in obstacle.effect.status_effect)
 
         return {
             'key_items': merged_list_dict(self.key_item_locations),
@@ -1254,7 +1258,7 @@ class RandoConfig:
                     'locations': enum_enum_dict(self.boss_assign_dict),
                     'details': boss_details_dict,
                 },
-                'obstacle_status': str(self.obstacle_status)
+                'obstacle_status': obstacle_status
             },
             'treasures': {
                 'assignments': enum_key_dict(self.treasure_assign_dict),
