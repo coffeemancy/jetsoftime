@@ -980,6 +980,22 @@ class Randomizer:
         # Why is Dalton worth so few TP?
         config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
 
+        # Add grandleon lowering magus's mdef
+        # Editing AI is ugly right now, so just use raw binary
+        magus_ai = config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS]
+        magus_ai_b = magus_ai.get_as_bytearray()
+        masa_hit = bytearray.fromhex(
+            '18 3D 04 29 FE'
+            '0B 3C 14 00 2E FE'
+        )
+
+        masa_hit_loc = magus_ai_b.find(masa_hit)
+        masa_hit[1] = 0x42  # Change MM (0x3D) to GL (0x42)
+        magus_ai_b[masa_hit_loc:masa_hit_loc] = masa_hit
+        new_magus_ai = cfg.enemyai.AIScript(magus_ai_b)
+
+        config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
+
         # Fix Falcon Hit to use Spincut as a prerequisite
         techdb = config.techdb
         falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
