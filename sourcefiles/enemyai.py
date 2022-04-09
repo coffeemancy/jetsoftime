@@ -244,6 +244,32 @@ class AIScript:
         # to be called outside of object construction.
         self._parse_bytes(script_bytes, start_pos)
 
+    @classmethod
+    def find_command(cls, cmd_bytes: bytes, cmd_id: int) -> list[int]:
+        pos = 0
+        cmd_inds = []
+        for block in range(2):
+            while cmd_bytes[pos] != 0xFF:
+                while cmd_bytes[pos] != 0xFE:  # Conditions
+                    pos += 4
+
+                pos += 1  # Skip terminal 0xFE
+                while cmd_bytes[pos] != 0xFE:  # Actions
+                    action_id = cmd_bytes[pos]
+
+                    if action_id == cmd_id:
+                        cmd_inds.append(pos)
+
+                    if action_id == 0xFF:
+                        break
+                    else:
+                        size = _action_lens[action_id]
+                        pos += size
+                pos += 1  # Skip terminal 0xFE
+            pos += 1  # Skip terminal 0xFF
+
+        return cmd_inds
+
     def get_copy(self) -> AIScript:
         new_script = AIScript()
         new_script._data = bytearray(self._data)
