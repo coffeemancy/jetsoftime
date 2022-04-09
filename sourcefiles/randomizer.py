@@ -381,12 +381,17 @@ class Randomizer:
         config = self.config
         ctrom = self.out_rom
 
+        # Subtle Bug Alert:
+        # AtkDB needs to count the number of attacks when determining whether
+        # it needs to reallocate.  To do this, it reads enemy data.  If the
+        # new enemy data is written first, it will read the wrong number of
+        # attacks and free too much.  So the ai/atks are written first.
+        config.enemy_aidb.write_to_ctrom(ctrom)
+        config.enemy_atkdb.write_to_ctrom(ctrom)
+
         # Write enemies out
         for enemy_id, stats in config.enemy_dict.items():
             stats.write_to_ctrom(ctrom, enemy_id)
-
-        config.enemy_aidb.write_to_ctrom(ctrom)
-        config.enemy_atkdb.write_to_ctrom(ctrom)
 
         # Write treasures out -- this includes key items
         # for treasure in config.treasure_assign_dict.values():
@@ -756,6 +761,23 @@ class Randomizer:
                 file_object.write(
                     f" Element is {tyrano_elem}"
                 )
+            elif boss_id == BossID.RUST_TYRANO:
+                tyrano_elem = bossrando.get_rust_tyrano_element(
+                    ctenums.EnemyID.RUST_TYRANO, self.config
+                )
+                file_object.write(
+                    f" Element is {tyrano_elem}"
+                )
+            elif boss_id == BossID.TWIN_BOSS:
+                name = self.config.enemy_dict[ctenums.EnemyID.TWIN_BOSS].name
+                if name == 'Rust Tyrano':
+                    tyrano_elem = bossrando.get_rust_tyrano_element(
+                        ctenums.EnemyID.TWIN_BOSS, self.config
+                    )
+                    file_object.write(
+                        f" Element is {tyrano_elem}"
+                    )
+
             file_object.write('\n')
 
             boss = self.config.boss_data_dict[boss_id]
@@ -996,6 +1018,17 @@ class Randomizer:
 
         config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
 
+        # Give Rusty a few more HP, like avg hp of old boss rando
+        enemy_id = ctenums.EnemyID.RUST_TYRANO
+        rt_stats = config.enemy_dict[enemy_id]
+
+        rt_stats.hp = int(rt_stats.hp * 1.75)
+
+        # Lower the base magic/lvl so that the party is likely to survive the
+        # initial nuke.
+        rt_stats.magic = int(rt_stats.magic * 0.6)
+        rt_stats.level = int(rt_stats.level * 0.6)
+
         # Fix Falcon Hit to use Spincut as a prerequisite
         techdb = config.techdb
         falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
@@ -1041,7 +1074,7 @@ class Randomizer:
             rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
             effects[rock_pwr] = 0x23
 
-        if rset.GameFlags.BOSS_SIGHTSCOPE:
+        if rset.GameFlags.BOSS_SIGHTSCOPE in settings.gameflags:
             qolhacks.enable_boss_sightscope(config)
 
         return config
