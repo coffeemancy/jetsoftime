@@ -792,8 +792,6 @@ def set_twin_golem_spot(ctrom: CTRom, boss: BossScheme):
 
         print('Error putting single boss in twin spot.')
         exit()
-
-        first_x, first_y = 0x60, 0xE0
     else:
         # Somewhat center the multi_spot boss
         # 1) Change the move command to have an x-coord of 0x80 + displacement
@@ -1570,6 +1568,12 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         twin_boss.power = orig_power
         config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
 
+        if base_id == EnemyID.RUST_TYRANO:
+            elem = random.choice(list(Element))
+            set_rust_tyrano_element(EnemyID.TWIN_BOSS, elem,
+                                    config)
+            set_rust_tyrano_script_mag(EnemyID.TWIN_BOSS, config)
+
 
 # This function needs to write the boss assignment to the config respecting
 # the provided settings.
@@ -1770,6 +1774,9 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     for enemy_id in scaled_dict.keys():
         config.enemy_dict[enemy_id] = scaled_dict[enemy_id]
 
+    # Update Rust Tyrano's magic boost in script
+    set_rust_tyrano_script_mag(EnemyID.RUST_TYRANO, config)
+
 
 # getting/setting tyrano element share this data, so I'm putting here in a
 # private global.
@@ -1788,6 +1795,79 @@ _tyrano_minor_techs = {
     Element.NONELEMENTAL: 0x14,
     Element.SHADOW: 0x15  # Weird both 0x14 and 0x15 are lasers
 }
+
+
+def set_rust_tyrano_element(tyrano_id: EnemyID,
+                            tyrano_element: Element,
+                            config: cfg.RandoConfig):
+    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
+    tyrano_usage = tyrano_ai.tech_usage
+
+    orig_nuke = [x for x in _tyrano_nukes.values()
+                 if x in tyrano_usage]
+
+    elem_str = {
+        Element.FIRE: 'Fire',
+        Element.ICE: 'Water',
+        Element.SHADOW: 'Shadow',
+        Element.LIGHTNING: 'Lightning',
+        Element.NONELEMENTAL: 'Magic'
+    }
+    power_string = elem_str[tyrano_element] + ' Pwr Up!'
+    # String goes in 6D
+    config.enemy_aidb.battle_msgs.set_msg_from_str(0x6D, power_string)
+
+    assert len(orig_nuke) == 1
+    orig_nuke = orig_nuke[0]
+    new_nuke = _tyrano_nukes[tyrano_element]
+
+    tyrano_ai.change_tech_usage(orig_nuke, new_nuke)
+
+
+def get_rust_tyrano_element(tyrano_id: EnemyID,
+                            config: cfg.RandoConfig) -> Element:
+    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
+    tyrano_usage = tyrano_ai.tech_usage
+
+    nuke_elem = [
+        elem for elem in _tyrano_nukes
+        if _tyrano_nukes[elem] in tyrano_usage
+    ]
+
+    assert len(nuke_elem) == 1
+
+    return nuke_elem[0]
+
+
+# Rust Tyrano magic stat scales
+# grows 30 (init), 65, 100, 175, 253.
+# cumulative factors: 13/6, 10/3, 35/6, 253/30
+def set_rust_tyrano_script_mag(tyrano_id: EnemyID,
+                               config: cfg.RandoConfig):
+    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
+    tyrano_ai_b = tyrano_ai.get_as_bytearray()
+
+    base_mag = config.enemy_dict[tyrano_id].magic
+    factors = [13/6, 10/3, 35/6, 253/30]
+    new_magic_vals = [min(round(x*base_mag), 255) for x in factors]
+
+    # There should be four set magic commands of the form
+    # 0B 39 XX 00 6D
+    # 0B - Change Stat, 39 - Stat offset (magic), XX - Magnitude
+    # 00 - Mode = set, 6D - message to display
+
+    AI = cfg.enemyai.AIScript
+    stat_set_cmd_locs = AI.find_command(tyrano_ai_b, 0x0B)
+
+    stat_num = 0
+    for ind in stat_set_cmd_locs:
+        if tyrano_ai_b[ind] == 0x0B and tyrano_ai_b[ind+4] == 0x6D:
+            tyrano_ai_b[ind+2] = new_magic_vals[stat_num]
+            stat_num += 1
+        else:
+            print('Warning: Found other stat mod')
+
+    config.enemy_aidb.scripts[tyrano_id] = AI(tyrano_ai_b)
 
 
 def set_black_tyrano_element(tyrano_element: Element,
@@ -1887,6 +1967,7 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
 
     tyrano_element = random.choice(list(Element))
     set_black_tyrano_element(tyrano_element, config)
+    set_rust_tyrano_element(EnemyID.RUST_TYRANO, tyrano_element, config)
 
     # We're going to jam obstacle randomization here
     # Small block to randomize status inflicted by Obstacle/Chaotic Zone
