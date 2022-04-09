@@ -151,7 +151,7 @@ class Boss:
 
     @classmethod
     def DALTON_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 30)
+        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 25)
 
     # Note to self: Extra grinder objects at end of script?
     @classmethod
@@ -375,7 +375,7 @@ class Boss:
     def TWIN_BOSS(cls: Type[T]) -> T:
         ids = [EnemyID.TWIN_BOSS, EnemyID.TWIN_BOSS]
         slots = [3, 6]
-        disps = [(0, 0), (0x20, 0)]
+        disps = [(-0x20, 0), (0x20, 0)]
         power = 35  # Should match mutant power
         return cls.generic_multi_spot(ids, disps, slots, power)
 
