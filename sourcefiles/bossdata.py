@@ -220,7 +220,7 @@ class Boss:
         slots = [3, 7, 8]
         # disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
         disps = [(0, 0), (-0x3A, -0x08), (0x40, -0x08)]
-        power = 18
+        power = 15
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
