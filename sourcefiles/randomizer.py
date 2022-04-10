@@ -148,12 +148,18 @@ class Randomizer:
         # Boss Rando
         bossrando.write_assignment_to_config(self.settings, self.config)
 
-        # This updates the enemy dict in the config with new stats depending
-        # on bossrando.write_assignment_to_config().
-        bossrando.scale_bosses_given_assignment(self.settings, self.config)
+        # We need the boss rando assignment to determine which bosses need
+        # additional bossscaler scaling.  That is accomplished by the above
+        # bossrando.write_assignment_to_config.
 
-        # Key item Boss scaling (done after boss rando).  Also updates stats.
+        # Then, scale based on ranking.
+        # This has to come before boss rando scaling  because some boss scaling
+        # changes are defined absolutely instead of relatively, so they would
+        # just overwrite the boss rando scaling.
         bossscaler.set_boss_power(self.settings, self.config)
+
+        # Finally, scale based on new location.
+        bossrando.scale_bosses_given_assignment(self.settings, self.config)
 
         # Black Tyrano/Magus boss randomization
         bossrando.randomize_midbosses(self.settings, self.config)
