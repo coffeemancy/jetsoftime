@@ -1759,6 +1759,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # to the config at the very end.
     scaled_dict = dict()
 
+    new_power_values = dict()
+
     for location in settings.ro_settings.loc_list:
         orig_boss = orig_data[default_assignment[location]]
         new_boss = orig_data[current_assignment[location]]
@@ -1766,9 +1768,18 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                                                   config.enemy_dict,
                                                   config.enemy_atkdb,
                                                   config.enemy_aidb)
+
+        new_power_values[location] = orig_boss.power
+
         # Put the stats in scaled_dict
         for ind, part_id in enumerate(new_boss.scheme.ids):
             scaled_dict[part_id] = scaled_stats[ind]
+
+    # In case of multiple power adjustments, make sure that the boss powers
+    # are properly updated.
+    for loc in new_power_values:
+        boss = config.boss_assign_dict[loc]
+        config.boss_data_dict[boss].power = new_power_values[loc]
 
     # Write all of the scaled stats back to config's dict
     for enemy_id in scaled_dict.keys():
