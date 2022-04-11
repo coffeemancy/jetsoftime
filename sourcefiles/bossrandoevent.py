@@ -1001,8 +1001,8 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
     pos = script.get_function_start(0, 0)
     script.insert_commands(copy_tiles_vblank.to_bytearray(), pos)
 
-    # first_x, first_y = 0x80, 0xA8
-    first_x, first_y = 0x80, 0xC8
+    first_x, first_y = 0x80, 0xB8
+    # first_x, first_y = 0x80, 0xC8
     shift = False
 
     boss_objs = [0xB, 0xC, 0xD]
