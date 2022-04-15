@@ -69,6 +69,7 @@ class GameFlags(Flag):
     MYSTERY = auto()
     AYLA_REBALANCE = auto()
     BOSS_SIGHTSCOPE = auto()
+    BLACKHOLE_REWORK = auto()
 
 
 # Dictionary for what flags force what other flags off.
