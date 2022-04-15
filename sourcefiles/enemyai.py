@@ -287,7 +287,8 @@ class AIScript:
         num_changes = 0
 
         if from_tech_id not in self.tech_usage:
-            print('Warning: tech not in self.tech_usage.')
+            # print('Warning: tech not in self.tech_usage.')
+            pass
 
         for block in range(2):
             while self._data[pos] != 0xFF:

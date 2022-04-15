@@ -328,7 +328,7 @@ class EnemyAttackDB:
             exit()
 
         if tech.control.get_effect_index(0) != tech_id:
-            print('Warning: effect index does not match tech_id.  Changing.')
+            # print('Warning: effect index does not match tech_id.  Changing.')
             tech.control.set_effect_index(0, tech_id)
 
         self._set_tech_control(tech.control, tech_id)
