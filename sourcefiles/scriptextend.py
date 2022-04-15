@@ -125,6 +125,9 @@ command_len[0x53] = 1
 command_len[0x54] = 1
 command_len[0x55] = 1
 
+# hide object
+command_len[0x5E] = 1
+
 # Unknown 1 byte commands
 command_len[0x2B:0x2F] = [1]*(0x2F-0x2B)
 
