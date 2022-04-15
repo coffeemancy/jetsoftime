@@ -171,7 +171,7 @@ class Boss:
                EnemyID.ELDER_SPAWN_HEAD]
         slots = [3, 9]
         disps = [(0, 0), (-8, 1)]
-        power = 35
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -199,7 +199,7 @@ class Boss:
         ids = [EnemyID.GIGA_MUTANT_HEAD, EnemyID.GIGA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 40
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -211,8 +211,6 @@ class Boss:
     def GOLEM_BOSS(cls: Type[T]) -> T:
         return cls.generic_one_spot(EnemyID.GOLEM_BOSS, 3, 20)
 
-    # This does virtually nothing since guardian sprite is built into the
-    # background.  Eventually replace with lavos versions?
     @classmethod
     def GUARDIAN(cls: Type[T]) -> T:
         ids = [EnemyID.GUARDIAN, EnemyID.GUARDIAN_BIT,
@@ -280,7 +278,7 @@ class Boss:
                EnemyID.MEGA_MUTANT_BOTTOM]
         slots = [3, 7]
         disps = [(0, 0), (0, 0)]
-        power = 40
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -297,7 +295,7 @@ class Boss:
         # disps = [(0, 0), (-0x50, -0x1F), (-0x20, -0x2F), (0x40, -0x1F)]
         # Tighten up coords to fit better.  AoE still hits screens the same
         disps = [(0, 0), (-0x40, -0xF), (-0x8, -0x1F), (0x38, -0xF)]
-        power = 25
+        power = 20
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -367,7 +365,7 @@ class Boss:
         ids = [EnemyID.TERRA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 35
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -376,12 +374,12 @@ class Boss:
         ids = [EnemyID.TWIN_BOSS, EnemyID.TWIN_BOSS]
         slots = [3, 6]
         disps = [(-0x20, 0), (0x20, 0)]
-        power = 35  # Should match mutant power
+        power = 30  # Should match mutant power
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
     def YAKRA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.YAKRA, 3, 5)
+        return cls.generic_one_spot(EnemyID.YAKRA, 3, 3)
 
     @classmethod
     def YAKRA_XIII(cls: Type[T]) -> T:
@@ -486,16 +484,60 @@ def get_boss_data_dict():
     }
 
 
-# Problem: Linear scaling is wrong.
-#  - Player def/stam *do* scale roughly linearly.  But since player def is
-#    a percentage reduction, it's not sufficient to linearly scale enemy atk.
-#  - Effective HP (EffHP) is a measure of how much HP someone has when a
-#    defensive stat is considered.  At 0 def HP == EffHP, and at max def
-#    EffHP is infinite.  Enemy atk/mag should scale with EffHP.
-#  - It is an exercise for the reader that if def and hp scale linearly with
-#    level (not true but close) then the effhp scale factor from level y to x
-#    is x(1-By)/(y(1-Bx)).
-#  - B measures proportion of the way to max defensive stat.
+def get_hp(level: int):
+    # copying Frog as a middle of the road hp
+    base_hp = 80
+    # hp_growth = bytearray.fromhex('0A 0D 15 0F 30 15 63 0A')
+    hp_growth = bytearray.fromhex('0A 0C 15 0E 1D 13 63 14')
+    return statcompute.compute_hpmp_growth(hp_growth, level) + base_hp
+
+
+def get_mdef(level: int):
+    # These are Frog's stats (also Crono's)
+    BASE_MDEF = 15
+    MDEF_GROWTH = 0.46
+
+    return min(BASE_MDEF + (level-1)*MDEF_GROWTH, 100)
+
+
+def get_phys_def(level: int):
+    BASE_STM = 8
+    STM_GROWTH = 1.65
+    LV1_ARMOR_DEF = 3 + 5  # hide cap + hide armor
+    LV15_ARMOR_DEF = 45 + 20  # ruby vest + rock helm
+    LV30_ARMOR_DEF = 75 + 35  # aeon suit + mermaid cap
+
+    stamina = BASE_STM + STM_GROWTH*(level-1)
+    if 1 <= level <= 15:
+        t = (level-1)/(15-1)
+        armor = (1-t)*LV1_ARMOR_DEF+(t)*LV15_ARMOR_DEF
+    elif 15 <= level <= 30:
+        t = (level-15)/(30-15)
+        armor = (1-t)*LV15_ARMOR_DEF+(t)*LV30_ARMOR_DEF
+    else:
+        armor = LV30_ARMOR_DEF
+
+    return min(stamina + armor, 256)
+
+
+def get_eff_phys_hp(level: int):
+    hp = get_hp(level)
+    defense = get_phys_def(level)
+    def_reduction = defense/256
+
+    return hp/(1-def_reduction)
+
+
+def get_eff_mag_hp(level: int):
+    hp = get_hp(level)
+    mdef = get_mdef(level)
+
+    mag_reduction = 10*mdef/1024
+
+    return hp/(1-mag_reduction)
+
+
+# Scale boss depending on stat progression of players
 def progressive_scale_stats(
         enemy_id: EnemyID,
         stats: EnemyStats,
@@ -516,53 +558,6 @@ def progressive_scale_stats(
         scale_atk: bool = True) -> EnemyStats:
 
     new_stats = stats.get_copy()
-
-    def get_hp(level: int):
-        # copying Crono
-        base_hp = 44
-        hp_growth = bytearray.fromhex('0A 0D 15 0F 30 15 63 0A')
-
-        return statcompute.compute_hpmp_growth(hp_growth, level) + base_hp
-
-    def get_mdef(level: int):
-        BASE_MDEF = 15
-        MDEF_GROWTH = 0.46
-
-        return min(BASE_MDEF + (level-1)*MDEF_GROWTH, 100)
-
-    def get_phys_def(level: int):
-        BASE_STM = 8
-        STM_GROWTH = 1.65
-        LV1_ARMOR_DEF = 3 + 5  # hide cap + hide armor
-        LV15_ARMOR_DEF = 45 + 20  # ruby vest + rock helm
-        LV35_ARMOR_DEF = 75 + 35  # aeon suit + mermaid cap
-
-        stamina = BASE_STM + STM_GROWTH*(level-1)
-        if 1 <= level <= 15:
-            t = (level-1)/(15-1)
-            armor = (1-t)*LV1_ARMOR_DEF+(t)*LV15_ARMOR_DEF
-        elif 15 <= level <= 35:
-            t = (level-15)/(35-15)
-            armor = (1-t)*LV15_ARMOR_DEF+(t)*LV35_ARMOR_DEF
-        else:
-            armor = LV35_ARMOR_DEF
-
-        return min(stamina + armor, 256)
-
-    def get_eff_phys_hp(level: int):
-        hp = get_hp(level)
-        defense = get_phys_def(level)
-        def_reduction = defense/256
-
-        return hp/(1-def_reduction)
-
-    def get_eff_mag_hp(level: int):
-        hp = get_hp(level)
-        mdef = get_mdef(level)
-
-        mag_reduction = 10*mdef/1024
-
-        return hp/(1-mag_reduction)
 
     off_scale_factor = get_eff_phys_hp(to_power)/get_eff_phys_hp(from_power)
     mag_scale_factor = get_eff_mag_hp(to_power)/get_eff_mag_hp(from_power)
