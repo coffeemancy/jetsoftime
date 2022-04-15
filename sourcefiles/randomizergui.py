@@ -2016,19 +2016,22 @@ class RandoGUI:
             'power to match the ~15% boost given to triple kick.'
         )
 
-        '''
-        CreateToolTip(
-            self.ice_age_checkbox,
-            'Get Ayla.  Get the Dactyl Nest character.  Use them to defeat '
-            'the Black Tyrano and a (buffed) Giga Gaia to win.'
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Black Hole Rework',
+            variable=self.flag_dict[GameFlags.BLACKHOLE_REWORK]
         )
+        checkbox.pack(anchor=tk.W)
 
         CreateToolTip(
-            self.loc_checkbox,
-            'Get Frog and Magus, visit Cyrus\'s grave, defeat Magus, and '
-            'finish by clearing Ozzie\'s Fort.'
+            checkbox,
+            'Black Hole regains its original animation and area of effect. '
+            'Instead of 40% chance of instant death, the spell does 1.5x '
+            'nonelemental Dark Bomb damage.  Additionally, Black Hole\'s '
+            'power increases with dead allies like doomsickle.'
         )
-        '''
+
+
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
