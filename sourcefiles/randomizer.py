@@ -1089,8 +1089,8 @@ class Randomizer:
             black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
 
             anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
-            anti_life['control'][8] = 0x21  # 1.5x dark bomb
-            anti_life['effects'][0][9] = 0x19  # Doomsickle effect
+            anti_life['control'][8] = 0x16  # +Atk for down allies
+            anti_life['effects'][0][9] = 0x25  # 1.5x dark bomb
             al_eff_id = anti_life['control'][5]
 
             # A note here that set_tech needs the effects to be set correctly.
