@@ -380,12 +380,38 @@ class Randomizer:
         # With valid config and settings, we can write generate the rom
         self.__write_out_rom()
 
+    # There are no good tools for working with animation scripts.  The
+    # change is small, so we're doing it directly
+    def __modify_bh_script(self):
+        ct_rom = self.out_rom
+
+        # Replace a weird unknown command (bh-specfic) with show damage
+        ct_rom.rom_data.seek(0x0E3191)
+        ct_rom.rom_data.write(b'\x50')
+
+        # Change the hit effect with dark matter's
+        ct_rom.rom_data.seek(0x0E319C)
+        ct_rom.rom_data.write(
+            bytearray.fromhex(
+                '2402' +
+                '6900' +
+                '2014' +
+                '6A' +
+                # '36' +
+                '00'
+            )
+        )
+
     def __write_config_to_out_rom(self):
         '''
         Writes elements of the config to self.out_rom
         '''
         config = self.config
         ctrom = self.out_rom
+
+        # We can always do this, even if not reverting to black hole because
+        # antilife just uses life2's script, not black hole's.
+        self.__modify_bh_script()
 
         # Subtle Bug Alert:
         # AtkDB needs to count the number of attacks when determining whether
@@ -783,7 +809,6 @@ class Randomizer:
                     file_object.write(
                         f" Element is {tyrano_elem}"
                     )
-
             file_object.write('\n')
 
             boss = self.config.boss_data_dict[boss_id]
@@ -801,6 +826,7 @@ class Randomizer:
         obstacle_status = obstacle.effect.status_effect
         status_string = ', '.join(str(x) for x in obstacle_status)
         file_object.write(f"Obstacle is {status_string}\n\n")
+
 
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
@@ -1040,6 +1066,29 @@ class Randomizer:
         falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
         falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
         techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
+
+        # Revert antilife to black hole
+        if rset.GameFlags.BLACKHOLE_REWORK in settings.gameflags:
+            TechDB = charrando.TechDB
+            vanilla_db = TechDB.get_default_db(ct_vanilla)
+            black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
+
+            anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
+            anti_life['control'][8] = 0x21  # 1.5x dark bomb
+            anti_life['effects'][0][9] = 0x19  # Doomsickle effect
+            al_eff_id = anti_life['control'][5]
+
+            # A note here that set_tech needs the effects to be set correctly.
+            # TODO: get_tech needs to be fixed to supply mp values so that
+            #   set_tech can work as it ought.  Really fix the whole techdb.
+            byteops.set_record(techdb.effects, anti_life['effects'][0],
+                               al_eff_id,
+                               techdb.effect_size)
+
+            black_hole['control'] = anti_life['control']
+            techdb.set_tech(black_hole, ctenums.TechID.ANTI_LIFE)
+
+            techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
 
         # Note for future (?) Marle changes
         # Statuses have different types.  Haste is type 3, everything else
