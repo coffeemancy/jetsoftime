@@ -1555,15 +1555,21 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         # Scale the stats and write them to the twin boss spot in the config
         # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
         orig_power = twin_boss.power
-        twin_boss.power = int(0.75*twin_boss.power)
+        twin_boss.power = 27  # slightly higher than zeal palace
         orig_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
         drop, charm = orig_stats.drop_item, orig_stats.charm_item
 
         scaled_stats = base_boss.scale_relative_to(
             twin_boss, config.enemy_dict,
             config.enemy_atkdb, config.enemy_aidb)[0]
+
+        # Cut XP in half.
+        scaled_stats.xp = int(scaled_stats.xp / 2)
         scaled_stats.drop_item = drop
         scaled_stats.charm_item = charm
+
+        # Just here for rusty.
+        scaled_stats.sprite_data.set_affect_layer_1(False)
 
         twin_boss.power = orig_power
         config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
@@ -1735,7 +1741,7 @@ def write_assignment_to_config(settings: rset.Settings,
         gg_data = config.enemy_dict[EnemyID.GIGA_GAIA_HEAD]
         gg_data.sprite_data.set_affect_layer_1(False)
 
-    # Same for rusty outside of giant's claw_boss
+    # Same for rusty outside of giant's claw
     claw_boss = config.boss_assign_dict[LocID.GIANTS_CLAW_TYRANO]
     if claw_boss != BossID.RUST_TYRANO:
         rusty_data = config.enemy_dict[EnemyID.RUST_TYRANO]
@@ -1761,7 +1767,6 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     ]
 
     enemy_aidb = config.enemy_aidb
-    print(enemy_aidb.unused_techs)
     early_obstacle_bosses = []
     obstacle_bosses = [BossID.MEGA_MUTANT, BossID.TERRA_MUTANT]
     for loc in current_assignment:
