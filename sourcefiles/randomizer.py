@@ -809,6 +809,21 @@ class Randomizer:
                     file_object.write(
                         f" Element is {tyrano_elem}"
                     )
+            elif boss_id == BossID.MEGA_MUTANT:
+                part = ctenums.EnemyID.MEGA_MUTANT_BOTTOM
+                obstacle_id = bossrando.get_obstacle_id(part, self.config)
+                obstacle = self.config.enemy_atkdb.get_tech(obstacle_id)
+                obstacle_status = obstacle.effect.status_effect
+                status_string = ', '.join(str(x) for x in obstacle_status)
+                file_object.write(f' Obstacle is {status_string}')
+            elif boss_id == BossID.TERRA_MUTANT:
+                part = ctenums.EnemyID.TERRA_MUTANT_HEAD
+                obstacle_id = bossrando.get_obstacle_id(part, self.config)
+                obstacle = self.config.enemy_atkdb.get_tech(obstacle_id)
+                obstacle_status = obstacle.effect.status_effect
+                status_string = ', '.join(str(x) for x in obstacle_status)
+                file_object.write(f' Obstacle is {status_string}')
+
             file_object.write('\n')
 
             boss = self.config.boss_data_dict[boss_id]
@@ -825,7 +840,7 @@ class Randomizer:
         obstacle = self.config.enemy_atkdb.get_tech(0x58)
         obstacle_status = obstacle.effect.status_effect
         status_string = ', '.join(str(x) for x in obstacle_status)
-        file_object.write(f"Obstacle is {status_string}\n\n")
+        file_object.write(f"Endgame obstacle is {status_string}\n\n")
 
 
     def write_drop_charm_spoilers(self, file_object):

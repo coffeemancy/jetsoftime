@@ -1735,19 +1735,62 @@ def write_assignment_to_config(settings: rset.Settings,
         gg_data = config.enemy_dict[EnemyID.GIGA_GAIA_HEAD]
         gg_data.sprite_data.set_affect_layer_1(False)
 
+    # Same for rusty outside of giant's claw_boss
+    claw_boss = config.boss_assign_dict[LocID.GIANTS_CLAW_TYRANO]
+    if claw_boss != BossID.RUST_TYRANO:
+        rusty_data = config.enemy_dict[EnemyID.RUST_TYRANO]
+        rusty_data.sprite_data.set_affect_layer_1(False)
+
 
 # Scale the bosses given (the game settings) and the current assignment of
 # the bosses.  This is to be differentiated from the boss scaling flag which
 # scales based on the key item assignment.
 def scale_bosses_given_assignment(settings: rset.Settings,
                                   config: cfg.RandoConfig):
-
     # dictionaries: location --> BossID
     default_assignment = get_default_boss_assignment()
     current_assignment = config.boss_assign_dict
 
     # dictionaries: BossID --> Boss data
     orig_data = config.boss_data_dict
+
+    endgame_locs = [
+        LocID.OCEAN_PALACE_ENTRANCE, LocID.OCEAN_PALACE_TWIN_GOLEM,
+        LocID.BLACK_OMEN_ELDER_SPAWN, LocID.BLACK_OMEN_GIGA_MUTANT,
+        LocID.BLACK_OMEN_TERRA_MUTANT
+    ]
+
+    enemy_aidb = config.enemy_aidb
+    print(enemy_aidb.unused_techs)
+    early_obstacle_bosses = []
+    obstacle_bosses = [BossID.MEGA_MUTANT, BossID.TERRA_MUTANT]
+    for loc in current_assignment:
+        if current_assignment[loc] in obstacle_bosses and \
+           loc not in endgame_locs:
+
+            boss = current_assignment[loc]
+            early_obstacle_bosses.append(boss)
+
+    if early_obstacle_bosses:
+        # Make a new obstacle
+        atk_db = config.enemy_atkdb
+        new_obstacle = atk_db.get_tech(0x58)
+        # Choose a status that doesn't incapacitate the team.
+        # But also no point choosing poison because mega has shadow slay
+        new_status = random.choice(
+            (StatusEffect.LOCK, StatusEffect.SLOW)
+        )
+        new_obstacle.effect.status_effect = new_status
+
+        new_id = enemy_aidb.unused_techs[-1]
+        atk_db.set_tech(new_obstacle, new_id)
+
+        for boss in early_obstacle_bosses:
+            boss_data = orig_data[boss]
+            scheme = boss_data.scheme
+
+            for part in list(set(scheme.ids)):
+                enemy_aidb.change_tech_in_ai(part, 0x58, new_id)
 
     # We want to avoid a potential chain of assignments such as:
     #    A is scaled relative to B
@@ -1788,6 +1831,21 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # Update Rust Tyrano's magic boost in script
     set_rust_tyrano_script_mag(EnemyID.RUST_TYRANO, config)
 
+
+def get_obstacle_id(enemy_id: EnemyID, config: cfg.RandoConfig) -> int:
+    obstacle_msg_ids = (0xBA, 0x92)  # Only covers Terra, Mega
+
+    ai_script = config.enemy_aidb.scripts[enemy_id]
+    ai_script_b = ai_script.get_as_bytearray()
+    tech_offsets = ai_script.find_command(ai_script_b, 0x02)
+
+    for pos in tech_offsets:
+        msg = ai_script_b[pos+5]
+
+        if msg in obstacle_msg_ids:
+            return ai_script_b[pos+1]
+
+    return None
 
 # getting/setting tyrano element share this data, so I'm putting here in a
 # private global.
