@@ -1999,7 +1999,9 @@ class RandoGUI:
 
         CreateToolTip(
             checkbox,
-            'Change X-Strike to use Spincut + Leapslash.'
+            'Change X-Strike to use Spincut + Leapslash.  Also alters the '
+            'triple techs 3D-Attack and Triple Raid which obviously use '
+            'X-Strike as a component.'
         )
 
         checkbox = tk.Checkbutton(
@@ -2029,6 +2031,19 @@ class RandoGUI:
             'Instead of 40% chance of instant death, the spell does 1.5x '
             'nonelemental Dark Bomb damage.  Additionally, Black Hole\'s '
             'power increases with dead allies like doomsickle.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='No Robo Tackle On-Hit Effects',
+            variable=self.flag_dict[GameFlags.NO_CRISIS_TACKLE]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Robo Tackle regains its vanilla functionality in which it '
+            'ignores on-hit effects from weapons, most notably the Crisis Arm.'
         )
 
 
