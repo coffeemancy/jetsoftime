@@ -10,6 +10,7 @@ from enemystats import EnemyStats
 
 from ctenums import EnemyID, BossID, LocID
 
+import piecewiselinear
 import statcompute
 
 # Silly thing for typing classmethod return type from stackexchange
@@ -88,13 +89,13 @@ class Boss:
             stat_dict: dict[EnemyID, EnemyStats],
             atk_db: enemytechdb.EnemyAttackDB,
             ai_db: enemyai.EnemyAIDB
-    ) -> list[EnemyStats]:
-        return [
-            self.scale_stats(part, stat_dict[part],
-                             atk_db, ai_db,
-                             self.power, new_power)
-            for part in self.scheme.ids
-        ]
+    ) -> dict[EnemyID: EnemyStats]:
+        return {
+            part: self.scale_stats(part, stat_dict[part],
+                                   atk_db, ai_db,
+                                   self.power, new_power)
+            for part in list(set(self.scheme.ids))
+        }
 
     # Make a subclass to implement scaling styles
     # Need stats, atk/tech, ai to fully scale.
@@ -103,13 +104,13 @@ class Boss:
             stat_dict: dict[EnemyID, EnemyStats],
             atk_db: enemytechdb.EnemyAttackDB,
             ai_db: enemyai.EnemyAIDB
-    ) -> list[EnemyStats]:
-        return [
-            self.scale_stats(part, stat_dict[part],
-                             atk_db, ai_db,
-                             self.power, other.power)
-            for part in self.scheme.ids
-        ]
+    ) -> dict[EnemyID: EnemyStats]:
+        return {
+            part: self.scale_stats(part, stat_dict[part],
+                                   atk_db, ai_db,
+                                   self.power, other.power)
+            for part in list(set(self.scheme.ids))
+        }
 
     @classmethod
     def generic_one_spot(cls: Type[T], boss_id, slot, power) -> T:
@@ -138,7 +139,7 @@ class Boss:
 
     @classmethod
     def ATROPOS_XR(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 15)
+        return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 14)
 
     @classmethod
     def BLACK_TYRANO(cls: Type[T]) -> T:
@@ -151,7 +152,7 @@ class Boss:
 
     @classmethod
     def DALTON_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 25)
+        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 18)
 
     # Note to self: Extra grinder objects at end of script?
     @classmethod
@@ -177,11 +178,11 @@ class Boss:
 
     @classmethod
     def FLEA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA, 7, 20)
+        return cls.generic_one_spot(EnemyID.FLEA, 7, 15)
 
     @classmethod
     def FLEA_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 15)
+        return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 14)
 
     @classmethod
     def GIGA_GAIA(cls: Type[T]) -> T:
@@ -190,7 +191,7 @@ class Boss:
         slots = [6, 7, 9]
         # disps = [(0, 0), (0x40, 0x30), (-0x40, 0x30)]
         disps = [(0, 0), (0x20, 0x20), (-0x20, 0x20)]
-        power = 25
+        power = 20
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -205,11 +206,11 @@ class Boss:
 
     @classmethod
     def GOLEM(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.GOLEM, 3, 25)
+        return cls.generic_one_spot(EnemyID.GOLEM, 3, 18)
 
     @classmethod
     def GOLEM_BOSS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.GOLEM_BOSS, 3, 20)
+        return cls.generic_one_spot(EnemyID.GOLEM_BOSS, 3, 15)
 
     @classmethod
     def GUARDIAN(cls: Type[T]) -> T:
@@ -224,7 +225,7 @@ class Boss:
 
     @classmethod
     def HECKRAN(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.HECKRAN, 3, 12)
+        return cls.generic_one_spot(EnemyID.HECKRAN, 3, 8)
 
     @classmethod
     def LAVOS_SHELL(cls: Type[T]) -> T:
@@ -261,7 +262,7 @@ class Boss:
                EnemyID.LAVOS_SPAWN_HEAD]
         slots = [3, 9]
         disps = [(0, 0), (-0x8, 1)]
-        power = 20
+        power = 18
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
@@ -270,7 +271,7 @@ class Boss:
 
     @classmethod
     def MASA_MUNE(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.MASA_MUNE, 6, 15)
+        return cls.generic_one_spot(EnemyID.MASA_MUNE, 6, 11)
 
     @classmethod
     def MEGA_MUTANT(cls: Type[T]) -> T:
@@ -295,7 +296,7 @@ class Boss:
         # disps = [(0, 0), (-0x50, -0x1F), (-0x20, -0x2F), (0x40, -0x1F)]
         # Tighten up coords to fit better.  AoE still hits screens the same
         disps = [(0, 0), (-0x40, -0xF), (-0x8, -0x1F), (0x38, -0xF)]
-        power = 20
+        power = 15
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -310,11 +311,11 @@ class Boss:
 
     @classmethod
     def NIZBEL(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.NIZBEL, 3, 18)
+        return cls.generic_one_spot(EnemyID.NIZBEL, 3, 14)
 
     @classmethod
     def NIZBEL_II(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.NIZBEL_II, 3, 20)
+        return cls.generic_one_spot(EnemyID.NIZBEL_II, 3, 16)
 
     @classmethod
     def RETINITE(cls: Type[T]) -> T:
@@ -322,7 +323,7 @@ class Boss:
                EnemyID.RETINITE_BOTTOM]
         slots = [3, 9, 6]
         disps = [(0, 0), (0, -0x8), (0, 0x28)]
-        power = 18
+        power = 12  # With water magic, retinite is 0 threat
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -342,11 +343,11 @@ class Boss:
 
     @classmethod
     def SLASH_SWORD(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 20)
+        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 14)
 
     @classmethod
     def SUPER_SLASH(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SUPER_SLASH, 7, 15)
+        return cls.generic_one_spot(EnemyID.SUPER_SLASH, 7, 14)
 
     @classmethod
     def SON_OF_SUN(cls: Type[T]) -> T:
@@ -379,11 +380,11 @@ class Boss:
 
     @classmethod
     def YAKRA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.YAKRA, 3, 3)
+        return cls.generic_one_spot(EnemyID.YAKRA, 3, 1)
 
     @classmethod
     def YAKRA_XIII(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.YAKRA_XIII, 3, 15)
+        return cls.generic_one_spot(EnemyID.YAKRA_XIII, 3, 12)
 
     @classmethod
     def ZEAL(cls: Type[T]) -> T:
@@ -406,7 +407,7 @@ class Boss:
                                        EnemyID.ZOMBOR_BOTTOM],
                                       [(0, 0), (0, 0x20)],
                                       [9, 3],
-                                      10)
+                                      5)
 # end Boss class
 
 
@@ -503,19 +504,21 @@ def get_mdef(level: int):
 def get_phys_def(level: int):
     BASE_STM = 8
     STM_GROWTH = 1.65
-    LV1_ARMOR_DEF = 3 + 5  # hide cap + hide armor
-    LV15_ARMOR_DEF = 45 + 20  # ruby vest + rock helm
-    LV30_ARMOR_DEF = 75 + 35  # aeon suit + mermaid cap
 
+    # In practice, jets has weird armor curve.  You can get about 80% of
+    # endgame armor in the early game.
+    LV1_ARMOR_DEF = 3 + 5  # hide cap + hide armor
+    MID_ARMOR = 45 + 20  # ruby vest + rock helm
+    LATE_ARMOR = 75 + 35  # aeon suit + mermaid cap
+
+    pwl = piecewiselinear.PiecewiseLinear(
+        (1, LV1_ARMOR_DEF),
+        (12, MID_ARMOR),
+        (25, LATE_ARMOR)
+    )
+
+    armor = pwl(level)
     stamina = BASE_STM + STM_GROWTH*(level-1)
-    if 1 <= level <= 15:
-        t = (level-1)/(15-1)
-        armor = (1-t)*LV1_ARMOR_DEF+(t)*LV15_ARMOR_DEF
-    elif 15 <= level <= 30:
-        t = (level-15)/(30-15)
-        armor = (1-t)*LV15_ARMOR_DEF+(t)*LV30_ARMOR_DEF
-    else:
-        armor = LV30_ARMOR_DEF
 
     return min(stamina + armor, 256)
 
@@ -551,9 +554,9 @@ def progressive_scale_stats(
         scale_mdef: bool = False,
         scale_offense: bool = True,
         scale_defense: bool = False,
-        scale_xp: bool = True,
-        scale_gp: bool = True,
-        scale_tp: bool = True,
+        scale_xp: bool = False,
+        scale_gp: bool = False,
+        scale_tp: bool = False,
         scale_techs: bool = True,
         scale_atk: bool = True) -> EnemyStats:
 
@@ -567,6 +570,11 @@ def progressive_scale_stats(
         set_stats_offense(enemy_id, new_stats, new_offense, atk_db,
                           ai_db, scale_techs, scale_atk)
 
+    if scale_techs:
+        scale_enemy_techs(enemy_id, stats,
+                          off_scale_factor, mag_scale_factor,
+                          atk_db, ai_db)
+
     if scale_magic:
         new_stats.magic = int(min(stats.magic*mag_scale_factor, 0xFF))
 
@@ -579,13 +587,20 @@ def progressive_scale_stats(
     def get_hp_scale_factor(
             from_power: float, to_power: float
     ) -> float:
-        exp = 1.25
+
+        # This is super contrived.  It just scales from 1 to about 15 with
+        # steeper scaling at the higher end.
+        def hp_marker(level: float):
+            return 1+15*(level/30)**1.5
+
+        # print(f'from, marker: {from_power}, {hp_marker(from_power)}')
+        # print(f'  to, marker: {to_power}, {hp_marker(to_power)}')
         if from_power*to_power == 0:
             return 0
-        return (to_power/from_power)**exp
+        return hp_marker(to_power)/hp_marker(from_power)
 
+    hp_scale_factor = get_hp_scale_factor(from_power, to_power)
     if scale_hp:
-        hp_scale_factor = get_hp_scale_factor(from_power, to_power)
         new_stats.hp = int(min(stats.hp*hp_scale_factor, 0x7FFF))
 
         if new_stats.hp < 1:
@@ -606,21 +621,88 @@ def progressive_scale_stats(
 
     # xp to next level is approximately quadratic.  Scale all rewards
     # quadratically.
+    def xp_mark(level: float):
+        return 5.62*(level**2) + 11.31*level
+
     if from_power*to_power == 0:
         reward_scale = 0
     else:
-        reward_scale = (to_power**2)/(from_power**2)
+        reward_scale = xp_mark(to_power)/xp_mark(from_power)
 
     orig_stats = (stats.xp, stats.tp, stats.gp)
+
+    # Observed that gp, tp scale roughly with hp.  So for now we're lazy
+    # and reusing that scale factor.
+    # TODO: Fixed rewards in a given spot.
+    scales = (hp_scale_factor, hp_scale_factor, hp_scale_factor)
     is_scaled = (scale_xp, scale_tp, scale_gp)
     reward_max = (0x7FFF, 0xFF, 0x7FFF)
 
     new_stats.xp, new_stats.tp, new_stats.gp = \
-        (int(min(orig_stats[i]*reward_scale, reward_max[i]))
+        (int(min(orig_stats[i]*scales[i], reward_max[i]))
          if is_scaled[i] else orig_stats[i]
          for i in range(len(orig_stats)))
 
     return new_stats
+
+
+def scale_enemy_techs(enemy_id: EnemyID,
+                      orig_stats: EnemyStats,
+                      off_scale_factor: float,
+                      mag_scale_factor: float,
+                      atk_db: enemytechdb.EnemyAttackDB,
+                      ai_db: enemyai.EnemyAIDB):
+    enemy_techs = ai_db.scripts[enemy_id].tech_usage
+    # print(f'Scaling techs for {enemy_id}')
+    # print(f'  mag scale: {mag_scale_factor}')
+    # print(f'  off scale: {off_scale_factor}')
+    # print(f'  used: {enemy_techs}')
+    # unused_tech_count = len(ai_db.unused_techs)
+    # print(f'num unused_techs: {unused_tech_count}')
+
+    new_offense = orig_stats.offense*off_scale_factor
+    effective_new_offense = min(new_offense, 0xFF)
+    overflow_scale = new_offense/0xFF
+    effective_off_scale = effective_new_offense / orig_stats.offense
+
+    for tech_id in enemy_techs:
+        tech = atk_db.get_tech(tech_id)
+        effect = tech.effect
+
+        new_power = effect.power
+        if effect.damage_formula_id == 0x3A:  # physical damage formulas
+            if effect.defense_byte == 0x3E:  # Defended by phys def (normal)
+                # print(f'Tech {tech_id:02X} is normal')
+                if overflow_scale > 1.05:
+                    new_power = round(effect.power*overflow_scale)
+            elif effect.defense_byte == 0x3C:  # Defended by mdef (weird)
+                # print(f'Tech {tech_id:02X} is weird')
+                rescale = mag_scale_factor/effective_off_scale
+                new_power = round(effect.power*rescale)
+
+        new_power = min(0xFF, new_power)
+        if new_power != effect.power:  # Need to scale
+            # print(f'Scaling tech {tech_id:02X} from {effect.power} to '
+            #       f'{new_power}')
+
+            tech.effect.power = new_power
+            usage = ai_db.tech_to_enemy_usage[tech_id]
+            new_id = None
+            if len(usage) > 1:
+                # print(f'\t{usage}')
+                # print('\tNeed to duplicate.')
+                if ai_db.unused_techs:
+                    new_id = ai_db.unused_techs[-1]
+                    ai_db.change_tech_in_ai(enemy_id, tech_id, new_id)
+                else:
+                    print('Warning: No unused techs remaining.')
+            else:
+                new_id = tech_id
+
+            if new_id is not None:
+                atk_db.set_tech(tech, new_id)
+            else:
+                print(f'Skipped scaling {tech_id} because no unused techs.')
 
 
 # Helper method for setting offense and scaling techs if needed.
@@ -634,36 +716,6 @@ def set_stats_offense(enemy_id: EnemyID,
 
     if new_offense/0xFF > 1.05:
         remaining_scale = new_offense/0xFF
-
-        if scale_techs:
-            # Need to ensure uniqueness in list to not double scale.
-            ai_script = ai_db.scripts[enemy_id]
-            used_tech_ids = list(set(ai_script.tech_usage))
-            for tech_id in used_tech_ids:
-                tech = atk_db.get_tech(tech_id)
-                usage = ai_db.tech_to_enemy_usage[tech_id]
-                if tech.is_physical():
-                    new_power = round(tech.effect.power*remaining_scale)
-                    if new_power > 0xFF:
-                        new_power = 0xFF
-                        # print('Warning: Power exceeds maximum.  Capping.')
-
-                    # print(f'tech 0x{tech_id:02X} from {tech.effect.power} '
-                    #       f'to {new_power}')
-                    tech.effect.power = new_power
-
-                    if len(usage) > 1:
-                        if ai_db.unused_techs:
-                            new_id = ai_db.unused_techs[-1]
-                            # print(f'Copying tech {tech_id:02X} '
-                            #       f'to {new_id:02X}')
-                            ai_db.change_tech_in_ai(enemy_id, tech_id, new_id)
-                            tech.control.set_effect_index(0, new_id)
-                            atk_db.set_tech(tech, new_id)
-                        else:
-                            print('Warning: No more unused techs.')
-                    else:
-                        atk_db.set_tech(tech, tech_id)
 
         # Scale atk 01
         if scale_atk:

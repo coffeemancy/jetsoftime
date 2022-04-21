@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from byteops import to_little_endian
+import dataclasses
 import copy
 from collections.abc import Callable
 import random
@@ -10,6 +11,7 @@ from bossdata import BossScheme, get_default_boss_assignment
 from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect
 from ctevent import Event, free_event, get_loc_event_ptr
 from ctrom import CTRom
+import enemyrewards
 from eventcommand import EventCommand as EC, get_command, FuncSync
 from eventfunction import EventFunction as EF
 # from eventscript import get_location_script, get_loc_event_ptr
@@ -1552,16 +1554,22 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
         config.enemy_atkdb.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
 
+        drop = config.enemy_dict[EnemyID.TWIN_BOSS].drop_item
+        charm = config.enemy_dict[EnemyID.TWIN_BOSS].charm_item
+        base_stats = config.enemy_dict[base_id].get_copy()
+        config.enemy_dict[EnemyID.TWIN_BOSS] = base_stats
+        orig_power = config.boss_data_dict[one_spot_boss].power
+        twin_boss.power = orig_power
+
         # Scale the stats and write them to the twin boss spot in the config
         # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
-        orig_power = twin_boss.power
-        twin_boss.power = 27  # slightly higher than zeal palace
-        orig_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
-        drop, charm = orig_stats.drop_item, orig_stats.charm_item
 
-        scaled_stats = base_boss.scale_relative_to(
-            twin_boss, config.enemy_dict,
-            config.enemy_atkdb, config.enemy_aidb)[0]
+        scaled_stats = twin_boss.scale_to_power(
+            25,  # vs 18 in ocean palace
+            config.enemy_dict,
+            config.enemy_atkdb,
+            config.enemy_aidb
+        )[EnemyID.TWIN_BOSS]
 
         # Cut XP in half.
         scaled_stats.xp = int(scaled_stats.xp / 2)
@@ -1579,7 +1587,6 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
             set_rust_tyrano_element(EnemyID.TWIN_BOSS, elem,
                                     config)
             set_rust_tyrano_script_mag(EnemyID.TWIN_BOSS, config)
-
 
 # This function needs to write the boss assignment to the config respecting
 # the provided settings.
@@ -1766,6 +1773,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         LocID.BLACK_OMEN_TERRA_MUTANT
     ]
 
+    # Get the new obstacle (if needed) before tech scaling.  If further
+    # obstacle duplicates are made, they will inherit the right status.
     enemy_aidb = config.enemy_aidb
     early_obstacle_bosses = []
     obstacle_bosses = [BossID.MEGA_MUTANT, BossID.TERRA_MUTANT]
@@ -1806,7 +1815,6 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # So here's a dict to store the scaled stats before writing them back
     # to the config at the very end.
     scaled_dict = dict()
-
     new_power_values = dict()
 
     for location in settings.ro_settings.loc_list:
@@ -1816,12 +1824,61 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                                                   config.enemy_dict,
                                                   config.enemy_atkdb,
                                                   config.enemy_aidb)
+        
+        # Update rewards to match original boss
+        # TODO: This got too big.  Break into own function?
+        spot_xp = sum(config.enemy_dict[part].xp
+                      for part in orig_boss.scheme.ids)
+        spot_tp = sum(config.enemy_dict[part].tp
+                      for part in orig_boss.scheme.ids)
+        spot_gp = sum(config.enemy_dict[part].gp
+                      for part in orig_boss.scheme.ids)
+        spot_reward_group = enemyrewards.get_tier_of_enemy(
+            orig_boss.scheme.ids[0]
+        )
+
+        boss_xp = sum(config.enemy_dict[part].xp
+                      for part in new_boss.scheme.ids)
+        boss_tp = sum(config.enemy_dict[part].tp
+                      for part in new_boss.scheme.ids)
+        boss_gp = sum(config.enemy_dict[part].gp
+                      for part in new_boss.scheme.ids)
+
+        for ind, part in enumerate(scaled_stats.keys()):
+            part_count = sum(
+                part_id == part for part_id in new_boss.scheme.ids
+            )
+            part_xp = sum(
+                config.enemy_dict[part_id].xp
+                for part_id in new_boss.scheme.ids
+                if part_id == part
+            )
+
+            part_tp = sum(
+                config.enemy_dict[part_id].tp
+                for part_id in new_boss.scheme.ids
+                if part_id == part
+            )
+
+            part_gp = sum(
+                config.enemy_dict[part_id].gp
+                for part_id in new_boss.scheme.ids
+                if part_id == part
+            )
+
+            scaled_stats[part].xp = round(part_xp/(part_count*boss_xp)*spot_xp)
+            scaled_stats[part].tp = round(part_tp/(part_count*boss_tp)*spot_tp)
+            scaled_stats[part].gp = round(part_gp/(part_count*boss_gp)*spot_gp)
+            enemyrewards.set_enemy_charm_drop(
+                scaled_stats[part],
+                spot_reward_group,
+                settings.item_difficulty
+            )
 
         new_power_values[location] = orig_boss.power
 
         # Put the stats in scaled_dict
-        for ind, part_id in enumerate(new_boss.scheme.ids):
-            scaled_dict[part_id] = scaled_stats[ind]
+        scaled_dict.update(scaled_stats)
 
     # In case of multiple power adjustments, make sure that the boss powers
     # are properly updated.
@@ -1830,8 +1887,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         config.boss_data_dict[boss].power = new_power_values[loc]
 
     # Write all of the scaled stats back to config's dict
-    for enemy_id in scaled_dict.keys():
-        config.enemy_dict[enemy_id] = scaled_dict[enemy_id]
+    config.enemy_dict.update(scaled_dict)
 
     # Update Rust Tyrano's magic boost in script
     set_rust_tyrano_script_mag(EnemyID.RUST_TYRANO, config)
