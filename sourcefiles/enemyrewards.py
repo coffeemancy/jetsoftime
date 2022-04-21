@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum, auto
 import random
 
+import enemystats
 from ctenums import ItemID, EnemyID
 
 import randoconfig as cfg
@@ -262,7 +263,7 @@ _rarest_enemies = [
 _early_bosses = [
     EnemyID.YAKRA, EnemyID.MASA, EnemyID.MUNE, EnemyID.MASA_MUNE,
     EnemyID.OZZIE_ZENAN, EnemyID.OZZIE_FORT, EnemyID.HECKRAN,
-    EnemyID.ZOMBOR_BOTTOM, EnemyID.ZOMBOR_TOP, EnemyID.SUPER_SLASH_TRIO,
+    EnemyID.ZOMBOR_BOTTOM, EnemyID.ZOMBOR_TOP, EnemyID.SUPER_SLASH,
     EnemyID.FLEA_PLUS, EnemyID.ATROPOS_XR, EnemyID.GOLEM_BOSS,
 ]
 
@@ -284,9 +285,10 @@ _late_bosses = [
     EnemyID.ZEAL_2_CENTER, EnemyID.ZEAL_2_LEFT, EnemyID.ZEAL_2_RIGHT,
     EnemyID.GIGA_MUTANT_HEAD, EnemyID.GIGA_MUTANT_BOTTOM,
     EnemyID.TERRA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_BOTTOM,
-    EnemyID.FLEA_PLUS_TRIO, EnemyID.SUPER_SLASH, EnemyID.GREAT_OZZIE,
+    EnemyID.FLEA_PLUS_TRIO, EnemyID.SUPER_SLASH_TRIO, EnemyID.GREAT_OZZIE,
     EnemyID.BLACKTYRANO, EnemyID.GIGA_GAIA_HEAD, EnemyID.GIGA_GAIA_LEFT,
     EnemyID.GIGA_GAIA_RIGHT, EnemyID.MAGUS, EnemyID.DALTON_PLUS,
+    EnemyID.MEGA_MUTANT_BOTTOM, EnemyID.MEGA_MUTANT_HEAD
 ]
 
 _enemy_group_dict = dict()
@@ -304,6 +306,32 @@ _enemy_group_dict[RewardGroup.LATE_BOSS] = _late_bosses
 # returns a copy to avoid messing with the lists in global scope
 def get_enemy_tier(tier: RewardGroup):
     return _enemy_group_dict[tier].copy()
+
+
+def get_tier_of_enemy(enemy_id: EnemyID):
+    tier = (x for x in _enemy_group_dict
+            if enemy_id in _enemy_group_dict[x])
+
+    return next(tier)
+
+
+def set_enemy_charm_drop(stats: enemystats.EnemyStats,
+                         reward_group: RewardGroup,
+                         difficulty: rset.Difficulty):
+    drop_dist, charm_dist, drop_rate = \
+        get_distributions(reward_group, difficulty)
+
+    drop = drop_dist.get_random_item()
+    if charm_dist is None:
+        charm = drop
+    else:
+        charm = charm_dist.get_random_item()
+
+    if random.random() > drop_rate:
+        drop = ItemID.NONE
+
+    stats.drop_item = drop
+    stats.charm_item = charm
 
 
 # This method just alters the cfg.RandoConfig object.
