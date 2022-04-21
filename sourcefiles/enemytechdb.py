@@ -137,6 +137,14 @@ class EnemyEffectHeader(_FixedLengthRecord):
 
         self._data[2] = status_byte
 
+    @property
+    def defense_byte(self) -> int:
+        return self._data[6]
+
+    @defense_byte.setter
+    def defense_byte(self, value):
+        self._data[6] = value
+
 
 class EnemyTechGfxHeader(_FixedLengthRecord):
     SIZE = 0x7
@@ -282,11 +290,14 @@ class EnemyAttackDB:
         return EnemyEffectHeader(self._atk_effects,
                                  atk_id*EnemyEffectHeader.SIZE)
 
-    def get_atk(self, atk_id: int):
+    def get_atk(self, atk_id: int) -> EnemyAttack:
         control = self.get_atk_control(atk_id)
         effect = self.get_atk_effect(atk_id)
 
         return EnemyAttack(control, effect)
+
+    def get_atk_count(self) -> int:
+        return len(self._atk_effects)//EnemyEffectHeader.SIZE
 
     def copy_atk_gfx(self,
                      changed_enemy_id: ctenums.EnemyID,
