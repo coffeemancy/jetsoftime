@@ -1554,9 +1554,14 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
         config.enemy_atkdb.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
 
-        drop = config.enemy_dict[EnemyID.TWIN_BOSS].drop_item
-        charm = config.enemy_dict[EnemyID.TWIN_BOSS].charm_item
+        twin_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
+
         base_stats = config.enemy_dict[base_id].get_copy()
+
+        base_stats.xp = twin_stats.xp
+        base_stats.tp = twin_stats.tp
+        base_stats.gp = twin_stats.gp
+
         config.enemy_dict[EnemyID.TWIN_BOSS] = base_stats
         orig_power = config.boss_data_dict[one_spot_boss].power
         twin_boss.power = orig_power
@@ -1570,11 +1575,6 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
             config.enemy_atkdb,
             config.enemy_aidb
         )[EnemyID.TWIN_BOSS]
-
-        # Cut XP in half.
-        scaled_stats.xp = int(scaled_stats.xp / 2)
-        scaled_stats.drop_item = drop
-        scaled_stats.charm_item = charm
 
         # Just here for rusty.
         scaled_stats.sprite_data.set_affect_layer_1(False)
