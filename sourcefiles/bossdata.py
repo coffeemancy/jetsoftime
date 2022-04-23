@@ -271,7 +271,7 @@ class Boss:
 
     @classmethod
     def MASA_MUNE(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.MASA_MUNE, 6, 11)
+        return cls.generic_one_spot(EnemyID.MASA_MUNE, 6, 12)
 
     @classmethod
     def MEGA_MUTANT(cls: Type[T]) -> T:
@@ -514,7 +514,7 @@ def get_phys_def(level: int):
     pwl = piecewiselinear.PiecewiseLinear(
         (1, LV1_ARMOR_DEF),
         (12, MID_ARMOR),
-        (25, LATE_ARMOR)
+        (30, LATE_ARMOR)
     )
 
     armor = pwl(level)
@@ -652,7 +652,10 @@ def scale_enemy_techs(enemy_id: EnemyID,
                       mag_scale_factor: float,
                       atk_db: enemytechdb.EnemyAttackDB,
                       ai_db: enemyai.EnemyAIDB):
-    enemy_techs = ai_db.scripts[enemy_id].tech_usage
+
+    # Need to copy the list.  Otherwise duplicated techs get readded to
+    # the list and scaled twice.
+    enemy_techs = list(ai_db.scripts[enemy_id].tech_usage)
     # print(f'Scaling techs for {enemy_id}')
     # print(f'  mag scale: {mag_scale_factor}')
     # print(f'  off scale: {off_scale_factor}')
@@ -693,6 +696,7 @@ def scale_enemy_techs(enemy_id: EnemyID,
                 # print('\tNeed to duplicate.')
                 if ai_db.unused_techs:
                     new_id = ai_db.unused_techs[-1]
+                    # print(f'\tNew ID: {new_id:02X}')
                     ai_db.change_tech_in_ai(enemy_id, tech_id, new_id)
                 else:
                     print('Warning: No unused techs remaining.')
@@ -801,6 +805,7 @@ class ProgressiveScaleBoss(Boss):
         return progressive_scale_stats(enemy_id, stats,
                                        atk_db, ai_db,
                                        from_power, to_power)
+
 
 # This isn't used anymore, but we'll keep it around
 class LinearScaleBoss(Boss):
