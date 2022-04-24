@@ -14,7 +14,7 @@ Contact: https://discord.gg/cKYjHwj
          
 Email:   cecilraster475@gmail.com
 
-IMPORTANT: The official, stable repository is at https://github.com/Anskiy/jetsoftime/.  This repository contains a number of experimental features which may or may not make it into the official repository.  Read the files in the guides folder and Known Bugs.txt before playing.
+IMPORTANT: The official, stable repository is at https://github.com/Anskiy/jetsoftime/.  This repository contains a number of experimental features which may or may not make it into the official repository.  Read the files in the guides folder and Known Bugs.txt before playing.  These documents were written from the stable version of jets.  Beta-specific changes are currently being recorded at https://docs.google.com/document/d/1cQK9lTaWuKag5c2Ko6bjWTQ85ehalHzSJiUPw8Wdp9g/.
 
 --ABOUT--
 
