@@ -888,7 +888,7 @@ class ItemDB:
             return
 
         if isinstance(item.stats, ConsumableKeyEffect):
-            stat_strs =[]
+            stat_strs = []
             if item.stats.heals_hp:
                 stat_strs.append('HP')
 
@@ -903,13 +903,19 @@ class ItemDB:
                 mag_str = str(item.stats.get_heal_amount())
 
             if item.stats.heals_in_battle:
-                string = 'Restores ' + mag_str + ' ' + stat_str + '{null}'
+                string = 'Restores ' + mag_str + ' ' + stat_str
+                # Item targeting is not in this data.
+                # Vanilla Mid Tonic == Lapis
+                # So until we handle that data too, hardcode the Lapis desc.
+                if item_id == ctenums.ItemID.LAPIS:
+                    string += ' to Party'
+
+                string += '{null}'
 
                 item.desc = ctstrings.CTString.from_str(string)
             elif item.stats.heals_at_save:
                 string = 'Restores ' + mag_str + ' ' + stat_str \
                     + ' at Save Pts.{null}'
-
                 item.desc = ctstrings.CTString.from_str(string)
 
             return
