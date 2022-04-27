@@ -751,7 +751,7 @@ class Item:
         name_st = names_start_addr + item_id*name_size
         name_end = name_st + name_size
 
-        rom[name_st:name_end] = self.name[:]
+        rom[name_st:name_end] = self.name
 
     @classmethod
     def get_desc_ptr_file_start_from_rom(cls, rom: bytes):
@@ -904,14 +904,12 @@ class ItemDB:
 
             if item.stats.heals_in_battle:
                 string = 'Restores ' + mag_str + ' ' + stat_str + '{null}'
-                print(string)
 
                 item.desc = ctstrings.CTString.from_str(string)
             elif item.stats.heals_at_save:
                 string = 'Restores ' + mag_str + ' ' + stat_str \
                     + ' at Save Pts.{null}'
 
-                print(string)
                 item.desc = ctstrings.CTString.from_str(string)
 
             return

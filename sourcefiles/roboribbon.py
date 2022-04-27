@@ -37,14 +37,8 @@ def set_robo_ribbon_in_config(config: cfg.RandoConfig):
     x = item_db.stat_boosts
     ind1 = robo_ribbon.stats.stat_boost_index
     ind2 = dash_boost_ind
-    print(ind1, ind2)
-    print(x[ind1])
-    print(x[ind2])
 
     x[ind1], x[ind2] = x[ind2], x[ind1]
-
-    print(x[ind1])
-    print(x[ind2])
 
     # Replace stat boosts on all equipment
     equippable_items = (x for x in list(ItemID) if x < 0xBC)
