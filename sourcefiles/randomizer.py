@@ -149,6 +149,7 @@ class Randomizer:
 
         # Item Rando
         itemrando.write_item_prices_to_config(self.settings, self.config)
+        itemrando.randomize_healing(self.settings, self.config)
         self.config.itemdb.update_all_descriptions()
 
         # Boss Rando
