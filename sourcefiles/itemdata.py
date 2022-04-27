@@ -169,7 +169,7 @@ class BinaryData:
         self._data = bytearray(data)
 
     def get_copy(self):
-        return self.__class__.__init__(self._data)
+        return self.__class__(self._data)
 
     def __len__(self) -> int:
         return self.SIZE
