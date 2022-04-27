@@ -10,6 +10,7 @@ import bossdata
 import enemyai
 import enemytechdb
 import enemystats
+import itemdata
 import ctenums
 import ctrom
 import statcompute
@@ -88,67 +89,6 @@ class CharManager:
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom):
         for pc in self.pcs:
             pc.write_stats_to_ctrom(ct_rom)
-
-
-# Class that handles storing and manipulating item prices
-class PriceManager:
-
-    def __init__(self, rom: bytearray):
-        self.price_dict = dict()
-
-        for item in list(ctenums.ItemID):
-            price_addr = self.__get_price_addr(item)
-            price = byteops.get_value_from_bytes(rom[price_addr:price_addr+2])
-            self.price_dict[item] = price
-            # Note:  In the future we could be adding a per-shop price
-            #        multiplier to along go with the item list.
-
-    def get_price(self, item: ctenums.ItemID):
-        return self.price_dict[item]
-
-    def set_price(self, item: ctenums.ItemID, price: int):
-        if price > 0xFFFF:
-            print('Error: price exceeds 0xFFFF.  Not Changing.')
-            input()
-        else:
-            self.price_dict[item] = price
-
-    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
-        rom = ct_rom.rom_data
-
-        for item, price in self.price_dict.items():
-            addr = self.__get_price_addr(item)
-            rom.seek(addr)
-            rom.write(byteops.to_little_endian(price, 2))
-
-    # Following pointers from original shopwriter
-    @classmethod
-    def __get_price_addr(cls, item: ctenums.ItemID) -> int:
-        # We're assuming this is all vanilla.  Otherwise we need to pass
-        # a rom in here too.
-
-        item_index = int(item)
-
-        # Different types of items have their price data in different places
-        if item_index < 0x94:
-            # Gear is in 00 (empty) to 0x93 (Mermaid Cap)
-            # 6 byte record, price is 2 bytes, offset 1
-            return 0x0C06A4 + 6*item_index + 1
-        elif item_index < 0xBC:
-            # Accessories in 0x94 (empty) to 0xBB (Prismspecs)
-            # 4 byte record, price is 2 bytes, offset 1
-            return 0x0C0A1C + 4*(item_index-0x94) + 1
-        else:
-            # Consumables + Keys in 0xBC (empty) to 0xE7 (2xFeather)
-            # 3 byte record, price is 2 bytes, offset 1
-            return 0x0C0ABC + 3*(item_index-0xBC) + 1
-
-    def __str__(self):
-        ret = ''
-        for item, price in self.price_dict.items():
-            ret += f"{item}: {price}\n"
-
-        return ret
 
 
 class ShopManager:
@@ -233,10 +173,11 @@ class ShopManager:
                        items: list[ctenums.ItemID]):
         self.shop_dict[shop] = items[:]
 
-    def print_with_prices(self, price_manager: PriceManager):
-        print(self.__str__(price_manager))
+    def print_with_prices(self,
+                          item_db: itemdata.ItemDB):
+        print(self.__str__(item_db))
 
-    def __str__(self, price_manager: PriceManager = None):
+    def __str__(self, item_db: itemdata.ItemDB):
         ret = ''
         for shop in sorted(self.shop_dict.keys()):
             if shop in [ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14,
@@ -248,8 +189,8 @@ class ShopManager:
             for item in self.shop_dict[shop]:
                 ret += ('    ' + str(item))
 
-                if price_manager is not None:
-                    price = price_manager.get_price(item)
+                if item_db is not None:
+                    price = item_db.item_dict[item].secondary_stats.price
                     ret += f": {price}"
 
                 ret += '\n'
@@ -1144,10 +1085,6 @@ class RandoConfig:
             LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR
         }
 
-        # The twin boss defaults to twin golem, but boss rando may change
-        # this data.
-        self.twin_boss_type = ctenums.EnemyID.GOLEM
-
         self.boss_data_dict = bossdata.get_boss_data_dict()
         self.boss_rank = dict()
 
@@ -1164,7 +1101,7 @@ class RandoConfig:
         if rom is None:
             self.enemy_dict = None  # enemystats.get_stat_dict(rom)
             self.shop_manager = None  # ShopManager(rom)
-            self.price_manager = None  # PriceManager(rom)
+            self.itemdb = None
             self.char_manager = None  # CharManager(rom)
             self.techdb = None  # techdb.TechDB.get_default_db(rom)
             self.enemy_atkdb = None  # enemytechdb.EnemyAttackDB.from_rom(rom)
@@ -1172,7 +1109,7 @@ class RandoConfig:
         else:
             self.enemy_dict = enemystats.get_stat_dict(rom)
             self.shop_manager = ShopManager(rom)
-            self.price_manager = PriceManager(rom)
+            self.itemdb = itemdata.ItemDB.from_rom(rom)
             self.char_manager = CharManager(rom)
             self.techdb = techdb.TechDB.get_default_db(rom)
             self.enemy_atkdb = enemytechdb.EnemyAttackDB.from_rom(rom)
@@ -1242,27 +1179,12 @@ class RandoConfig:
 
         ret_cfg.enemy_dict = enemystats.get_stat_dict(rom)
         ret_cfg.shop_manager = ShopManager(rom)
-        ret_cfg.price_manager = PriceManager(rom)
+        ret_cfg.itemdb = itemdata.ItemDB.from_rom(rom)
         ret_cfg.char_manager = CharManager(rom)
         ret_cfg.techdb = techdb.TechDB.get_default_db(rom)
         ret_cfg.enemy_aidb = enemyai.EnemyAIDB.from_rom(rom)
         ret_cfg.enemy_atkdb = enemytechdb.EnemyAttackDB.from_rom(rom)
         return ret_cfg
-
-    def write_spoiler_log(self, filename):
-        with open(filename, 'w') as outfile:
-            outfile.write('Treasures:\n')
-
-            for treasure_loc in self.treasure_assign_dict.keys():
-                outfile.write(
-                    f"{treasure_loc}: "
-                    f"{self.treasure_assign_dict[treasure_loc].held_item}\n"
-                )
-
-            outfile.write('\n\nShops and Prices:\n')
-            outfile.write(f"{self.shop_manager.__str__(self.price_manager)}\n")
-            outfile.write('Prices\n')
-            outfile.write(f"{self.price_manager}\n")
 
 
 def main():
