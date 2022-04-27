@@ -4,6 +4,7 @@ import os
 import pickle
 import sys
 
+import itemrando
 import treasurewriter
 import shopwriter
 import logicwriter_chronosanity as logicwriter
@@ -116,8 +117,9 @@ class Randomizer:
                 self.config.enemy_dict = pickle.load(infile)
         '''
 
-        # Character config.  Includes tech randomization.
-        charrando.write_pcs_to_config(self.settings, self.config)
+        # Character config.  Includes tech randomization and who can equip
+        # which items.
+        charrando.write_config(self.settings, self.config)
         techrandomizer.write_tech_order_to_config(self.settings,
                                                   self.config)
 
@@ -142,8 +144,12 @@ class Randomizer:
         # Shops
         shopwriter.write_shops_to_config(self.settings, self.config)
 
-        # Item Prices
-        shopwriter.write_item_prices_to_config(self.settings, self.config)
+        # Robo's Ribbon in itemdb
+        roboribbon.set_robo_ribbon_in_config(self.config)
+
+        # Item Rando
+        itemrando.write_item_prices_to_config(self.settings, self.config)
+        self.config.itemdb.update_all_descriptions()
 
         # Boss Rando
         bossrando.write_assignment_to_config(self.settings, self.config)
@@ -434,8 +440,8 @@ class Randomizer:
         # Write shops out
         config.shop_manager.write_to_ctrom(ctrom)
 
-        # Write prices out
-        config.price_manager.write_to_ctrom(ctrom)
+        # Write items out
+        config.itemdb.write_to_ctrom(ctrom)
 
         # Write characters out
         # Recruitment spots
@@ -721,7 +727,7 @@ class Randomizer:
         file_object.write("Shop Assigmment\n")
         file_object.write("---------------\n")
         file_object.write(
-            self.config.shop_manager.__str__(self.config.price_manager)
+            self.config.shop_manager.__str__(self.config.itemdb)
         )
         file_object.write('\n')
 
@@ -737,7 +743,7 @@ class Randomizer:
         for item_id in item_ids:
             file_object.write(
                 str.ljust(str(ctenums.ItemID(item_id)), width) +
-                str(self.config.price_manager.get_price(item_id)) +
+                str(self.config.itemdb[item_id].price) +
                 '\n'
             )
         file_object.write('\n')
@@ -923,7 +929,7 @@ class Randomizer:
         # It should be safe to move the robo's ribbon code here since it
         # also doesn't depend on flags and should be applied prior to anything
         # else that messes with the items because it shuffles effects
-        roboribbon.robo_ribbon_speed(rom_data.getbuffer())
+        # roboribbon.robo_ribbon_speed(rom_data.getbuffer())
 
     @classmethod
     def __apply_settings_patches(cls, ctrom: CTRom,
@@ -985,7 +991,6 @@ class Randomizer:
 
         if rset.GameFlags.BUCKET_FRAGMENTS in flags:
             bucketfragment.set_bucket_function(ctrom, settings)
-            bucketfragment.set_fragment_properties(ctrom)
 
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
