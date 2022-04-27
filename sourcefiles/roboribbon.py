@@ -9,6 +9,63 @@
 # 00 C0 09 42.  Then stat boost 7 (+3 spd) will be swapped with stat boost
 # 9 (+6 pow).
 
+import randoconfig as cfg
+
+
+def set_robo_ribbon_in_config(config: cfg.RandoConfig):
+    ItemID = cfg.ctenums.ItemID
+    StatBit = cfg.itemdata.StatBit
+
+    item_db = config.itemdb
+    robo_ribbon = item_db[ItemID.ROBORIBBON]
+    robo_ribbon.stats.has_stat_boost = True
+
+    # Find +3 speed boost in item_db
+    stat_boosts = item_db.stat_boosts
+    dash_boost_ind = None
+    for ind, boost in enumerate(stat_boosts):
+        mag = boost.magnitude
+        stats = boost.stats_boosted
+
+        if mag == 3 and stats == [StatBit.SPEED]:
+            dash_boost_ind = ind
+            break
+
+    if dash_boost_ind is None:
+        raise ValueError('Missing +3 speed effect.')
+
+    x = item_db.stat_boosts
+    ind1 = robo_ribbon.stats.stat_boost_index
+    ind2 = dash_boost_ind
+    print(ind1, ind2)
+    print(x[ind1])
+    print(x[ind2])
+
+    x[ind1], x[ind2] = x[ind2], x[ind1]
+
+    print(x[ind1])
+    print(x[ind2])
+
+    # Replace stat boosts on all equipment
+    equippable_items = (x for x in list(ItemID) if x < 0xBC)
+    for item_id in equippable_items:
+        item = item_db[item_id]
+        stat_obj = None
+        if isinstance(item.secondary_stats, cfg.itemdata.GearSecondaryStats):
+            stat_obj = item.secondary_stats
+        elif (isinstance(item.stats, cfg.itemdata.AccessoryStats) and
+              item.stats.has_stat_boost):
+            stat_obj = item.stats
+
+        if stat_obj is not None:
+            stat_boost_index = stat_obj.stat_boost_index
+
+            if stat_boost_index == ind1:
+                item.secondary_stats.stat_boost_index = ind2
+            elif stat_boost_index == ind2:
+                item.secondary_stats.stat_boost_index = ind1
+
+
 def robo_ribbon_speed_file(filename):
     with open(filename, 'rb') as infile:
         rom = bytearray(infile.read())
