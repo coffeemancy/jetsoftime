@@ -618,6 +618,7 @@ class Randomizer:
         with open(filename, 'w') as outfile:
             self.write_settings_spoilers(outfile)
             self.write_tab_spoilers(outfile)
+            self.write_consumable_spoilers(outfile)
             self.write_key_item_spoilers(outfile)
             self.write_boss_rando_spoilers(outfile)
             self.write_character_spoilers(outfile)
@@ -635,6 +636,27 @@ class Randomizer:
         file_object.write(f"Shops: {self.settings.shopprices}\n")
         file_object.write(f"Flags: {self.settings.gameflags}\n")
         file_object.write(f"Cosmetic: {self.settings.cosmetic_flags}\n\n")
+
+    def write_consumable_spoilers(self, file_object):
+        file_object.write("Consumable Properties\n")
+        file_object.write("---------------------\n")
+
+        IID = ctenums.ItemID
+        consumables = (
+            IID.TONIC, IID.MID_TONIC, IID.FULL_TONIC,
+            IID.ETHER, IID.MID_ETHER, IID.FULL_ETHER,
+            IID.LAPIS
+        )
+
+        for item_id in consumables:
+            item = self.config.itemdb[item_id]
+            name = ctstrings.CTNameString(item.name)
+            name_str = str(name).ljust(15, ' ')
+            desc = ctstrings.CTString(item.desc[:-1])  # Remove {null}
+            desc_str = desc.to_ascii()
+
+            file_object.write(name_str+desc_str+'\n')
+        file_object.write('\n')
 
     def write_tab_spoilers(self, file_object):
         file_object.write("Tab Properties\n")

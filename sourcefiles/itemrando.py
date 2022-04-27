@@ -39,6 +39,10 @@ def write_item_prices_to_config(settings: rset.Settings,
 
 
 def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
+
+    if rset.GameFlags.HEALING_ITEM_RANDO not in settings.gameflags:
+        return
+
     ItemID = ctenums.ItemID
     item_db = config.itemdb
 
@@ -76,5 +80,5 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
         lapis.stats.base_healing = base_mp_healing
         lapis.stats.heal_multiplier = random.choice((2, 3, 4))
         lapis.name = ctstrings.CTNameString.from_string(
-            'Lapis-M'
+            ' Lapis-M'
         )

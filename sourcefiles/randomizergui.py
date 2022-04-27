@@ -2046,7 +2046,19 @@ class RandoGUI:
             'ignores on-hit effects from weapons, most notably the Crisis Arm.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Randomize Healing Items',
+            variable=self.flag_dict[GameFlags.HEALING_ITEM_RANDO]
+        )
+        checkbox.pack(anchor=tk.W)
 
+        CreateToolTip(
+            checkbox,
+            'Amount healed by Tonics and Ethers are randomized.  Strength '
+            'order of regular/mid/full is preserved.  Lapis can roll as a '
+            'party-wide MP heal.'
+        )
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
