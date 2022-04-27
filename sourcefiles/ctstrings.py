@@ -323,6 +323,7 @@ class CTString(bytearray):
 
 class CTNameString(bytearray):
     name_symbols = {
+        0x00: '{none00}',
         0x20: '{sword}',
         0x21: '{bow}',
         0x22: '{gun}',
@@ -369,18 +370,29 @@ class CTNameString(bytearray):
         str_pos = 0
 
         ct_bytes = bytearray()
-        while str_pos < length:
-            for (key, value) in cls.symbol_to_byte_dict:
-                if string[str_pos:].startswith(value):
-                    ct_bytes.append(key)
+        while str_pos < len(string):
+            found = False
+            for (key, value) in cls.symbol_to_byte_dict.items():
+                if string[str_pos:].startswith(key):
+                    ct_bytes.append(value)
+                    str_pos += len(key)
+                    found = True
+                    break
+
+            if not found:
+                raise ValueError(string[str_pos:])
 
         if len(ct_bytes) > length:
             ct_bytes = ct_bytes[0:length]
+        elif len(ct_bytes) < length:
+            ct_bytes.extend([0xEF for x in range(1+length-len(ct_bytes))])
 
         pos = len(ct_bytes) - 1
         while pos >= 0 and ct_bytes[pos] == 0xFF:
             ct_bytes[pos] = 0xEF
             pos -= 1
+
+        return CTNameString(ct_bytes)
 
     def __str__(self):
         try:
