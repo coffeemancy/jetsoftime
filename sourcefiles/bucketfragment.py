@@ -78,6 +78,12 @@ def write_fragments_to_config(settings: rset.Settings,
     if rset.GameFlags.BUCKET_FRAGMENTS not in settings.gameflags:
         return
 
+    item_db = config.itemdb
+
+    # 0xFF is a space instead of an item type icon
+    item_db[ctenums.ItemID.BUCKETFRAG].name = \
+        ctstrings.CTNameString.from_string(' Fragment')
+
     # Working with Chronosanity locations instead of raw TreasureIDs because
     #   1) We're only putting fragments in Chronosanity locations, and
     #   2) We have to deal with the linked location/pyramid
