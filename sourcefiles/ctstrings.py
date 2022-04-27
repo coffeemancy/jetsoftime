@@ -2,6 +2,7 @@
 # https://bisqwit.iki.fi/jutut/ctcset.html
 
 from __future__ import annotations
+
 import pickle
 
 import byteops
@@ -318,6 +319,76 @@ class CTString(bytearray):
             pos += 1
 
         return ret_str
+
+
+class CTNameString(bytearray):
+    name_symbols = {
+        0x20: '{sword}',
+        0x21: '{bow}',
+        0x22: '{gun}',
+        0x23: '{arm}',
+        0x24: '{blade}',
+        0x25: '{fist}',
+        0x26: '{scythe}',
+        0x27: '{helm}',
+        0x28: '{armor}',
+        0x29: '{acc}',
+        0x2A: '{h}',
+        0x2B: '{m}',
+        0x2C: '{p}',
+        0x2D: ':',
+        0x2E: '{shield}',
+        0x2F: '*',
+        0x30: '#',
+        0x31: '{->}',
+        0x32: '{boxtl}',
+        0x33: '{boxbr}',
+        0x34: '+',
+        # There are more, but weird capital versions that dont come up.
+        0xDE: '!', 0xDF: '?', 0xE0: '/', 0xE1: '\"1', 0xE2: '\"2', 0xE3: ':',
+        0xE4: '&', 0xE5: '(', 0xE6: ')', 0xE7: '\'', 0xE8: '.',
+        0xE9: ',', 0xEA: '=', 0xEB: '-', 0xEC: '+', 0xED: '%',
+        0xEE: '{noneEE}', 0xEF: '{endpadEF}', 0xF0: '{:heart:}',
+        0xFF: ' '
+    }
+
+    _lowercase_dict = {ord(x)-0x61+0xBA: x
+                       for x in 'abcdefghijklmnopqrstuvwxyz'}
+    _uppercase_dict = {ord(x)-0x41+0xA0: x
+                       for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
+    _number_dict = {ord(x)-0x30+0xD4: x
+                    for x in '0123456789'}
+    byte_to_symbol_dict = {**name_symbols, **_lowercase_dict,
+                           **_uppercase_dict,
+                           **_number_dict}
+    symbol_to_byte_dict = {value: key
+                           for (key, value) in byte_to_symbol_dict.items()}
+
+    @classmethod
+    def from_string(cls, string: str, length: int = 0xA):
+        str_pos = 0
+
+        ct_bytes = bytearray()
+        while str_pos < length:
+            for (key, value) in cls.symbol_to_byte_dict:
+                if string[str_pos:].startswith(value):
+                    ct_bytes.append(key)
+
+        if len(ct_bytes) > length:
+            ct_bytes = ct_bytes[0:length]
+
+        pos = len(ct_bytes) - 1
+        while pos >= 0 and ct_bytes[pos] == 0xFF:
+            ct_bytes[pos] = 0xEF
+            pos -= 1
+
+    def __str__(self):
+        try:
+            ind = self.index(0xEF)
+        except ValueError:
+            ind = len(self)
+        string = ''.join(self.byte_to_symbol_dict[x] for x in self[0:ind])
+        return string
 
 
 # This table is never changed by TF, so we should only have to read it once
