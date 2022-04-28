@@ -35,14 +35,14 @@ class ArmorEffects(ctenums.StrIntEnum):
 _armor_status_abbrev_dict: dict[ArmorEffects, str] = {
     ArmorEffects.NONE: '',
     ArmorEffects.SHIELD: 'Shd',
-    ArmorEffects.ABSORB_LIT_25: 'A:Li 25%',
-    ArmorEffects.ABSORB_SHD_25: 'A:Sh 25%',
-    ArmorEffects.ABSORB_WAT_25: 'A:Wa 25%',
-    ArmorEffects.ABSORB_FIR_25: 'A:Fir 25%',
-    ArmorEffects.ABSORB_LIT_100: 'A:Li 100%',
-    ArmorEffects.ABSORB_SHD_100: 'A: Sh 100%',
-    ArmorEffects.ABSORB_WAT_100: 'A:Wa 100%',
-    ArmorEffects.ABSORB_FIR_100: 'A:Fi 100%',
+    ArmorEffects.ABSORB_LIT_25: 'Ab:Li 25%',
+    ArmorEffects.ABSORB_SHD_25: 'Ab:Sh 25%',
+    ArmorEffects.ABSORB_WAT_25: 'Ab:Wa 25%',
+    ArmorEffects.ABSORB_FIR_25: 'Ab:Fi 25%',
+    ArmorEffects.ABSORB_LIT_100: 'Ab:Li 100%',
+    ArmorEffects.ABSORB_SHD_100: 'Ab:Sh 100%',
+    ArmorEffects.ABSORB_WAT_100: 'Ab:Wa 100%',
+    ArmorEffects.ABSORB_FIR_100: 'Ab:Fi 100%',
     ArmorEffects.IMMUNE_CHAOS: 'P:Chaos',
     ArmorEffects.IMMUNE_LOCK: 'P:Lock',
     ArmorEffects.IMMUNE_SLOW_STOP: 'P:Sl/St',
@@ -125,7 +125,7 @@ _weapon_effect_abbrev_dict: dict[WeaponEffects, str] = {
     WeaponEffects.ATTACKER_DIES: 'Attacker dies',
     WeaponEffects.DEATH_40: '40% Death',
     WeaponEffects.DEATH_100: '100% Death',
-    WeaponEffects.STOP_60: '60% Stop aaaaaaaaaaa',
+    WeaponEffects.STOP_60: '60% Stop',
     WeaponEffects.SLOW_60: '60% Slow',
     WeaponEffects.STOP_80_MACHINES: '80% Stop Mach.',
     WeaponEffects.CHAOS_60: '60% Chaos',
@@ -448,8 +448,13 @@ class AccessoryStats(ItemData):
         else:
             self._data[0] &= (0xFF-0x40)
 
+    @property
+    def has_normal_counter_mode(self) -> bool:
+        return self.has_counter_effect and self._data[2] & 0x80
+
     # non-normal = atb counter
-    def set_counter_mode(self, normal_mode: bool):
+    @has_normal_counter_mode.setter
+    def has_normal_counter_mode(self, normal_mode: bool):
         if self.has_counter_effect:
             if normal_mode:
                 self._data[2] |= 0x80
@@ -885,6 +890,16 @@ class ItemDB:
 
         item = self.item_dict[item_id]
         if isinstance(item.stats, AccessoryStats):
+            if item_id in (ctenums.ItemID.RAGE_BAND,
+                           ctenums.ItemID.FRENZYBAND):
+                rate = item.stats.counter_rate
+                if item.stats.has_normal_counter_mode:
+                    type_str = 'basic atk.'
+                else:
+                    type_str = 'ATB fill.'
+
+                desc_str = f'{rate}% counter w/ {type_str}{{null}}'
+                item.desc = ctstrings.CTString.from_str(desc_str)
             return
 
         if isinstance(item.stats, ConsumableKeyEffect):
@@ -925,11 +940,14 @@ class ItemDB:
         if isinstance(item.stats, ArmorStats):
             armor = item.stats.defense
             res_str = item.secondary_stats.get_protection_desc_str()
-            stat_str = f'D:{armor} {res_str}'
+            if res_str:
+                stat_str = f'D:{armor} {res_str} '
+            else:
+                stat_str = f'D:{armor} '
             eff_str = item.stats.get_effect_string()
 
         elif isinstance(item.stats, WeaponStats):
-            stat_str = f'A:{item.stats.attack} C:{item.stats.critical_rate}%'
+            stat_str = f'A:{item.stats.attack} C:{item.stats.critical_rate}% '
             eff_str = item.stats.get_effect_string()
         else:
             stat_str = ''
@@ -938,11 +956,13 @@ class ItemDB:
         if ind is not None:
             boost = self.stat_boosts[ind]
             boost_str = boost.stat_string()
+            if boost_str:
+                boost_str += ' '
         else:
             boost_str = ''
 
         item.desc = ctstrings.CTString.from_str(
-            stat_str + ' ' +  boost_str + ' ' + eff_str + '{null}'
+            stat_str + boost_str + eff_str + '{null}'
         )
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):

@@ -82,3 +82,20 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
         lapis.name = ctstrings.CTNameString.from_string(
             ' Lapis-M'
         )
+
+def randomize_weapon_armor_stats(settings: rset.Settings,
+                                 config: cfg.RandoConfig):
+    pass
+
+
+# This doesn't do much!  Most accessories are going to stay as-is because
+# their name says what they do.
+def randomize_accessories(settings: rset.Settings,
+                          config: cfg.RandoConfig):
+    IID = ctenums.ItemID
+    counter_accs = (IID.RAGE_BAND, IID.FRENZYBAND)
+
+    for item_id in counter_accs:
+        item = config.itemdb[item_id]
+        normal_counter = random.choice((True, False))
+        item.stats.normal_counter_mode = normal_counter

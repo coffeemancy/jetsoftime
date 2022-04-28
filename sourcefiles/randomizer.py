@@ -626,7 +626,7 @@ class Randomizer:
             self.write_treasure_spoilers(outfile)
             self.write_drop_charm_spoilers(outfile)
             self.write_shop_spoilers(outfile)
-            self.write_price_spoilers(outfile)
+            self.write_item_stat_spoilers(outfile)
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
@@ -754,21 +754,22 @@ class Randomizer:
         )
         file_object.write('\n')
 
-    def write_price_spoilers(self, file_object):
-        file_object.write("Item Prices\n")
-        file_object.write("-----------\n")
+    def write_item_stat_spoilers(self, file_object):
+        file_object.write("Item Stats\n")
+        file_object.write("----------\n")
 
-        width = max(len(str(x)) for x in list(ctenums.ItemID)) + 8
+        # width = max(len(str(x)) for x in list(ctenums.ItemID)) + 8
 
         item_ids = [x for x in list(ctenums.ItemID)
                     if x in range(1, ctenums.ItemID(0xD0))]
 
         for item_id in item_ids:
-            file_object.write(
-                str.ljust(str(ctenums.ItemID(item_id)), width) +
-                str(self.config.itemdb[item_id].price) +
-                '\n'
-            )
+            item = self.config.itemdb[item_id]
+            name = str(ctstrings.CTNameString(item.name[1:])).ljust(15, ' ')
+            desc = ctstrings.CTString(item.desc[:-1]).to_ascii()
+            price = str(item.price).rjust(5, ' ') + 'G'
+
+            file_object.write(name + ' ' + price + ' ' + desc + '\n')
         file_object.write('\n')
 
     def write_boss_rando_spoilers(self, file_object):
