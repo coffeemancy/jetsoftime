@@ -239,7 +239,7 @@ def set_guaranteed_drops(ctrom: CTRom, settings: rset.Settings):
 
     # If charm == drop, item drops are guaranteed.  However, when the
     # charm and drop are different, there is a chance of no drop.
-    # It looks like CT checks (random_num % 100) <= 90
+    # It looks like CT checks (random_num % 100) < 90
     # The check is:
     # $FD/AC27 C9 5A       CMP #$5A
     # $FD/AC29 B0 20       BCS $20
@@ -255,9 +255,49 @@ def set_guaranteed_drops(ctrom: CTRom, settings: rset.Settings):
     rom.write(bytes([0xFF]))
 
 
+def set_free_menu_glitch(ct_rom: CTRom, settings: rset.Settings):
+    if rset.GameFlags.FREE_MENU_GLITCH not in settings.gameflags:
+        return
+
+    EF = ctevent.EF
+    EC = ctevent.EC
+
+    func = EF()
+    (
+        func
+        .add(EC.assign_val_to_mem(0, 0x7E0110, 1))
+        .add(EC.set_explore_mode(True))
+        .add(EC.pause(2))
+    )
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.BLACK_OMEN_ZEAL)
+    st = script.get_function_start(8, 0)
+    end = script.get_function_end(8, 0)
+    pos, _ = script.find_command([0xDF], st, end)
+
+    script.insert_commands(func.get_bytearray(), pos)
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.LAVOS_2)
+    pos = script.get_function_start(8, 0)
+    end = script.get_function_end(8, 0)
+
+    while True:
+        pos, cmd = script.find_command([0xDF], pos, end)
+
+        if pos is None:
+            raise ValueError
+        elif cmd.args[0] & 0x1FF == 0x1DF:
+            break
+
+        pos += len(cmd)
+
+    script.insert_commands(func.get_bytearray(), pos)
+
+
 # After writing additional hacks, put them here. Based on the settings, they
 # will or will not modify the ROM.
 def attempt_all_qol_hacks(ctrom: CTRom, settings: rset.Settings):
     force_sightscope_on(ctrom, settings)
     fast_tab_pickup(ctrom, settings)
     set_guaranteed_drops(ctrom, settings)
+    set_free_menu_glitch(ctrom, settings)
