@@ -1971,6 +1971,20 @@ class RandoGUI:
             'exception.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Free Menu Glitch',
+            variable=self.flag_dict[GameFlags.FREE_MENU_GLITCH]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'After the screen fade before Mammon Machine and Lavos 3 the '
+            'player regains control for two seconds in order to input a menu '
+            'command.'
+        )
+
         return frame
 
     def get_experimental_page(self):

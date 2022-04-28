@@ -148,8 +148,11 @@ class Randomizer:
         roboribbon.set_robo_ribbon_in_config(self.config)
 
         # Item Rando
+        # Important this is done after roboribbon or itemrando gets confused
+        # over which stat boost is +3 speed
         itemrando.write_item_prices_to_config(self.settings, self.config)
         itemrando.randomize_healing(self.settings, self.config)
+        itemrando.randomize_accessories(self.settings, self.config)
         self.config.itemdb.update_all_descriptions()
 
         # Boss Rando
@@ -1006,6 +1009,9 @@ class Randomizer:
 
         if rset.GameFlags.GUARANTEED_DROPS in flags:
             qolhacks.set_guaranteed_drops(ctrom, settings)
+
+        if rset.GameFlags.FREE_MENU_GLITCH in flags:
+            qolhacks.set_free_menu_glitch(ctrom, settings)
 
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
             fastmagic.write_ctrom(ctrom, settings)
