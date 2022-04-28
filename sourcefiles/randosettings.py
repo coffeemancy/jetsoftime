@@ -72,6 +72,7 @@ class GameFlags(Flag):
     BLACKHOLE_REWORK = auto()
     NO_CRISIS_TACKLE = auto()
     HEALING_ITEM_RANDO = auto()
+    FREE_MENU_GLITCH = auto()
 
 
 # Dictionary for what flags force what other flags off.
