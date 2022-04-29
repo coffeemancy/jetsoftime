@@ -193,6 +193,10 @@ class CTString(bytearray):
             # Symbols (see CTString.symbols) are in range(0xDE, 0xE
             ct_char = CTString.symbols.index(char) + 0xDE
             length = 1
+        elif char == '\"':
+            quote_str = string[pos:pos+2]
+            ct_char = CTString.symbols.index(quote_str) + 0xDE
+            length = 2
         elif char == '{':
             # '{' marks the start of a keyword like Crono's name or an item.
             # CTString.keywords has all of these listed.
