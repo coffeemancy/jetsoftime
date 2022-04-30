@@ -1091,6 +1091,10 @@ class ItemDB:
 
                 desc_str = f'{rate}% counter w/ {type_str}{{null}}'
                 item.desc = ctstrings.CTString.from_str(desc_str)
+            elif item_id in (IID.SILVERERNG, IID.GOLD_ERNG,
+                             IID.SILVERSTUD, IID.GOLD_STUD):
+                # Do nothing because their item stats are junk data
+                pass
             else:
 
                 start_str = None
