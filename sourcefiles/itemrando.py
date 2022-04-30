@@ -197,7 +197,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
             if x < 0.1:
                 item.stats.has_effect = True
                 if item.is_weapon():
-                    item.stats.effect_id = WE.DMG_MAG_150
+                    item.stats.effect_id = WE.DMG_TO_MAG_150
                 elif item.is_armor():
                     item.stats.effect_id = random.choice(
                         (AE.ABSORB_FIR_25, AE.ABSORB_LIT_25, AE.ABSORB_SHD_25,
@@ -351,6 +351,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
 
     for item_id in ultimate_wpns:
         mode = random.choice((0, 1, 2, 3))
+
         item = item_db[item_id]
         if mode == 0:  # critical_rate
             if item_id in (IID.RAINBOW, IID.VALKERYE, IID.MASAMUNE_2):
