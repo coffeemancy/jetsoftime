@@ -387,9 +387,9 @@ class CTNameString(bytearray):
                 raise ValueError(string[str_pos:])
 
         if len(ct_bytes) > length:
-            ct_bytes = ct_bytes[0:length]
+            ct_bytes = ct_bytes[0:length+1]
         elif len(ct_bytes) < length:
-            ct_bytes.extend([0xEF for x in range(1+length-len(ct_bytes))])
+            ct_bytes.extend([0xEF for x in range(length-len(ct_bytes))])
 
         pos = len(ct_bytes) - 1
         while pos >= 0 and ct_bytes[pos] == 0xFF:
