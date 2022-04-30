@@ -427,7 +427,7 @@ def randomize_accessories(settings: rset.Settings,
     # randomize specs as specs or haste charm
     item_id = IID.PRISMSPECS
     x = random.random()
-    if True or x < 0.5:
+    if x < 0.5:
         item = config.itemdb[item_id]
         item.stats.battle_buffs = [T8.HASTE]
         item.name = ctstrings.CTNameString.from_string(
