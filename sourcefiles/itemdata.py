@@ -5,6 +5,8 @@ import byteops
 import ctenums
 import ctrom
 import ctstrings
+
+import functools
 import typing
 
 
@@ -118,7 +120,7 @@ _weapon_effect_abbrev_dict: dict[WeaponEffects, str] = {
     WeaponEffects.DMG_33: '33% Dmg',
     WeaponEffects.DMG_25: '25% Dmg',
     WeaponEffects.SLEEP_80_AQUA: '80% Slp to Aqua',
-    WeaponEffects.DOOMSICKLE: '+Dmg per dead ally',
+    WeaponEffects.DOOMSICKLE: '+Doom',
     WeaponEffects.HP_50_50: '1/2 HP (50%)',
     WeaponEffects.CRISIS: 'Crisis',
     WeaponEffects.HP_50_100: '1/2 HP',
@@ -403,12 +405,189 @@ class ArmorStats(ItemData):
             return ''
 
 
+class Type_09_Buffs(ctenums.StrIntEnum):
+    BERSERK = 0x80
+    BARRIER = 0x40
+    MP_REGEN = 0x20
+    UNK_10 = 0x10
+    SPECS = 0x08
+    SHIELD = 0x04
+    SHADES = 0x02
+    UNK_01 = 0x01
+
+    def get_abbrev(self) -> str:
+        type_09_abbrev: dict[Type_09_Buffs, str] = {
+            Type_09_Buffs.BERSERK: 'Bers',
+            Type_09_Buffs.BARRIER: 'Bar',
+            Type_09_Buffs.MP_REGEN: 'RegMP',
+            Type_09_Buffs.UNK_10: '?',
+            Type_09_Buffs.SPECS: '+50%Dmg',
+            Type_09_Buffs.SHIELD: 'Shld',
+            Type_09_Buffs.SHADES: '+25%Dmg',
+            Type_09_Buffs.UNK_01: '?'
+        }
+
+        return type_09_abbrev[self]
+
+
+class Type_05_Buffs(ctenums.StrIntEnum):
+    GREENDREAM = 0x80
+
+    def get_abbrev(self) -> str:
+        if self == Type_05_Buffs.GREENDREAM:
+            return 'Autorev'
+
+
+class Type_06_Buffs(ctenums.StrIntEnum):
+    PROT_STOP = 0x80
+    PROT_POISON = 0x40
+    PROT_SLOW = 0x20
+    PROT_HPDOWN = 0x10  # ?
+    PROT_LOCK = 0x08
+    PROT_CHAOS = 0x04
+    PROT_SLEEP = 0x02
+    PROT_BLIND = 0x01
+
+    def get_abbrev(self) -> str:
+        status_abbrev = {
+            Type_06_Buffs.PROT_STOP: 'Stp',
+            Type_06_Buffs.PROT_POISON: 'Psn',
+            Type_06_Buffs.PROT_SLOW: 'Slw',
+            Type_06_Buffs.PROT_HPDOWN: 'HPdn',
+            Type_06_Buffs.PROT_LOCK: 'Lck',
+            Type_06_Buffs.PROT_CHAOS: 'Chs',
+            Type_06_Buffs.PROT_SLEEP: 'Slp',
+            Type_06_Buffs.PROT_BLIND: 'Bnd'
+        }
+
+        return status_abbrev[self]
+
+
+class Type_08_Buffs(ctenums.StrIntEnum):
+    HASTE = 0x80
+    EVADE = 0x40
+
+    def get_abbrev(self) -> str:
+        type_08_abbrev: dict[Type_08_Buffs, str] = {
+            Type_08_Buffs.HASTE: 'Haste',
+            Type_08_Buffs.EVADE: '2xEvd'
+        }
+
+        return type_08_abbrev[self]
+
+
+def get_buff_string(buffs: typing.Union[_Buff,
+                                        typing.Iterable[_Buff]]) -> str:
+    if isinstance(buffs, typing.Iterable):
+        if not buffs:
+            return ''
+        else:
+            buff_types = list(set(type(buff) for buff in buffs))
+            buffs = list(set(buffs))
+
+            if len(buff_types) > 1:
+                raise TypeError('Buff list has multiple types.')
+
+            buff_type = buff_types[0]
+            if buff_type in (Type_05_Buffs, Type_09_Buffs, Type_08_Buffs):
+                buff_str = '/'.join(x.get_abbrev() for x in buffs)
+            elif buff_type == Type_06_Buffs:
+                if len(buffs) == 8:
+                    buff_str = 'P:All'
+                else:
+                    buff_str = 'P:'+'/'.join(x.get_abbrev() for x in buffs)
+
+            return buff_str
+
+
+_Buff = typing.Union[Type_05_Buffs, Type_06_Buffs, Type_08_Buffs,
+                     Type_09_Buffs]
+_BuffList = typing.Iterable[_Buff]
+
+
 # We are not going to do much with accessories because they are so weird.
 class AccessoryStats(ItemData):
     SIZE = 4
     ROM_START = 0x0C052C
     MIN_ID = 0x94
     MAX_ID = 0xBB
+
+    @property
+    def has_battle_buff(self) -> bool:
+        return self._data[1] & 0x80
+
+    @has_battle_buff.setter
+    def has_battle_buff(self, val: bool):
+        self._data[1] &= (0xFF - 0x80)
+        self._data[1] |= (0x80 & (val*0xFF))
+
+    def _get_buff_type(self):
+        if not self.has_battle_buff:
+            return None
+        elif self._data[2] == 0x05:
+            return Type_05_Buffs
+        elif self._data[2] == 0x06:
+            return Type_06_Buffs
+        elif self._data[2] == 0x08:
+            return Type_08_Buffs
+        elif self._data[2] == 0x09:
+            return Type_09_Buffs
+        else:
+            raise ValueError('Invalid buff type')
+
+    def _get_buff_type_index(self, buff: _Buff):
+        if isinstance(buff, Type_05_Buffs):
+            return 5
+        elif isinstance(buff, Type_06_Buffs):
+            return 6
+        elif isinstance(buff, Type_08_Buffs):
+            return 8
+        elif isinstance(buff, Type_09_Buffs):
+            return 9
+        else:
+            raise ValueError('Invalid buff type')
+
+    @property
+    def battle_buffs(self):
+        BuffType = self._get_buff_type()
+        return [x for x in list(BuffType) if self._data[3] & x]
+
+    @battle_buffs.setter
+    def battle_buffs(self, val: typing.Union[_Buff, _BuffList]):
+
+        if not self.has_battle_buff:
+            raise ValueError('Adding buffs to item without buffs set.')
+
+        if not isinstance(val, typing.Iterable):
+            val = [val]
+
+        if not val:
+            self._data[3] = 0
+        else:
+            buffs = list(set(val))
+            types = list(set(type(x) for x in buffs))
+
+            if len(types) != 1:
+                raise TypeError('Multiple types of buffs')
+
+            buff_type = types[0]
+            type_val = {
+                Type_05_Buffs: 5,
+                Type_06_Buffs: 6,
+                Type_08_Buffs: 8,
+                Type_09_Buffs: 9
+            }
+
+            buff_type_val = type_val[buff_type]
+            self._data[2] = buff_type_val
+
+            buff_byte = functools.reduce(
+                lambda a, b: a | b,
+                buffs,
+                0
+            )
+
+            self._data[3] = buff_byte
 
     @property
     def has_stat_boost(self) -> bool:
@@ -700,6 +879,15 @@ class Item:
         self.name = name_bytes
         self.desc = desc_bytes
 
+    def is_armor(self):
+        return isinstance(self.stats, ArmorStats)
+
+    def is_weapon(self):
+        return isinstance(self.stats, WeaponStats)
+
+    def is_accessory(self):
+        return isinstance(self.stats, AccessoryStats)
+
     @property
     def price(self) -> int:
         return self.secondary_stats.price
@@ -756,6 +944,8 @@ class Item:
         name_st = names_start_addr + item_id*name_size
         name_end = name_st + name_size
 
+        # print(bytes(self.name))
+        # print(self.name)
         rom[name_st:name_end] = self.name
 
     @classmethod
@@ -889,6 +1079,7 @@ class ItemDB:
             return
 
         item = self.item_dict[item_id]
+        IID = ctenums.ItemID
         if isinstance(item.stats, AccessoryStats):
             if item_id in (ctenums.ItemID.RAGE_BAND,
                            ctenums.ItemID.FRENZYBAND):
@@ -900,6 +1091,43 @@ class ItemDB:
 
                 desc_str = f'{rate}% counter w/ {type_str}{{null}}'
                 item.desc = ctstrings.CTString.from_str(desc_str)
+            else:
+
+                start_str = None
+                if item_id in (IID.GOLD_ROCK, IID.SILVERROCK, IID.WHITE_ROCK,
+                               IID.BLACK_ROCK, IID.BLUE_ROCK):
+                    tech_names = {
+                        IID.GOLD_ROCK: 'GrandDream',
+                        IID.SILVERROCK: 'SpinStrike',
+                        IID.WHITE_ROCK: 'PoyozoDance',
+                        IID.BLACK_ROCK: 'DarkEternal',
+                        IID.BLUE_ROCK: 'OmegaFlare',
+                    }
+                    start_str = tech_names[item_id]
+                elif item_id == IID.HERO_MEDAL:
+                    start_str = 'Masa C:50%'
+                elif item_id in (IID.SIGHTSCOPE, IID.ROBORIBBON):
+                    start_str = 'Show HP'
+
+                buff_str = None
+                if item.stats.has_battle_buff:
+                    buffs = item.stats.battle_buffs
+                    buff_str = get_buff_string(buffs)
+
+                boost_str = None
+                if item.stats.has_stat_boost:
+                    boost_ind = item.get_stat_boost_ind()
+                    boost = self.stat_boosts[boost_ind]
+                    boost_str = boost.stat_string()
+
+                desc_parts = []
+                for x in (start_str, buff_str, boost_str):
+                    if x is not None:
+                        desc_parts.append(x)
+
+                desc_str = ' '.join(x for x in desc_parts) + '{null}'
+                item.desc = ctstrings.CTString.from_str(desc_str)
+
             return
 
         if isinstance(item.stats, ConsumableKeyEffect):
