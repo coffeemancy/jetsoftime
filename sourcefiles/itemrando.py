@@ -184,18 +184,35 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         (15, _mid_boosts)
     )
 
+    WE = itemdata.WeaponEffects
+    AE = itemdata.ArmorEffects
+
     for gear_id in gear_in_tier[Tier.MID_GEAR]:
         item = item_db[gear_id]
-        item.secondary_stats.stat_boost_index = mid_dist.get_random_item()
+        boost = mid_dist.get_random_item()
+        item.secondary_stats.stat_boost_index = boost
+
+        if boost == _BoostID.NOTHING:
+            x = random.random()
+            if x < 0.1:
+                item.stats.has_effect = True
+                if item.is_weapon():
+                    item.stats.effect_id = WE.DMG_MAG_150
+                elif item.is_armor():
+                    item.stats.effect_id = random.choice(
+                        (AE.ABSORB_FIR_25, AE.ABSORB_LIT_25, AE.ABSORB_SHD_25,
+                         AE.ABSORB_WAT_25, AE.IMMUNE_SLOW_STOP,
+                         AE.IMMUNE_CHAOS, AE.IMMUNE_LOCK, AE.IMMUNE_LOCK)
+                    )
+            else:
+                item.stats.has_effect = False
+                item.stats.effect_id = 0
 
     good_dist = GearDist(
         (80, [_BoostID.NOTHING]),
         (10, _mid_boosts),
         (10, _good_boosts)
     )
-
-    WE = itemdata.WeaponEffects
-    AE = itemdata.ArmorEffects
 
     good_wpn_effects = (
         WE.SLOW_60, WE.DMG_TO_MAG_150, WE.HP_50_50
@@ -233,13 +250,11 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     )
 
     # High gear without descriptive names
-    # Also, swallow, slasher2, shiva, taban suit
+    # Also, swallow, slasher2, shiva, taban suit, Moon Armor, 
     for gear_id in (IID.STAR_SWORD, IID.VEDICBLADE, IID.KALI_BLADE,
                     IID.SIREN, IID.SHOCK_WAVE,
                     IID.GIGA_ARM, IID.TERRA_ARM, IID.BRAVESWORD,
-                    IID.GLOOM_HELM, IID.RUBY_ARMOR,
-                    IID.SWALLOW, IID.SLASHER_2, IID.SHIVA_EDGE,
-                    IID.TABAN_SUIT):
+                    IID.GLOOM_HELM, IID.RUBY_ARMOR):
         item = item_db[gear_id]
         x = random.random()
 
@@ -260,11 +275,40 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
             item.stats.has_effect = False
             item.stats.effect_id = 0
 
+    for gear_id in (IID.TABAN_SUIT, IID.NOVA_ARMOR, IID.MOON_ARMOR,
+                    IID.SWALLOW, IID.SLASHER_2, IID.SHIVA_EDGE,
+                    IID.PRISMDRESS, IID.ZODIACCAPE):
+        item = item_db[gear_id]
+        x = random.random()
+
+        if x < 0.5:  # 50% high stat boost
+            item.secondary_stats.stat_boost_index = \
+                random.choice(_high_boosts)
+            item.stats.has_effect = False
+            item.stats.effect_id = 0
+        else:  # 50% high effect
+            item.secondary_stats.stat_boost_index = _BoostID.NOTHING
+            item.stats.has_effect = True
+            if item.is_weapon():
+                item.stats.effect_id = random.choice(high_wpn_effects)
+            elif item.is_armor():
+                item.stats.effect_id = random.choice(high_arm_effects)
+
+    # Prism Helm always good.  Always gets a good status and a good boost
+    item = item_db[IID.PRISM_HELM]
+    item.secondary_stats.stat_boost_index = random.choice(
+        (_BoostID.SPEED_2, _BoostID.MDEF_9, _BoostID.MAG_MDEF_5,
+         _BoostID.POWER_STAMINA_10)
+    )
+    item.stats.has_effect = True
+    item.stats.effect_id = random.choice(high_arm_effects)
+
     # Ultimate Gear needs something good.
     # See ultimate effects as
     #   - High dmg + crit rate (rainbow)
     #   - 0 dmg + crisis effect  (crisis arm)
     #   - random damage (wondershot)
+    #   - Doom (+dmg for fallen)
 
     ultimate_wpns = (IID.RAINBOW, IID.VALKERYE, IID.WONDERSHOT,
                      IID.CRISIS_ARM, IID.MASAMUNE_2, IID.DOOMSICKLE)
