@@ -73,6 +73,7 @@ class GameFlags(Flag):
     NO_CRISIS_TACKLE = auto()
     HEALING_ITEM_RANDO = auto()
     FREE_MENU_GLITCH = auto()
+    GEAR_RANDO = auto()
 
 
 # Dictionary for what flags force what other flags off.

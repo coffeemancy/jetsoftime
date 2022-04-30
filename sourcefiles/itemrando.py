@@ -139,6 +139,10 @@ _high_boosts = (
 
 def randomize_weapon_armor_stats(settings: rset.Settings,
                                  config: cfg.RandoConfig):
+
+    if rset.GameFlags.GEAR_RANDO not in settings.gameflags:
+        return
+
     IID = ctenums.ItemID
     Tier = treasuredata.ItemTier
     item_db = config.itemdb
@@ -362,6 +366,10 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
 # their name says what they do.
 def randomize_accessories(settings: rset.Settings,
                           config: cfg.RandoConfig):
+
+    if rset.GameFlags.GEAR_RANDO not in settings.gameflags:
+        return
+
     IID = ctenums.ItemID
 
     # Randomize counter mode of rage/frenzy

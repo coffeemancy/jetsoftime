@@ -2074,6 +2074,19 @@ class RandoGUI:
             'party-wide MP heal.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Randomize Gear',
+            variable=self.flag_dict[GameFlags.GEAR_RANDO]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Random effects on some accessories.  Random stat boosts and '
+            'effects on weapons and armor according to their tier.'
+        )
+
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
             text='Bucket Fragments',
