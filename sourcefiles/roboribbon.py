@@ -41,8 +41,12 @@ def set_robo_ribbon_in_config(config: cfg.RandoConfig):
     x[ind1], x[ind2] = x[ind2], x[ind1]
 
     # Replace stat boosts on all equipment
-    equippable_items = (x for x in list(ItemID) if x < 0xBC)
+    # Ignore Robo's Ribbon. Giving Robo's Ribbon the +6 str index could
+    # result in an invalid accessory configuration.
+    equippable_items = (x for x in list(ItemID)
+                        if x < 0xBC and x != ItemID.ROBORIBBON)
     for item_id in equippable_items:
+
         item = item_db[item_id]
         stat_obj = None
         if isinstance(item.secondary_stats, cfg.itemdata.GearSecondaryStats):
@@ -55,9 +59,9 @@ def set_robo_ribbon_in_config(config: cfg.RandoConfig):
             stat_boost_index = stat_obj.stat_boost_index
 
             if stat_boost_index == ind1:
-                item.secondary_stats.stat_boost_index = ind2
+                stat_obj.stat_boost_index = ind2
             elif stat_boost_index == ind2:
-                item.secondary_stats.stat_boost_index = ind1
+                stat_obj.stat_boost_index = ind1
 
 
 def robo_ribbon_speed_file(filename):
