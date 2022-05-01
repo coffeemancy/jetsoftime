@@ -337,7 +337,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         IID.WONDERSHOT: '{gun}Wondershot',
         IID.CRISIS_ARM: '{arm}WonderArm',
         IID.MASAMUNE_2: '{blade}WonderMune',
-        IID.DOOMSICKLE: '{scythe}Wonder Scy'
+        IID.DOOMSICKLE: '{scythe}Wndrsickle'
     }
 
     doom_names = {
