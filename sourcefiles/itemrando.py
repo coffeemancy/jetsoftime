@@ -250,9 +250,8 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     )
 
     # High gear without descriptive names
-    # Also, swallow, slasher2, shiva, taban suit, Moon Armor, 
     for gear_id in (IID.STAR_SWORD, IID.VEDICBLADE, IID.KALI_BLADE,
-                    IID.SIREN, IID.SHOCK_WAVE,
+                    IID.SIREN, IID.SHOCK_WAVE, IID.ZODIACCAPE,
                     IID.GIGA_ARM, IID.TERRA_ARM, IID.BRAVESWORD,
                     IID.GLOOM_HELM, IID.RUBY_ARMOR):
         item = item_db[gear_id]
@@ -275,9 +274,12 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
             item.stats.has_effect = False
             item.stats.effect_id = 0
 
+    awesome_arm_effects = (
+        AE.IMMUNE_ALL, AE.SHIELD, AE.BARRIER, AE.HASTE
+    )
     for gear_id in (IID.TABAN_SUIT, IID.NOVA_ARMOR, IID.MOON_ARMOR,
                     IID.SWALLOW, IID.SLASHER_2, IID.SHIVA_EDGE,
-                    IID.PRISMDRESS, IID.ZODIACCAPE):
+                    IID.PRISMDRESS):
         item = item_db[gear_id]
         x = random.random()
 
@@ -292,7 +294,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
             if item.is_weapon():
                 item.stats.effect_id = random.choice(high_wpn_effects)
             elif item.is_armor():
-                item.stats.effect_id = random.choice(high_arm_effects)
+                item.stats.effect_id = random.choice(awesome_arm_effects)
 
     # Prism Helm always good.  Always gets a good status and a good boost
     item = item_db[IID.PRISM_HELM]
@@ -301,7 +303,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
          _BoostID.POWER_STAMINA_10)
     )
     item.stats.has_effect = True
-    item.stats.effect_id = random.choice(high_arm_effects)
+    item.stats.effect_id = random.choice(awesome_arm_effects)
 
     # Ultimate Gear needs something good.
     # See ultimate effects as
