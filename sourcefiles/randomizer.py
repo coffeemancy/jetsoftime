@@ -217,6 +217,57 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+    def __update_trading_post_string(self, ct_rom: CTRom,
+                                     config: cfg.RandoConfig):
+        script_man = ct_rom.script_manager
+
+        script = script_man.get_script(ctenums.LocID.IOKA_TRADING_POST)
+
+        # Petal, Fang -> Ranged
+        # Petal, Horn -> Accessory
+        # Petal, Feather -> Tab
+        # Fang, Horn -> Melee
+        # Fang, Feather -> Armor
+        # Horn, Feather -> Helm
+
+        TID = ctenums.TreasureID
+        tp_spots = (TID.TRADING_POST_RANGED_WEAPON,
+                    TID.TRADING_POST_ACCESSORY,
+                    TID.TRADING_POST_TAB,
+                    TID.TRADING_POST_MELEE_WEAPON,
+                    TID.TRADING_POST_ARMOR,
+                    TID.TRADING_POST_HELM)
+
+        tp_name_dict = dict()
+
+        item_db = config.itemdb
+        CTName = ctstrings.CTNameString
+        for treasure_id in tp_spots:
+            item_id = config.treasure_assign_dict[treasure_id].held_item
+            name_b = CTName(item_db[item_id].name[1:])
+            name = str(name_b)
+            tp_name_dict[treasure_id] = name
+
+        new_str = \
+            'Many things for trade!{line break}'\
+            f'Petal, Fang: {tp_name_dict[TID.TRADING_POST_RANGED_WEAPON]}'\
+            '{line break}'\
+            f'Petal, Horn: {tp_name_dict[TID.TRADING_POST_ACCESSORY]}'\
+            '{line break}'\
+            f'Petal, Feather: {tp_name_dict[TID.TRADING_POST_TAB]}'\
+            '{page break}'\
+            f'Fang, Horn: {tp_name_dict[TID.TRADING_POST_MELEE_WEAPON]}'\
+            '{line break}'\
+            f'Fang, Feather: {tp_name_dict[TID.TRADING_POST_ARMOR]}'\
+            '{line break}'\
+            f'Horn, Feather: {tp_name_dict[TID.TRADING_POST_HELM]}'\
+            '{null}'
+
+        new_ct_str = ctstrings.CTString.from_str(new_str)
+        new_ct_str.compress()
+        script.strings[2] = new_ct_str
+        script.modified_strings = True
+
     def __disable_xmenu_charlocks(self, ct_rom):
         '''Ignore the charlock byte when in the X-menu but not Y-menu.'''
 
@@ -545,6 +596,10 @@ class Randomizer:
         script_manager.set_script(choras_cafe_event,
                                   ctenums.LocID.CHORAS_CAFE)
 
+        # 4) Fixed trading post script
+        tp_event = Event.from_flux('./flux/jot_trading_post.Flux')
+        script_manager.set_script(tp_event, ctenums.LocID.IOKA_TRADING_POST)
+
         # Flag specific script changes:
         #   - Locked characters changes to proto dome and dactyl nest
         #   - Duplicate characters changes to Spekkio when not in LW
@@ -577,6 +632,9 @@ class Randomizer:
 
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
+
+        # Update the trading post descriptions
+        self.__update_trading_post_string(self.out_rom, self.config)
 
         # Two potential softlocks caused by (presumably) touch == activate.
         self.__try_proto_dome_fix()
@@ -875,7 +933,6 @@ class Randomizer:
         obstacle_status = obstacle.effect.status_effect
         status_string = ', '.join(str(x) for x in obstacle_status)
         file_object.write(f"Endgame obstacle is {status_string}\n\n")
-
 
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")

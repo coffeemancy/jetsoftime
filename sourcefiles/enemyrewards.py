@@ -227,11 +227,11 @@ _uncommon_enemies = [
     EnemyID.KRAKKER, EnemyID.EGDER, EnemyID.DECEDENT, EnemyID.MACABRE,
     EnemyID.GUARD, EnemyID.SENTRY, EnemyID.OUTLAW, EnemyID.REPTITE_PURPLE,
     EnemyID.BLUE_SHIELD, EnemyID.YODU_DE, EnemyID.EVILWEEVIL,
-    EnemyID.GRIMALKIN, EnemyID.T_POLE, EnemyID.AMPHIBITE, EnemyID.VAMP,
+    EnemyID.GRIMALKIN, EnemyID.T_POLE, EnemyID.VAMP,
     EnemyID.BUGGER, EnemyID.DEBUGGER, EnemyID.SORCERER, EnemyID.CRATER,
     EnemyID.VOLCANO, EnemyID.SHITAKE, EnemyID.SHIST, EnemyID.NEREID,
-    EnemyID.MOHAVOR, EnemyID.ACID, EnemyID.ALKALINE, EnemyID.ION,
-    EnemyID.ANION, EnemyID.WINGED_APE, EnemyID.MEGASAUR, EnemyID.OMNICRONE,
+    EnemyID.MOHAVOR, EnemyID.ACID, EnemyID.ALKALINE,
+    EnemyID.WINGED_APE, EnemyID.MEGASAUR, EnemyID.OMNICRONE,
     EnemyID.BEAST, EnemyID.AVIAN_REX, EnemyID.RAT, EnemyID.GREMLIN,
     EnemyID.RUNNER, EnemyID.PROTO_2, EnemyID.PROTO_3, EnemyID.BUG,
     EnemyID.MASA, EnemyID.MUNE, EnemyID.MUTANT, EnemyID.DECEDENT_II,
@@ -357,3 +357,26 @@ def write_enemy_rewards_to_config(settings: rset.Settings,
             config.enemy_dict[enemy].charm_item = charm
 
             # print(f"Enemy: {enemy} assigned drop={drop}, charm={charm}")
+
+    # Trading Post: Vanilla
+    # Croaker - 2x Fang
+    # Amphibite - 2x Horns
+    # Rain Frog - 2x Feathers
+
+    # Ion - 2x Feathers
+    # Anion - 2x Petals
+
+    # Keep a similar distribution where the frogs are all different and the
+    # slimes have one item in common with frogs.
+    tp_drops = [ItemID.PETALS_2, ItemID.FANGS_2, ItemID.HORNS_2,
+                ItemID.FEATHERS_2]
+    tp_enemies = [EnemyID.CROAKER, EnemyID.AMPHIBITE, EnemyID.RAIN_FROG,
+                  EnemyID.ION, EnemyID.ANION]
+
+    random.shuffle(tp_drops)
+    tp_drops.append(tp_drops[0])  # Copy a frog drop for the slimes
+
+    for ind, enemy in enumerate(tp_enemies):
+        item_id = tp_drops[ind]
+        config.enemy_dict[enemy].drop_item = item_id
+        config.enemy_dict[enemy].charm_item = item_id
