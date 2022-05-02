@@ -1118,6 +1118,11 @@ class Randomizer:
         falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
         techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
 
+        # Allow combo tech confuse to use on-hit effects
+        combo_confuse_id = 0x3C
+        on_hit_byte = combo_confuse_id*techdb.effect_size + 8
+        techdb.effects[on_hit_byte] = 0x80
+
         # Remove on-hit effects from robo tackle
         if rset.GameFlags.NO_CRISIS_TACKLE in settings.gameflags:
             tackle_id = int(ctenums.TechID.ROBO_TACKLE)
