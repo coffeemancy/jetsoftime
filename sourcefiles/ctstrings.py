@@ -158,7 +158,6 @@ class CTString(bytearray):
         pos = 0
 
         while pos < len(string):
-
             (ct_bytes, pos) = cls.get_token(string, pos)
             ct_str.extend(ct_bytes)
 
@@ -370,7 +369,7 @@ class CTNameString(bytearray):
                            for (key, value) in byte_to_symbol_dict.items()}
 
     @classmethod
-    def from_string(cls, string: str, length: int = 0xA):
+    def from_string(cls, string: str, length: int = 0xB):
         str_pos = 0
 
         ct_bytes = bytearray()
