@@ -147,6 +147,36 @@ class Game:
         # backtrack and a character is no longer available.
         self.characters.clear()
 
+        if rset.GameFlags.FIRST_TWO in self.settings.gameflags and \
+           self.settings.game_mode == rset.GameMode.STANDARD:
+            self.addCharacter(
+                self.charLocations[RecruitID.STARTER_1].held_char
+            )
+            self.addCharacter(
+                self.charLocations[RecruitID.STARTER_2].held_char
+            )
+
+            # You have to add the other characters eventually or else the
+            # logic will stall out.
+            if self.canAccessBlackOmen() and self.canAccessTyranoLair() and \
+               self.hasKeyItem(ItemID.RUBY_KNIFE):
+                self.addCharacter(
+                    self.charLocations[RecruitID.CATHEDRAL].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.CASTLE].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.PROTO_DOME].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.DACTYL_NEST].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.FROGS_BURROW].held_char
+                )
+            return
+
         # The first four characters are always available.
         self.addCharacter(self.charLocations[RecruitID.STARTER_1].held_char)
         self.addCharacter(self.charLocations[RecruitID.STARTER_2].held_char)
@@ -199,14 +229,19 @@ class Game:
         return (self.hasMasamune() and
                 self.hasCharacter(CharID.FROG))
 
-    def canAccessDarkAges(self):
+    def canAccessMtWoe(self):
         return (self.lostWorlds or
                 self.canAccessPrehistory() or
                 self.canAccessFuture())
 
     def canAccessOceanPalace(self):
-        return (self.canAccessDarkAges() and
-                self.hasKeyItem(ItemID.RUBY_KNIFE))
+        return (
+            self.canAccessMagusCastle() or
+            (
+                self.canAccessTyranoLair() and
+                self.hasKeyItem(ItemID.RUBY_KNIFE)
+            )
+        )
 
     def canAccessBlackOmen(self):
         return (self.canAccessFuture() and
@@ -233,8 +268,13 @@ class Game:
         return self.hasKeyItem(ItemID.MASAMUNE_2)
 
     def canAccessSealedChests(self):
-        return (self.hasKeyItem(ItemID.PENDANT) and
-                (self.earlyPendant or self.canAccessDarkAges()))
+        # With 3.1.1. logic change, canAccessDarkAges isn't correct for
+        # checking sealed chest access.  Instead check for actual go modes.
+
+        return (
+            (self.hasKeyItem(ItemID.PENDANT) and self.earlyPendant) or
+            self.canAccessTyranoLair or self.canAccessMagusCastle
+        )
 
     def canAccessBurrowItem(self):
         return self.hasKeyItem(ItemID.HERO_MEDAL)
