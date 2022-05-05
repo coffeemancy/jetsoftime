@@ -74,6 +74,7 @@ class GameFlags(Flag):
     HEALING_ITEM_RANDO = auto()
     FREE_MENU_GLITCH = auto()
     GEAR_RANDO = auto()
+    FIRST_TWO = auto()
 
 
 # Dictionary for what flags force what other flags off.
