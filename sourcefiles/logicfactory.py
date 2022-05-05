@@ -120,7 +120,7 @@ class ChronosanityGameConfig(GameConfig):
         # is being considered for key item drops.
         darkagesLocations = \
             LocationGroup("Darkages", 30,
-                          lambda game: game.canAccessDarkAges())
+                          lambda game: game.canAccessMtWoe())
         (
             darkagesLocations
             .addLocation(Location(TID.MT_WOE_1ST_SCREEN))
@@ -306,11 +306,10 @@ class ChronosanityGameConfig(GameConfig):
         # Ozzie's Fort locations
         # Ozzie's fort is a high level location.
         # For the first four chests, don't consider these locations until the
-        # player has either the pendant or gate key. The final two chests are
-        # locked behind the trio battle.  Only consider these if the player
-        # has access to the Dark Ages.
+        # player has either the pendant or gate key.
+        # As of 3.1.1, the back two chests are lumped in with the front four.
         earlyOzziesFortLocations = LocationGroup(
-            "Ozzie's Fort Front", 6,
+            "Ozzie's Fort", 12,
             lambda game: (game.canAccessFuture() or game.canAccessPrehistory())
         )
         (
@@ -319,16 +318,6 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.OZZIES_FORT_GUILLOTINES_2))
             .addLocation(Location(TID.OZZIES_FORT_GUILLOTINES_3))
             .addLocation(Location(TID.OZZIES_FORT_GUILLOTINES_4))
-        )
-
-        lateOzziesFortLocations = LocationGroup(
-            "Ozzie's Fort Back", 6,
-            lambda game:
-            (game.canAccessFuture() or game.canAccessPrehistory()) and
-            game.canAccessDarkAges()
-        )
-        (
-            lateOzziesFortLocations
             .addLocation(Location(TID.OZZIES_FORT_FINAL_1))
             .addLocation(Location(TID.OZZIES_FORT_FINAL_2))
         )
@@ -579,7 +568,6 @@ class ChronosanityGameConfig(GameConfig):
         self.locationGroups.append(melchiorsRefinementslocations)
         self.locationGroups.append(frogsBurrowLocation)
         self.locationGroups.append(earlyOzziesFortLocations)
-        self.locationGroups.append(lateOzziesFortLocations)
 
         # Future
         self.locationGroups.append(futureOpenLocations)
@@ -881,7 +869,7 @@ class NormalGameConfig(GameConfig):
         )
 
         darkagesLocations = \
-            LocationGroup("Darkages", 1, lambda game: game.canAccessDarkAges())
+            LocationGroup("Darkages", 1, lambda game: game.canAccessMtWoe())
         (
             darkagesLocations
             .addLocation(BaselineLocation(TID.MT_WOE_KEY,
@@ -1006,7 +994,7 @@ class LostWorldsGameConfig(GameConfig):
         )
 
         darkagesLocations = \
-            LocationGroup("Darkages", 1, lambda game: game.canAccessDarkAges())
+            LocationGroup("Darkages", 1, lambda game: game.canAccessMtWoe())
         (
             darkagesLocations
             .addLocation(BaselineLocation(TID.MT_WOE_KEY,
