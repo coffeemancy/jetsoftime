@@ -152,7 +152,7 @@ class Boss:
 
     @classmethod
     def DALTON_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 18)
+        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 20)
 
     # Note to self: Extra grinder objects at end of script?
     @classmethod
