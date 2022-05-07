@@ -2087,6 +2087,21 @@ class RandoGUI:
             'effects on weapons and armor according to their tier.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Starters Sufficient',
+            variable=self.flag_dict[GameFlags.FIRST_TWO]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'For Standard Game mode only.  The game will be completable '
+            'through Omen and Ocean Palace with only the starting two. '
+            'It is possible but not guaranteed that Magus\'s castle will be '
+            'available if Frog is among the starters.'
+        )
+
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
             text='Bucket Fragments',
