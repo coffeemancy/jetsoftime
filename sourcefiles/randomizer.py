@@ -745,7 +745,7 @@ class Randomizer:
 
         for location in self.config.key_item_locations:
             file_object.write(str.ljust(f"{location.getName()}", width+8) +
-                              str(location.getKeyItem()) + '\n')
+                              str(location.lookupKeyItem(self.config)) + '\n')
         file_object.write('\n')
 
     def write_character_spoilers(self, file_object):
