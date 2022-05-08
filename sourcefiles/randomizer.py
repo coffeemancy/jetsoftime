@@ -379,18 +379,11 @@ class Randomizer:
         Removes a premature ExploreMode On to prevent losing a recruit.
         '''
         loc_id = ctenums.LocID.PRISON_SUPERVISORS_OFFICE
-        script = self.out_rom.script_manager.get_script(loc_id)
+        script = ctevent.Event.from_flux(
+            './flux/jot_01D_Prison_Supervisor.Flux'
+        )
 
-        EC = ctevent.EC
-
-        obj_id, func_id = 0x06, 0x03
-
-        func = script.get_function(obj_id, func_id)
-        removed_cmd = EC.set_explore_mode(True)
-        ind = func.find_exact_command(removed_cmd)
-        func.delete_at_index(ind)
-
-        script.set_function(obj_id, func_id, func)
+        self.out_rom.script_manager.set_script(script, loc_id)
 
     def __try_mystic_mtn_portal_fix(self):
         '''
