@@ -1076,7 +1076,7 @@ class ChronosanityLegacyOfCyrusGameConfig(ChronosanityGameConfig):
         # an endgame area.
         removed_names = [
             'FutureOpen', 'FutureSewers', 'FutureLabs', 'GenoDome',
-            'Factory', 'Ozzie\'s Fort'
+            'Factory', 'Ozzie\'s Fort', 'MelchiorRefinements'
         ]
 
         unavail_char = \
