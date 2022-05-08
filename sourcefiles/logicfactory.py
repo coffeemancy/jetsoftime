@@ -1241,9 +1241,9 @@ class IceAgeGameConfig(NormalGameConfig):
     def initLocations(self):
         NormalGameConfig.initLocations(self)
 
-        # Make the logic changes
-
-        #
+        # The only change needed is that Woe will not be accessible except
+        # when dreamstone, ayla, and dactyl char are present.  We keep the
+        # group around because a (dud) key item still gets placed there.
         woe_group = next(
             x for x in self.locationGroups if x.name == 'Darkages'
         )
@@ -1261,7 +1261,7 @@ class IceAgeGameConfig(NormalGameConfig):
 class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
 
     def initKeyItems(self):
-        NormalGameConfig.initKeyItems(self)
+        ChronosanityGameConfig.initKeyItems(self)
 
         # Remove other go-mode items.  These will be replaced with gear as
         # they would be in Chronosanity modes
@@ -1273,24 +1273,10 @@ class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
             self.keyItemList.remove(item)
 
     def initLocations(self):
-        NormalGameConfig.initLocations(self)
+        ChronosanityGameConfig.initLocations(self)
 
-        # Make the logic changes
-
-        #
-        woe_group = next(
-            x for x in self.locationGroups if x.name == 'Darkages'
-        )
-
-        def has_go_mode(game: Game):
-            return (
-                game.canAccessDactylCharacter and
-                game.hasCharacter(Characters.AYLA) and
-                game.hasKeyItem(ItemID.DREAMSTONE)
-            )
-
-        woe_group.accessRule = has_go_mode
-
+        # For Chronosanity, just remove the Woe group.
+        self.locationGroups.remove(self.getLocationGroup('Darkages'))
 
 #
 # Get a GameConfig object based on randomizer flags.
