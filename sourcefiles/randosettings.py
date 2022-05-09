@@ -103,11 +103,11 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GM.STANDARD: _GF(0),
     _GM.LOST_WORLDS: _GF.BOSS_SCALE,
     _GM.ICE_AGE: (
-        _GF.CHRONOSANITY | _GF.ZEAL_END |
+        _GF.ZEAL_END |
         _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
     ),
     _GM.LEGACY_OF_CYRUS: (
-        _GF.CHRONOSANITY | _GF.ZEAL_END |
+        _GF.ZEAL_END |
         _GF.BUCKET_FRAGMENTS |
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
     )

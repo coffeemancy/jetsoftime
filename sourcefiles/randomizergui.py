@@ -565,12 +565,11 @@ class RandoGUI:
                 element.config(state=tk.DISABLED)
 
         ia_disabled_flags = [
-            GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.ZEAL_END,
             GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS,
         ]
 
         ia_disabled_elements = [
-            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
             self.bucket_frag_required_scale,
@@ -591,13 +590,12 @@ class RandoGUI:
             self.bucket_frag_required_scale.config(fg='grey')
 
         loc_disabled_flags = [
-            GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.ZEAL_END,
             GF.BUCKET_FRAGMENTS,
             GF.BOSS_RANDO, GF.BOSS_SCALE, GF.BOSS_RANDO
         ]
 
         loc_disabled_elements = [
-            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
             self.bucket_frag_required_scale,
