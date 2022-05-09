@@ -1278,6 +1278,7 @@ class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
         # For Chronosanity, just remove the Woe group.
         self.locationGroups.remove(self.getLocationGroup('Darkages'))
 
+
 #
 # Get a GameConfig object based on randomizer flags.
 # The GameConfig object will have have the correct locations,
