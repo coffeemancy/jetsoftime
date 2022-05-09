@@ -8,7 +8,8 @@ import random
 
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import BossScheme, get_default_boss_assignment
-from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect
+from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect,\
+    RecruitID
 from ctevent import Event, free_event, get_loc_event_ptr
 from ctrom import CTRom
 import enemyrewards
@@ -2054,7 +2055,10 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
     magus_stats = config.enemy_dict[EnemyID.MAGUS]
     magus_stats.hp = random.randrange(10000, 15001, 1000)
 
-    magus_char = random.choice(list(CharID))
+    if settings.game_mode == rset.GameMode.LEGACY_OF_CYRUS:
+        magus_char = config.char_assign_dict[RecruitID.PROTO_DOME].held_char
+    else:
+        magus_char = random.choice(list(CharID))
 
     magus_nukes = {
         CharID.CRONO: 0xBB,  # Luminaire
