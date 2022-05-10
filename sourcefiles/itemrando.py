@@ -374,7 +374,7 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
     AE = itemdata.ArmorEffects
     if item_id == ctenums.ItemID.HASTE_HELM:
         if new_effect == AE.SHIELD:
-            name_str = '{helm}ShieldHelm'
+            new_str = '{helm}ShieldHelm'
         elif new_effect == AE.BARRIER:
             new_str = '{helm}Wall Helm'
         elif new_effect == AE.IMMUNE_ALL:
