@@ -102,10 +102,10 @@ _weapon_effect_abbrev_dict: dict[WeaponEffects, str] = {
     WeaponEffects.NONE: '',
     WeaponEffects.CRIT_X2: '',
     WeaponEffects.WONDERSHOT: 'Rnd. Dmg',
-    WeaponEffects.DMG_125: '125% Dmg',
-    WeaponEffects.DMG_150: '150% Dmg',
-    WeaponEffects.DMG_175: '175% Dmg',
-    WeaponEffects.DMG_200: '200% Dmg',
+    WeaponEffects.DMG_125: '125% Atk',
+    WeaponEffects.DMG_150: '150% Atk',
+    WeaponEffects.DMG_175: '175% Atk',
+    WeaponEffects.DMG_200: '200% Atk',
     WeaponEffects.MAGIC: 'Mag Dmg',
     WeaponEffects.DMG_MAG_125: '125% Mag Dmg',
     WeaponEffects.DMG_MAG_150: '150% Mag Dmg',
@@ -170,6 +170,9 @@ class BinaryData:
 
         self._data = bytearray(data)
 
+    def __eq__(self, other: BinaryData):
+        return self._data == other._data
+
     def get_copy(self):
         return self.__class__(self._data)
 
@@ -198,6 +201,27 @@ class StatBoost(BinaryData):
         end = start + self.SIZE
 
         rom[start:end] = self._data[:]
+
+    def __le__(self, other):
+        return (
+            self._data[0] & other._data[0] == self._data[0] and
+            self.magnitude <= other.magnitude
+        )
+
+    def __eq__(self, other):
+        return self._data == other._data
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __lt__(self, other):
+        return self <= other and self != other
+
+    def __gt__(self, other):
+        return not self <= other
+
+    def __ge__(self, other):
+        return self > other or self == other
 
     @property
     def magnitude(self):
@@ -876,8 +900,8 @@ class Item:
                  desc_bytes: bytes):
         self.stats = stats
         self.secondary_stats = secondary_stats
-        self.name = name_bytes
-        self.desc = desc_bytes
+        self.name = bytearray(name_bytes)
+        self.desc = bytearray(desc_bytes)
 
     def is_armor(self):
         return isinstance(self.stats, ArmorStats)
@@ -947,6 +971,12 @@ class Item:
         # print(bytes(self.name))
         # print(self.name)
         rom[name_st:name_end] = self.name
+
+    def get_name_as_str(self):
+        return str(ctstrings.CTNameString(self.name))
+
+    def set_name_from_str(self, name_str: str):
+        self.name = ctstrings.CTNameString.from_string(name_str, 11)
 
     @classmethod
     def get_desc_ptr_file_start_from_rom(cls, rom: bytes):
