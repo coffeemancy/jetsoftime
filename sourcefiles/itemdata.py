@@ -218,10 +218,13 @@ class StatBoost(BinaryData):
         return self <= other and self != other
 
     def __gt__(self, other):
-        return not self <= other
+        return self >= other and self != other
 
     def __ge__(self, other):
-        return self > other or self == other
+        return (
+            self._data[0] & other._data[0] == other._data[0] and
+            self.magnitude >= other.magnitude
+        )
 
     @property
     def magnitude(self):
