@@ -98,9 +98,9 @@ class _BoostID(ctenums.StrIntEnum):
     STAMINA_2 = 0x04
     MAGIC_2 = 0x05
     MDEF_5 = 0x06
-    SPEED_3 = 0x07
+    POWER_6 = 0x07
     HIT_10 = 0x08
-    POWER_6 = 0x09
+    SPEED_3 = 0x09
     MAGIC_6 = 0x0A
     MDEF_10 = 0x0B
     POWER_4 = 0x0C
@@ -138,6 +138,7 @@ _high_boosts = (
 
 
 def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
+
     # Potentially change depending on item difficulty
     Dist = treasuredata.TreasureDist
     ret_dist = dict()
@@ -306,6 +307,66 @@ def get_armor_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     return ret_dist
 
 
+_stat_price_dict: dict[int, int] = {
+    _BID.NOTHING: 0,
+    _BID.SPEED_1: 80,
+    _BID.SPEED_2: 16000,
+    _BID.SPEED_3: 30000,
+    _BID.STAMINA_2: 80,
+    _BID.STAMINA_6: 800,
+    _BID.POWER_2: 80,
+    _BID.POWER_4: 800,
+    _BID.POWER_6: 4000,
+    _BID.POWER_STAMINA_10: 20000,
+    _BID.HIT_2: 0,
+    _BID.HIT_10: 800,
+    _BID.MAGIC_2: 80,
+    _BID.MAGIC_4: 800,
+    _BID.MAGIC_6: 4000,
+    _BID.MAG_MDEF_5: 15000,
+    _BID.MDEF_10: 3000,
+    _BID.MDEF_9: 2500,
+    _BID.MDEF_5: 800,
+    _BID.MDEF_5_DUP: 800,
+    _BID.MDEF_12: 5000,
+    _BID.MDEF_15: 8000,
+}
+
+_AE = itemdata.ArmorEffects
+_WE = itemdata.WeaponEffects
+_effect_price_dict: dict[int, int] = {
+    _AE.NONE: 0,
+    _AE.BARRIER: 20000,
+    _AE.SHIELD: 20000,
+    _AE.HASTE: 40000,
+    _AE.IMMUNE_ALL: 40000,
+    _AE.IMMUNE_CHAOS: 7000,
+    _AE.IMMUNE_LOCK: 7000,
+    _AE.IMMUNE_SLOW_STOP: 7000,
+    _AE.ABSORB_LIT_25: 5000,
+    _AE.ABSORB_FIR_25: 5000,
+    _AE.ABSORB_SHD_25: 5000,
+    _AE.ABSORB_WAT_25: 5000,
+    _AE.ABSORB_LIT_100: 15000,
+    _AE.ABSORB_FIR_100: 15000,
+    _AE.ABSORB_SHD_100: 15000,
+    _AE.ABSORB_WAT_100: 15000,
+    _WE.NONE: 0,
+    _WE.STOP_80_MACHINES: 1000,
+    _WE.CRIT_4X: 5000,
+    _WE.DMG_TO_MAG_150: 5000,
+    _WE.DMG_TO_MAG_200: 7500,
+    _WE.HP_50_50: 5000,
+    _WE.SLOW_60: 7000,
+    _WE.CHAOS_60: 5000,
+    _WE.STOP_60: 10000,
+    _WE.DOOMSICKLE: 30000,
+    _WE.CRISIS: 50000,
+    _WE.WONDERSHOT: 50000,
+    _WE.DMG_125: 50000
+}
+
+
 def randomize_weapon_armor(item_id: ctenums.ItemID,
                            item_db: itemdata.ItemDB,
                            stat_dist: treasuredata.TreasureDist = None,
@@ -320,6 +381,7 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         item.secondary_stats.stat_boost_index = new_stat_boost
 
     none_effects = (itemdata.WeaponEffects.NONE, itemdata.ArmorEffects.NONE)
+
     if effect_dist is not None:
         new_effect = effect_dist.get_random_item()
         item.stats.effect_id = new_effect
@@ -329,6 +391,25 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         else:
             item.stats.has_effect = True
 
+        if new_effect == _WE.CRISIS:
+            item.stats.attack = 0
+
+    orig_price_mod = _effect_price_dict[orig_stats.effect_id] + \
+        _stat_price_dict[orig_sec_stats.stat_boost_index]
+
+    new_price_mod = _effect_price_dict[item.stats.effect_id] + \
+        _stat_price_dict[item.secondary_stats.stat_boost_index]
+
+    price_mod = new_price_mod - orig_price_mod
+
+    new_price = item.price + price_mod
+    if new_price < item.price // 10:
+        item.price = item.price // 10
+    elif new_price > 65000:
+        item_price = 65000
+    else:
+        item.price = new_price
+
     if item.stats != orig_stats or item.secondary_stats != orig_sec_stats:
         orig_boost = item_db.stat_boosts[orig_sec_stats.stat_boost_index]
         cur_boost = item_db.stat_boosts[
@@ -337,6 +418,7 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
 
         orig_effect = orig_stats.effect_id
         cur_effect = item.stats.effect_id
+
         
         if (
                 (
@@ -378,15 +460,13 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         elif new_effect == AE.BARRIER:
             new_str = '{helm}Wall Helm'
         elif new_effect == AE.IMMUNE_ALL:
-            new_str = '{helm}Prot. Helm'
+            new_str = '{helm}ImmuneHelm'
         elif new_effect == AE.HASTE:
             new_str = '{helm}Haste Helm'
         else:
             new_str = '{helm}Waste Helm'
 
         item.set_name_from_str(new_str)
-        
-        
 
 
 def randomize_weapon_armor_stats(settings: rset.Settings,
@@ -428,6 +508,8 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         gear_in_tier[tier] = [x for x in gear_in_tier[tier] if x < 0x94
                               and x not in ignored_ids]
 
+    gear_in_tier[Tier.AWESOME_GEAR].append(IID.MASAMUNE_1)
+        
     for tier in gear_tiers:
         boost_dist = stat_boost_dict[tier]
         weapon_effect_dist = weapon_effect_dict[tier]
