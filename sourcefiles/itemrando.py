@@ -51,6 +51,7 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
     item_db = config.itemdb
 
     base_hp_healing = random.choice(range(30, 51, 5))
+    revive_mult = random.choice((1,2,3))
     tonic_mult = random.choice((1, 2))
     mid_tonic_mult = random.choice((3, 4, 5, 6, 7))
     full_tonic_mult = random.choice((8, 9, 10, 11, 12, 13, 14))
@@ -59,6 +60,7 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
     item_db[ItemID.TONIC].stats.heal_multiplier = tonic_mult
     item_db[ItemID.MID_TONIC].stats.heal_multiplier = mid_tonic_mult
     item_db[ItemID.FULL_TONIC].stats.heal_multiplier = full_tonic_mult
+    item_db[ItemID.REVIVE].stats.heal_multiplier = revive_mult
 
     base_mp_healing = random.choice(range(7, 14, 1))
     ether_mult = 1

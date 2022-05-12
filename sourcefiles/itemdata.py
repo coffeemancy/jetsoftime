@@ -816,15 +816,23 @@ class ConsumableKeyEffect(ItemData):
     MAX_ID = 0xF1
 
     @property
-    def heals_in_battle(self):
+    def heals_in_menu(self):
         return self._data[0] == 0x80
 
-    @heals_in_battle.setter
-    def heals_in_battle(self, val: bool):
-        if val:
-            self._data[0] = 0x80
-        else:
-            self._data[0] &= 0x7F
+    @heals_in_menu.setter
+    def heals_in_menu(self, val: bool):
+        self._data[0] &= 0x7F
+        self._data[0] |= (0x80 * val)
+    
+    @property
+    def heals_in_battle_only(self):
+        return self._data[0] == 0x04
+
+    @heals_in_battle_only.setter
+    def heals_in_battle_only(self, val: bool):
+        bit = 0x04
+        self._data[0] &= (0xFF - bit)
+        self._data[0] |= (bit * val)
 
     @property
     def heals_at_save(self):
@@ -1184,7 +1192,7 @@ class ItemDB:
             else:
                 mag_str = str(item.stats.get_heal_amount())
 
-            if item.stats.heals_in_battle:
+            if item.stats.heals_in_menu:
                 string = 'Restores ' + mag_str + ' ' + stat_str
                 # Item targeting is not in this data.
                 # Vanilla Mid Tonic == Lapis
@@ -1199,6 +1207,11 @@ class ItemDB:
                 string = 'Restores ' + mag_str + ' ' + stat_str \
                     + ' at Save Pts.{null}'
                 item.desc = ctstrings.CTString.from_str(string)
+            elif item.stats.heals_in_battle_only:
+                if item_id == ctenums.ItemID.REVIVE:
+                    heal_amt = item.stats.get_heal_amount()
+                    string = f'Revives fallen ally w/ {heal_amt} HP{{null}}'
+                    item.desc = ctstrings.CTString.from_str(string)
 
             return
 
