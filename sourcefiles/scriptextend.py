@@ -468,6 +468,30 @@ def add_dup_dual_scripts(rom, bank_st, scr_ptrs_st, scr_st):
     ha = get_mm_haste_all_scr(rom, bank_st, scr_ptrs_st)
     ha.write_to_rom(rom, loc)
 
+    # marle glacier to 0x85
+
+    loc += len(ha)
+    scr_id += 1
+    scr_ptr = to_little_endian(loc % 0x10000, 2)
+
+    rom[bank_st+scr_id] = bank
+    rom[scr_ptrs_st+scr_id*2:scr_ptrs_st+scr_id*2+2] = scr_ptr[:]
+
+    gl = get_mm_glacier_scr(rom, bank_st, scr_ptrs_st)
+    gl.write_to_rom(rom, loc)
+
+    # lucca point flare to 0x86
+
+    loc += len(gl)
+    scr_id += 1
+    scr_ptr = to_little_endian(loc % 0x10000, 2)
+
+    rom[bank_st+scr_id] = bank
+    rom[scr_ptrs_st+scr_id*2:scr_ptrs_st+scr_id*2+2] = scr_ptr[:]
+
+    pf = get_ll_point_flare_scr(rom, bank_st, scr_ptrs_st)
+    pf.write_to_rom(rom, loc)
+
 
 def get_ff_hex_mist_scr(rom, bank_st, scr_ptrs_st):
 
@@ -987,3 +1011,461 @@ def get_aa_beast_toss_scr(rom, bank_st, scr_ptrs_st):
                           '00')
 
     return bt_scr
+
+
+def get_mm_glacier_scr(rom, bank_st, scr_ptrs_st):
+
+    script_id = 0x4F
+    bank = rom[bank_st+script_id]
+    ptr = rom[scr_ptrs_st+2*script_id:scr_ptrs_st+2*script_id+2]
+
+    script_ptr = to_file_ptr((bank << 16)
+                             + get_value_from_bytes(ptr))
+    glacier_scr = TechScript.from_rom(rom, script_ptr)
+
+    # for ind, script in enumerate(glacier_scr.obj_scripts):
+    #     print('***', ind)
+    #     TechScript.print_obj(script)
+
+    # input()
+
+    # caster1
+    glacier_scr.obj_scripts[0] = bytearray.fromhex(
+        '2D' +
+        '800274' +
+        '3303' +
+        '301F18' +
+        '411E00' +
+        '411F01' +
+        '411E02' +
+        '3A02E8' +
+        '411F03' +
+        '411E04' +
+        '3A0418' +
+        '411F05' +
+        '3D03' +
+        '720D' +
+        '2402' +
+        '0310' +
+        '35' +
+        '0222' +
+        '2404' +
+        '341A' +
+        '36' +
+        '0603' +
+        '2020' +
+        '2D' +
+        '801274' +
+        '200A' +
+        '2406' +
+        '2E' +
+        '01' +
+        '00'
+    )
+
+    # caster2
+    glacier_scr.obj_scripts[1] = bytearray.fromhex(
+        '720D' +
+        '0310' +
+        '0222' +
+        '2405' +
+        '0603' +
+        '00'
+    )
+
+    # target1
+    glacier_scr.obj_scripts[2] = bytearray.fromhex(
+        '2403' +
+        '201E' +
+        '6904' +
+        '6B05' +
+        '2405' +
+        '6D' +
+        '1E04' +
+        '36' +
+        '00'
+    )
+
+    # effect1
+    glacier_scr.obj_scripts[3] = bytearray.fromhex(
+        '1B0A' +
+        '7203' +
+        '7301' +
+        '6000' +
+        '2010' +
+        '3303' +
+        '411E06' +
+        '411F07' +
+        '330A' +
+        '7A7201' +
+        '1E26' +
+        '2402' +
+        '7303' +
+        '786F' +
+        '1B01' +
+        '1E22' +
+        '71' +
+        '00'
+    )
+
+    # effect2
+    glacier_scr.obj_scripts[4] = bytearray.fromhex(
+        '1B0A' +
+        '7203' +
+        '7301' +
+        '2010' +
+        '1E27' +
+        '2402' +
+        '7303' +
+        '0A' +
+        '1B01' +
+        '760103' +
+        'A809' +
+        '1E22' +
+        '71' +
+        '00'
+    )
+
+    # effect3
+    glacier_scr.obj_scripts[5] = bytearray.fromhex(
+        '1B0A' +
+        '7203' +
+        '7301' +
+        '2010' +
+        '1E28' +
+        '2402' +
+        '7303' +
+        '0A' +
+        '1B01' +
+        '760103' +
+        'A812' +
+        '1E22' +
+        '71' +
+        '00'
+    )
+
+    # effect4
+    glacier_scr.obj_scripts[6] = bytearray.fromhex(
+        '1B0A' +
+        '7203' +
+        '7301' +
+        '2010' +
+        '1E29' +
+        '36' +
+        '2402' +
+        '7303' +
+        '0A' +
+        '1B01' +
+        '760103' +
+        'A81B' +
+        '1E22' +
+        '71' +
+        '0B' +
+        '1B03' +
+        '0200' +
+        '70' +
+        '122A' +
+        '71' +
+        '36' +
+        '65' +
+        '6005' +
+        '0204' +
+        '0C' +
+        '2014' +
+        '70' +
+        '7ABB03' +
+        '1203' +
+        '7BB800' +
+        '200A' +
+        '340F' +
+        '0301' +
+        '00'
+    )
+
+    # effect5
+    glacier_scr.obj_scripts[7] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        # '62020104' +
+        # '0203' +
+        '0200' +
+        '8500' +
+        '2301' +
+        # '7BA100' +
+        '7A7201' +
+        '1E2C' +
+        '2001' +
+        # '66' +
+        '2403' +
+        '341B' +
+        '1B2B' +
+        '0204' +
+        '0D' +
+        '7303' +
+        '220F01' +
+        '70' +
+        '1203' +
+        '7BB800' +
+        '200A' +
+        '340F' +
+        '0301' +
+        '00'
+    )
+
+    # effect6
+    glacier_scr.obj_scripts[8] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        # '0203' +
+        '0200' +
+        '8540' +
+        '2301' +
+        '1E2C' +
+        '2403' +
+        '1B2C' +
+        '0204' +
+        '0D' +
+        '7303' +
+        '220F02' +
+        '70' +
+        '1203' +
+        '7BB800' +
+        '200A' +
+        '0301' +
+        '78FF' +
+        '36' +
+        '00'
+    )
+
+    # effect7
+    glacier_scr.obj_scripts[9] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        # '0203' +
+        '0200' +
+        '8580' +
+        '2301' +
+        '1E2C' +
+        '00'
+    )
+
+    # effect8
+    glacier_scr.obj_scripts[10] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        # '0203' +
+        '0200' +
+        '85C0' +
+        '2301' +
+        '1E2C' +
+        '00'
+    )
+
+    # miss caster 1
+    glacier_scr.obj_scripts[11] = bytearray.fromhex(
+        '0619' +
+        '2014' +
+        '0317' +
+        '0317' +
+        '50' +
+        '0603' +
+        '2E' +
+        '01' +
+        '00'
+    )
+
+    # miss caster 2
+    glacier_scr.obj_scripts[12] = bytearray.fromhex(
+        '0619' +
+        '2014' +
+        '0317' +
+        '0603' +
+        '00'
+    )
+
+    return glacier_scr
+
+
+def get_ll_point_flare_scr(rom, bank_st, scr_ptrs_st):
+
+    pf_scr = TechScript()
+
+    # 2 cast, 2 target, 4 target | 2 cast
+    # 110 11000 11110000 | 1100 0000 0000 0000
+    # D8F0C000
+    pf_scr.header = bytearray.fromhex('D8F0C000')
+    pf_scr.obj_scripts = [bytearray() for i in range(10)]
+    pf_scr.num_objs = 10
+
+    # cast1
+    pf_scr.obj_scripts[0] = bytearray.fromhex(
+        '3D0C' + 
+        '720D' +
+        '1E31' +
+        '2402' +
+        '341B' +
+        '789C' +
+        '221B00' +
+        '0603' +
+        # '300000' +
+        '36' +
+        # '2403' +
+        '200F' +
+        '50' +
+        '2E' +
+        '01' +
+        '00'
+    )
+
+    # cast2
+    pf_scr.obj_scripts[1] = bytearray.fromhex(
+        '2401' +
+        '720D' +
+        '1E31' +
+        '2403' +
+        '0603' +
+        '00'
+    )
+
+    # target1
+    pf_scr.obj_scripts[2] = bytearray.fromhex(
+        '2402' +
+        '6900' +
+        '0605' +
+        '2403' +
+        '6A' +
+        '0603' +
+        '00'
+    )
+
+    # target2
+    pf_scr.obj_scripts[3] = bytearray.fromhex(
+        '2401' +
+        '6900' +
+        '0605' +
+        '2402' +
+        '6A' +
+        '0603' +
+        '00'
+    )
+
+    # effect1
+    pf_scr.obj_scripts[4] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '61020003' +
+        '3309' +
+        '411E04' +
+        '411F05' +
+        '0200' +
+        '78AF' +
+        '1E32' +
+        '2401' +
+        # repeat for caster2
+        '1B0A' +
+        '330A' +
+        '411E04' +
+        '411F05' +
+        '0200' +
+        '78AF' +
+        '1E32' +
+        '00'
+    )
+
+    # effect2
+    pf_scr.obj_scripts[5] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '2006' +
+        '0200' +
+        '1E32' +
+        # repeat for caster2
+        '2401'
+        '1B0A' +
+        '7203' +
+        '7300' +
+        '2006' +
+        '0200' +
+        '1E32' +
+        # **
+        '71' +
+        '00'
+    )
+    
+    # effect3
+    pf_scr.obj_scripts[6] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '200C' +
+        '0200' +
+        '1E32' +
+        # repeat for caster2
+        '2401'
+        '1B0A' +
+        '7203' +
+        '7300' +
+        '200C' +
+        '0200' +
+        '1E32' +
+        # **
+        '71' +
+        '00'
+    )
+
+    # effect4
+    pf_scr.obj_scripts[7] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '2012' +
+        '0200' +
+        '1E32' +
+        '2004' +
+        '36' +
+        # repeat for caster2
+        '2401'
+        '1B0A' +
+        '7203' +
+        '7300' +
+        '2012' +
+        '0200' +
+        '1E32' +
+        # **
+        '36' +
+        '71' +
+        '00'
+    )
+
+
+    # miss cast1
+    pf_scr.obj_scripts[8] = bytearray.fromhex(
+        '0619' +
+        '2014' +
+        '0317' +
+        '0317' +
+        '50' +
+        '0603' +
+        '2E' +
+        '01' +
+        '00'
+    )
+
+    # miss cast2
+    pf_scr.obj_scripts[9] = bytearray.fromhex(
+        '0619' +
+        '2014' +
+        '0317' +
+        '0317' +
+        '50' +
+        '0603' +
+        '00'
+    )
+
+    return pf_scr
