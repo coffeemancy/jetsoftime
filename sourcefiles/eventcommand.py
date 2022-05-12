@@ -429,10 +429,6 @@ class EventCommand:
                 offset = (address - 0x7F0000)
                 out_cmd.args = [val, offset]
             else:
-                print(
-                    "Warning: Using two byte width in bank 7F.  Falling back "
-                    "to full memory command."
-                )
                 out_cmd = event_commands[0x4B].copy()
                 out_cmd.args = [address, val]
         else:
