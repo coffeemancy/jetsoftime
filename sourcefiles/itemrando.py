@@ -50,7 +50,7 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
     ItemID = ctenums.ItemID
     item_db = config.itemdb
 
-    base_hp_healing = random.choice(range(30, 51, 5))
+    base_hp_healing = random.choice(range(30, 51, 1))
     revive_mult = random.choice((1,2,3))
     tonic_mult = random.choice((1, 2))
     mid_tonic_mult = random.choice((3, 4, 5, 6, 7))
