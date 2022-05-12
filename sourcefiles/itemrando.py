@@ -1,3 +1,5 @@
+from __future__ import annotations  # 3.8 compatability
+
 import math
 import random
 
