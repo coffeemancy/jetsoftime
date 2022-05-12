@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
-from typing import Tuple, Type, TypeVar, ClassVar
+from dataclasses import dataclass, field
+import math
+from typing import Tuple, Type, TypeVar
 
+import enemyai
+import enemytechdb
 from enemystats import EnemyStats
 
 from ctenums import EnemyID, BossID, LocID
 
+import piecewiselinear
+import statcompute
 
 # Silly thing for typing classmethod return type from stackexchange
 # https://stackoverflow.com/questions/44640479
@@ -70,14 +75,42 @@ class Boss:
     scheme: BossScheme
     power: int = 0
 
+    @classmethod
+    def scale_stats(cls,
+                    enemy_id: EnemyID,
+                    stats: EnemyStats,
+                    atk_db: enemytechdb.EnemyAttackDB,
+                    ai_db: enemyai.EnemyAIDB,
+                    from_power: int, to_power: int) -> EnemyStats:
+        raise NotImplementedError
+
+    def scale_to_power(
+            self, new_power,
+            stat_dict: dict[EnemyID, EnemyStats],
+            atk_db: enemytechdb.EnemyAttackDB,
+            ai_db: enemyai.EnemyAIDB
+    ) -> dict[EnemyID: EnemyStats]:
+        return {
+            part: self.scale_stats(part, stat_dict[part],
+                                   atk_db, ai_db,
+                                   self.power, new_power)
+            for part in list(set(self.scheme.ids))
+        }
+
     # Make a subclass to implement scaling styles
-    # Stats are no longer stored inside of the Boss class, so we provide
-    # a dict to look up/set the stats.
+    # Need stats, atk/tech, ai to fully scale.
     def scale_relative_to(
             self, other: Boss,
-            stat_dict: dict[EnemyID, EnemyStats]
-    ) -> list[EnemyStats]:
-        raise NotImplementedError
+            stat_dict: dict[EnemyID, EnemyStats],
+            atk_db: enemytechdb.EnemyAttackDB,
+            ai_db: enemyai.EnemyAIDB
+    ) -> dict[EnemyID: EnemyStats]:
+        return {
+            part: self.scale_stats(part, stat_dict[part],
+                                   atk_db, ai_db,
+                                   self.power, other.power)
+            for part in list(set(self.scheme.ids))
+        }
 
     @classmethod
     def generic_one_spot(cls: Type[T], boss_id, slot, power) -> T:
@@ -106,7 +139,7 @@ class Boss:
 
     @classmethod
     def ATROPOS_XR(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 20)
+        return cls.generic_one_spot(EnemyID.ATROPOS_XR, 3, 14)
 
     @classmethod
     def BLACK_TYRANO(cls: Type[T]) -> T:
@@ -119,7 +152,7 @@ class Boss:
 
     @classmethod
     def DALTON_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 30)
+        return cls.generic_one_spot(EnemyID.DALTON_PLUS, 3, 20)
 
     # Note to self: Extra grinder objects at end of script?
     @classmethod
@@ -139,7 +172,7 @@ class Boss:
                EnemyID.ELDER_SPAWN_HEAD]
         slots = [3, 9]
         disps = [(0, 0), (-8, 1)]
-        power = 40
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -149,7 +182,7 @@ class Boss:
 
     @classmethod
     def FLEA_PLUS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 20)
+        return cls.generic_one_spot(EnemyID.FLEA_PLUS, 7, 14)
 
     @classmethod
     def GIGA_GAIA(cls: Type[T]) -> T:
@@ -158,7 +191,7 @@ class Boss:
         slots = [6, 7, 9]
         # disps = [(0, 0), (0x40, 0x30), (-0x40, 0x30)]
         disps = [(0, 0), (0x20, 0x20), (-0x20, 0x20)]
-        power = 25
+        power = 20
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -167,20 +200,18 @@ class Boss:
         ids = [EnemyID.GIGA_MUTANT_HEAD, EnemyID.GIGA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 40
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
     def GOLEM(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.GOLEM, 3, 20)
+        return cls.generic_one_spot(EnemyID.GOLEM, 3, 18)
 
     @classmethod
     def GOLEM_BOSS(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.GOLEM_BOSS, 3, 20)
+        return cls.generic_one_spot(EnemyID.GOLEM_BOSS, 3, 15)
 
-    # This does virtually nothing since guardian sprite is built into the
-    # background.  Eventually replace with lavos versions?
     @classmethod
     def GUARDIAN(cls: Type[T]) -> T:
         ids = [EnemyID.GUARDIAN, EnemyID.GUARDIAN_BIT,
@@ -188,13 +219,13 @@ class Boss:
         slots = [3, 7, 8]
         # disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
         disps = [(0, 0), (-0x3A, -0x08), (0x40, -0x08)]
-        power = 20
+        power = 15
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
     def HECKRAN(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.HECKRAN, 3, 12)
+        return cls.generic_one_spot(EnemyID.HECKRAN, 3, 8)
 
     @classmethod
     def LAVOS_SHELL(cls: Type[T]) -> T:
@@ -223,20 +254,24 @@ class Boss:
             100
         )
 
-    # TODO: Check on this.  It should be the displacement is -8 but that
+    # TODO: Check on this.  It should be the displacement is -8, 0 but that
     #       doesn't work...sometimes?  It's weird.
     @classmethod
     def LAVOS_SPAWN(cls: Type[T]) -> T:
         ids = [EnemyID.LAVOS_SPAWN_SHELL,
                EnemyID.LAVOS_SPAWN_HEAD]
         slots = [3, 9]
-        disps = [(0, 0), (-0x7, 0)]
-        power = 20
+        disps = [(0, 0), (-0x8, 1)]
+        power = 18
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
+    def MAMMON_MACHINE(cls: Type[T]) -> T:
+        return cls.generic_one_spot(EnemyID.MAMMON_M, 3, 35)
+
+    @classmethod
     def MASA_MUNE(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.MASA_MUNE, 6, 15)
+        return cls.generic_one_spot(EnemyID.MASA_MUNE, 6, 12)
 
     @classmethod
     def MEGA_MUTANT(cls: Type[T]) -> T:
@@ -244,7 +279,7 @@ class Boss:
                EnemyID.MEGA_MUTANT_BOTTOM]
         slots = [3, 7]
         disps = [(0, 0), (0, 0)]
-        power = 40
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -261,7 +296,7 @@ class Boss:
         # disps = [(0, 0), (-0x50, -0x1F), (-0x20, -0x2F), (0x40, -0x1F)]
         # Tighten up coords to fit better.  AoE still hits screens the same
         disps = [(0, 0), (-0x40, -0xF), (-0x8, -0x1F), (0x38, -0xF)]
-        power = 25
+        power = 15
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -276,11 +311,11 @@ class Boss:
 
     @classmethod
     def NIZBEL(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.NIZBEL, 3, 15)
+        return cls.generic_one_spot(EnemyID.NIZBEL, 3, 14)
 
     @classmethod
     def NIZBEL_II(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.NIZBEL_II, 3, 18)
+        return cls.generic_one_spot(EnemyID.NIZBEL_II, 3, 16)
 
     @classmethod
     def RETINITE(cls: Type[T]) -> T:
@@ -288,7 +323,7 @@ class Boss:
                EnemyID.RETINITE_BOTTOM]
         slots = [3, 9, 6]
         disps = [(0, 0), (0, -0x8), (0, 0x28)]
-        power = 15
+        power = 12  # With water magic, retinite is 0 threat
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -308,11 +343,11 @@ class Boss:
 
     @classmethod
     def SLASH_SWORD(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 15)
+        return cls.generic_one_spot(EnemyID.SLASH_SWORD, 3, 14)
 
     @classmethod
     def SUPER_SLASH(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.SUPER_SLASH, 7, 20)
+        return cls.generic_one_spot(EnemyID.SUPER_SLASH, 7, 14)
 
     @classmethod
     def SON_OF_SUN(cls: Type[T]) -> T:
@@ -331,7 +366,7 @@ class Boss:
         ids = [EnemyID.TERRA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_BOTTOM]
         slots = [3, 9]
         disps = [(0, 0), (0, 0)]
-        power = 40
+        power = 30
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -339,17 +374,17 @@ class Boss:
     def TWIN_BOSS(cls: Type[T]) -> T:
         ids = [EnemyID.TWIN_BOSS, EnemyID.TWIN_BOSS]
         slots = [3, 6]
-        disps = [(0, 0), (0x20, 0)]
-        power = 40  # Should match mutant power
+        disps = [(-0x20, 0), (0x20, 0)]
+        power = 30  # Should match mutant power
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
     def YAKRA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.YAKRA, 3, 5)
+        return cls.generic_one_spot(EnemyID.YAKRA, 3, 1)
 
     @classmethod
     def YAKRA_XIII(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.YAKRA_XIII, 3, 15)
+        return cls.generic_one_spot(EnemyID.YAKRA_XIII, 3, 12)
 
     @classmethod
     def ZEAL(cls: Type[T]) -> T:
@@ -372,7 +407,7 @@ class Boss:
                                        EnemyID.ZOMBOR_BOTTOM],
                                       [(0, 0), (0, 0x20)],
                                       [9, 3],
-                                      10)
+                                      5)
 # end Boss class
 
 
@@ -409,47 +444,301 @@ def get_default_boss_assignment():
 # Associate BossID with the Boss data structure.
 def get_boss_data_dict():
     return {
-        BossID.ATROPOS_XR: PowerScaleBoss.ATROPOS_XR(),
-        BossID.DALTON_PLUS: PowerScaleBoss.DALTON_PLUS(),
-        BossID.DRAGON_TANK: PowerScaleBoss.DRAGON_TANK(),
-        BossID.ELDER_SPAWN: PowerScaleBoss.ELDER_SPAWN(),
-        BossID.FLEA: PowerScaleBoss.FLEA(),
-        BossID.FLEA_PLUS: PowerScaleBoss.FLEA_PLUS(),
-        BossID.GIGA_GAIA: PowerScaleBoss.GIGA_GAIA(),
-        BossID.GIGA_MUTANT: PowerScaleBoss.GIGA_MUTANT(),
-        BossID.GOLEM: PowerScaleBoss.GOLEM(),
-        BossID.GOLEM_BOSS: PowerScaleBoss.GOLEM_BOSS(),
-        BossID.GUARDIAN: PowerScaleBoss.GUARDIAN(),
-        BossID.HECKRAN: PowerScaleBoss.HECKRAN(),
-        BossID.LAVOS_SPAWN: PowerScaleBoss.LAVOS_SPAWN(),
-        BossID.MASA_MUNE: PowerScaleBoss.MASA_MUNE(),
-        BossID.MEGA_MUTANT: PowerScaleBoss.MEGA_MUTANT(),
-        BossID.MOTHER_BRAIN: PowerScaleBoss.MOTHER_BRAIN(),
-        BossID.MUD_IMP: PowerScaleBoss.MUD_IMP(),
-        BossID.NIZBEL: PowerScaleBoss.NIZBEL(),
-        BossID.NIZBEL_2: PowerScaleBoss.NIZBEL_II(),
-        BossID.RETINITE: PowerScaleBoss.RETINITE(),
-        BossID.R_SERIES: PowerScaleBoss.R_SERIES(),
-        BossID.RUST_TYRANO: PowerScaleBoss.RUST_TYRANO(),
-        BossID.SLASH_SWORD: PowerScaleBoss.SLASH_SWORD(),
+        BossID.ATROPOS_XR: ProgressiveScaleBoss.ATROPOS_XR(),
+        BossID.DALTON_PLUS: ProgressiveScaleBoss.DALTON_PLUS(),
+        BossID.DRAGON_TANK: ProgressiveScaleBoss.DRAGON_TANK(),
+        BossID.ELDER_SPAWN: ProgressiveScaleBoss.ELDER_SPAWN(),
+        BossID.FLEA: ProgressiveScaleBoss.FLEA(),
+        BossID.FLEA_PLUS: ProgressiveScaleBoss.FLEA_PLUS(),
+        BossID.GIGA_GAIA: ProgressiveScaleBoss.GIGA_GAIA(),
+        BossID.GIGA_MUTANT: ProgressiveScaleBoss.GIGA_MUTANT(),
+        BossID.GOLEM: ProgressiveScaleBoss.GOLEM(),
+        BossID.GOLEM_BOSS: ProgressiveScaleBoss.GOLEM_BOSS(),
+        BossID.GUARDIAN: ProgressiveScaleBoss.GUARDIAN(),
+        BossID.HECKRAN: ProgressiveScaleBoss.HECKRAN(),
+        BossID.LAVOS_SPAWN: ProgressiveScaleBoss.LAVOS_SPAWN(),
+        BossID.MASA_MUNE: ProgressiveScaleBoss.MASA_MUNE(),
+        BossID.MEGA_MUTANT: ProgressiveScaleBoss.MEGA_MUTANT(),
+        BossID.MOTHER_BRAIN: ProgressiveScaleBoss.MOTHER_BRAIN(),
+        BossID.MUD_IMP: ProgressiveScaleBoss.MUD_IMP(),
+        BossID.NIZBEL: ProgressiveScaleBoss.NIZBEL(),
+        BossID.NIZBEL_2: ProgressiveScaleBoss.NIZBEL_II(),
+        BossID.RETINITE: ProgressiveScaleBoss.RETINITE(),
+        BossID.R_SERIES: ProgressiveScaleBoss.R_SERIES(),
+        BossID.RUST_TYRANO: ProgressiveScaleBoss.RUST_TYRANO(),
+        BossID.SLASH_SWORD: ProgressiveScaleBoss.SLASH_SWORD(),
         BossID.SON_OF_SUN: SonOfSunScaleBoss.SON_OF_SUN(),
-        BossID.SUPER_SLASH: PowerScaleBoss.SUPER_SLASH(),
-        BossID.TERRA_MUTANT: PowerScaleBoss.TERRA_MUTANT(),
-        BossID.TWIN_BOSS: PowerScaleBoss.TWIN_BOSS(),
-        BossID.YAKRA: PowerScaleBoss.YAKRA(),
-        BossID.YAKRA_XIII: PowerScaleBoss.YAKRA_XIII(),
-        BossID.ZOMBOR: PowerScaleBoss.ZOMBOR(),
-        BossID.MAGUS: PowerScaleBoss.MAGUS(),
-        BossID.BLACK_TYRANO: PowerScaleBoss.BLACK_TYRANO(),
+        BossID.SUPER_SLASH: ProgressiveScaleBoss.SUPER_SLASH(),
+        BossID.TERRA_MUTANT: ProgressiveScaleBoss.TERRA_MUTANT(),
+        BossID.TWIN_BOSS: ProgressiveScaleBoss.TWIN_BOSS(),
+        BossID.YAKRA: ProgressiveScaleBoss.YAKRA(),
+        BossID.YAKRA_XIII: ProgressiveScaleBoss.YAKRA_XIII(),
+        BossID.ZOMBOR: ProgressiveScaleBoss.ZOMBOR(),
+        BossID.MAGUS: ProgressiveScaleBoss.MAGUS(),
+        BossID.BLACK_TYRANO: ProgressiveScaleBoss.BLACK_TYRANO(),
         BossID.LAVOS_SHELL: Boss.LAVOS_SHELL(),
         BossID.INNER_LAVOS: Boss.INNER_LAVOS(),
         BossID.LAVOS_CORE: Boss.LAVOS_CORE(),
+        BossID.MAMMON_M: Boss.MAMMON_MACHINE(),
         BossID.ZEAL: Boss.ZEAL(),
         BossID.ZEAL_2: Boss.ZEAL_2()
     }
 
 
-def linear_scale_stats(stats: EnemyStats,
+def get_hp(level: int):
+    # copying Frog as a middle of the road hp
+    base_hp = 80
+    # hp_growth = bytearray.fromhex('0A 0D 15 0F 30 15 63 0A')
+    hp_growth = bytearray.fromhex('0A 0C 15 0E 1D 13 63 14')
+    return statcompute.compute_hpmp_growth(hp_growth, level) + base_hp
+
+
+def get_mdef(level: int):
+    # These are Frog's stats (also Crono's)
+    BASE_MDEF = 15
+    MDEF_GROWTH = 0.46
+
+    return min(BASE_MDEF + (level-1)*MDEF_GROWTH, 100)
+
+
+def get_phys_def(level: int):
+    BASE_STM = 8
+    STM_GROWTH = 1.65
+
+    # In practice, jets has weird armor curve.  You can get about 80% of
+    # endgame armor in the early game.
+    LV1_ARMOR_DEF = 3 + 5  # hide cap + hide armor
+    MID_ARMOR = 45 + 20  # ruby vest + rock helm
+    LATE_ARMOR = 75 + 35  # aeon suit + mermaid cap
+
+    pwl = piecewiselinear.PiecewiseLinear(
+        (1, LV1_ARMOR_DEF),
+        (12, MID_ARMOR),
+        (30, LATE_ARMOR)
+    )
+
+    armor = pwl(level)
+    stamina = BASE_STM + STM_GROWTH*(level-1)
+
+    return min(stamina + armor, 256)
+
+
+def get_eff_phys_hp(level: int):
+    hp = get_hp(level)
+    defense = get_phys_def(level)
+    def_reduction = defense/256
+
+    return hp/(1-def_reduction)
+
+
+def get_eff_mag_hp(level: int):
+    hp = get_hp(level)
+    mdef = get_mdef(level)
+
+    mag_reduction = 10*mdef/1024
+
+    return hp/(1-mag_reduction)
+
+
+# Scale boss depending on stat progression of players
+def progressive_scale_stats(
+        enemy_id: EnemyID,
+        stats: EnemyStats,
+        atk_db: enemytechdb.EnemyAttackDB,
+        ai_db: enemyai.EnemyAIDB,
+        from_power: int, to_power: int,
+        scale_hp: bool = True,
+        scale_level: bool = True,
+        scale_speed: bool = True,
+        scale_magic: bool = True,
+        scale_mdef: bool = False,
+        scale_offense: bool = True,
+        scale_defense: bool = False,
+        scale_xp: bool = False,
+        scale_gp: bool = False,
+        scale_tp: bool = False,
+        scale_techs: bool = True,
+        scale_atk: bool = True) -> EnemyStats:
+
+    new_stats = stats.get_copy()
+
+    off_scale_factor = get_eff_phys_hp(to_power)/get_eff_phys_hp(from_power)
+    mag_scale_factor = get_eff_mag_hp(to_power)/get_eff_mag_hp(from_power)
+
+    if scale_offense:
+        new_offense = stats.offense * off_scale_factor
+        set_stats_offense(enemy_id, new_stats, new_offense, atk_db,
+                          ai_db, scale_techs, scale_atk)
+
+    if scale_techs:
+        scale_enemy_techs(enemy_id, stats,
+                          off_scale_factor, mag_scale_factor,
+                          atk_db, ai_db)
+
+    if scale_magic:
+        new_stats.magic = int(min(stats.magic*mag_scale_factor, 0xFF))
+
+    if scale_level:
+        new_stats.level = int(min(stats.level*mag_scale_factor, 0xFF))
+
+    # Player attack scales superlinearly.  Atk scales roughly linearly with
+    # level, but tech power scales too, we need to do something extra.
+    # TODO:  Be a little more accurate and model tech power growth.
+    def get_hp_scale_factor(
+            from_power: float, to_power: float
+    ) -> float:
+
+        # This is super contrived.  It just scales from 1 to about 15 with
+        # steeper scaling at the higher end.
+        def hp_marker(level: float):
+            return 1+15*(level/30)**1.5
+
+        # print(f'from, marker: {from_power}, {hp_marker(from_power)}')
+        # print(f'  to, marker: {to_power}, {hp_marker(to_power)}')
+        if from_power*to_power == 0:
+            return 0
+        return hp_marker(to_power)/hp_marker(from_power)
+
+    hp_scale_factor = get_hp_scale_factor(from_power, to_power)
+    if scale_hp:
+        new_stats.hp = int(min(stats.hp*hp_scale_factor, 0x7FFF))
+
+        if new_stats.hp < 1:
+            new_stats.hp = 1
+
+    # Going to add 1 speed for every  power doubling.
+    # At present, the biggest swing is 5 to 40 which is 3 doublings for
+    # +3 speed.
+    if scale_speed:
+        if from_power*to_power == 0:
+            add_speed = 0
+        else:
+            add_speed = math.log(to_power/from_power, 2)
+            add_speed = round(add_speed)
+            # print(f'{enemy_id}: adding {add_speed} speed')
+
+        new_stats.speed = min(new_stats.speed + add_speed, 16)
+
+    # xp to next level is approximately quadratic.  Scale all rewards
+    # quadratically.
+    def xp_mark(level: float):
+        return 5.62*(level**2) + 11.31*level
+
+    if from_power*to_power == 0:
+        reward_scale = 0
+    else:
+        reward_scale = xp_mark(to_power)/xp_mark(from_power)
+
+    orig_stats = (stats.xp, stats.tp, stats.gp)
+
+    # Observed that gp, tp scale roughly with hp.  So for now we're lazy
+    # and reusing that scale factor.
+    # TODO: Fixed rewards in a given spot.
+    scales = (hp_scale_factor, hp_scale_factor, hp_scale_factor)
+    is_scaled = (scale_xp, scale_tp, scale_gp)
+    reward_max = (0x7FFF, 0xFF, 0x7FFF)
+
+    new_stats.xp, new_stats.tp, new_stats.gp = \
+        (int(min(orig_stats[i]*scales[i], reward_max[i]))
+         if is_scaled[i] else orig_stats[i]
+         for i in range(len(orig_stats)))
+
+    return new_stats
+
+
+def scale_enemy_techs(enemy_id: EnemyID,
+                      orig_stats: EnemyStats,
+                      off_scale_factor: float,
+                      mag_scale_factor: float,
+                      atk_db: enemytechdb.EnemyAttackDB,
+                      ai_db: enemyai.EnemyAIDB):
+
+    # Need to copy the list.  Otherwise duplicated techs get readded to
+    # the list and scaled twice.
+    enemy_techs = list(ai_db.scripts[enemy_id].tech_usage)
+    # print(f'Scaling techs for {enemy_id}')
+    # print(f'  mag scale: {mag_scale_factor}')
+    # print(f'  off scale: {off_scale_factor}')
+    # print(f'  used: {enemy_techs}')
+    # unused_tech_count = len(ai_db.unused_techs)
+    # print(f'num unused_techs: {unused_tech_count}')
+
+    new_offense = orig_stats.offense*off_scale_factor
+    effective_new_offense = min(new_offense, 0xFF)
+    overflow_scale = new_offense/0xFF
+    effective_off_scale = effective_new_offense / orig_stats.offense
+
+    for tech_id in enemy_techs:
+        tech = atk_db.get_tech(tech_id)
+        effect = tech.effect
+
+        new_power = effect.power
+        if effect.damage_formula_id == 0x3A:  # physical damage formulas
+            if effect.defense_byte == 0x3E:  # Defended by phys def (normal)
+                # print(f'Tech {tech_id:02X} is normal')
+                if overflow_scale > 1.05:
+                    new_power = round(effect.power*overflow_scale)
+            elif effect.defense_byte == 0x3C:  # Defended by mdef (weird)
+                # print(f'Tech {tech_id:02X} is weird')
+                rescale = mag_scale_factor/effective_off_scale
+                new_power = round(effect.power*rescale)
+
+        new_power = min(0xFF, new_power)
+        if new_power != effect.power:  # Need to scale
+            # print(f'Scaling tech {tech_id:02X} from {effect.power} to '
+            #       f'{new_power}')
+
+            tech.effect.power = new_power
+            usage = ai_db.tech_to_enemy_usage[tech_id]
+            new_id = None
+            if len(usage) > 1:
+                # print(f'\t{usage}')
+                # print('\tNeed to duplicate.')
+                if ai_db.unused_techs:
+                    new_id = ai_db.unused_techs[-1]
+                    # print(f'\tNew ID: {new_id:02X}')
+                    ai_db.change_tech_in_ai(enemy_id, tech_id, new_id)
+                else:
+                    print('Warning: No unused techs remaining.')
+            else:
+                new_id = tech_id
+
+            if new_id is not None:
+                atk_db.set_tech(tech, new_id)
+            else:
+                print(f'Skipped scaling {tech_id} because no unused techs.')
+
+
+# Helper method for setting offense and scaling techs if needed.
+def set_stats_offense(enemy_id: EnemyID,
+                      stats: EnemyStats,
+                      new_offense: float,
+                      atk_db: enemytechdb.EnemyAttackDB,
+                      ai_db: enemyai.EnemyAIDB,
+                      scale_techs: bool = True,
+                      scale_atk: bool = True):
+
+    if new_offense/0xFF > 1.05:
+        remaining_scale = new_offense/0xFF
+
+        # Scale atk 01
+        if scale_atk:
+            atk_1_id = stats.secondary_attack_id
+            atk_1 = atk_db.get_atk(atk_1_id)
+            new_power = int(min(atk_1.effect.power * remaining_scale, 0xFF))
+            atk_1.effect.power = new_power
+            new_atk_id = atk_db.append_attack(atk_1)
+            stats.secondary_attack_id = new_atk_id
+
+        stats.offense = 0xFF
+    else:
+        stats.offense = int(new_offense)
+
+
+def linear_scale_stats(enemy_id: EnemyID,
+                       stats: EnemyStats,
+                       atk_db: enemytechdb.EnemyAttackDB,
+                       ai_db: enemyai.EnemyAIDB,
                        from_power: int, to_power: int,
                        scale_hp: bool = True,
                        scale_level: bool = True,
@@ -461,7 +750,6 @@ def linear_scale_stats(stats: EnemyStats,
                        scale_xp: bool = True,
                        scale_gp: bool = True,
                        scale_tp: bool = True) -> EnemyStats:
-
     try:
         # rewrite x -> kx as x -> x + (k-1)x so that the second term can
         # be conditioned on the scale_stat variables
@@ -476,8 +764,8 @@ def linear_scale_stats(stats: EnemyStats,
     is_scaled = [scale_hp, scale_level, scale_speed, scale_magic,
                  scale_mdef, scale_offense, scale_defense, scale_xp,
                  scale_gp, scale_tp]
-    max_stats = [0xFFFF, 0xFF, 0x10, 0xFF, 0xFF, 0xFF, 0xFF, 0xFFFF,
-                 0xFFFF, 0xFF]
+    max_stats = [0x7FFF, 0xFF, 0x10, 0xFF, 0xFF, 0xFF, 0xFF, 0x7FFF,
+                 0x7FFF, 0xFF]
 
     [hp, level, speed, magic, mdef, offense, defense, xp, gp, tp] = \
         [int(min(base_stats[i] + is_scaled[i]*base_stats[i]*scale_factor,
@@ -503,59 +791,50 @@ def linear_scale_stats(stats: EnemyStats,
     return new_stats
 
 
-class PowerScaleBoss(Boss):
-    scale_exponent: ClassVar[float] = 1.25
+# New scaling that's supposed to be based on how quickly player stats are
+# progressing.
+class ProgressiveScaleBoss(Boss):
 
-    def scale_relative_to(
-            self, other: Boss,
-            stat_dict: dict[EnemyID, EnemyStats]
-    ) -> list[EnemyStats]:
-        if self.power == 0:
-            scale_factor = 0
-            new_power = self.power
-        else:
-            scale_factor = (other.power/self.power) ** self.scale_exponent
-            new_power = self.power*scale_factor
-
-        scaled_stats = [
-            linear_scale_stats(stat_dict[part], self.power, new_power)
-            for part in self.scheme.ids
-        ]
-
-        return scaled_stats
+    @classmethod
+    def scale_stats(cls,
+                    enemy_id: EnemyID,
+                    stats: EnemyStats,
+                    atk_db: enemytechdb.EnemyAttackDB,
+                    ai_db: enemyai.EnemyAIDB,
+                    from_power: int, to_power: int) -> EnemyStats:
+        return progressive_scale_stats(enemy_id, stats,
+                                       atk_db, ai_db,
+                                       from_power, to_power)
 
 
+# This isn't used anymore, but we'll keep it around
 class LinearScaleBoss(Boss):
 
-    def scale_relative_to(
-            self, other: Boss,
-            stat_dict: dict[EnemyID, EnemyStats]
-    ) -> list[EnemyStats]:
-        # All this really uses is the other boss's power
-        # Arguably, the HP will be set based on the other boss_obj
-
-        scaled_stats = [
-            linear_scale_stats(stat_dict[part], self.power, other.power)
-            for part in self.scheme.ids
-        ]
-
-        return scaled_stats
+    def scale_stats(cls,
+                    enemy_id: EnemyID,
+                    stats: EnemyStats,
+                    atk_db: enemytechdb.EnemyAttackDB,
+                    ai_db: enemyai.EnemyAIDB,
+                    from_power: int, to_power: int) -> EnemyStats:
+        return linear_scale_stats(enemy_id, stats, atk_db, ai_db,
+                                  from_power, to_power)
 
 
 class SonOfSunScaleBoss(Boss):
 
-    # Scale like a linear boss, but then reset the hps to default
-    def scale_relative_to(
-            self, other: Boss,
-            stat_dict: dict[EnemyID, EnemyStats]
-    ) -> list[EnemyStats]:
+    @classmethod
+    def scale_stats(cls,
+                    enemy_id: EnemyID,
+                    stats: EnemyStats,
+                    atk_db: enemytechdb.EnemyAttackDB,
+                    ai_db: enemyai.EnemyAIDB,
+                    from_power: int, to_power: int) -> EnemyStats:
 
-        scaled_stats = [
-            # Scaling SoS Flame offense makes the damage from hitting the
-            # correct flame change.  So neither hp nor offense are scaled.
-            linear_scale_stats(stat_dict[part], self.power, other.power,
-                               scale_hp=False, scale_offense=False)
-            for part in self.scheme.ids
-        ]
-
-        return scaled_stats
+        # If you scale SoS's flame atk, then it will do more/less damage to
+        # the eyeball.  Counterintuitively, you'd want to reduce the flame's
+        # atk to make SoS harder.
+        return progressive_scale_stats(enemy_id, stats,
+                                       atk_db, ai_db,
+                                       from_power, to_power,
+                                       scale_offense=False,
+                                       scale_hp=False)

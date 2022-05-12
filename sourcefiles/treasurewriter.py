@@ -115,6 +115,9 @@ def add_lw_key_item_gear(settings: rset.Settings,
 def write_treasures_to_config(settings: rset.Settings,
                               config: cfg.RandoConfig):
 
+    gil = td.get_item_list
+    ITier = td.ItemTier
+
     assign = config.treasure_assign_dict
 
     # Do standard treasure chests
@@ -124,6 +127,29 @@ def write_treasures_to_config(settings: rset.Settings,
 
         for treasure in treasures:
             assign[treasure].held_item = dist.get_random_item()
+
+    # Now, put treasures in key item spots.  These may get overwritten by
+    # the logic.
+    mid_gear = gil(ITier.MID_GEAR)
+    for treasure_id in (TID.SNAIL_STOP_KEY, TID.LAZY_CARPENTER,
+                        TID.FROGS_BURROW_LEFT):
+        assign[treasure_id].held_item = rand.choice(mid_gear)
+
+    good_gear = gil(ITier.GOOD_GEAR)
+    for treasure_id in (TID.TABAN_KEY, TID.ZENAN_BRIDGE_KEY,
+                        TID.DENADORO_MTS_KEY):
+        assign[treasure_id].held_item = rand.choice(good_gear)
+
+    high_gear = gil(ITier.HIGH_GEAR)
+    for treasure_id in (TID.REPTITE_LAIR_KEY, TID.GIANTS_CLAW_KEY,
+                        TID.ARRIS_DOME_KEY, TID.SUN_PALACE_KEY,
+                        TID.KINGS_TRIAL_KEY, TID.FIONA_KEY):
+        assign[treasure_id].held_item = rand.choice(high_gear)
+
+    awesome_gear = gil(ITier.AWESOME_GEAR)
+    for treasure_id in (TID.GENO_DOME_KEY, TID.MT_WOE_KEY,
+                        TID.MELCHIOR_KEY):
+        assign[treasure_id].held_item = rand.choice(awesome_gear)
 
     # Now do special treasures.  These don't have complicated distributions.
     # The distribution is just a random choice from the items associated with
@@ -141,8 +167,6 @@ def write_treasures_to_config(settings: rset.Settings,
         TID.JERKY_GIFT
     ]
 
-    gil = td.get_item_list
-    ITier = td.ItemTier
     item_lists = [
         gil(ITier.TABAN_HELM), gil(ITier.TABAN_WEAPON),
         gil(ITier.TRADE_ARMOR), gil(ITier.TRADE_HELM),

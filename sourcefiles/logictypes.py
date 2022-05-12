@@ -1,7 +1,8 @@
 from __future__ import annotations
+import typing
 
 from ctenums import ItemID, CharID, RecruitID, TreasureID
-from treasuredata import TreasureLocTier
+import treasuredata as td
 import randosettings as rset
 import randoconfig as cfg
 #
@@ -147,6 +148,36 @@ class Game:
         # backtrack and a character is no longer available.
         self.characters.clear()
 
+        if rset.GameFlags.FIRST_TWO in self.settings.gameflags and \
+           self.settings.game_mode == rset.GameMode.STANDARD:
+            self.addCharacter(
+                self.charLocations[RecruitID.STARTER_1].held_char
+            )
+            self.addCharacter(
+                self.charLocations[RecruitID.STARTER_2].held_char
+            )
+
+            # You have to add the other characters eventually or else the
+            # logic will stall out.
+            if self.canAccessBlackOmen() and self.canAccessTyranoLair() and \
+               self.hasKeyItem(ItemID.RUBY_KNIFE):
+                self.addCharacter(
+                    self.charLocations[RecruitID.CATHEDRAL].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.CASTLE].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.PROTO_DOME].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.DACTYL_NEST].held_char
+                )
+                self.addCharacter(
+                    self.charLocations[RecruitID.FROGS_BURROW].held_char
+                )
+            return
+
         # The first four characters are always available.
         self.addCharacter(self.charLocations[RecruitID.STARTER_1].held_char)
         self.addCharacter(self.charLocations[RecruitID.STARTER_2].held_char)
@@ -199,14 +230,19 @@ class Game:
         return (self.hasMasamune() and
                 self.hasCharacter(CharID.FROG))
 
-    def canAccessDarkAges(self):
+    def canAccessMtWoe(self):
         return (self.lostWorlds or
                 self.canAccessPrehistory() or
                 self.canAccessFuture())
 
     def canAccessOceanPalace(self):
-        return (self.canAccessDarkAges() and
-                self.hasKeyItem(ItemID.RUBY_KNIFE))
+        return (
+            self.canAccessMagusCastle() or
+            (
+                self.canAccessTyranoLair() and
+                self.hasKeyItem(ItemID.RUBY_KNIFE)
+            )
+        )
 
     def canAccessBlackOmen(self):
         return (self.canAccessFuture() and
@@ -233,8 +269,13 @@ class Game:
         return self.hasKeyItem(ItemID.MASAMUNE_2)
 
     def canAccessSealedChests(self):
-        return (self.hasKeyItem(ItemID.PENDANT) and
-                (self.earlyPendant or self.canAccessDarkAges()))
+        # With 3.1.1. logic change, canAccessDarkAges isn't correct for
+        # checking sealed chest access.  Instead check for actual go modes.
+
+        return (
+            (self.hasKeyItem(ItemID.PENDANT) and self.earlyPendant) or
+            self.canAccessTyranoLair or self.canAccessMagusCastle
+        )
 
     def canAccessBurrowItem(self):
         return self.hasKeyItem(ItemID.HERO_MEDAL)
@@ -285,6 +326,12 @@ class Location:
         self.keyItem = None
 
     #
+    # Determine whether the location holds the given TID
+    #
+    def hasTID(self, treasure_id: TreasureID) -> bool:
+        return self.treasure_id == treasure_id
+
+    #
     # Write the key item set to this location to a RandoConfig object
     #
     # param: config - The randoconfig.RandoConfig object which holds the
@@ -293,31 +340,68 @@ class Location:
     def writeKeyItem(self, config: cfg.RandoConfig):
         config.treasure_assign_dict[self.treasure_id].held_item = self.keyItem
 
+    #
+    # Use the given config to see what is currently assigned to this location.
+    #
+    # param: config - The randoconfig.RandoConfig object which holds the
+    #                 treasure assignment dictionary
+    #
+    def lookupKeyItem(self, config: cfg.RandoConfig) -> ItemID:
+        return config.treasure_assign_dict[self.treasure_id].held_item
+
 # End Location class
 
 
 #
-# This class represents a normal check in the randomizer.  Since it does not
-# have a treasure associated with it, the appropriate loot tier (specified in
-# treasurewriter.TreasureLocTier) must be provided in the case that a normal
-# treasure is assigned instead of  akey item.
+# The randomizer assigns a treasure to each location, even key item locations.
+# Some game modes may choose to define special rules for some locations.
+#
+# The BaselineLocation class allows a location to be augmented with a treasure
+# distribution (treasuredata.TreasureDist) which determines how an item should
+# be assigned to it in the event that a key item assignment is not made.
 #
 class BaselineLocation(Location):
     def __init__(self, treasure_id: TreasureID,
-                 lootTier: TreasureLocTier):
+                 lootDist: td.TreasureDist):
         Location.__init__(self, treasure_id)
-        self.lootTier = lootTier
+        self.lootDist = lootDist
 
     #
-    # Get the loot tier associated with this check.
+    # Get the treasure distribution associated with this check.
     #
-    # return: The loot tier associated with this check
+    # return: The treasure distribution associated with this check
     #
-    def getLootTier(self):
-        return self.lootTier
+    def getTreasureDist(self):
+        return self.lootDist
 
+    #
+    # Set the treasure distribution associated with this check.
+    #
+    # param: The treasure distribution to associate with this check
+    #
+    def setTreasureDist(self, lootDist: td.TreasureDist):
+        self.lootDist = lootDist
+
+    #
+    # Use this object's treasure distribution to write a random item to theen
+    # given config.  Also sets this object's key item to the chosen item.
+    #
+    # param: config - The cfg.RandoConfig to write the item to
+    #
+    def writeRandomItem(self, config: cfg.RandoConfig):
+        item = self.lootDist.get_random_item()
+        self.writeTreasure(item, config)
+
+    #
+    # Write the given item to the given config.  Also sets this object's
+    # key item to the chosen item.
+    #
+    # param: treasure - The ItemID to write.
+    # param: config - The cfg.RandoConfig to write the ItemID to
+    #
     def writeTreasure(self, treasure: ItemID, config: cfg.RandoConfig):
         config.treasure_assign_dict[self.treasure_id].held_item = treasure
+        self.setKeyItem(treasure)
 # End BaselineLocation class
 
 
@@ -373,6 +457,32 @@ class LinkedLocation():
     def writeKeyItem(self, config: cfg.RandoConfig):
         self.location1.writeKeyItem(config)
         self.location2.writeKeyItem(config)
+
+    #
+    # Use the given config to see what is currently assigned to this location.
+    # Since this is meant to be a lookup of a key item, this will raise a
+    # ValueError if the linked locations do not hold identical items.
+    #
+    # param: config - The randoconfig.RandoConfig object which holds the
+    #                 treasure assignment dictionary
+    #
+    def lookupKeyItem(self, config: cfg.RandoConfig) -> ItemID:
+        item1 = self.location1.lookupKeyItem(config)
+        item2 = self.location2.lookupKeyItem(config)
+
+        if item1 != item2:
+            raise ValueError(
+                'LinkedLocation has two different items assigned.'
+            )
+        else:
+            return item1
+
+    #
+    # Determine whether the location holds the given TID
+    #
+    def hasTID(self, treasure_id: TreasureID) -> bool:
+        return (self.location1.hasTID(treasure_id) or
+                self.location2.hasTID(treasure_id))
 # end LinkedLocation class
 
 #
@@ -483,6 +593,30 @@ class LocationGroup:
     #
     def removeLocation(self, location):
         self.locations.remove(location)
+
+    #
+    # Remove a location with the given TreasureID from this group
+    #
+    # param: location - TreasureID to remove from this group or an interable
+    #                   of TreasureIDs to remove
+    #
+    def removeLocationTIDs(
+            self,
+            removed_treasure_ids: typing.Union[TreasureID,
+                                               typing.Iterable[TreasureID]]):
+
+        if isinstance(removed_treasure_ids, TreasureID):
+            removed_treasure_ids = [removed_treasure_ids]
+
+        remove_locs = []
+        for loc in self.locations:
+            for tid in removed_treasure_ids:
+                if loc.hasTID(tid):
+                    remove_locs.append(loc)
+                    break
+
+        for loc in remove_locs:
+            self.locations.remove(loc)
 
     #
     # Get a list of all locations that are part of this location group.

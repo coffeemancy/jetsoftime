@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum, auto
 import random
 
+import enemystats
 from ctenums import ItemID, EnemyID
 
 import randoconfig as cfg
@@ -226,11 +227,11 @@ _uncommon_enemies = [
     EnemyID.KRAKKER, EnemyID.EGDER, EnemyID.DECEDENT, EnemyID.MACABRE,
     EnemyID.GUARD, EnemyID.SENTRY, EnemyID.OUTLAW, EnemyID.REPTITE_PURPLE,
     EnemyID.BLUE_SHIELD, EnemyID.YODU_DE, EnemyID.EVILWEEVIL,
-    EnemyID.GRIMALKIN, EnemyID.T_POLE, EnemyID.AMPHIBITE, EnemyID.VAMP,
+    EnemyID.GRIMALKIN, EnemyID.T_POLE, EnemyID.VAMP,
     EnemyID.BUGGER, EnemyID.DEBUGGER, EnemyID.SORCERER, EnemyID.CRATER,
     EnemyID.VOLCANO, EnemyID.SHITAKE, EnemyID.SHIST, EnemyID.NEREID,
-    EnemyID.MOHAVOR, EnemyID.ACID, EnemyID.ALKALINE, EnemyID.ION,
-    EnemyID.ANION, EnemyID.WINGED_APE, EnemyID.MEGASAUR, EnemyID.OMNICRONE,
+    EnemyID.MOHAVOR, EnemyID.ACID, EnemyID.ALKALINE,
+    EnemyID.WINGED_APE, EnemyID.MEGASAUR, EnemyID.OMNICRONE,
     EnemyID.BEAST, EnemyID.AVIAN_REX, EnemyID.RAT, EnemyID.GREMLIN,
     EnemyID.RUNNER, EnemyID.PROTO_2, EnemyID.PROTO_3, EnemyID.BUG,
     EnemyID.MASA, EnemyID.MUNE, EnemyID.MUTANT, EnemyID.DECEDENT_II,
@@ -262,7 +263,7 @@ _rarest_enemies = [
 _early_bosses = [
     EnemyID.YAKRA, EnemyID.MASA, EnemyID.MUNE, EnemyID.MASA_MUNE,
     EnemyID.OZZIE_ZENAN, EnemyID.OZZIE_FORT, EnemyID.HECKRAN,
-    EnemyID.ZOMBOR_BOTTOM, EnemyID.ZOMBOR_TOP, EnemyID.SUPER_SLASH_TRIO,
+    EnemyID.ZOMBOR_BOTTOM, EnemyID.ZOMBOR_TOP, EnemyID.SUPER_SLASH,
     EnemyID.FLEA_PLUS, EnemyID.ATROPOS_XR, EnemyID.GOLEM_BOSS,
 ]
 
@@ -284,9 +285,10 @@ _late_bosses = [
     EnemyID.ZEAL_2_CENTER, EnemyID.ZEAL_2_LEFT, EnemyID.ZEAL_2_RIGHT,
     EnemyID.GIGA_MUTANT_HEAD, EnemyID.GIGA_MUTANT_BOTTOM,
     EnemyID.TERRA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_BOTTOM,
-    EnemyID.FLEA_PLUS_TRIO, EnemyID.SUPER_SLASH, EnemyID.GREAT_OZZIE,
+    EnemyID.FLEA_PLUS_TRIO, EnemyID.SUPER_SLASH_TRIO, EnemyID.GREAT_OZZIE,
     EnemyID.BLACKTYRANO, EnemyID.GIGA_GAIA_HEAD, EnemyID.GIGA_GAIA_LEFT,
     EnemyID.GIGA_GAIA_RIGHT, EnemyID.MAGUS, EnemyID.DALTON_PLUS,
+    EnemyID.MEGA_MUTANT_BOTTOM, EnemyID.MEGA_MUTANT_HEAD
 ]
 
 _enemy_group_dict = dict()
@@ -304,6 +306,32 @@ _enemy_group_dict[RewardGroup.LATE_BOSS] = _late_bosses
 # returns a copy to avoid messing with the lists in global scope
 def get_enemy_tier(tier: RewardGroup):
     return _enemy_group_dict[tier].copy()
+
+
+def get_tier_of_enemy(enemy_id: EnemyID):
+    tier = (x for x in _enemy_group_dict
+            if enemy_id in _enemy_group_dict[x])
+
+    return next(tier)
+
+
+def set_enemy_charm_drop(stats: enemystats.EnemyStats,
+                         reward_group: RewardGroup,
+                         difficulty: rset.Difficulty):
+    drop_dist, charm_dist, drop_rate = \
+        get_distributions(reward_group, difficulty)
+
+    drop = drop_dist.get_random_item()
+    if charm_dist is None:
+        charm = drop
+    else:
+        charm = charm_dist.get_random_item()
+
+    if random.random() > drop_rate:
+        drop = ItemID.NONE
+
+    stats.drop_item = drop
+    stats.charm_item = charm
 
 
 # This method just alters the cfg.RandoConfig object.
@@ -329,3 +357,26 @@ def write_enemy_rewards_to_config(settings: rset.Settings,
             config.enemy_dict[enemy].charm_item = charm
 
             # print(f"Enemy: {enemy} assigned drop={drop}, charm={charm}")
+
+    # Trading Post: Vanilla
+    # Croaker - 2x Fang
+    # Amphibite - 2x Horns
+    # Rain Frog - 2x Feathers
+
+    # Ion - 2x Feathers
+    # Anion - 2x Petals
+
+    # Keep a similar distribution where the frogs are all different and the
+    # slimes have one item in common with frogs.
+    tp_drops = [ItemID.PETALS_2, ItemID.FANGS_2, ItemID.HORNS_2,
+                ItemID.FEATHERS_2]
+    tp_enemies = [EnemyID.CROAKER, EnemyID.AMPHIBITE, EnemyID.RAIN_FROG,
+                  EnemyID.ION, EnemyID.ANION]
+
+    random.shuffle(tp_drops)
+    tp_drops.append(tp_drops[0])  # Copy a frog drop for the slimes
+
+    for ind, enemy in enumerate(tp_enemies):
+        item_id = tp_drops[ind]
+        config.enemy_dict[enemy].drop_item = item_id
+        config.enemy_dict[enemy].charm_item = item_id

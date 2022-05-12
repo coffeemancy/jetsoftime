@@ -1499,6 +1499,13 @@ class TechDB:
         db.set_lrn_req_start(lrn_req_start)
         db.set_desc_start(desc_start)
 
+        # This doesn't need to be a member of TechDB because we always just
+        # write 0s to the spots.
+        db.techs_learned = bytearray(
+            [0 for i in db.menu_grps]
+        )
+        db.techs_learned.append(0xFF)
+
         starts = [control_start, effect_start, gfx_start, target_start,
                   menu_grp_start, bat_grp_start, name_start,
                   desc_start, desc_ptr_start, techs_learned_start+14,
@@ -1508,7 +1515,7 @@ class TechDB:
 
         db_dat = [db.controls, db.effects, db.gfx, db.targets,
                   db.menu_grps, db.bat_grps, db.names,
-                  db.descs, db.desc_ptrs, db.techs_learned[14:],
+                  db.descs, db.desc_ptrs, db.techs_learned[7:],
                   db.lrn_reqs, db.lrn_refs, db.mps,
                   db.menu_mp_reqs, group_sizes_write,
                   db.atb_pens]
@@ -1648,6 +1655,10 @@ class TechDB:
         # This is poison ticking
         # $C1/8943 A9 7F       LDA #$7F
         rom[0x018944] = db.gfx_count-1
+
+        # This is SeraphSong effect, also 7F?
+        # $C1/8BAF A9 7F       LDA #$7F
+        rom[0x018BB0] = db.gfx_count-1
 
         # undo the changes to lrn_req and desc
         db.set_lrn_req_start(old_lrn_req_start)

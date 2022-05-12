@@ -2,6 +2,7 @@ import random as rand
 
 from byteops import to_little_endian, to_rom_ptr
 from ctrom import CTRom
+import ctstrings
 from freespace import FSWriteType
 import randoconfig as cfg
 import randosettings as rset
@@ -39,6 +40,16 @@ def write_tabs_to_config(settings: rset.Settings,
     config.power_tab_amt = power_amt
     config.magic_tab_amt = magic_amt
     config.speed_tab_amt = speed_amt
+
+    IID = cfg.ctenums.ItemID
+    item_db = config.itemdb
+    item_db[IID.POWER_TAB].desc = \
+        ctstrings.CTString.from_str(f'\"1Power\"2 + {power_amt}{{null}}')
+    item_db[IID.MAGIC_TAB].desc = \
+        ctstrings.CTString.from_str(f'\"1Magic\"2 + {magic_amt}{{null}}')
+    item_db[IID.SPEED_TAB].desc = \
+        ctstrings.CTString.from_str(f'\"1Speed\"2 + {speed_amt}{{null}}')
+    
 
 
 # New version that uses the freespace manager to write wherever is free
@@ -113,20 +124,6 @@ def rewrite_tabs_on_ctrom(ctrom: CTRom,
     # old_rom[disp_start:disp_start+len(rt)] = rt[:]
     ctrom.rom_data.seek(disp_start)
     ctrom.rom_data.write(rt, FSWriteType.MARK_USED)
-
-    # Overwrite numbers in item descriptions
-    # old_rom[0x375DC4] = pow_add[0] + 0xD4
-    # old_rom[0x375DCF] = mag_add[0] + 0xD4
-    # old_rom[0x375DD9] = spd_add[0] + 0xD4
-    ctrom.rom_data.seek(0x375DC4)
-    ctrom.rom_data.write(bytes([power_amt+0xD4]))
-
-    ctrom.rom_data.seek(0x375DCF)
-    ctrom.rom_data.write(bytes([magic_amt+0xD4]))
-
-    ctrom.rom_data.seek(0x375DD9)
-    ctrom.rom_data.write(bytes([speed_amt+0xD4]))
-
 
 
 # Deprecated.  Keeping around for now to hold the rom documentation.

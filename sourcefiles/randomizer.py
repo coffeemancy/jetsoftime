@@ -4,6 +4,7 @@ import os
 import pickle
 import sys
 
+import itemrando
 import treasurewriter
 import shopwriter
 import logicwriter_chronosanity as logicwriter
@@ -116,8 +117,9 @@ class Randomizer:
                 self.config.enemy_dict = pickle.load(infile)
         '''
 
-        # Character config.  Includes tech randomization.
-        charrando.write_pcs_to_config(self.settings, self.config)
+        # Character config.  Includes tech randomization and who can equip
+        # which items.
+        charrando.write_config(self.settings, self.config)
         techrandomizer.write_tech_order_to_config(self.settings,
                                                   self.config)
 
@@ -142,18 +144,33 @@ class Randomizer:
         # Shops
         shopwriter.write_shops_to_config(self.settings, self.config)
 
-        # Item Prices
-        shopwriter.write_item_prices_to_config(self.settings, self.config)
+        # Robo's Ribbon in itemdb
+        roboribbon.set_robo_ribbon_in_config(self.config)
+
+        # Item Rando
+        # Important this is done after roboribbon or itemrando gets confused
+        # over which stat boost is +3 speed
+        itemrando.write_item_prices_to_config(self.settings, self.config)
+        itemrando.randomize_healing(self.settings, self.config)
+        itemrando.randomize_accessories(self.settings, self.config)
+        itemrando.randomize_weapon_armor_stats(self.settings, self.config)
+        self.config.itemdb.update_all_descriptions()
 
         # Boss Rando
         bossrando.write_assignment_to_config(self.settings, self.config)
 
-        # This updates the enemy dict in the config with new stats depending
-        # on bossrando.write_assignment_to_config().
-        bossrando.scale_bosses_given_assignment(self.settings, self.config)
+        # We need the boss rando assignment to determine which bosses need
+        # additional bossscaler scaling.  That is accomplished by the above
+        # bossrando.write_assignment_to_config.
 
-        # Key item Boss scaling (done after boss rando).  Also updates stats.
+        # Then, scale based on ranking.
+        # This has to come before boss rando scaling  because some boss scaling
+        # changes are defined absolutely instead of relatively, so they would
+        # just overwrite the boss rando scaling.
         bossscaler.set_boss_power(self.settings, self.config)
+
+        # Finally, scale based on new location.
+        bossrando.scale_bosses_given_assignment(self.settings, self.config)
 
         # Black Tyrano/Magus boss randomization
         bossrando.randomize_midbosses(self.settings, self.config)
@@ -199,6 +216,57 @@ class Randomizer:
 
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
+
+    def __update_trading_post_string(self, ct_rom: CTRom,
+                                     config: cfg.RandoConfig):
+        script_man = ct_rom.script_manager
+
+        script = script_man.get_script(ctenums.LocID.IOKA_TRADING_POST)
+
+        # Petal, Fang -> Ranged
+        # Petal, Horn -> Accessory
+        # Petal, Feather -> Tab
+        # Fang, Horn -> Melee
+        # Fang, Feather -> Armor
+        # Horn, Feather -> Helm
+
+        TID = ctenums.TreasureID
+        tp_spots = (TID.TRADING_POST_RANGED_WEAPON,
+                    TID.TRADING_POST_ACCESSORY,
+                    TID.TRADING_POST_TAB,
+                    TID.TRADING_POST_MELEE_WEAPON,
+                    TID.TRADING_POST_ARMOR,
+                    TID.TRADING_POST_HELM)
+
+        tp_name_dict = dict()
+
+        item_db = config.itemdb
+        CTName = ctstrings.CTNameString
+        for treasure_id in tp_spots:
+            item_id = config.treasure_assign_dict[treasure_id].held_item
+            name_b = CTName(item_db[item_id].name[1:])
+            name = str(name_b)
+            tp_name_dict[treasure_id] = name
+
+        new_str = \
+            'Many things for trade!{line break}'\
+            f'Petal, Fang: {tp_name_dict[TID.TRADING_POST_RANGED_WEAPON]}'\
+            '{line break}'\
+            f'Petal, Horn: {tp_name_dict[TID.TRADING_POST_ACCESSORY]}'\
+            '{line break}'\
+            f'Petal, Feather: {tp_name_dict[TID.TRADING_POST_TAB]}'\
+            '{page break}'\
+            f'Fang, Horn: {tp_name_dict[TID.TRADING_POST_MELEE_WEAPON]}'\
+            '{line break}'\
+            f'Fang, Feather: {tp_name_dict[TID.TRADING_POST_ARMOR]}'\
+            '{line break}'\
+            f'Horn, Feather: {tp_name_dict[TID.TRADING_POST_HELM]}'\
+            '{null}'
+
+        new_ct_str = ctstrings.CTString.from_str(new_str)
+        new_ct_str.compress()
+        script.strings[2] = new_ct_str
+        script.modified_strings = True
 
     def __disable_xmenu_charlocks(self, ct_rom):
         '''Ignore the charlock byte when in the X-menu but not Y-menu.'''
@@ -311,18 +379,11 @@ class Randomizer:
         Removes a premature ExploreMode On to prevent losing a recruit.
         '''
         loc_id = ctenums.LocID.PRISON_SUPERVISORS_OFFICE
-        script = self.out_rom.script_manager.get_script(loc_id)
+        script = ctevent.Event.from_flux(
+            './flux/jot_01D_Prison_Supervisor.Flux'
+        )
 
-        EC = ctevent.EC
-
-        obj_id, func_id = 0x06, 0x03
-
-        func = script.get_function(obj_id, func_id)
-        removed_cmd = EC.set_explore_mode(True)
-        ind = func.find_exact_command(removed_cmd)
-        func.delete_at_index(ind)
-
-        script.set_function(obj_id, func_id, func)
+        self.out_rom.script_manager.set_script(script, loc_id)
 
     def __try_mystic_mtn_portal_fix(self):
         '''
@@ -374,12 +435,46 @@ class Randomizer:
         # With valid config and settings, we can write generate the rom
         self.__write_out_rom()
 
+    # There are no good tools for working with animation scripts.  The
+    # change is small, so we're doing it directly
+    def __modify_bh_script(self):
+        ct_rom = self.out_rom
+
+        # Replace a weird unknown command (bh-specfic) with show damage
+        ct_rom.rom_data.seek(0x0E3191)
+        ct_rom.rom_data.write(b'\x50')
+
+        # Change the hit effect with dark matter's
+        ct_rom.rom_data.seek(0x0E319C)
+        ct_rom.rom_data.write(
+            bytearray.fromhex(
+                '2402' +
+                '6900' +
+                '2014' +
+                '6A' +
+                # '36' +
+                '00'
+            )
+        )
+
     def __write_config_to_out_rom(self):
         '''
         Writes elements of the config to self.out_rom
         '''
         config = self.config
         ctrom = self.out_rom
+
+        # We can always do this, even if not reverting to black hole because
+        # antilife just uses life2's script, not black hole's.
+        self.__modify_bh_script()
+
+        # Subtle Bug Alert:
+        # AtkDB needs to count the number of attacks when determining whether
+        # it needs to reallocate.  To do this, it reads enemy data.  If the
+        # new enemy data is written first, it will read the wrong number of
+        # attacks and free too much.  So the ai/atks are written first.
+        config.enemy_aidb.write_to_ctrom(ctrom)
+        config.enemy_atkdb.write_to_ctrom(ctrom)
 
         # Write enemies out
         for enemy_id, stats in config.enemy_dict.items():
@@ -394,8 +489,8 @@ class Randomizer:
         # Write shops out
         config.shop_manager.write_to_ctrom(ctrom)
 
-        # Write prices out
-        config.price_manager.write_to_ctrom(ctrom)
+        # Write items out
+        config.itemdb.write_to_ctrom(ctrom)
 
         # Write characters out
         # Recruitment spots
@@ -408,9 +503,8 @@ class Randomizer:
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
 
-        # Write out the bosses and midbossses
+        # Write out the bosses
         bossrando.write_bosses_to_ctrom(ctrom, config)
-        bossrando.write_midbosses_to_ctrom(ctrom, config)
 
         # tabs
         tabwriter.rewrite_tabs_on_ctrom(ctrom, config)
@@ -495,6 +589,10 @@ class Randomizer:
         script_manager.set_script(choras_cafe_event,
                                   ctenums.LocID.CHORAS_CAFE)
 
+        # 4) Fixed trading post script
+        tp_event = Event.from_flux('./flux/jot_trading_post.Flux')
+        script_manager.set_script(tp_event, ctenums.LocID.IOKA_TRADING_POST)
+
         # Flag specific script changes:
         #   - Locked characters changes to proto dome and dactyl nest
         #   - Duplicate characters changes to Spekkio when not in LW
@@ -527,6 +625,9 @@ class Randomizer:
 
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
+
+        # Update the trading post descriptions
+        self.__update_trading_post_string(self.out_rom, self.config)
 
         # Two potential softlocks caused by (presumably) touch == activate.
         self.__try_proto_dome_fix()
@@ -572,6 +673,7 @@ class Randomizer:
         with open(filename, 'w') as outfile:
             self.write_settings_spoilers(outfile)
             self.write_tab_spoilers(outfile)
+            self.write_consumable_spoilers(outfile)
             self.write_key_item_spoilers(outfile)
             self.write_boss_rando_spoilers(outfile)
             self.write_character_spoilers(outfile)
@@ -579,7 +681,7 @@ class Randomizer:
             self.write_treasure_spoilers(outfile)
             self.write_drop_charm_spoilers(outfile)
             self.write_shop_spoilers(outfile)
-            self.write_price_spoilers(outfile)
+            self.write_item_stat_spoilers(outfile)
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
@@ -589,6 +691,27 @@ class Randomizer:
         file_object.write(f"Shops: {self.settings.shopprices}\n")
         file_object.write(f"Flags: {self.settings.gameflags}\n")
         file_object.write(f"Cosmetic: {self.settings.cosmetic_flags}\n\n")
+
+    def write_consumable_spoilers(self, file_object):
+        file_object.write("Consumable Properties\n")
+        file_object.write("---------------------\n")
+
+        IID = ctenums.ItemID
+        consumables = (
+            IID.TONIC, IID.MID_TONIC, IID.FULL_TONIC,
+            IID.ETHER, IID.MID_ETHER, IID.FULL_ETHER,
+            IID.LAPIS
+        )
+
+        for item_id in consumables:
+            item = self.config.itemdb[item_id]
+            name = ctstrings.CTNameString(item.name)
+            name_str = str(name).ljust(15, ' ')
+            desc = ctstrings.CTString(item.desc[:-1])  # Remove {null}
+            desc_str = desc.to_ascii()
+
+            file_object.write(name_str+desc_str+'\n')
+        file_object.write('\n')
 
     def write_tab_spoilers(self, file_object):
         file_object.write("Tab Properties\n")
@@ -622,7 +745,7 @@ class Randomizer:
 
         for location in self.config.key_item_locations:
             file_object.write(str.ljust(f"{location.getName()}", width+8) +
-                              str(location.getKeyItem()) + '\n')
+                              str(location.lookupKeyItem(self.config)) + '\n')
         file_object.write('\n')
 
     def write_character_spoilers(self, file_object):
@@ -682,25 +805,26 @@ class Randomizer:
         file_object.write("Shop Assigmment\n")
         file_object.write("---------------\n")
         file_object.write(
-            self.config.shop_manager.__str__(self.config.price_manager)
+            self.config.shop_manager.__str__(self.config.itemdb)
         )
         file_object.write('\n')
 
-    def write_price_spoilers(self, file_object):
-        file_object.write("Item Prices\n")
-        file_object.write("-----------\n")
+    def write_item_stat_spoilers(self, file_object):
+        file_object.write("Item Stats\n")
+        file_object.write("----------\n")
 
-        width = max(len(str(x)) for x in list(ctenums.ItemID)) + 8
+        # width = max(len(str(x)) for x in list(ctenums.ItemID)) + 8
 
         item_ids = [x for x in list(ctenums.ItemID)
                     if x in range(1, ctenums.ItemID(0xD0))]
 
         for item_id in item_ids:
-            file_object.write(
-                str.ljust(str(ctenums.ItemID(item_id)), width) +
-                str(self.config.price_manager.get_price(item_id)) +
-                '\n'
-            )
+            item = self.config.itemdb[item_id]
+            name = str(ctstrings.CTNameString(item.name[1:])).ljust(15, ' ')
+            desc = ctstrings.CTString(item.desc[:-1]).to_ascii()
+            price = str(item.price).rjust(5, ' ') + 'G'
+
+            file_object.write(name + ' ' + price + ' ' + desc + '\n')
         file_object.write('\n')
 
     def write_boss_rando_spoilers(self, file_object):
@@ -737,7 +861,7 @@ class Randomizer:
 
         endboss_ids = [
             BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE,
-            BossID.ZEAL, BossID.ZEAL_2
+            BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2
         ]
 
         boss_ids = list(self.config.boss_assign_dict.values()) + \
@@ -749,14 +873,42 @@ class Randomizer:
                 file_object.write(
                     f" Key Item scale rank = {scale_dict[boss_id]}"
                 )
-            if boss_id == BossID.MAGUS:
-                file_object.write(
-                    f" Assigned {self.config.magus_char}"
-                )
             if boss_id == BossID.BLACK_TYRANO:
+                tyrano_elem = bossrando.get_black_tyrano_element(self.config)
                 file_object.write(
-                    f" Element is {self.config.black_tyrano_element}"
+                    f" Element is {tyrano_elem}"
                 )
+            elif boss_id == BossID.RUST_TYRANO:
+                tyrano_elem = bossrando.get_rust_tyrano_element(
+                    ctenums.EnemyID.RUST_TYRANO, self.config
+                )
+                file_object.write(
+                    f" Element is {tyrano_elem}"
+                )
+            elif boss_id == BossID.TWIN_BOSS:
+                name = self.config.enemy_dict[ctenums.EnemyID.TWIN_BOSS].name
+                if name == 'Rust Tyrano':
+                    tyrano_elem = bossrando.get_rust_tyrano_element(
+                        ctenums.EnemyID.TWIN_BOSS, self.config
+                    )
+                    file_object.write(
+                        f" Element is {tyrano_elem}"
+                    )
+            elif boss_id == BossID.MEGA_MUTANT:
+                part = ctenums.EnemyID.MEGA_MUTANT_BOTTOM
+                obstacle_id = bossrando.get_obstacle_id(part, self.config)
+                obstacle = self.config.enemy_atkdb.get_tech(obstacle_id)
+                obstacle_status = obstacle.effect.status_effect
+                status_string = ', '.join(str(x) for x in obstacle_status)
+                file_object.write(f' Obstacle is {status_string}')
+            elif boss_id == BossID.TERRA_MUTANT:
+                part = ctenums.EnemyID.TERRA_MUTANT_HEAD
+                obstacle_id = bossrando.get_obstacle_id(part, self.config)
+                obstacle = self.config.enemy_atkdb.get_tech(obstacle_id)
+                obstacle_status = obstacle.effect.status_effect
+                status_string = ', '.join(str(x) for x in obstacle_status)
+                file_object.write(f' Obstacle is {status_string}')
+
             file_object.write('\n')
 
             boss = self.config.boss_data_dict[boss_id]
@@ -770,7 +922,10 @@ class Randomizer:
                 file_object.write(part_str+'\n')
             file_object.write('\n')
 
-        file_object.write(f"Obstacle is {self.config.obstacle_status}\n\n")
+        obstacle = self.config.enemy_atkdb.get_tech(0x58)
+        obstacle_status = obstacle.effect.status_effect
+        status_string = ', '.join(str(x) for x in obstacle_status)
+        file_object.write(f"Endgame obstacle is {status_string}\n\n")
 
     def write_drop_charm_spoilers(self, file_object):
         file_object.write("Enemy Drop and Charm\n")
@@ -852,7 +1007,7 @@ class Randomizer:
         # It should be safe to move the robo's ribbon code here since it
         # also doesn't depend on flags and should be applied prior to anything
         # else that messes with the items because it shuffles effects
-        roboribbon.robo_ribbon_speed(rom_data.getbuffer())
+        # roboribbon.robo_ribbon_speed(rom_data.getbuffer())
 
     @classmethod
     def __apply_settings_patches(cls, ctrom: CTRom,
@@ -906,6 +1061,9 @@ class Randomizer:
         if rset.GameFlags.GUARANTEED_DROPS in flags:
             qolhacks.set_guaranteed_drops(ctrom, settings)
 
+        if rset.GameFlags.FREE_MENU_GLITCH in flags:
+            qolhacks.set_free_menu_glitch(ctrom, settings)
+
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
             fastmagic.write_ctrom(ctrom, settings)
 
@@ -914,7 +1072,6 @@ class Randomizer:
 
         if rset.GameFlags.BUCKET_FRAGMENTS in flags:
             bucketfragment.set_bucket_function(ctrom, settings)
-            bucketfragment.set_fragment_properties(ctrom)
 
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
@@ -975,13 +1132,84 @@ class Randomizer:
             bytearray(ctrom.rom_data.getvalue())
         )
 
+        # Why is Dalton worth so few TP?
+        config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
+
+        # Add grandleon lowering magus's mdef
+        # Editing AI is ugly right now, so just use raw binary
+        magus_ai = config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS]
+        magus_ai_b = magus_ai.get_as_bytearray()
+        masa_hit = bytearray.fromhex(
+            '18 3D 04 29 FE'
+            '0B 3C 14 00 2E FE'
+        )
+
+        masa_hit_loc = magus_ai_b.find(masa_hit)
+        masa_hit[1] = 0x42  # Change MM (0x3D) to GL (0x42)
+        magus_ai_b[masa_hit_loc:masa_hit_loc] = masa_hit
+        new_magus_ai = cfg.enemyai.AIScript(magus_ai_b)
+
+        config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
+
+        # Give Rusty a few more HP, like avg hp of old boss rando
+        enemy_id = ctenums.EnemyID.RUST_TYRANO
+        rt_stats = config.enemy_dict[enemy_id]
+
+        rt_stats.hp = int(rt_stats.hp * 1.75)
+
+        # Lower the base magic/lvl so that the party is likely to survive the
+        # initial nuke.
+        rt_stats.magic = int(rt_stats.magic * 0.6)
+        rt_stats.level = int(rt_stats.level * 0.6)
+
         # Fix Falcon Hit to use Spincut as a prerequisite
         techdb = config.techdb
         falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
         falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
         techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
 
+        # Allow combo tech confuse to use on-hit effects
+        combo_confuse_id = 0x3C
+        on_hit_byte = combo_confuse_id*techdb.effect_size + 8
+        techdb.effects[on_hit_byte] = 0x80
+
+        # Remove on-hit effects from robo tackle
+        if rset.GameFlags.NO_CRISIS_TACKLE in settings.gameflags:
+            tackle_id = int(ctenums.TechID.ROBO_TACKLE)
+            on_hit_byte = tackle_id*techdb.effect_size + 8
+            techdb.effects[on_hit_byte] = 0
+
+        # Revert antilife to black hole
+        if rset.GameFlags.BLACKHOLE_REWORK in settings.gameflags:
+            TechDB = charrando.TechDB
+            vanilla_db = TechDB.get_default_db(ct_vanilla)
+            black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
+
+            anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
+            anti_life['control'][8] = 0x16  # +Atk for down allies
+            anti_life['effects'][0][9] = 0x25  # 1.5x dark bomb
+            al_eff_id = anti_life['control'][5]
+
+            # A note here that set_tech needs the effects to be set correctly.
+            # TODO: get_tech needs to be fixed to supply mp values so that
+            #   set_tech can work as it ought.  Really fix the whole techdb.
+            byteops.set_record(techdb.effects, anti_life['effects'][0],
+                               al_eff_id,
+                               techdb.effect_size)
+
+            black_hole['control'] = anti_life['control']
+            techdb.set_tech(black_hole, ctenums.TechID.ANTI_LIFE)
+
+            techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
+
+        # Note for future (?) Marle changes
+        # Statuses have different types.  Haste is type 3, everything else
+        # just about is type 4.
+        # Type 4: berserk, barrier, Mp regen, unk, specs, shield, shades, unk
+        # Araise is in another type altogether.
+
         # Make X-Strike use Spincut+Leapslash
+        # Also buff 3d-attack and triple raid
         if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
             techdb = config.techdb
             x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
@@ -995,6 +1223,28 @@ class Randomizer:
             x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
             x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
             techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
+
+            # 3d-atk
+            three_d_atk = techdb.get_tech(ctenums.TechID.THREE_D_ATTACK)
+            three_d_atk['control'][6] = int(ctenums.TechID.SPINCUT)
+            three_d_atk['control'][7] = int(ctenums.TechID.LEAP_SLASH)
+
+            three_d_atk['mmp'][0] = int(ctenums.TechID.SPINCUT)
+            three_d_atk['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
+
+            three_d_atk['lrn_req'] = [4, 5, 8]
+            techdb.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
+
+            # Triple Raid
+            triple_raid = techdb.get_tech(ctenums.TechID.TRIPLE_RAID)
+            triple_raid['control'][5] = int(ctenums.TechID.SPINCUT)
+            triple_raid['control'][7] = int(ctenums.TechID.LEAP_SLASH)
+
+            triple_raid['mmp'][0] = int(ctenums.TechID.SPINCUT)
+            triple_raid['mmp'][2] = int(ctenums.TechID.LEAP_SLASH)
+
+            triple_raid['lrn_req'] = [4, 4, 5]
+            techdb.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
 
         if rset.GameFlags.AYLA_REBALANCE in settings.gameflags:
             # Apply Ayla Changes
@@ -1014,7 +1264,7 @@ class Randomizer:
             rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
             effects[rock_pwr] = 0x23
 
-        if rset.GameFlags.BOSS_SIGHTSCOPE:
+        if rset.GameFlags.BOSS_SIGHTSCOPE in settings.gameflags:
             qolhacks.enable_boss_sightscope(config)
 
         return config

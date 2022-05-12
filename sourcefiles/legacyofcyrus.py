@@ -11,6 +11,7 @@ import ctrom
 import ctstrings
 import eventfunction
 import eventcommand
+import treasuredata
 
 import randoconfig as cfg
 import randosettings as rset
@@ -467,6 +468,13 @@ def set_ending_after_ozzies_fort(ct_rom: ctrom.CTRom):
     orig_tg_script = ctevent.Event.from_flux(
         './flux/orig_twin_golem_spot.Flux'
     )
+    end_str_b = orig_tg_script.strings[1]
+    end_str = ctstrings.CTString.ct_bytes_to_ascii(end_str_b)
+    end_str = end_str.replace('Lavos', 'FalconHit')
+    new_end_str_b = ctstrings.CTString.from_str(end_str)
+    new_end_str_b.compress()
+    orig_tg_script.strings[1] = new_end_str_b
+    orig_tg_script.modified_strings = True
 
     ct_rom.script_manager.set_script(
         orig_op_script, ctenums.LocID.OCEAN_PALACE_ENTRANCE
@@ -475,14 +483,3 @@ def set_ending_after_ozzies_fort(ct_rom: ctrom.CTRom):
     ct_rom.script_manager.set_script(
         orig_tg_script, ctenums.LocID.OCEAN_PALACE_TWIN_GOLEM
     )
-
-
-def write_config(settings: rset.Settings,
-                 config: cfg.RandoConfig):
-    '''
-    Writes LoC-specific changes to the config.
-
-    I don't think there is anything here because character writing has to
-    be done elsewhere.
-    '''
-    pass

@@ -202,7 +202,7 @@ class RandoGUI:
 
         no_shuffle_bosses = [
             BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
-            BossID.MAGUS, BossID.BLACK_TYRANO,
+            BossID.MAGUS, BossID.BLACK_TYRANO, BossID.MAMMON_M,
             BossID.LAVOS_CORE, BossID.LAVOS_SHELL, BossID.INNER_LAVOS,
             BossID.ZEAL, BossID.ZEAL_2, BossID.TWIN_BOSS
         ]
@@ -565,12 +565,11 @@ class RandoGUI:
                 element.config(state=tk.DISABLED)
 
         ia_disabled_flags = [
-            GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.ZEAL_END,
             GF.BOSS_SCALE, GF.BUCKET_FRAGMENTS,
         ]
 
         ia_disabled_elements = [
-            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
             self.bucket_frag_required_scale,
@@ -591,13 +590,12 @@ class RandoGUI:
             self.bucket_frag_required_scale.config(fg='grey')
 
         loc_disabled_flags = [
-            GF.CHRONOSANITY, GF.ZEAL_END,
+            GF.ZEAL_END,
             GF.BUCKET_FRAGMENTS,
             GF.BOSS_RANDO, GF.BOSS_SCALE, GF.BOSS_RANDO
         ]
 
         loc_disabled_elements = [
-            self.chronosanity_checkbox,
             self.zeal_end_checkbox, self.boss_scaling_checkbox,
             self.bucket_fragment_checkbox, self.bucket_frag_extra_scale,
             self.bucket_frag_required_scale,
@@ -1971,6 +1969,20 @@ class RandoGUI:
             'exception.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Free Menu Glitch',
+            variable=self.flag_dict[GameFlags.FREE_MENU_GLITCH]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'After the screen fade before Mammon Machine and Lavos 3 the '
+            'player regains control for two seconds in order to input a menu '
+            'command.'
+        )
+
         return frame
 
     def get_experimental_page(self):
@@ -1999,7 +2011,9 @@ class RandoGUI:
 
         CreateToolTip(
             checkbox,
-            'Change X-Strike to use Spincut + Leapslash.'
+            'Change X-Strike to use Spincut + Leapslash.  Also alters the '
+            'triple techs 3D-Attack and Triple Raid which obviously use '
+            'X-Strike as a component.'
         )
 
         checkbox = tk.Checkbutton(
@@ -2016,19 +2030,75 @@ class RandoGUI:
             'power to match the ~15% boost given to triple kick.'
         )
 
-        '''
-        CreateToolTip(
-            self.ice_age_checkbox,
-            'Get Ayla.  Get the Dactyl Nest character.  Use them to defeat '
-            'the Black Tyrano and a (buffed) Giga Gaia to win.'
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Black Hole Rework',
+            variable=self.flag_dict[GameFlags.BLACKHOLE_REWORK]
         )
+        checkbox.pack(anchor=tk.W)
 
         CreateToolTip(
-            self.loc_checkbox,
-            'Get Frog and Magus, visit Cyrus\'s grave, defeat Magus, and '
-            'finish by clearing Ozzie\'s Fort.'
+            checkbox,
+            'Black Hole regains its original animation and area of effect. '
+            'Instead of 40% chance of instant death, the spell does 1.5x '
+            'nonelemental Dark Bomb damage.  Additionally, Black Hole\'s '
+            'power increases with dead allies like doomsickle.'
         )
-        '''
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='No Robo Tackle On-Hit Effects',
+            variable=self.flag_dict[GameFlags.NO_CRISIS_TACKLE]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Robo Tackle regains its vanilla functionality in which it '
+            'ignores on-hit effects from weapons, most notably the Crisis Arm.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Randomize Healing Items',
+            variable=self.flag_dict[GameFlags.HEALING_ITEM_RANDO]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Amount healed by Tonics and Ethers are randomized.  Strength '
+            'order of regular/mid/full is preserved.  Lapis can roll as a '
+            'party-wide MP heal.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Randomize Gear',
+            variable=self.flag_dict[GameFlags.GEAR_RANDO]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Random effects on some accessories.  Random stat boosts and '
+            'effects on weapons and armor according to their tier.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Starters Sufficient',
+            variable=self.flag_dict[GameFlags.FIRST_TWO]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'For Standard Game mode only.  The game will be completable '
+            'through Omen and Ocean Palace with only the starting two. '
+            'It is possible but not guaranteed that Magus\'s castle will be '
+            'available if Frog is among the starters.'
+        )
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,

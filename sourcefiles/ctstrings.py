@@ -2,6 +2,7 @@
 # https://bisqwit.iki.fi/jutut/ctcset.html
 
 from __future__ import annotations
+
 import pickle
 
 import byteops
@@ -157,7 +158,6 @@ class CTString(bytearray):
         pos = 0
 
         while pos < len(string):
-
             (ct_bytes, pos) = cls.get_token(string, pos)
             ct_str.extend(ct_bytes)
 
@@ -192,6 +192,10 @@ class CTString(bytearray):
             # Symbols (see CTString.symbols) are in range(0xDE, 0xE
             ct_char = CTString.symbols.index(char) + 0xDE
             length = 1
+        elif char == '\"':
+            quote_str = string[pos:pos+2]
+            ct_char = CTString.symbols.index(quote_str) + 0xDE
+            length = 2
         elif char == '{':
             # '{' marks the start of a keyword like Crono's name or an item.
             # CTString.keywords has all of these listed.
@@ -285,6 +289,9 @@ class CTString(bytearray):
             if cur_byte in range(0, 0x21):
                 # special symbols
                 keyword = self.keywords[cur_byte]
+                if keyword == 'delay':
+                    pos += 1
+                    keyword += ' ' + str(self[pos])
                 ret_str += f"{{{keyword}}}"
             elif cur_byte in range(0x21, 0xA0):
                 if techname and cur_byte == 0x2F:
@@ -315,6 +322,88 @@ class CTString(bytearray):
             pos += 1
 
         return ret_str
+
+
+class CTNameString(bytearray):
+    name_symbols = {
+        0x00: '{none00}',
+        0x20: '{sword}',
+        0x21: '{bow}',
+        0x22: '{gun}',
+        0x23: '{arm}',
+        0x24: '{blade}',
+        0x25: '{fist}',
+        0x26: '{scythe}',
+        0x27: '{helm}',
+        0x28: '{armor}',
+        0x29: '{acc}',
+        0x2A: '{h}',
+        0x2B: '{m}',
+        0x2C: '{p}',
+        0x2D: ':',
+        0x2E: '{shield}',
+        0x2F: '*',
+        0x30: '#',
+        0x31: '{->}',
+        0x32: '{boxtl}',
+        0x33: '{boxbr}',
+        0x34: '+',
+        # There are more, but weird capital versions that dont come up.
+        0xDE: '!', 0xDF: '?', 0xE0: '/', 0xE1: '\"1', 0xE2: '\"2', 0xE3: ':',
+        0xE4: '&', 0xE5: '(', 0xE6: ')', 0xE7: '\'', 0xE8: '.',
+        0xE9: ',', 0xEA: '=', 0xEB: '-', 0xEC: '+', 0xED: '%',
+        0xEE: '{noneEE}', 0xEF: '{endpadEF}', 0xF0: '{:heart:}',
+        0xFF: ' '
+    }
+
+    _lowercase_dict = {ord(x)-0x61+0xBA: x
+                       for x in 'abcdefghijklmnopqrstuvwxyz'}
+    _uppercase_dict = {ord(x)-0x41+0xA0: x
+                       for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
+    _number_dict = {ord(x)-0x30+0xD4: x
+                    for x in '0123456789'}
+    byte_to_symbol_dict = {**name_symbols, **_lowercase_dict,
+                           **_uppercase_dict,
+                           **_number_dict}
+    symbol_to_byte_dict = {value: key
+                           for (key, value) in byte_to_symbol_dict.items()}
+
+    @classmethod
+    def from_string(cls, string: str, length: int = 0xB):
+        str_pos = 0
+
+        ct_bytes = bytearray()
+        while str_pos < len(string):
+            found = False
+            for (key, value) in cls.symbol_to_byte_dict.items():
+                if string[str_pos:].startswith(key):
+                    ct_bytes.append(value)
+                    str_pos += len(key)
+                    found = True
+                    break
+
+            if not found:
+                raise ValueError(string[str_pos:])
+
+        if len(ct_bytes) > length:
+            ct_bytes = ct_bytes[0:length+1]
+        elif len(ct_bytes) < length:
+            ct_bytes.extend([0xEF for x in range(length-len(ct_bytes))])
+
+        pos = len(ct_bytes) - 1
+        while pos >= 0 and ct_bytes[pos] == 0xFF:
+            ct_bytes[pos] = 0xEF
+            pos -= 1
+
+        return CTNameString(ct_bytes)
+
+    def __str__(self):
+        try:
+            ind = self.index(0xEF)
+        except ValueError:
+            ind = len(self)
+        string = ''.join(self.byte_to_symbol_dict[x] for x in self[0:ind])
+        return string
 
 
 # This table is never changed by TF, so we should only have to read it once

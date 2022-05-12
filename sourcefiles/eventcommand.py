@@ -503,6 +503,19 @@ class EventCommand:
         else:
             return EventCommand.generic_one_arg(0xC2, string_id)
 
+    def pause(duration_secs: float):
+        if duration_secs == 0.25:
+            return EventCommand.generic_zero_arg(0xB9)
+        elif duration_secs == 0.5:
+            return EventCommand.generic_zero_arg(0xBA)
+        elif duration_secs == 1:
+            return EventCommand.generic_zero_arg(0xBC)
+        elif duration_secs == 2:
+            return EventCommand.generic_zero_arg(0xBD)
+        else:
+            num_ticks = int(duration_secs/64)
+            return EventCommand.generic_one_arg(0xAD, num_ticks)
+
     def copy(self) -> EventCommand:
         ret_command = EventCommand(-1, 0, [], [], '', '')
         ret_command.command = self.command

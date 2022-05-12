@@ -1,12 +1,10 @@
-from logictypes import Location, BaselineLocation, LocationGroup, \
+import typing
+from logictypes import BaselineLocation, Location, LocationGroup,\
     LinkedLocation, Game
-
-# For grabbing random key items in some game modes
-import random
+import treasuredata as td
 
 from ctenums import TreasureID as TID, CharID as Characters, ItemID, \
     RecruitID
-from treasuredata import TreasureLocTier as LootTiers
 import randosettings as rset
 import randoconfig as cfg
 
@@ -81,6 +79,15 @@ class GameConfig:
         return self.locationGroups
 
     #
+    # Get the LocationGroup with the given name.
+    #
+    # return: The LocationGroup object with the given name
+    #
+    def getLocationGroup(self, name: str) -> LocationGroup:
+        return next(x for x in self.locationGroups
+                    if x.name == name)
+
+    #
     # Get the list of key items associated with this game mode.
     #
     # return: A list of KeyItem objects for this mode
@@ -96,7 +103,24 @@ class GameConfig:
     def getGame(self):
         return self.game
 
+    #
+    # Remove all LocationGroups with the given names.
+    #
+    # param: names - a name or iterable of names of LocationGroups to remove
+    #
+    def removeLocationGroups(
+            self,
+            names: typing.Union[str, typing.Iterable[str]]):
 
+        if isinstance(names, str):
+            names = [names]
+
+        removed_inds = (self.locationGroups.index(x)
+                        for x in self.locationGroups
+                        if x.name in names)
+
+        for ind in sorted(removed_inds, reverse=True):
+            del(self.locationGroups[ind])
 # end GameLogic class
 
 
@@ -120,7 +144,7 @@ class ChronosanityGameConfig(GameConfig):
         # is being considered for key item drops.
         darkagesLocations = \
             LocationGroup("Darkages", 30,
-                          lambda game: game.canAccessDarkAges())
+                          lambda game: game.canAccessMtWoe())
         (
             darkagesLocations
             .addLocation(Location(TID.MT_WOE_1ST_SCREEN))
@@ -136,8 +160,7 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.MT_WOE_3RD_SCREEN_5))
             .addLocation(Location(TID.MT_WOE_FINAL_1))
             .addLocation(Location(TID.MT_WOE_FINAL_2))
-            .addLocation(BaselineLocation(TID.MT_WOE_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(Location(TID.MT_WOE_KEY))
         )
 
         # Fiona Shrine (Key Item only)
@@ -146,7 +169,7 @@ class ChronosanityGameConfig(GameConfig):
                           lambda game: game.canAccessFionasShrine())
         (
             fionaShrineLocations
-            .addLocation(BaselineLocation(TID.FIONA_KEY, LootTiers.MID_HIGH))
+            .addLocation(Location(TID.FIONA_KEY))
         )
 
         # Future
@@ -159,10 +182,8 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.ARRIS_DOME_RATS))
             .addLocation(Location(TID.ARRIS_DOME_FOOD_STORE))
             # KeyItems
-            .addLocation(BaselineLocation(TID.ARRIS_DOME_KEY,
-                                          LootTiers.MID_HIGH))
-            .addLocation(BaselineLocation(TID.SUN_PALACE_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.ARRIS_DOME_KEY))
+            .addLocation(Location(TID.SUN_PALACE_KEY))
         )
 
         futureSewersLocations = \
@@ -208,8 +229,7 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.GENO_DOME_2F_2))
             .addLocation(Location(TID.GENO_DOME_2F_3))
             .addLocation(Location(TID.GENO_DOME_2F_4))
-            .addLocation(BaselineLocation(TID.GENO_DOME_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.GENO_DOME_KEY))
         )
 
         factoryLocations = \
@@ -247,7 +267,7 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.GIANTS_CLAW_CAVES_4))
             # .addLocation(Location(TID.GIANTS_CLAW_ROCK))
             .addLocation(Location(TID.GIANTS_CLAW_CAVES_5))
-            .addLocation(BaselineLocation(TID.GIANTS_CLAW_KEY, LootTiers.MID))
+            .addLocation(Location(TID.GIANTS_CLAW_KEY))
         )
 
         # Northern Ruins
@@ -299,18 +319,16 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.GUARDIA_TREASURY_1))
             .addLocation(Location(TID.GUARDIA_TREASURY_2))
             .addLocation(Location(TID.GUARDIA_TREASURY_3))
-            .addLocation(BaselineLocation(TID.KINGS_TRIAL_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(Location(TID.KINGS_TRIAL_KEY))
         )
 
         # Ozzie's Fort locations
         # Ozzie's fort is a high level location.
         # For the first four chests, don't consider these locations until the
-        # player has either the pendant or gate key. The final two chests are
-        # locked behind the trio battle.  Only consider these if the player
-        # has access to the Dark Ages.
+        # player has either the pendant or gate key.
+        # As of 3.1.1, the back two chests are lumped in with the front four.
         earlyOzziesFortLocations = LocationGroup(
-            "Ozzie's Fort Front", 6,
+            "Ozzie's Fort", 12,
             lambda game: (game.canAccessFuture() or game.canAccessPrehistory())
         )
         (
@@ -319,16 +337,6 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.OZZIES_FORT_GUILLOTINES_2))
             .addLocation(Location(TID.OZZIES_FORT_GUILLOTINES_3))
             .addLocation(Location(TID.OZZIES_FORT_GUILLOTINES_4))
-        )
-
-        lateOzziesFortLocations = LocationGroup(
-            "Ozzie's Fort Back", 6,
-            lambda game:
-            (game.canAccessFuture() or game.canAccessPrehistory()) and
-            game.canAccessDarkAges()
-        )
-        (
-            lateOzziesFortLocations
             .addLocation(Location(TID.OZZIES_FORT_FINAL_1))
             .addLocation(Location(TID.OZZIES_FORT_FINAL_2))
         )
@@ -359,9 +367,9 @@ class ChronosanityGameConfig(GameConfig):
         openKeys = LocationGroup("OpenKeys", 5, lambda game: True)
         (
             openKeys
-            .addLocation(BaselineLocation(TID.ZENAN_BRIDGE_KEY, LootTiers.MID))
-            .addLocation(BaselineLocation(TID.SNAIL_STOP_KEY, LootTiers.MID))
-            .addLocation(BaselineLocation(TID.LAZY_CARPENTER, LootTiers.MID))
+            .addLocation(Location(TID.ZENAN_BRIDGE_KEY))
+            .addLocation(Location(TID.SNAIL_STOP_KEY))
+            .addLocation(Location(TID.LAZY_CARPENTER))
         )
 
         heckranLocations = LocationGroup("Heckran", 4, lambda game: True)
@@ -371,7 +379,7 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.HECKRAN_CAVE_ENTRANCE))
             .addLocation(Location(TID.HECKRAN_CAVE_1))
             .addLocation(Location(TID.HECKRAN_CAVE_2))
-            .addLocation(BaselineLocation(TID.TABAN_KEY, LootTiers.MID))
+            .addLocation(Location(TID.TABAN_KEY))
         )
 
         guardiaCastleLocations = LocationGroup(
@@ -437,7 +445,7 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.DENADORO_MTS_SCREEN3_4))
             .addLocation(Location(TID.DENADORO_MTS_AMBUSH))
             .addLocation(Location(TID.DENADORO_MTS_SAVE_PT))
-            .addLocation(BaselineLocation(TID.DENADORO_MTS_KEY, LootTiers.MID))
+            .addLocation(Location(TID.DENADORO_MTS_KEY))
         )
 
         # Sealed locations
@@ -516,8 +524,7 @@ class ChronosanityGameConfig(GameConfig):
             prehistoryReptiteLocations
             .addLocation(Location(TID.REPTITE_LAIR_REPTITES_1))
             .addLocation(Location(TID.REPTITE_LAIR_REPTITES_2))
-            .addLocation(BaselineLocation(TID.REPTITE_LAIR_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.REPTITE_LAIR_KEY))
         )
 
         # Dactyl Nest already has a character, so give it a relatively low
@@ -540,8 +547,7 @@ class ChronosanityGameConfig(GameConfig):
         )
         (
             melchiorsRefinementslocations
-            .addLocation(BaselineLocation(TID.MELCHIOR_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(Location(TID.MELCHIOR_KEY))
         )
 
         # Frog's Burrow
@@ -551,8 +557,7 @@ class ChronosanityGameConfig(GameConfig):
         )
         (
             frogsBurrowLocation
-            .addLocation(BaselineLocation(TID.FROGS_BURROW_LEFT,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.FROGS_BURROW_LEFT))
         )
 
         # Prehistory
@@ -579,7 +584,6 @@ class ChronosanityGameConfig(GameConfig):
         self.locationGroups.append(melchiorsRefinementslocations)
         self.locationGroups.append(frogsBurrowLocation)
         self.locationGroups.append(earlyOzziesFortLocations)
-        self.locationGroups.append(lateOzziesFortLocations)
 
         # Future
         self.locationGroups.append(futureOpenLocations)
@@ -695,8 +699,7 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
             prehistoryReptiteLocations
             .addLocation(Location(TID.REPTITE_LAIR_REPTITES_1))
             .addLocation(Location(TID.REPTITE_LAIR_REPTITES_2))
-            .addLocation(BaselineLocation(TID.REPTITE_LAIR_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.REPTITE_LAIR_KEY))
         )
 
         # Dactyl Nest already has a character, so give it a relatively low
@@ -730,8 +733,7 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
             .addLocation(Location(TID.MT_WOE_3RD_SCREEN_5))
             .addLocation(Location(TID.MT_WOE_FINAL_1))
             .addLocation(Location(TID.MT_WOE_FINAL_2))
-            .addLocation(BaselineLocation(TID.MT_WOE_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(Location(TID.MT_WOE_KEY))
         )
 
         # Future
@@ -743,10 +745,8 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
             .addLocation(Location(TID.ARRIS_DOME_RATS))
             .addLocation(Location(TID.ARRIS_DOME_FOOD_STORE))
             # KeyItems
-            .addLocation(BaselineLocation(TID.ARRIS_DOME_KEY,
-                                          LootTiers.MID_HIGH))
-            .addLocation(BaselineLocation(TID.SUN_PALACE_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.ARRIS_DOME_KEY))
+            .addLocation(Location(TID.SUN_PALACE_KEY))
         )
 
         futureSewersLocations = \
@@ -787,8 +787,7 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
             .addLocation(Location(TID.GENO_DOME_2F_2))
             .addLocation(Location(TID.GENO_DOME_2F_3))
             .addLocation(Location(TID.GENO_DOME_2F_4))
-            .addLocation(BaselineLocation(TID.GENO_DOME_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.GENO_DOME_KEY))
         )
 
         factoryLocations = \
@@ -871,21 +870,40 @@ class NormalGameConfig(GameConfig):
         self.keyItemList = ItemID.get_key_items()
 
     def initLocations(self):
+
+        # Even though treasurewriter *should* give items to each key item spot
+        # we're going to still have them be BaselineLocations so that (1) it
+        # makes inheritance easier and (2) it makes them always be listed in
+        # the spoiler log.
+        mid_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.MID_GEAR))
+        )
+
+        good_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.GOOD_GEAR))
+        )
+
+        high_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.HIGH_GEAR))
+        )
+
+        awesome_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
+        )
+
         prehistoryLocations = LocationGroup(
             "PrehistoryReptite", 1, lambda game: game.canAccessPrehistory()
         )
         (
             prehistoryLocations
-            .addLocation(BaselineLocation(TID.REPTITE_LAIR_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(BaselineLocation(TID.REPTITE_LAIR_KEY, high_dist))
         )
 
         darkagesLocations = \
-            LocationGroup("Darkages", 1, lambda game: game.canAccessDarkAges())
+            LocationGroup("Darkages", 1, lambda game: game.canAccessMtWoe())
         (
             darkagesLocations
-            .addLocation(BaselineLocation(TID.MT_WOE_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(BaselineLocation(TID.MT_WOE_KEY, awesome_dist))
         )
 
         openKeys = LocationGroup(
@@ -893,11 +911,11 @@ class NormalGameConfig(GameConfig):
         )
         (
             openKeys
-            .addLocation(BaselineLocation(TID.ZENAN_BRIDGE_KEY, LootTiers.MID))
-            .addLocation(BaselineLocation(TID.SNAIL_STOP_KEY, LootTiers.MID))
-            .addLocation(BaselineLocation(TID.LAZY_CARPENTER, LootTiers.MID))
-            .addLocation(BaselineLocation(TID.TABAN_KEY, LootTiers.MID))
-            .addLocation(BaselineLocation(TID.DENADORO_MTS_KEY, LootTiers.MID))
+            .addLocation(BaselineLocation(TID.ZENAN_BRIDGE_KEY, good_dist))
+            .addLocation(BaselineLocation(TID.SNAIL_STOP_KEY, mid_dist))
+            .addLocation(BaselineLocation(TID.LAZY_CARPENTER, mid_dist))
+            .addLocation(BaselineLocation(TID.TABAN_KEY, good_dist))
+            .addLocation(BaselineLocation(TID.DENADORO_MTS_KEY, good_dist))
         )
 
         melchiorsRefinementslocations = LocationGroup(
@@ -906,8 +924,7 @@ class NormalGameConfig(GameConfig):
         )
         (
             melchiorsRefinementslocations
-            .addLocation(BaselineLocation(TID.MELCHIOR_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(BaselineLocation(TID.MELCHIOR_KEY, awesome_dist))
         )
 
         frogsBurrowLocation = LocationGroup(
@@ -915,8 +932,7 @@ class NormalGameConfig(GameConfig):
         )
         (
             frogsBurrowLocation
-            .addLocation(BaselineLocation(TID.FROGS_BURROW_LEFT,
-                                          LootTiers.MID_HIGH))
+            .addLocation(BaselineLocation(TID.FROGS_BURROW_LEFT, mid_dist))
         )
 
         guardiaTreasuryLocations = LocationGroup(
@@ -924,8 +940,7 @@ class NormalGameConfig(GameConfig):
         )
         (
             guardiaTreasuryLocations
-            .addLocation(BaselineLocation(TID.KINGS_TRIAL_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(BaselineLocation(TID.KINGS_TRIAL_KEY, high_dist))
         )
 
         giantsClawLocations = LocationGroup(
@@ -933,8 +948,7 @@ class NormalGameConfig(GameConfig):
         )
         (
             giantsClawLocations
-            .addLocation(BaselineLocation(TID.GIANTS_CLAW_KEY,
-                                          LootTiers.MID))
+            .addLocation(BaselineLocation(TID.GIANTS_CLAW_KEY,  high_dist))
         )
 
         fionaShrineLocations = LocationGroup(
@@ -942,8 +956,7 @@ class NormalGameConfig(GameConfig):
         )
         (
             fionaShrineLocations
-            .addLocation(BaselineLocation(TID.FIONA_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(BaselineLocation(TID.FIONA_KEY, high_dist))
         )
 
         futureKeys = LocationGroup(
@@ -952,12 +965,9 @@ class NormalGameConfig(GameConfig):
         )
         (
             futureKeys
-            .addLocation(BaselineLocation(TID.ARRIS_DOME_KEY,
-                                          LootTiers.MID_HIGH))
-            .addLocation(BaselineLocation(TID.SUN_PALACE_KEY,
-                                          LootTiers.MID_HIGH))
-            .addLocation(BaselineLocation(TID.GENO_DOME_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(BaselineLocation(TID.ARRIS_DOME_KEY, high_dist))
+            .addLocation(BaselineLocation(TID.SUN_PALACE_KEY, high_dist))
+            .addLocation(BaselineLocation(TID.GENO_DOME_KEY, awesome_dist))
         )
 
         # Prehistory
@@ -996,21 +1006,20 @@ class LostWorldsGameConfig(GameConfig):
                             ItemID.DREAMSTONE, ItemID.RUBY_KNIFE]
 
     def initLocations(self):
+        # Not bothering making these baseline locations
         prehistoryLocations = LocationGroup(
             "PrehistoryReptite", 1, lambda game: game.canAccessPrehistory()
         )
         (
             prehistoryLocations
-            .addLocation(BaselineLocation(TID.REPTITE_LAIR_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.REPTITE_LAIR_KEY))
         )
 
         darkagesLocations = \
-            LocationGroup("Darkages", 1, lambda game: game.canAccessDarkAges())
+            LocationGroup("Darkages", 1, lambda game: game.canAccessMtWoe())
         (
             darkagesLocations
-            .addLocation(BaselineLocation(TID.MT_WOE_KEY,
-                                          LootTiers.HIGH_AWESOME))
+            .addLocation(Location(TID.MT_WOE_KEY))
         )
 
         futureKeys = LocationGroup(
@@ -1019,12 +1028,9 @@ class LostWorldsGameConfig(GameConfig):
         )
         (
             futureKeys
-            .addLocation(BaselineLocation(TID.ARRIS_DOME_KEY,
-                                          LootTiers.MID_HIGH))
-            .addLocation(BaselineLocation(TID.SUN_PALACE_KEY,
-                                          LootTiers.MID_HIGH))
-            .addLocation(BaselineLocation(TID.GENO_DOME_KEY,
-                                          LootTiers.MID_HIGH))
+            .addLocation(Location(TID.ARRIS_DOME_KEY))
+            .addLocation(Location(TID.SUN_PALACE_KEY))
+            .addLocation(Location(TID.GENO_DOME_KEY))
         )
 
         # Prehistory
@@ -1035,6 +1041,69 @@ class LostWorldsGameConfig(GameConfig):
         self.locationGroups.append(futureKeys)
 
 # end LostWorldsGameCofig class
+
+
+class ChronosanityLegacyOfCyrusGameConfig(ChronosanityGameConfig):
+
+    def initKeyItems(self):
+        ChronosanityGameConfig.initKeyItems(self)
+
+        unavail_char = \
+            self.config.char_assign_dict[RecruitID.PROTO_DOME].held_char
+
+        removed_items = [
+            ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE,
+            ItemID.MOON_STONE
+        ]
+
+        if unavail_char == Characters.MARLE:
+            removed_items.append(ItemID.PRISMSHARD)
+
+        # Compared to normal, there's no reason to remove robo's ribbon b/c
+        # there are sufficient key item spots.
+
+        # elif unavail_char == Characters.ROBO:
+        #     removed_items.append(ItemID.ROBORIBBON)
+
+        if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
+            removed_items.append(ItemID.DREAMSTONE)
+
+    def initLocations(self):
+
+        ChronosanityGameConfig.initLocations(self)
+
+        # Remove all future groups.  Remove Ozzie's Fort because it is now
+        # an endgame area.
+        removed_names = [
+            'FutureOpen', 'FutureSewers', 'FutureLabs', 'GenoDome',
+            'Factory', 'Ozzie\'s Fort', 'MelchiorRefinements'
+        ]
+
+        unavail_char = \
+            self.config.char_assign_dict[RecruitID.PROTO_DOME].held_char
+
+        if unavail_char == Characters.MARLE:
+            removed_names.append('GuardiaTreasury')
+        elif unavail_char == Characters.ROBO:
+            removed_names.append('Fionashrine')
+
+        self.removeLocationGroups(removed_names)
+
+        sealed_group = self.getLocationGroup('SealedLocations')
+        sealed_group.accessRule = lambda game: game.hasKeyItem(ItemID.PENDANT)
+
+        removed_sealed_tids = (
+            TID.BANGOR_DOME_SEAL_1, TID.BANGOR_DOME_SEAL_2,
+            TID.BANGOR_DOME_SEAL_3, TID.TRANN_DOME_SEAL_1,
+            TID.TRANN_DOME_SEAL_2, TID.ARRIS_DOME_SEAL_1,
+            TID.ARRIS_DOME_SEAL_2, TID.ARRIS_DOME_SEAL_3,
+            TID.ARRIS_DOME_SEAL_4
+        )
+        sealed_group.removeLocationTIDs(removed_sealed_tids)
+
+        # Only gate key gives Woe access in LoC
+        woe_group = self.getLocationGroup('Darkages')
+        woe_group.accessRule = lambda game: game.hasKeyItem(ItemID.GATE_KEY)
 
 
 class LegacyOfCyrusGameConfig(NormalGameConfig):
@@ -1061,64 +1130,93 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
         for item in removed_items:
             self.keyItemList.remove(item)
 
-        # Note that locations are configured before key items, so this is
-        # OK to do.
-        num_locs = 0
-        locs = self.getLocations()
-        for loc in locs:
-            num_locs += len(loc.locations)
-
-        num_items = len(self.keyItemList)
-
-        needed_items = num_locs - num_items
-
-        '''
-        print('Unavailable Char', unavail_char)
-        print('KI:', num_items)
-        for x in self.keyItemList:
-            print(x)
-
-        print('Locs:', num_locs)
-        for loc_grp in self.getLocations():
-            for spot in loc_grp.locations:
-                print(spot.getName())
-
-        print('Needed Items:', needed_items)
-        input()
-        '''
-
-        if needed_items < 0:
-            raise ValueError('Needed Items is negative (LoC)')
-
-        replacement_pool = [
-            ItemID.PRISMSPECS, ItemID.RAINBOW, ItemID.CRISIS_ARM,
-            ItemID.TABAN_SUIT, ItemID.PRISMDRESS, ItemID.HASTE_HELM,
-            ItemID.GLOOM_HELM,
-        ]
-
-        replacements = random.sample(replacement_pool, needed_items)
-        self.keyItemList.extend(replacements)
-
     def initLocations(self):
-        NormalGameConfig.initLocations(self)
+        # We actually need to mostly redo this whole thing to implement the
+        # LoC-specific item distributions.
 
-        removed_names = ['FutureOpen', 'MelchiorRefinements']
+        good_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.GOOD_GEAR))
+        )
+
+        high_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.HIGH_GEAR))
+        )
+
+        awesome_dist = td.TreasureDist(
+            (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
+        )
 
         unavail_char = \
             self.config.char_assign_dict[RecruitID.PROTO_DOME].held_char
-        if unavail_char == Characters.ROBO:
-            removed_names.append('Fionashrine')
-        elif unavail_char == Characters.MARLE:
-            removed_names.append('GuardiaTreasury')
 
-        # Remove Future Locations
-        removed_ind = (
-            self.locationGroups.index(x) for x in self.locationGroups
-            if x.name in removed_names
+        prehistoryLocations = LocationGroup(
+            "PrehistoryReptite", 1, lambda game: game.canAccessPrehistory()
         )
+        (
+            prehistoryLocations
+            .addLocation(BaselineLocation(TID.REPTITE_LAIR_KEY, awesome_dist))
+        )
+        self.locationGroups.append(prehistoryLocations)
 
-        for ind in sorted(removed_ind, reverse=True):
-            del(self.locationGroups[ind])
+        darkagesLocations = \
+            LocationGroup("Darkages", 1, lambda game: game.canAccessMtWoe())
+        (
+            darkagesLocations
+            .addLocation(BaselineLocation(TID.MT_WOE_KEY, awesome_dist))
+        )
+        self.locationGroups.append(darkagesLocations)
+
+        openKeys = LocationGroup(
+            "OpenKeys", 5, lambda game: True, lambda weight: weight-1
+        )
+        (
+            openKeys
+            .addLocation(BaselineLocation(TID.ZENAN_BRIDGE_KEY, good_dist))
+            .addLocation(BaselineLocation(TID.SNAIL_STOP_KEY, good_dist))
+            .addLocation(BaselineLocation(TID.LAZY_CARPENTER, high_dist))
+            .addLocation(BaselineLocation(TID.TABAN_KEY, high_dist))
+            .addLocation(BaselineLocation(TID.DENADORO_MTS_KEY, high_dist))
+        )
+        self.locationGroups.append(openKeys)
+
+        frogsBurrowLocation = LocationGroup(
+            "FrogsBurrowLocation", 1, lambda game: game.canAccessBurrowItem()
+        )
+        (
+            frogsBurrowLocation
+            .addLocation(BaselineLocation(TID.FROGS_BURROW_LEFT, good_dist))
+        )
+        self.locationGroups.append(frogsBurrowLocation)
+
+        if unavail_char != Characters.MARLE:
+            guardiaTreasuryLocations = LocationGroup(
+                "GuardiaTreasury", 1, lambda game: game.canAccessKingsTrial()
+            )
+            (
+                guardiaTreasuryLocations
+                .addLocation(BaselineLocation(TID.KINGS_TRIAL_KEY,
+                                              awesome_dist))
+            )
+            self.locationGroups.append(guardiaTreasuryLocations)
+
+        giantsClawLocations = LocationGroup(
+            "Giantsclaw", 1, lambda game: game.canAccessGiantsClaw()
+        )
+        (
+            giantsClawLocations
+            .addLocation(BaselineLocation(TID.GIANTS_CLAW_KEY, awesome_dist))
+        )
+        self.locationGroups.append(giantsClawLocations)
+
+        if unavail_char != Characters.ROBO:
+            fionaShrineLocations = LocationGroup(
+                "Fionashrine", 1, lambda game: game.canAccessFionasShrine()
+            )
+            (
+                fionaShrineLocations
+                .addLocation(BaselineLocation(TID.FIONA_KEY, awesome_dist))
+            )
+            self.locationGroups.append(fionaShrineLocations)
 
 
 class IceAgeGameConfig(NormalGameConfig):
@@ -1131,7 +1229,8 @@ class IceAgeGameConfig(NormalGameConfig):
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
 
-        # Remove other go-mode items and replace them with good loot
+        # Remove other go-mode items.  These will be replaced with gear as
+        # they would be in Chronosanity modes
         removed_items = [
             ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
         ]
@@ -1139,20 +1238,12 @@ class IceAgeGameConfig(NormalGameConfig):
         for item in removed_items:
             self.keyItemList.remove(item)
 
-        replacement_pool = [
-            ItemID.PRISMSPECS, ItemID.RAINBOW, ItemID.CRISIS_ARM,
-            ItemID.TABAN_SUIT, ItemID.PRISMDRESS, ItemID.HASTE_HELM
-        ]
-
-        replacements = random.sample(replacement_pool, len(removed_items))
-        self.keyItemList.extend(replacements)
-
     def initLocations(self):
         NormalGameConfig.initLocations(self)
 
-        # Make the logic changes
-
-        #
+        # The only change needed is that Woe will not be accessible except
+        # when dreamstone, ayla, and dactyl char are present.  We keep the
+        # group around because a (dud) key item still gets placed there.
         woe_group = next(
             x for x in self.locationGroups if x.name == 'Darkages'
         )
@@ -1167,6 +1258,27 @@ class IceAgeGameConfig(NormalGameConfig):
         woe_group.accessRule = has_go_mode
 
 
+class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
+
+    def initKeyItems(self):
+        ChronosanityGameConfig.initKeyItems(self)
+
+        # Remove other go-mode items.  These will be replaced with gear as
+        # they would be in Chronosanity modes
+        removed_items = [
+            ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
+        ]
+
+        for item in removed_items:
+            self.keyItemList.remove(item)
+
+    def initLocations(self):
+        ChronosanityGameConfig.initLocations(self)
+
+        # For Chronosanity, just remove the Woe group.
+        self.locationGroups.remove(self.getLocationGroup('Darkages'))
+
+
 #
 # Get a GameConfig object based on randomizer flags.
 # The GameConfig object will have have the correct locations,
@@ -1178,25 +1290,37 @@ class IceAgeGameConfig(NormalGameConfig):
 # return: A GameConfig object appropriate for the given flag set
 #
 def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
-    gameConfig = None
+    # Maybe each game mode needs to supply its own logic setup function.
+    # Why should this file need to be aware of every possible game mode?
 
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
+    standard = rset.GameMode.STANDARD == settings.game_mode
     lostWorlds = rset.GameMode.LOST_WORLDS == settings.game_mode
     iceAge = rset.GameMode.ICE_AGE == settings.game_mode
     legacyofcyrus = rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
 
-    if chronosanity and lostWorlds:
-        gameConfig = ChronosanityLostWorldsGameConfig(settings, config)
-    elif chronosanity:
-        gameConfig = ChronosanityGameConfig(settings, config)
-    elif lostWorlds:
-        gameConfig = LostWorldsGameConfig(settings, config)
-    elif iceAge:
-        gameConfig = IceAgeGameConfig(settings, config)
-    elif legacyofcyrus:
-        gameConfig = LegacyOfCyrusGameConfig(settings, config)
+    if chronosanity:
+        if lostWorlds:
+            CfgType = ChronosanityLostWorldsGameConfig
+        elif legacyofcyrus:
+            CfgType = ChronosanityLegacyOfCyrusGameConfig
+        elif iceAge:
+            CfgType = ChronosanityIceAgeGameConfig
+        elif standard:
+            CfgType = ChronosanityGameConfig
+        else:
+            raise ValueError('Invalid Game Mode')
     else:
-        gameConfig = NormalGameConfig(settings, config)
+        if lostWorlds:
+            CfgType = LostWorldsGameConfig
+        elif legacyofcyrus:
+            CfgType = LegacyOfCyrusGameConfig
+        elif iceAge:
+            CfgType = IceAgeGameConfig
+        elif standard:
+            CfgType = NormalGameConfig
+        else:
+            raise ValueError('Invalid Game Mode')
 
-    return gameConfig
+    return CfgType(settings, config)
 # end getGameConfig

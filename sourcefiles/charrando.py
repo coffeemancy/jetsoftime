@@ -1,11 +1,10 @@
 import copy
-import techrandomizer
 import random
 
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
     update_ptrs, to_rom_ptr
-from ctenums import CharID, RecruitID, LocID
+from ctenums import CharID, RecruitID, LocID, ItemID
 import ctevent
 from ctrom import CTRom
 import freespace
@@ -15,6 +14,11 @@ import scriptextend as scripts
 
 import randoconfig as cfg
 import randosettings as rset
+
+
+def write_config(settings: rset.Settings, config: cfg.RandoConfig):
+    write_pcs_to_config(settings, config)
+    write_items_to_config(settings, config)
 
 
 # This needs to be called BEFORE assigning key items
@@ -90,6 +94,23 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
     config.techdb = get_reassign_techdb(config.techdb,
                                         choices,
                                         dup_duals)
+
+
+# Needs valid reassignment in config.
+def write_items_to_config(settings: rset.Settings,
+                          config: cfg.RandoConfig):
+    reassign = [config.char_manager.pcs[x].assigned_char
+                for x in list(CharID)]
+
+    items_to_reassign = (item_id for item_id in list(ItemID)
+                         if item_id < 0xBC)
+    for item_id in items_to_reassign:
+        item = config.itemdb[item_id]
+        equippable_by = item.secondary_stats.get_equipable_by()
+        equippable_by = [x for x in CharID
+                         if reassign[x] in equippable_by]
+
+        item.secondary_stats.set_equipable_by(equippable_by)
 
 
 # TODO: Revisit this now that I've done a better job in ctstring.py
@@ -419,9 +440,9 @@ def max_expand_empty_db(orig_db, reassign, dup_duals=False):
 
 # change_items changes the usability of each weapon/armor/acc to match the
 # character assignment
-def change_items(from_ind, to_ind, rom,
-                 item_dat, item_start,
-                 acc_dat, acc_start):
+def change_items_bad(from_ind, to_ind, rom,
+                     item_dat, item_start,
+                     acc_dat, acc_start):
     # print("Putting %d's usability into %d's" % (from_ind, to_ind))
     num_items = len(item_dat)//6
 
@@ -1284,8 +1305,6 @@ def reassign_pc_magic(from_ind, to_ind, rom, db, magic_thresh):
     # The script update is in cr_telepod_exhibit.flux and should already be
     # applied when this option is selected
 
-    # I imagine there's a different patch needed for lost worlds?
-
 
 def get_reassign_techdb(orig_db, reassign, dup_duals=False):
     # Make a db with the right menu/battle groups but no techs added yet
@@ -2006,19 +2025,6 @@ def reassign_graphics(rom, anim_new_start, unk_new_start, reassign):
     # $9F25 range.  This is where I will strike.
 
 
-def reassign_items(rom, reassign):
-
-    item_dat = rom[0x0C06A4:0x0C0A1C]
-    item_start = 0x0C06A4
-    acc_dat = rom[0x0C0A1C:0x0C0ABC]
-    acc_start = 0x0C0A1C
-
-    for i in range(7):
-        change_items(reassign[i], i, rom,
-                     item_dat, item_start,
-                     acc_dat, acc_start)
-
-
 # The game limits you to 0x7F techs.  As far as I can tell, the only
 # real issue is when building the battle menu.  The game wants to test if
 # a value is 0xFF but instead checks if a value is negative so it catches
@@ -2187,59 +2193,8 @@ def reassign_characters_on_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     fix_ayla_fist(rom, reassign)
     space_man.mark_block((0x4F1100, 0x4F1140), mark_used)
 
-    reassign_items(rom, reassign)
-
     # Write everything back to the ctrom
     ctrom.rom_data.seek(0)
     ctrom.rom_data.write(rom, no_mark)
 
     fix_kings_trial_anim(ctrom, config)
-
-
-# Do everything to apply the reassignment list to the rom
-# Assume db is created from get_reassign_techdb with the provided reassign list
-def reassign_characters(rom, reassign, dup_duals,
-                        tech_rando_type, lost_worlds):
-
-    # print(reassign)
-
-    # Technically we can do this regardless...Maybe when we're sure it works!
-    if dup_duals:
-        scripts.script_extend(rom, 0x5F8100, 0x5F8200)
-        scripts.add_dup_dual_scripts(rom, 0x5F8100, 0x5F8200, 0x5F8400)
-
-    orig_db = TechDB.get_default_db(rom)
-
-    new_db = get_reassign_techdb(orig_db, reassign, dup_duals)
-
-    reassign_tech_refs(rom, new_db, reassign)
-    reassign_magic(rom, new_db, reassign)
-
-    reassign_graphics(rom, 0x5F7000, 0x5F7200, reassign)
-    fix_menu_graphics(rom, reassign)
-
-    reassign_stats(rom, reassign)
-    fix_ayla_fist(rom, reassign)
-
-    reassign_items(rom, reassign)
-
-    if tech_rando_type == "Fully Random":
-        techrandomizer.randomize_single_techs_uniform(new_db)
-    elif tech_rando_type == "Balanced Random":
-        techrandomizer.randomize_single_techs_balanced(new_db)
-
-    # Nuke the old db to make sure we're using only newly written data
-    TechDB.write_db_ff_internal(orig_db, rom)
-
-    TechDB.write_db_internal(new_db, rom)
-
-    # Script things here for now.  Consolidate later.
-
-    # In King's Trial (Loc 0x1B6, Loc Event 0x60) Marle does animation A8
-    # I believe this kiss animation is only held by girls.  We're going to
-    # change it to something else for non-Marle in spot 1.
-
-    if reassign[1] != 1:
-        rom[0x36F1F2] = 0x1A  # Should be laughing now
-
-    # Probably need one for Frog cutting the mountain

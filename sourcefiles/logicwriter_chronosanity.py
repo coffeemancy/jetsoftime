@@ -6,8 +6,8 @@ import random as rand
 # jets of time libraries
 import logicfactory
 import logictypes
-import treasuredata
 
+import ctenums
 import randoconfig as cfg
 import randosettings as rset
 
@@ -263,6 +263,7 @@ def commitKeyItems(settings: rset.Settings,
     for location in chosenLocations:
         location.writeKeyItem(config)
 
+    additional_locs = []
     # Go through any baseline locations not assigned an item and place a
     # piece of treasure. Treasure quality is based on the location's loot tier.
     for locationGroup in locationGroups:
@@ -271,15 +272,15 @@ def commitKeyItems(settings: rset.Settings,
                (location not in chosenLocations):
 
                 # This is a baseline location without a key item.
-                # Assign a piece of treasure.
-                dist = \
-                    treasuredata.get_treasure_distribution(settings,
-                                                           location.lootTier)
+                # Assign a piece of treasure if it has none.
+                if location.getKeyItem() in (ctenums.ItemID.NONE,
+                                             ctenums.ItemID.MOP):
+                    location.writeRandomItem(config)
 
-                treasureCode = dist.get_random_item()
-                location.writeTreasure(treasureCode, config)
+                # Always list the BaselineLocations for spoiler purposes
+                additional_locs.append(location)
 
-    config.key_item_locations = chosenLocations
+    config.key_item_locations = chosenLocations + additional_locs
     # writeSpoilerLog(chosenLocations, charLocations)
 
 
