@@ -246,7 +246,7 @@ class Settings:
 
         self.mystery_settings = MysterySettings()
 
-        self.gameflags = GameFlags.FIX_GLITCH
+        self.gameflags = GameFlags(0)
         self.char_choices = [[i for i in range(7)] for j in range(7)]
 
         BossID = ctenums.BossID
@@ -258,14 +258,12 @@ class Settings:
                       BossID.GUARDIAN]
 
         loc_list = ctenums.LocID.get_boss_locations()
-        # loc_list.remove(LocID.SUN_PALACE)
-        # loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
         self.ro_settings = ROSettings(loc_list, boss_list, False)
         self.bucket_settings = BucketSettings(30, 20)
 
         self.tab_settings = TabSettings()
-        self.cosmetic_flags = CosmeticFlags(False)
+        self.cosmetic_flags = CosmeticFlags(0)
         self.seed = ''
 
     def get_race_presets():
