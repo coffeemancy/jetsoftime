@@ -382,9 +382,14 @@ class Settings:
         else:
             # Now we have difficulty for enemies and items separated, but to
             # match the old flag string, just use enemy difficulty.
+            # This won't match for easy, since there's no easy enemy difficulty.
             flag_string = ''
             flag_string += (game_mode_dict[self.game_mode] + '.')
             flag_string += diff_str_dict[self.enemy_difficulty]
+
+            # Add the item difficulty if it differs (old 'e' will end up as 'ne')
+            if self.item_difficulty != self.enemy_difficulty:
+                flag_string += diff_str_dict[self.item_difficulty]
 
             for flag in flag_str_dict:
                 if flag in self.gameflags:
