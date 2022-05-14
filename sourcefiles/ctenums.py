@@ -231,6 +231,7 @@ class LocID(StrIntEnum):
     CREDITS_4 = 0x5E
     BLACK_OMEN_ZEAL = 0x1C3
     LAVOS_2 = 0x1DB
+    GENO_DOME_CONVEYOR = 0x7E
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
