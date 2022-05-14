@@ -79,6 +79,11 @@ class CharManager:
         self.xp_thresh_start = xp_thresh_start
         self.tp_thresh_start = tp_thresh_start
 
+        self.xp_thresh = [0 for i in range(100)]
+        for i in range(100):
+            st = self.xp_thresh_start + 2*i
+            self.xp_thresh[i] = int.from_bytes(rom[st:st+2], 'little')
+
         self.pcs = [
             PlayerChar(
                 rom, ctenums.CharID(i), self.stat_start, self.hp_growth_start,
@@ -87,6 +92,11 @@ class CharManager:
             ) for i in range(7)]
 
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom):
+
+        ct_rom.rom_data.seek(self.xp_thresh_start)
+        for x in self.xp_thresh:
+            ct_rom.rom_data.write(x.to_bytes(2, 'little'))
+
         for pc in self.pcs:
             pc.write_stats_to_ctrom(ct_rom)
 
