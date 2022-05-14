@@ -27,6 +27,7 @@ class GameMode(StrIntEnum):
     LOST_WORLDS = auto()
     ICE_AGE = auto()
     LEGACY_OF_CYRUS = auto()
+    VANILLA_RANDO = auto()
 
 
 class Difficulty(StrIntEnum):
@@ -353,7 +354,8 @@ class Settings:
             GameMode.STANDARD: 'st',
             GameMode.LOST_WORLDS: 'lw',
             GameMode.ICE_AGE: 'ia',
-            GameMode.LEGACY_OF_CYRUS: 'loc'
+            GameMode.LEGACY_OF_CYRUS: 'loc',
+            GameMode.VANILLA_RANDO: 'van'
         }
 
         flag_str_dict = {
