@@ -142,7 +142,6 @@ _high_boosts = (
 
 
 def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
-
     # Potentially change depending on item difficulty
     Dist = treasuredata.TreasureDist
     ret_dist = dict()
@@ -732,3 +731,40 @@ def randomize_accessories(settings: rset.Settings,
         item.name = ctstrings.CTNameString.from_string(
             '{acc}HasteSpecs'
         )
+
+    if settings.game_mode == rset.GameMode.VANILLA_RANDO:
+        medal_buff_dist = {
+            (T5.GREENDREAM): 10,
+            (
+                T6.PROT_STOP, T6.PROT_BLIND, T6.PROT_CHAOS, T6.PROT_LOCK,
+                T6.PROT_POISON, T6.PROT_SLEEP, T6.PROT_SLOW, T6.PROT_HPDOWN
+            ): 10,
+            (T8.HASTE): 2,
+            (T9.BARRIER): 10,
+            (T9.SHIELD): 10,
+            (T9.BARRIER, T9.SHIELD): 5,
+            (T9.SHADES): 5,
+            (T9.SPECS): 2
+        }
+
+        medal_boosts = (_BID.SPEED_3, _BID.SPEED_2, _BID.POWER_STAMINA_10,
+                        _BID.MDEF_15)
+
+        medal = config.itemdb[IID.HERO_MEDAL]
+        medal_bonus = random.random()
+        if medal_bonus < 0.45:
+            medal.stats.has_stat_boost = True
+            medal.stats.has_battle_buff = False
+            medal.stats.stat_boost_index = random.choice(medal_boosts)
+            append_to_item_name(medal, '+')
+        elif medal_bonus < 0.9:
+            medal.stats.has_battle_buff = True
+            medal.stats.has_stat_boost = False
+            buffs = list(medal_buff_dist.keys())
+            weights = (medal_buff_dist[buff] for buff in buffs)
+            battle_buffs = random.choices(
+                buffs, weights=weights, k=1
+            )[0]
+
+            medal.stats.battle_buffs = battle_buffs
+            append_to_item_name(medal, '+')
