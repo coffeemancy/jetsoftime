@@ -914,6 +914,14 @@ class Item:
         self.name = bytearray(name_bytes)
         self.desc = bytearray(desc_bytes)
 
+    def __eq__(self, other):
+        return (
+            self.stats == other.stats and
+            self.secondary_stats == other.secondary_stats and
+            self.name == other.name and
+            self.desc == other.desc
+        )
+
     def is_armor(self):
         return isinstance(self.stats, ArmorStats)
 
