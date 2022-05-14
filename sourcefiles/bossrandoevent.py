@@ -646,6 +646,15 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
     # Really, 0x10 should just be removed from the start.
     script.remove_object(0x10)
 
+    pos, _ = script.find_command([0x96],
+                                 script.get_function_start(0x0B, 4))
+    script.data[pos+2] = 0x1F
+    pos +=3
+    cmd = EC.set_object_coordinates(0x100, 0x1FF, False)
+
+    script.delete_commands(pos, 1)
+    script.insert_commands(cmd.to_bytearray(), pos)
+
     boss_objs = [0xB, 0xC, 0xD, 0xE, 0xF]
     num_used = min(len(boss.ids), len(boss_objs))
 
@@ -661,12 +670,13 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
         new_y = first_y + boss.disps[i][1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[i], new_x, new_y, True)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y, True,
+                               shift=False)
 
         if i == 0:
             # SoS is weird about the first part moving before the rest are
             # visible.  So the rest will pop in relative to these coords
-            first_x, first_y = 0x100, 0x200
+            first_x, first_y = 0x100, 0x1FF
 
     # Remove unused boss objects.  In reverse order of course.
     for i in range(len(boss_objs), len(boss.ids), -1):
@@ -684,14 +694,15 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
         # The coordinate setting is in init
-        set_object_coordinates(script, obj_id, new_x, new_y, True)
+        set_object_coordinates(script, obj_id, new_x, new_y, True,
+                               shift=False)
 
         # mimic call of other objects
         call = EF()
         if i == len(boss.ids)-1:
-            call.add(EC.call_obj_function(obj_id, 1, FuncSync.SYNC))
+            call.add(EC.call_obj_function(obj_id, 1, 1, FuncSync.SYNC))
         else:
-            call.add(EC.call_obj_function(obj_id, 1, FuncSync.HALT))
+            call.add(EC.call_obj_function(obj_id, 1, 1, FuncSync.HALT))
 
         call.add(EC.generic_one_arg(0xAD, 0x01))
         calls.extend(call.get_bytearray())
@@ -707,7 +718,8 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
         print("Error: Couldn't find insertion point (SoS)")
         exit()
     else:
-        pos -= (len(ins_cmd) + 2)  # +2 for the pause command prior
+        # pos -= (len(ins_cmd) + 2)  # +2 for the pause command prior
+        pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -1183,8 +1195,9 @@ def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
                 script.data[pos:pos+len(new_coord_cmd)] = \
                     new_coord_cmd.to_bytearray()
             else:
+                script.insert_commands(new_coord_cmd.to_bytearray(),
+                                       pos+len(cmd))
                 script.delete_commands(pos, 1)
-                script.insert_commands(new_coord_cmd.to_bytearray(), pos)
 
             break
 
@@ -1828,6 +1841,9 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         
         # Update rewards to match original boss
         # TODO: This got too big.  Break into own function?
+        # orig_id = default_assignment[location]
+        # new_id = current_assignment[location]
+        # print(f'{orig_id} --> {new_id}')
         spot_xp = sum(config.enemy_dict[part].xp
                       for part in orig_boss.scheme.ids)
         spot_tp = sum(config.enemy_dict[part].tp
@@ -1867,9 +1883,24 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                 if part_id == part
             )
 
-            scaled_stats[part].xp = round(part_xp/(part_count*boss_xp)*spot_xp)
-            scaled_stats[part].tp = round(part_tp/(part_count*boss_tp)*spot_tp)
-            scaled_stats[part].gp = round(part_gp/(part_count*boss_gp)*spot_gp)
+            if boss_xp == 0:
+                scaled_stats[part].xp = 0
+            else:
+                scaled_stats[part].xp = \
+                    round(part_xp/(part_count*boss_xp)*spot_xp)
+
+            if boss_tp == 0:
+                scaled_stats[part].tp = 0
+            else:
+                scaled_stats[part].tp = \
+                    round(part_tp/(part_count*boss_tp)*spot_tp)
+
+            if boss_gp == 0:
+                scaled_stats[part].gp = 0
+            else:
+                scaled_stats[part].gp = \
+                    round(part_gp/(part_count*boss_gp)*spot_gp)
+
             enemyrewards.set_enemy_charm_drop(
                 scaled_stats[part],
                 spot_reward_group,
