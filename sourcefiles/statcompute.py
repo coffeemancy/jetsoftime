@@ -220,9 +220,10 @@ class PCStats:
             get_value_from_bytes(self.stat_block[off:off+size])
 
         if self.xp_next != self.xp_thresh[self.level]:
-            print('Warning. xp_thresh does not match stat block')
-            print(f"Level: {self.level}")
-            print(f"{self.xp_next}, {self.xp_thresh[self.level]}")
+            # print('Warning. xp_thresh does not match stat block')
+            # print(f"Level: {self.level}")
+            # print(f"{self.xp_next}, {self.xp_thresh[self.level]}")
+            pass
 
         self.tp_next = \
             get_value_from_bytes(self.stat_block[0x2D:0x2D+2])
