@@ -1279,6 +1279,59 @@ class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
         self.locationGroups.remove(self.getLocationGroup('Darkages'))
 
 
+# Note: Accessing MtWoe is the same as accessing EoT in current logic.
+#       This means you can grind for levels if you really need it.
+def _canAccessGiantsClawVR(game: Game):
+    return (
+        game.hasKeyItem(ItemID.TOMAS_POP) and
+        game.canAccessMtWoe()
+    )
+
+def _canAccessKingsTrialVR(game: Game):
+    return (
+        game.hasCharacter(Characters.MARLE) and
+        game.hasKeyItem(ItemID.PRISMSHARD) and
+        game.canAccessMtWoe()
+    )
+
+def _canAccessFionasShrineVR(game: Game):
+    return (
+        game.hasCharacter(Characters.ROBO) and
+        game.canAccessMtWoe()
+    )
+
+
+class VanillaRandoGameConfig(NormalGameConfig):
+
+    def initLocations(self):
+        NormalGameConfig.initLocations(self)
+
+        # Gate the endgame quests behind EOT (Mt. Woe) access.
+        giants_claw = self.getLocationGroup('Giantsclaw')
+        giants_claw.accessRule = _canAccessGiantsClawVR
+
+        kings_trial = self.getLocationGroup('GuardiaTreasury')
+        kings_trial.accessRule = _canAccessKingsTrialVR
+
+        fiona_shrine = self.getLocationGroup('Fionashrine')
+        fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+
+class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
+
+    def initLocations(self):
+        ChronosanityGameConfig.initLocations(self)
+
+        giants_claw = self.getLocationGroup('Giantsclaw')
+        giants_claw.accessRule = _canAccessGiantsClawVR
+
+        kings_trial = self.getLocationGroup('GuardiaTreasury')
+        kings_trial.accessRule = _canAccessKingsTrialVR
+
+        fiona_shrine = self.getLocationGroup('Fionashrine')
+        fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+
 #
 # Get a GameConfig object based on randomizer flags.
 # The GameConfig object will have have the correct locations,
@@ -1298,7 +1351,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
     lostWorlds = rset.GameMode.LOST_WORLDS == settings.game_mode
     iceAge = rset.GameMode.ICE_AGE == settings.game_mode
     legacyofcyrus = rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
-
+    vanilla = rset.GameMode.VANILLA_RANDO == settings.game_mode
+    
     if chronosanity:
         if lostWorlds:
             CfgType = ChronosanityLostWorldsGameConfig
@@ -1306,6 +1360,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
             CfgType = ChronosanityLegacyOfCyrusGameConfig
         elif iceAge:
             CfgType = ChronosanityIceAgeGameConfig
+        elif vanilla:
+            CfgType = ChronosanityVanillaRandoGameConfig
         elif standard:
             CfgType = ChronosanityGameConfig
         else:
@@ -1317,6 +1373,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
             CfgType = LegacyOfCyrusGameConfig
         elif iceAge:
             CfgType = IceAgeGameConfig
+        elif vanilla:
+            CfgType = VanillaRandoGameConfig
         elif standard:
             CfgType = NormalGameConfig
         else:
