@@ -271,12 +271,11 @@ class Game:
     def canAccessSealedChests(self):
         # With 3.1.1. logic change, canAccessDarkAges isn't correct for
         # checking sealed chest access.  Instead check for actual go modes.
-
         return (
-            (self.hasKeyItem(ItemID.PENDANT) and
+            self.hasKeyItem(ItemID.PENDANT) and
              (self.earlyPendant or
-              self.canAccessTyranoLair or
-              self.canAccessMagusCastle)
+              self.canAccessTyranoLair() or
+              self.canAccessMagusCastle())
         )
 
     def canAccessBurrowItem(self):
