@@ -1301,6 +1301,10 @@ def _canAccessFionasShrineVR(game: Game):
     )
 
 
+_bekkler_dist = td.TreasureDist(
+    (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
+)
+
 class VanillaRandoGameConfig(NormalGameConfig):
 
     def initLocations(self):
@@ -1316,6 +1320,16 @@ class VanillaRandoGameConfig(NormalGameConfig):
         fiona_shrine = self.getLocationGroup('Fionashrine')
         fiona_shrine.accessRule = _canAccessFionasShrineVR
 
+        bekklerKey = LocationGroup(
+            "BekklersLab", 1,
+            lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
+        )
+        bekklerKey.addLocation(
+            BaselineLocation(TID.BEKKLER_KEY, _bekkler_dist)
+        )
+
+        self.locationGroups.append(bekklerKey)
+
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
@@ -1330,6 +1344,16 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
         fiona_shrine = self.getLocationGroup('Fionashrine')
         fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+        bekklerKey = LocationGroup(
+            "BekklersLab", 2,
+            lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
+        )
+        bekklerKey.addLocation(
+            BaselineLocation(TID.BEKKLER_KEY, _bekkler_dist)
+        )
+
+        self.locationGroups.append(bekklerKey)
 
 
 #
