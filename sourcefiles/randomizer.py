@@ -602,6 +602,7 @@ class Randomizer:
         dup_chars = rset.GameFlags.DUPLICATE_CHARS in flags
         locked_chars = rset.GameFlags.LOCKED_CHARS in flags
         lost_worlds = rset.GameMode.LOST_WORLDS == mode
+        vanilla = rset.GameMode.VANILLA_RANDO == mode
 
         if dup_chars and not lost_worlds:
             # Lets Spekkio give magic properly to duplicates
@@ -623,6 +624,9 @@ class Randomizer:
             lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
+
+        if vanilla:
+            vanillarando.restore_scripts(self.out_rom)
 
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
@@ -660,7 +664,6 @@ class Randomizer:
             legacyofcyrus.write_loc_dungeon_locks(self.out_rom)
             legacyofcyrus.set_ending_after_ozzies_fort(self.out_rom)
         elif mode == rset.GameMode.VANILLA_RANDO:
-            vanillarando.restore_scripts(self.out_rom)
             vanillarando.restore_sos(self.out_rom, self.config)
 
         self.out_rom.write_all_scripts_to_rom()
