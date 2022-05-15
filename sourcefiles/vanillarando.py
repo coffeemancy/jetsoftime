@@ -11,14 +11,60 @@ def restore_scripts(ct_rom: ctrom.CTRom):
         './flux/orig_07E_geno_conveyor.Flux'
     )
     ct_rom.script_manager.set_script(script, ctenums.LocID.GENO_DOME_CONVEYOR)
+    add_vanilla_clone_check_scripts(ct_rom)
 
-    script = ctrom.ctevent.Event.from_flux(
-        './flux/VR_0E6_RSeries.Flux'
+
+class BekklerTreasure(cfg.ScriptTreasure):
+    def __init__(self,
+                 location: ctenums.LocID,
+                 object_id: int, function_id: int,
+                 held_item: ctenums.ItemID = ctenums.ItemID.MOP,
+                 item_num=0,
+                 bekkler_location: ctenums.LocID = ctenums.LocID.BEKKLERS_LAB,
+                 bekkler_object_id: int = 0x0B,
+                 bekkler_function_id: int = 0x01):
+        cfg.ScriptTreasure.__init__(
+            self, location, object_id, function_id, held_item, item_num
+        )
+
+        self.bekkler_location = bekkler_location
+        self.bekkler_object_id = bekkler_object_id
+        self.bekkler_function_id = bekkler_function_id
+
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        cfg.ScriptTreasure.write_to_ctrom(self, ct_rom)
+        self.write_bekkler_name_to_ct_rom(ct_rom)
+
+    def write_bekkler_name_to_ct_rom(self, ct_rom: ctrom.CTRom):
+        script = ct_rom.script_manager.get_script(self.bekkler_location)
+
+        st = script.get_function_start(self.bekkler_object_id,
+                                       self.bekkler_function_id)
+        end = script.get_function_end(self.bekkler_object_id,
+                                      self.bekkler_function_id)
+
+        pos, _ = script.find_command([0x4F], st, end)
+        script.data[pos+1] = int(self.held_item)
+
+
+def add_vanilla_clone_check_to_config(config: cfg.RandoConfig):
+
+    bekkler_check = BekklerTreasure(
+        ctenums.LocID.CRONOS_ROOM, 0x13, 1, ctenums.ItemID.MOP, 0,
+        ctenums.LocID.BEKKLERS_LAB, 0xB, 1
     )
-    ct_rom.script_manager.set_script(
-        script,
-        ctenums.LocID.FACTORY_RUINS_SECURITY_CENTER
-    )
+
+    config.treasure_assign_dict[ctenums.TreasureID.BEKKLER_KEY] = \
+        bekkler_check
+
+
+def add_vanilla_clone_check_scripts(ct_rom: ctrom.CTRom):
+    script = ctrom.ctevent.Event.from_flux('./flux/VR_002_Crono_Room.Flux')
+    ct_rom.script_manager.set_script(script, ctenums.LocID.CRONOS_ROOM)
+
+    script = ctrom.ctevent.Event.from_flux('./flux/VR_1B2_Bekkler_Lab.Flux')
+    ct_rom.script_manager.set_script(script, ctenums.LocID.BEKKLERS_LAB)
+
 
 def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
     
@@ -27,8 +73,7 @@ def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
         config.boss_data_dict[ctenums.BossID.SON_OF_SUN].scheme
     )
     ct_rom.script_manager.write_script_to_rom(ctenums.LocID.SUN_PALACE)
-        
-    
+
 
 def fix_item_data(config: cfg.RandoConfig):
     # Fix prices for normally unsellable things
@@ -65,13 +110,6 @@ def fix_item_data(config: cfg.RandoConfig):
     item_db[IID.POWER_SEAL].price = 25000
 
     # Make things sellable
-
-    #
-    
-    
-    
-    
-    pass
 
 
 def get_tyrano_nuke_dict():
@@ -255,3 +293,4 @@ def fix_config(config: cfg.RandoConfig):
     fix_required_tp(config)
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
+    add_vanilla_clone_check_to_config(config)
