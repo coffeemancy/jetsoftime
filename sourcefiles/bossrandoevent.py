@@ -2082,57 +2082,60 @@ def get_black_tyrano_element(config: cfg.RandoConfig) -> Element:
 # Black Tyrano gets random hp and a random element (ctenums.Element)
 def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
 
-    # Random hp from 10k to 15k
-    magus_stats = config.enemy_dict[EnemyID.MAGUS]
-    magus_stats.hp = random.randrange(10000, 15001, 1000)
+    if settings.game_mode != rset.GameMode.VANILLA_RANDO:
+    
 
-    if settings.game_mode == rset.GameMode.LEGACY_OF_CYRUS:
-        magus_char = config.char_assign_dict[RecruitID.PROTO_DOME].held_char
-    else:
-        magus_char = random.choice(list(CharID))
+        # Random hp from 10k to 15k
+        magus_stats = config.enemy_dict[EnemyID.MAGUS]
+        magus_stats.hp = random.randrange(10000, 15001, 1000)
 
-    magus_nukes = {
-        CharID.CRONO: 0xBB,  # Luminaire
-        CharID.MARLE: 0x52,  # Hexagon Mist
-        CharID.LUCCA: 0xA9,  # Flare
-        CharID.ROBO: 0xBB,   # Luminaire
-        CharID.FROG: 0x52,   # Hexagon Mist
-        CharID.AYLA: 0x8E,   # Energy Release
-        CharID.MAGUS: 0x6B   # Dark Matter
-    }
+        if settings.game_mode == rset.GameMode.LEGACY_OF_CYRUS:
+            magus_char = config.char_assign_dict[RecruitID.PROTO_DOME].held_char
+        else:
+            magus_char = random.choice(list(CharID))
 
-    nuke_strs = {
-        CharID.CRONO: 'Luminaire / Crono\'s strongest attack!',
-        CharID.MARLE: 'Hexagon Mist /Marle\'s strongest attack!',
-        CharID.LUCCA: 'Flare / Lucca\'s strongest attack!',
-        CharID.ROBO: 'Luminaire /Robo\'s strongest attack!',
-        CharID.FROG: 'Hexagon Mist /Frog\'s strongest attack.',
-        CharID.AYLA: 'Energy Flare /Ayla\'s strongest attack!',
-        CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
-    }
+        magus_nukes = {
+            CharID.CRONO: 0xBB,  # Luminaire
+            CharID.MARLE: 0x52,  # Hexagon Mist
+            CharID.LUCCA: 0xA9,  # Flare
+            CharID.ROBO: 0xBB,   # Luminaire
+            CharID.FROG: 0x52,   # Hexagon Mist
+            CharID.AYLA: 0x8E,   # Energy Release
+            CharID.MAGUS: 0x6B   # Dark Matter
+        }
 
-    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
-    magus_usage = magus_ai.tech_usage
+        nuke_strs = {
+            CharID.CRONO: 'Luminaire / Crono\'s strongest attack!',
+            CharID.MARLE: 'Hexagon Mist /Marle\'s strongest attack!',
+            CharID.LUCCA: 'Flare / Lucca\'s strongest attack!',
+            CharID.ROBO: 'Luminaire /Robo\'s strongest attack!',
+            CharID.FROG: 'Hexagon Mist /Frog\'s strongest attack.',
+            CharID.AYLA: 'Energy Flare /Ayla\'s strongest attack!',
+            CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
+        }
 
-    orig_nukes = [x for x in magus_nukes.values()
-                  if x in magus_usage]
+        magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
+        magus_usage = magus_ai.tech_usage
 
-    assert len(orig_nukes) == 1
+        orig_nukes = [x for x in magus_nukes.values()
+                      if x in magus_usage]
 
-    orig_nuke = orig_nukes[0]
-    magus_ai.change_tech_usage(orig_nuke, magus_nukes[magus_char])
-    magus_stats.sprite_data.set_sprite_to_pc(magus_char)
-    magus_stats.name = str(magus_char)
+        assert len(orig_nukes) == 1
 
-    battle_msgs = config.enemy_aidb.battle_msgs
-    battle_msgs.set_msg_from_str(0x23, nuke_strs[magus_char])
+        orig_nuke = orig_nukes[0]
+        magus_ai.change_tech_usage(orig_nuke, magus_nukes[magus_char])
+        magus_stats.sprite_data.set_sprite_to_pc(magus_char)
+        magus_stats.name = str(magus_char)
 
-    config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
-        random.randrange(8000, 13001, 1000)
+        battle_msgs = config.enemy_aidb.battle_msgs
+        battle_msgs.set_msg_from_str(0x23, nuke_strs[magus_char])
 
-    tyrano_element = random.choice(list(Element))
-    set_black_tyrano_element(tyrano_element, config)
-    set_rust_tyrano_element(EnemyID.RUST_TYRANO, tyrano_element, config)
+        config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
+            random.randrange(8000, 13001, 1000)
+
+        tyrano_element = random.choice(list(Element))
+        set_black_tyrano_element(tyrano_element, config)
+        set_rust_tyrano_element(EnemyID.RUST_TYRANO, tyrano_element, config)
 
     # We're going to jam obstacle randomization here
     # Small block to randomize status inflicted by Obstacle/Chaotic Zone
