@@ -273,8 +273,10 @@ class Game:
         # checking sealed chest access.  Instead check for actual go modes.
 
         return (
-            (self.hasKeyItem(ItemID.PENDANT) and self.earlyPendant) or
-            self.canAccessTyranoLair or self.canAccessMagusCastle
+            (self.hasKeyItem(ItemID.PENDANT) and
+             (self.earlyPendant or
+              self.canAccessTyranoLair or
+              self.canAccessMagusCastle)
         )
 
     def canAccessBurrowItem(self):
