@@ -23,6 +23,7 @@ import bucketfragment
 import iceage
 import legacyofcyrus
 import mystery
+import vanillarando
 
 import byteops
 import ctenums
@@ -653,12 +654,14 @@ class Randomizer:
                                              self.config)
             iceage.set_ice_age_dungeon_locks(self.out_rom, self.config)
             iceage.set_ending_after_woe(self.out_rom)
-
-        if mode == rset.GameMode.LEGACY_OF_CYRUS:
+        elif mode == rset.GameMode.LEGACY_OF_CYRUS:
             legacyofcyrus.write_loc_recruit_locks(self.out_rom,
                                                   self.config)
             legacyofcyrus.write_loc_dungeon_locks(self.out_rom)
             legacyofcyrus.set_ending_after_ozzies_fort(self.out_rom)
+        elif mode == rset.GameMode.VANILLA_RANDO:
+            vanillarando.restore_scripts(self.out_rom)
+            vanillarando.restore_sos(self.out_rom, self.config)
 
         self.out_rom.write_all_scripts_to_rom()
         self.has_generated = True
@@ -1122,18 +1125,152 @@ class Randomizer:
         # which can be used instead if this is an issue.  The problem with
         # using those is the need to update them with every patch.
         ctrom = CTRom(ct_vanilla, True)
+        vanilla_ctrom = CTRom(ct_vanilla, True)
         Randomizer.__apply_basic_patches(ctrom)
 
-        # Apply hard mode if it's in the settings.
-        if settings.enemy_difficulty == rset.Difficulty.HARD:
-            ctrom.rom_data.patch_ips_file('./patches/hard.ips')
+        if settings.game_mode == rset.GameMode.VANILLA_RANDO:
+            config = cfg.RandoConfig.get_config_from_rom(ct_vanilla)
+            jets_config = cfg.RandoConfig.get_config_from_rom(
+                ctrom.rom_data.getvalue())
 
-        config = cfg.RandoConfig.get_config_from_rom(
-            bytearray(ctrom.rom_data.getvalue())
-        )
+            IID = ctenums.ItemID
+            # Keeping RoboRibbon stat boost.
+            config.itemdb[IID.ROBORIBBON] = \
+                jets_config.itemdb[IID.ROBORIBBON]
 
-        # Why is Dalton worth so few TP?
-        config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
+            # Just the name here.
+            config.itemdb[IID.MASAMUNE_2] = \
+                jets_config.itemdb[IID.MASAMUNE_2]
+
+            vanillarando.fix_config(config)
+
+        else:
+            # Apply hard mode if it's in the settings.
+            if settings.enemy_difficulty == rset.Difficulty.HARD:
+                ctrom.rom_data.patch_ips_file('./patches/hard.ips')
+
+            config = cfg.RandoConfig.get_config_from_rom(
+                bytearray(ctrom.rom_data.getvalue())
+            )
+
+            # Why is Dalton worth so few TP?
+            config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
+
+            # Give Rusty a few more HP, like avg hp of old boss rando
+            enemy_id = ctenums.EnemyID.RUST_TYRANO
+            rt_stats = config.enemy_dict[enemy_id]
+
+            rt_stats.hp = int(rt_stats.hp * 1.75)
+
+            # Lower the base magic/lvl so that the party is likely to survive
+            # the initial nuke.
+            rt_stats.magic = int(rt_stats.magic * 0.6)
+            rt_stats.level = int(rt_stats.level * 0.6)
+
+            # Fix Falcon Hit to use Spincut as a prerequisite
+            techdb = config.techdb
+            falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
+            falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
+            techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
+
+            # Remove on-hit effects from robo tackle
+            if rset.GameFlags.NO_CRISIS_TACKLE in settings.gameflags:
+                tackle_id = int(ctenums.TechID.ROBO_TACKLE)
+                on_hit_byte = tackle_id*techdb.effect_size + 8
+                techdb.effects[on_hit_byte] = 0
+
+            # Revert antilife to black hole
+            if rset.GameFlags.BLACKHOLE_REWORK in settings.gameflags:
+                TechDB = charrando.TechDB
+                vanilla_db = TechDB.get_default_db(ct_vanilla)
+                black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
+
+                anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
+                anti_life['control'][8] = 0x16  # +Atk for down allies
+                anti_life['effects'][0][9] = 0x25  # 1.5x dark bomb
+                al_eff_id = anti_life['control'][5]
+
+                # A note here that set_tech needs the effects to be set
+                # correctly.
+                # TODO: get_tech needs to be fixed to supply mp values so that
+                #   set_tech can work as it ought.  Really fix the whole
+                #   techdb.
+                byteops.set_record(techdb.effects, anti_life['effects'][0],
+                                   al_eff_id,
+                                   techdb.effect_size)
+
+                black_hole['control'] = anti_life['control']
+                techdb.set_tech(black_hole, ctenums.TechID.ANTI_LIFE)
+
+                techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
+
+                # Note for future (?) Marle changes
+
+            # Statuses have different types.  Haste is type 3, everything else
+            # just about is type 4.
+            # Type 4: berserk, barrier, Mp regen, unk, specs, shield,
+            #         shades, unk
+            # Araise is in another type altogether.
+
+            # Make X-Strike use Spincut+Leapslash
+            # Also buff 3d-attack and triple raid
+            if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
+                techdb = config.techdb
+                x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
+                x_strike['control'][5] = int(ctenums.TechID.SPINCUT)
+                x_strike['control'][6] = int(ctenums.TechID.LEAP_SLASH)
+
+                # Crono's techlevel = 4 (spincut)
+                # Frog's techlevel = 5 (leapslash)
+                x_strike['lrn_req'] = [4, 5, 0xFF]
+
+                x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
+                x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
+                techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
+
+                # 3d-atk
+                three_d_atk = techdb.get_tech(ctenums.TechID.THREE_D_ATTACK)
+                three_d_atk['control'][6] = int(ctenums.TechID.SPINCUT)
+                three_d_atk['control'][7] = int(ctenums.TechID.LEAP_SLASH)
+
+                three_d_atk['mmp'][0] = int(ctenums.TechID.SPINCUT)
+                three_d_atk['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
+
+                three_d_atk['lrn_req'] = [4, 5, 8]
+                techdb.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
+
+                # Triple Raid
+                triple_raid = techdb.get_tech(ctenums.TechID.TRIPLE_RAID)
+                triple_raid['control'][5] = int(ctenums.TechID.SPINCUT)
+                triple_raid['control'][7] = int(ctenums.TechID.LEAP_SLASH)
+
+                triple_raid['mmp'][0] = int(ctenums.TechID.SPINCUT)
+                triple_raid['mmp'][2] = int(ctenums.TechID.LEAP_SLASH)
+
+                triple_raid['lrn_req'] = [4, 4, 5]
+                techdb.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
+
+            if rset.GameFlags.AYLA_REBALANCE in settings.gameflags:
+                # Apply Ayla Changes
+                combo_tripkick_effect_id = 0x3D
+                rock_tech_effect_id = int(ctenums.TechID.ROCK_THROW)
+
+                techdb = config.techdb
+                effects = techdb.effects
+                power_byte = 9
+
+                # Triple Kick combo power set to 0x2B=43 to match single
+                # tech power
+                trip_pwr = combo_tripkick_effect_id*techdb.effect_size + \
+                    power_byte
+                effects[trip_pwr] = 0x2B
+
+                # Rock throw getting the 15% boost that tripkick got
+                # From 0x1E=30 to 0x23=35
+                rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
+                effects[rock_pwr] = 0x23
+
+        # The following changes can happen regardless of mode.
 
         # Add grandleon lowering magus's mdef
         # Editing AI is ugly right now, so just use raw binary
@@ -1151,118 +1288,11 @@ class Randomizer:
 
         config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
 
-        # Give Rusty a few more HP, like avg hp of old boss rando
-        enemy_id = ctenums.EnemyID.RUST_TYRANO
-        rt_stats = config.enemy_dict[enemy_id]
-
-        rt_stats.hp = int(rt_stats.hp * 1.75)
-
-        # Lower the base magic/lvl so that the party is likely to survive the
-        # initial nuke.
-        rt_stats.magic = int(rt_stats.magic * 0.6)
-        rt_stats.level = int(rt_stats.level * 0.6)
-
-        # Fix Falcon Hit to use Spincut as a prerequisite
-        techdb = config.techdb
-        falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
-        falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
-        techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
-
         # Allow combo tech confuse to use on-hit effects
+        techdb = config.techdb
         combo_confuse_id = 0x3C
         on_hit_byte = combo_confuse_id*techdb.effect_size + 8
         techdb.effects[on_hit_byte] = 0x80
-
-        # Remove on-hit effects from robo tackle
-        if rset.GameFlags.NO_CRISIS_TACKLE in settings.gameflags:
-            tackle_id = int(ctenums.TechID.ROBO_TACKLE)
-            on_hit_byte = tackle_id*techdb.effect_size + 8
-            techdb.effects[on_hit_byte] = 0
-
-        # Revert antilife to black hole
-        if rset.GameFlags.BLACKHOLE_REWORK in settings.gameflags:
-            TechDB = charrando.TechDB
-            vanilla_db = TechDB.get_default_db(ct_vanilla)
-            black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
-
-            anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
-            anti_life['control'][8] = 0x16  # +Atk for down allies
-            anti_life['effects'][0][9] = 0x25  # 1.5x dark bomb
-            al_eff_id = anti_life['control'][5]
-
-            # A note here that set_tech needs the effects to be set correctly.
-            # TODO: get_tech needs to be fixed to supply mp values so that
-            #   set_tech can work as it ought.  Really fix the whole techdb.
-            byteops.set_record(techdb.effects, anti_life['effects'][0],
-                               al_eff_id,
-                               techdb.effect_size)
-
-            black_hole['control'] = anti_life['control']
-            techdb.set_tech(black_hole, ctenums.TechID.ANTI_LIFE)
-
-            techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
-
-        # Note for future (?) Marle changes
-        # Statuses have different types.  Haste is type 3, everything else
-        # just about is type 4.
-        # Type 4: berserk, barrier, Mp regen, unk, specs, shield, shades, unk
-        # Araise is in another type altogether.
-
-        # Make X-Strike use Spincut+Leapslash
-        # Also buff 3d-attack and triple raid
-        if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
-            techdb = config.techdb
-            x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
-            x_strike['control'][5] = int(ctenums.TechID.SPINCUT)
-            x_strike['control'][6] = int(ctenums.TechID.LEAP_SLASH)
-
-            # Crono's techlevel = 4 (spincut)
-            # Frog's techlevel = 5 (leapslash)
-            x_strike['lrn_req'] = [4, 5, 0xFF]
-
-            x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
-            x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
-            techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
-
-            # 3d-atk
-            three_d_atk = techdb.get_tech(ctenums.TechID.THREE_D_ATTACK)
-            three_d_atk['control'][6] = int(ctenums.TechID.SPINCUT)
-            three_d_atk['control'][7] = int(ctenums.TechID.LEAP_SLASH)
-
-            three_d_atk['mmp'][0] = int(ctenums.TechID.SPINCUT)
-            three_d_atk['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
-
-            three_d_atk['lrn_req'] = [4, 5, 8]
-            techdb.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
-
-            # Triple Raid
-            triple_raid = techdb.get_tech(ctenums.TechID.TRIPLE_RAID)
-            triple_raid['control'][5] = int(ctenums.TechID.SPINCUT)
-            triple_raid['control'][7] = int(ctenums.TechID.LEAP_SLASH)
-
-            triple_raid['mmp'][0] = int(ctenums.TechID.SPINCUT)
-            triple_raid['mmp'][2] = int(ctenums.TechID.LEAP_SLASH)
-
-            triple_raid['lrn_req'] = [4, 4, 5]
-            techdb.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
-
-        if rset.GameFlags.AYLA_REBALANCE in settings.gameflags:
-            # Apply Ayla Changes
-            combo_tripkick_effect_id = 0x3D
-            rock_tech_effect_id = int(ctenums.TechID.ROCK_THROW)
-
-            techdb = config.techdb
-            effects = techdb.effects
-            power_byte = 9
-
-            # Triple Kick combo power set to 0x2B=43 to match single tech power
-            trip_pwr = combo_tripkick_effect_id*techdb.effect_size + power_byte
-            effects[trip_pwr] = 0x2B
-
-            # Rock throw getting the 15% boost that single tech tripkick got
-            # From 0x1E=30 to 0x23=35
-            rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
-            effects[rock_pwr] = 0x23
 
         if rset.GameFlags.BOSS_SIGHTSCOPE in settings.gameflags:
             qolhacks.enable_boss_sightscope(config)
