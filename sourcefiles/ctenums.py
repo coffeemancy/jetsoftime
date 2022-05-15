@@ -232,6 +232,8 @@ class LocID(StrIntEnum):
     BLACK_OMEN_ZEAL = 0x1C3
     LAVOS_2 = 0x1DB
     GENO_DOME_CONVEYOR = 0x7E
+    BEKKLERS_LAB = 0x1B2
+    CRONOS_ROOM = 0x002
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
@@ -867,6 +869,9 @@ class TreasureID(StrIntEnum):
     DENADORO_ROCK = auto()
     KAJAR_ROCK = auto()
     LARUBA_ROCK = auto()
+
+    # Vanilla Rando checks
+    BEKKLER_KEY = auto()
 
     @classmethod
     def get_open_treasures(cls):
