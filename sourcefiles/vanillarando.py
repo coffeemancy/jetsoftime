@@ -1,17 +1,101 @@
+import random
+
 import bossrandoevent
 import ctenums
 import ctrom
+import ctstrings
+import eventcommand
+import treasuredata
 
 import randoconfig as cfg
 import randosettings as rset
 
 
 def restore_scripts(ct_rom: ctrom.CTRom):
+    restore_ribbon_boost(ct_rom)
+    restore_geno_dome_conveyor(ct_rom)
+    restore_r_series(ct_rom)
+    add_vanilla_clone_check_scripts(ct_rom)
+    restore_northern_ruins_sealed(ct_rom)
+    restore_cyrus_grave_script(ct_rom)
+    restore_tools_to_carpenter_script(ct_rom)
+    use_easy_lavos(ct_rom)
+
+
+def restore_r_series(ct_rom: ctrom.CTRom):
+    script = ctrom.ctevent.Event.from_flux(
+        './flux/VR_0E6_RSeries.Flux'
+    )
+    ct_rom.script_manager.set_script(
+        script,
+        ctenums.LocID.FACTORY_RUINS_SECURITY_CENTER
+    )
+
+
+def restore_tools_to_carpenter_script(ct_rom: ctrom.CTRom):
+    script = ctrom.ctevent.Event.from_flux(
+        './flux/VR_0BC_Choras_Cafe.Flux'
+    )
+    ct_rom.script_manager.set_script(script, ctenums.LocID.CHORAS_CAFE)
+
+
+def restore_ribbon_boost(ct_rom: ctrom.CTRom):
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.GENO_DOME_MAINFRAME
+    )
+
+    EC = ctrom.ctevent.EC
+    EF = ctrom.ctevent.EF
+    OP = eventcommand.Operation
+
+
+    ribbon_str = \
+        'Found AtroposXR\'s ribbon!{line break}' \
+        '{robo}\'s Speed+3 and Mdef+10{null}'
+
+    ribbon_ct_str = ctstrings.CTString.from_str(ribbon_str)
+    ribbon_ct_str.compress()
+
+    ribbon_str_id = script.add_string(ribbon_ct_str)
+
+    func = EF()
+    (
+        func
+        .add(EC.assign_mem_to_mem(0x7E26FD, 0x7F021C, 1))
+        .add(EC.add_value_to_mem(3, 0x7F021C))
+        .add_if(
+            EC.if_mem_op_value(0x7F021C, OP.GREATER_THAN, 0x10, 1, 0),
+            (
+                EF()
+                .add(EC.assign_val_to_mem(0x10, 0x7F021C, 1))
+            )
+        )
+        .add(EC.assign_mem_to_mem(0x7F021C, 0x7E26FD, 1))
+        .add(EC.assign_mem_to_mem(0x7E2701, 0x7F021C, 1))
+        .add(EC.add_value_to_mem(0xA, 0x7F021C))
+        .add_if(
+            EC.if_mem_op_value(0x7F021C, OP.GREATER_THAN, 0x50, 1, 0),
+            (
+                EF()
+                .add(EC.assign_val_to_mem(0x50, 0x7F021C, 1))
+            )
+        )
+        .add(EC.assign_mem_to_mem(0x7F021C, 0x7E2701, 1))
+        .add(EC.text_box(ribbon_str_id))
+    )
+
+    st = script.get_function_start(1, 4)
+    end = script.get_function_end(1, 4)
+
+    pos, _ = script.find_command([0xBB], st, end)
+    script.insert_commands(func.get_bytearray(), pos)
+
+
+def restore_geno_dome_conveyor(ct_rom: ctrom.CTRom):
     script = ctrom.ctevent.Event.from_flux(
         './flux/orig_07E_geno_conveyor.Flux'
     )
     ct_rom.script_manager.set_script(script, ctenums.LocID.GENO_DOME_CONVEYOR)
-    add_vanilla_clone_check_scripts(ct_rom)
 
 
 class BekklerTreasure(cfg.ScriptTreasure):
@@ -48,9 +132,13 @@ class BekklerTreasure(cfg.ScriptTreasure):
 
 
 def add_vanilla_clone_check_to_config(config: cfg.RandoConfig):
-
+    td = treasuredata
+    assigned_item = random.choice(
+        td.get_item_list(td.ItemTier.AWESOME_GEAR)
+    )
+    
     bekkler_check = BekklerTreasure(
-        ctenums.LocID.CRONOS_ROOM, 0x13, 1, ctenums.ItemID.MOP, 0,
+        ctenums.LocID.CRONOS_ROOM, 0x13, 1, assigned_item, 0,
         ctenums.LocID.BEKKLERS_LAB, 0xB, 1
     )
 
@@ -64,6 +152,68 @@ def add_vanilla_clone_check_scripts(ct_rom: ctrom.CTRom):
 
     script = ctrom.ctevent.Event.from_flux('./flux/VR_1B2_Bekkler_Lab.Flux')
     ct_rom.script_manager.set_script(script, ctenums.LocID.BEKKLERS_LAB)
+
+
+def restore_northern_ruins_sealed(ct_rom: ctrom.CTRom):
+    # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
+    #            0x7F01A3 & 0x08 is set for 1000AD ruins
+
+    # In Jets 0x7F01A3 & 0x20 is set for 600AD ruins
+    #         0x7F01A3 & 0x10 is set for 1000AD ruins
+
+    # In 0x44 Northern Ruins Antechamber, Object 0x10
+    #   Past obtained - 0x7F01A6 & 0x01
+    #   Present obtained - 0x7F01A9 & 0x20
+    #   Charged - 0x7F01A6 & 0x08  (Freed up)
+    # Jets does some different things, but we'll use the vanilla values b/c
+    # they seem to not have been repurposed.
+    # Note: This frees up 0x7F01A6 & 0x08 for other use.
+    script = ctrom.ctevent.Event.from_flux(
+        './flux/VR_044_Northern_Ruins_Ante.Flux'
+    )
+    ct_rom.script_manager.set_script(script,
+                                     ctenums.LocID.NORTHERN_RUINS_ANTECHAMBER)
+
+    # In 0x46 Northern Ruins Back Room, there two chests:
+    # 1) Object 0x10
+    #      Past obtained - 0x7F01A6 & 0x02
+    #      Present obtained - 0x7F01A9 & 0x40
+    #      Charged - 0x7F01A6 & 0x10  (Freed up)
+    # 1) Object 0x11
+    #      Past obtained - 0x7F01A6 & 0x04
+    #      Present obtained - 0x7F01A9 & 0x80
+    #      Charged - 0x7F01A6 & 0x20  (Freed up)
+    script = ctrom.ctevent.Event.from_flux(
+        './flux/VR_046_Northern_Ruins_Back.Flux'
+    )
+    ct_rom.script_manager.set_script(
+        script,
+        ctenums.LocID.NORTHERN_RUINS_BACK_ROOM
+    )
+
+
+def restore_cyrus_grave_script(ct_rom: ctrom.CTRom):
+    script = ctrom.ctevent.Event.from_flux(
+        './flux/VR_049_Northern_Ruins_Heros_Grave.Flux'
+    )
+    ct_rom.script_manager.set_script(
+        script, ctenums.LocID.NORTHERN_RUINS_HEROS_GRAVE
+    )
+
+
+def restore_cyrus_grave_check_to_config(config: cfg.RandoConfig):
+
+    td = treasuredata
+    assigned_item = random.choice(
+        td.get_item_list(td.ItemTier.AWESOME_GEAR)
+    )
+    cyrus_check = cfg.ScriptTreasure(
+        ctenums.LocID.NORTHERN_RUINS_HEROS_GRAVE, 5, 8,
+        assigned_item
+    )
+
+    config.treasure_assign_dict[ctenums.TreasureID.CYRUS_GRAVE_KEY] = \
+        cyrus_check
 
 
 def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
@@ -108,6 +258,7 @@ def fix_item_data(config: cfg.RandoConfig):
     item_db[IID.SPEED_BELT].price = 20000
     item_db[IID.MAGIC_SEAL].price = 20000
     item_db[IID.POWER_SEAL].price = 25000
+    item_db[IID.TABAN_VEST].price = 10000
 
     # Make things sellable
 
@@ -285,7 +436,25 @@ def restore_son_of_sun_flame(config: cfg.RandoConfig):
     )
 
     config.boss_data_dict[ctenums.BossID.SON_OF_SUN].scheme = sos_scheme
-    
+
+
+def fix_twin_boss(config: cfg.RandoConfig):
+    twin_data = config.boss_data_dict[ctenums.BossID.TWIN_BOSS]
+    twin_data.scheme.ids = [
+        ctenums.EnemyID.GOLEM, ctenums.EnemyID.GOLEM
+    ]
+
+
+def use_easy_lavos(ct_rom: ctrom.CTRom):
+
+    EC = ctrom.ctevent.EC
+
+    load_lavos = EC.load_enemy(int(ctenums.EnemyID.LAVOS_OCEAN_PALACE),
+                               3, True)
+    script = ct_rom.script_manager.get_script(ctenums.LocID.LAVOS)
+    pos = script.find_exact_command(load_lavos)
+    script.data[pos+1] = int(ctenums.EnemyID.LAVOS_1)
+
 
 def fix_config(config: cfg.RandoConfig):
     fix_item_data(config)
@@ -294,3 +463,5 @@ def fix_config(config: cfg.RandoConfig):
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
     add_vanilla_clone_check_to_config(config)
+    restore_cyrus_grave_check_to_config(config)
+    fix_twin_boss(config)
