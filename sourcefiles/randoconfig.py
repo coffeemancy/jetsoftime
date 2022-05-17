@@ -438,6 +438,14 @@ class ScriptTreasure(Treasure):
             if pos is None:
                 print('Error setting item:\n\t', end='')
                 print(self)
+                x = script.get_function_start(self.object_id, self.function_id)
+                e = script.get_function_end(self.object_id, self.function_id)
+
+                gc = ctrom.ctevent.get_command
+                while x<e:
+                    cmd = gc(script.data, x)
+                    print(cmd)
+                    x += len(cmd)
                 exit()
 
             if cmd.command == 0x4F:
