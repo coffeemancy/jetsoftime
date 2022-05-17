@@ -255,7 +255,6 @@ class Event:
         pos = script_end + 4
 
         while pos < len(flux):
-            # print(f"Current string: {cur_string_ind:02X} at {pos+0xCA1:04X}")
             string_ind = flux[pos]
 
             # if string_ind != cur_string_ind:
@@ -270,7 +269,7 @@ class Event:
             # If present, value N means add 0x80*(N-1) to the length.
             # Being present means having a value in the unprintable range
             # (value < 0x20).
-            if flux[pos] < 0x20:
+            if flux[pos] < 12:
                 string_len += 0x80*(flux[pos]-1)
                 pos += 1
 
