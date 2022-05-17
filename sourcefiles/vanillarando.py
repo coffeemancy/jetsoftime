@@ -386,11 +386,19 @@ def scale_enemy_xp_tp(config: cfg.RandoConfig,
                       xp_scale_factor: float = 4.0,
                       tp_scale_factor: float = 2.0):
 
-    enemy_dict = config.enemy_dict
-    for enemy_id in enemy_dict:
-        enemy = enemy_dict[enemy_id]
-        enemy.xp = round(enemy.xp * xp_scale_factor)
-        enemy.tp = round(enemy.tp * tp_scale_factor)
+    xp_thresh = config.char_manager.xp_thresh
+    for ind, x in enumerate(xp_thresh):
+        xp_thresh[ind] = round(x/xp_scale_factor)
+
+    for char in config.char_manager.pcs:
+        # fix xp to next
+        char.stats.xp_thresh = list(config.char_manager.xp_thresh)
+        char.stats.set_level(char.stats.level)
+
+        for ind, tp_thresh in enumerate(char.stats.tp_thresh):
+            new_thresh = round(tp_thresh/tp_scale_factor)
+            new_thresh = max(1, new_thresh)
+            char.stats.tp_thresh[ind] = new_thresh
 
 
 def fix_required_tp(config: cfg.RandoConfig):
@@ -458,7 +466,7 @@ def use_easy_lavos(ct_rom: ctrom.CTRom):
 
 def fix_config(config: cfg.RandoConfig):
     fix_item_data(config)
-    scale_enemy_xp_tp(config)
+    scale_enemy_xp_tp(config, 4, 4)
     fix_required_tp(config)
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
