@@ -636,8 +636,11 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     mode = random.choice(modes)
     for ind, fist_id in enumerate(ayla_fists):
         fist = config.itemdb[fist_id]
-        boost = mode[ind]
-        fist.secondary_stats.stat_boost_index = boost
+        boost_id = mode[ind]
+        boost = config.itemdb.stat_boosts[boost_id]
+        boost_str = boost.stat_string()
+        fist.set_name_from_str('{fist}'+boost_str)
+        fist.secondary_stats.stat_boost_index = boost_id
 
 
 def append_to_item_name(item: itemdata.Item, append_str: str):
