@@ -1294,6 +1294,7 @@ def _canAccessKingsTrialVR(game: Game):
         game.canAccessMtWoe()
     )
 
+
 def _canAccessFionasShrineVR(game: Game):
     return (
         game.hasCharacter(Characters.ROBO) and
@@ -1301,11 +1302,25 @@ def _canAccessFionasShrineVR(game: Game):
     )
 
 
-_bekkler_dist = td.TreasureDist(
+def _canAccessNorthernRuinsVR(game: Game):
+    return game.hasKeyItem(ItemID.TOOLS)
+
+
+def _canAccessCyrusGraveVR(game: Game):
+    return (
+        _canAccessNorthernRuinsVR(game) and
+        game.hasCharacter(Characters.FROG)
+    )
+
+_awesome_gear_dist = td.TreasureDist(
     (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
 )
 
 class VanillaRandoGameConfig(NormalGameConfig):
+
+    def initKeyItems(self):
+        NormalGameConfig.initKeyItems(self)
+        self.keyItemList.append(ItemID.TOOLS)
 
     def initLocations(self):
         NormalGameConfig.initLocations(self)
@@ -1325,14 +1340,25 @@ class VanillaRandoGameConfig(NormalGameConfig):
             lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
         )
         bekklerKey.addLocation(
-            BaselineLocation(TID.BEKKLER_KEY, _bekkler_dist)
+            BaselineLocation(TID.BEKKLER_KEY, _awesome_gear_dist)
         )
-
         self.locationGroups.append(bekklerKey)
+
+        cyrusKey = LocationGroup(
+            "HerosGrave", 1, _canAccessCyrusGraveVR
+        )
+        cyrusKey.addLocation(
+            BaselineLocation(TID.CYRUS_GRAVE_KEY, _awesome_gear_dist)
+        )
 
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
+    def initKeyItems(self):
+        NormalGameConfig.initKeyItems(self)
+        self.keyItemList.append(ItemID.TOOLS)
+
+            
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
 
@@ -1349,11 +1375,25 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
             "BekklersLab", 2,
             lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
         )
-        bekklerKey.addLocation(
-            BaselineLocation(TID.BEKKLER_KEY, _bekkler_dist)
-        )
+        bekklerKey.addLocation(Location(TID.BEKKLER_KEY))
 
         self.locationGroups.append(bekklerKey)
+
+        northernRuinsLocations = self.getLocationGroup('NorthernRuins')
+        (
+            northernRuinsLocations
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000))
+            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000))
+        )
+        northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
+
+        northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
+        northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
+        northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
 
 
 #
