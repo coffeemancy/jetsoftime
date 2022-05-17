@@ -639,6 +639,8 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         boost_id = mode[ind]
         boost = config.itemdb.stat_boosts[boost_id]
         boost_str = boost.stat_string()
+        if boost_str == '':
+            boost_str = 'Fist'
         fist.set_name_from_str('{fist}'+boost_str)
         fist.secondary_stats.stat_boost_index = boost_id
 
