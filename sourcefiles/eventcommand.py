@@ -23,6 +23,28 @@ class Operation(IntEnum):
     BITWISE_OR_NONZERO = 7
 
 
+def is_script_mem(addr: int):
+    return 0x7F0200 <= addr < 0x7F0400
+
+
+def is_local_mem(addr: int):
+    return (
+        not is_script_mem(addr) and
+        0x7F0000 <= addr < 0x7F0000
+    )
+
+
+def is_bank_7E(addr: int):
+    return 0x7E0000 <= addr < 0x7F0000
+
+
+def get_offset(script_addr):
+    if script_addr % 2 != 0:
+        raise ValueError('Script address must be even.')
+    else:
+        return (script_addr - 0x7F0000) // 2
+
+
 class EventCommand:
 
     str_commands = [0xBB, 0xC0, 0xC1, 0xC2, 0xC3, 0xC4]
@@ -354,6 +376,73 @@ class EventCommand:
 
     def set_storyline_counter(val: int) -> EventCommand:
         return EventCommand.assign_val_to_mem(val, 0x7F0000, 1)
+
+    def add_value_to_mem(value: int, script_addr: int):
+        if not is_script_mem(script_addr):
+            raise ValueError('Can only add to script memory')
+
+        if not 0 <= value < 0x100:
+            raise ValueError('Can only add values in [0, 0x100)')
+
+        cmd = event_commands[0x5B].copy()
+        cmd.args = [value, get_offset(script_addr)]
+
+        return cmd
+
+    def assign_mem_to_mem(
+            from_addr: int,
+            to_addr: int,
+            num_bytes: int
+    ) -> EventCommand:
+
+        if num_bytes not in (1, 2):
+            raise ValueError('Num bytes must be 1 or 2')
+
+        if is_script_mem(from_addr) and is_script_mem(to_addr):
+            # arg 1: offset of from_addr
+            # arg 2: offset of to_addr
+            cmd_args = [get_offset(from_addr_), get_offset(to_addr)]
+            if num_bytes == 1:
+                cmd_id = 0x51
+            else:
+                cmd_id = 0x52
+        elif is_local_mem(from_addr) and is_script_mem(to_addr):
+            # arg 1: from_addr - 0x7F0000
+            # arg 2: offset of to_addr
+            cmd_args = [from_addr - 0x7F0000, get_offset(to_addr)]
+            if num_bytes == 1:
+                cmd_id = 0x53
+            else:
+                cmd_id = 0x54
+        elif is_script_mem(from_addr) and is_local_mem(to_addr):
+            # arg 1: offset of from_addr
+            # arg 2: to_addr - 0x7F0000
+            cmd_args [get_offset(from_addr), to_addr - 0x7F0000]
+            if num_bytes == 1:
+                cmd_id = 0x58
+            else:
+                cmd_id = 0x59
+        elif is_bank_7E(from_addr) and is_script_mem(to_addr):
+            # arg 1: from_addr (3 bytes)
+            # arg 2: (0x7F0200 - to_addr) / 2 -- check int?
+            cmd_args = [from_addr, get_offset(to_addr)]
+            if num_bytes == 1:
+                cmd_id = 0x48
+            else:
+                cmd_id = 0x49
+        elif  is_script_mem(from_addr) and is_bank_7E(to_addr):
+            # arg 1: to_addr (3 bytes)
+            # arg 2: (from_addr - 0x7F000) / 2
+            cmd_args = [to_addr, get_offset(from_addr)]
+            if num_bytes == 1:
+                cmd_id = 0x4C
+            else:
+                cmd_id = 0x4D
+
+        cmd = event_commands[cmd_id].copy()
+        cmd.args = cmd_args
+
+        return cmd
 
     def assign_val_to_mem(
             val: int, address: int, num_bytes: int
