@@ -1321,6 +1321,7 @@ class VanillaRandoGameConfig(NormalGameConfig):
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
         self.keyItemList.append(ItemID.TOOLS)
+        self.keyItemList.remove(ItemID.ROBORIBBON)
 
     def initLocations(self):
         NormalGameConfig.initLocations(self)
@@ -1357,6 +1358,7 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
         self.keyItemList.append(ItemID.TOOLS)
+        self.keyItemList.remove(ItemID.ROBORIBBON)
 
             
     def initLocations(self):
