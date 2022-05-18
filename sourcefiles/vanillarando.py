@@ -466,8 +466,8 @@ def use_easy_lavos(ct_rom: ctrom.CTRom):
 
 def fix_config(config: cfg.RandoConfig):
     fix_item_data(config)
+    fix_required_tp(config)  # Do before scaling.
     scale_enemy_xp_tp(config, 4, 4)
-    fix_required_tp(config)
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
     add_vanilla_clone_check_to_config(config)
