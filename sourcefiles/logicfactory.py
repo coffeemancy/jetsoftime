@@ -1294,7 +1294,6 @@ def _canAccessKingsTrialVR(game: Game):
         game.canAccessMtWoe()
     )
 
-
 def _canAccessFionasShrineVR(game: Game):
     return (
         game.hasCharacter(Characters.ROBO) and
@@ -1309,7 +1308,8 @@ def _canAccessNorthernRuinsVR(game: Game):
 def _canAccessCyrusGraveVR(game: Game):
     return (
         _canAccessNorthernRuinsVR(game) and
-        game.hasCharacter(Characters.FROG)
+        game.hasCharacter(Characters.FROG) and
+        game.canAccessMtWoe()
     )
 
 _awesome_gear_dist = td.TreasureDist(
