@@ -466,8 +466,10 @@ class Randomizer:
         ctrom = self.out_rom
 
         # We can always do this, even if not reverting to black hole because
-        # antilife just uses life2's script, not black hole's.
-        self.__modify_bh_script()
+        # antilife just uses life2's script, not black hole's....
+        # ...unless we're in vanilla mode.
+        if self.settings.game_mode != rset.GameMode.VANILLA_RANDO:
+            self.__modify_bh_script()
 
         # Subtle Bug Alert:
         # AtkDB needs to count the number of attacks when determining whether
@@ -1128,23 +1130,10 @@ class Randomizer:
         # which can be used instead if this is an issue.  The problem with
         # using those is the need to update them with every patch.
         ctrom = CTRom(ct_vanilla, True)
-        vanilla_ctrom = CTRom(ct_vanilla, True)
         Randomizer.__apply_basic_patches(ctrom)
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
             config = cfg.RandoConfig.get_config_from_rom(ct_vanilla)
-            jets_config = cfg.RandoConfig.get_config_from_rom(
-                ctrom.rom_data.getvalue())
-
-            IID = ctenums.ItemID
-            # Keeping RoboRibbon stat boost.
-            config.itemdb[IID.ROBORIBBON] = \
-                jets_config.itemdb[IID.ROBORIBBON]
-
-            # Just the name here.
-            config.itemdb[IID.MASAMUNE_2] = \
-                jets_config.itemdb[IID.MASAMUNE_2]
-
             vanillarando.fix_config(config)
 
         else:
