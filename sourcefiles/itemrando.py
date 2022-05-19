@@ -496,7 +496,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
 
     ignored_effect_ids = (
         IID.WHITE_VEST, IID.BLUE_VEST, IID.BLACK_VEST, IID.RED_VEST,
-        IID.WHITE_MAIL, IID.BLACK_MAIL, IID.BLACK_MAIL, IID.RED_MAIL,
+        IID.WHITE_MAIL, IID.BLACK_MAIL, IID.BLUE_MAIL, IID.RED_MAIL,
         IID.SIGHT_CAP, IID.MEMORY_CAP, IID.TIME_HAT, IID.VIGIL_HAT
     )
 
