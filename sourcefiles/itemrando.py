@@ -53,7 +53,7 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
     item_db = config.itemdb
 
     base_hp_healing = random.choice(range(30, 51, 1))
-    revive_mult = random.choice((1,2,3))
+    revive_mult = random.choice((1, 2, 3))
     tonic_mult = random.choice((1, 2))
     mid_tonic_mult = random.choice((3, 4, 5, 6, 7))
     full_tonic_mult = random.choice((8, 9, 10, 11, 12, 13, 14))
@@ -150,14 +150,14 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
         (80, [_BID.NOTHING]),
         (18, [_BID.MAGIC_2, _BID.STAMINA_2, _BID.POWER_2, _BID.HIT_2]),
-        ( 2, [_BID.SPEED_1])
+        (2, [_BID.SPEED_1])
     )
 
-    # Passable gear only has Mag+2 (Red Katana) and slightly better accessories.
+    # Passable gear only has Mag+2 (Red Katana) and slightly better accessories
     # So we'll make this a chance of the previous tier plus improved versions.
     ret_dist[treasuredata.ItemTier.PASSABLE_GEAR] = Dist(
         (75, [_BID.NOTHING]),
-        ( 5, [_BID.MAGIC_2, _BID.STAMINA_2, _BID.POWER_2, _BID.HIT_2]),
+        (5, [_BID.MAGIC_2, _BID.STAMINA_2, _BID.POWER_2, _BID.HIT_2]),
         (20, [_BID.MAGIC_4, _BID.STAMINA_6, _BID.POWER_4, _BID.HIT_10,
               _BID.SPEED_1])
     )
@@ -166,13 +166,13 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # Also slightly better accessories.
 
     # Originally, there are 23 weapons/armors in this tier and only 1 sp+2.
-    # I'm approximating this as 5% chance of that particular bonus.  
+    # I'm approximating this as 5% chance of that particular bonus.
     ret_dist[treasuredata.ItemTier.MID_GEAR] = Dist(
         (70, [_BID.NOTHING]),
         (10, [_BID.MAGIC_4, _BID.STAMINA_6, _BID.POWER_4, _BID.HIT_10,
               _BID.SPEED_1, _BID.MDEF_5]),
         (15, [_BID.MAGIC_6, _BID.POWER_6, _BID.MDEF_10]),
-        ( 5, [_BID.SPEED_2])
+        (5, [_BID.SPEED_2])
     )
 
     # Good Gear gets Sp+2 (Slasher), Mg+4 (Rune Blade).  The Sp+2 is 1/22.
@@ -181,7 +181,7 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
         (70, [_BID.NOTHING]),
         (10, [_BID.MAGIC_6, _BID.POWER_6, _BID.HIT_10]),
         (15, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10, _BID.MDEF_12]),
-        ( 5, [_BID.SPEED_2])
+        (5, [_BID.SPEED_2])
     )
 
     # High Gear only has Sp+1 (Gloom Helm), Md+10 (ZodiacCape).
@@ -210,7 +210,7 @@ def get_weapon_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     Dist = treasuredata.TreasureDist
     WE = itemdata.WeaponEffects
     ret_dist = dict()
-    
+
     # Low gear has no effects.
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
         (1, [WE.NONE]),
@@ -226,7 +226,7 @@ def get_weapon_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # Keep the lower boosts around at a low percentage.
     ret_dist[treasuredata.ItemTier.MID_GEAR] = Dist(
         (80, [WE.NONE]),
-        ( 5, [WE.CRIT_4X, WE.STOP_80_MACHINES]),
+        (5, [WE.CRIT_4X, WE.STOP_80_MACHINES]),
         (15, [WE.DMG_TO_MAG_150]),
     )
 
@@ -236,7 +236,7 @@ def get_weapon_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     ret_dist[treasuredata.ItemTier.GOOD_GEAR] = Dist(
         (75, [WE.NONE]),
         (20, [WE.HP_50_50, WE.DMG_TO_MAG_200, WE.SLOW_60, WE.CHAOS_60]),
-        ( 5, [WE.CRIT_4X, WE.DMG_TO_MAG_150, WE.STOP_80_MACHINES])
+        (5, [WE.CRIT_4X, WE.DMG_TO_MAG_150, WE.STOP_80_MACHINES])
     )
 
     # High Gear adds 60% stop (Valkerye, ShockWave) and Doom (Doomsickle).
@@ -247,7 +247,7 @@ def get_weapon_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
         (70, [WE.NONE]),
         (10, [WE.SLOW_60, WE.CHAOS_60, WE.DMG_TO_MAG_150]),
         (15, [WE.STOP_60, WE.CRIT_4X]),
-        ( 5, [WE.DOOMSICKLE, WE.CRISIS, WE.WONDERSHOT, WE.DMG_125]),
+        (5, [WE.DOOMSICKLE, WE.CRISIS, WE.WONDERSHOT, WE.DMG_125]),
     )
 
     # Awesome Gear has 4x Crit (Shiva Edge), Wonder, and Crisis.  There is
@@ -268,7 +268,7 @@ def get_armor_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     Dist = treasuredata.TreasureDist
     AE = itemdata.ArmorEffects
     ret_dist = dict()
-    
+
     # Low gear has no effects.
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
         (1, [AE.NONE]),
@@ -409,7 +409,7 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
     if new_price < item.price // 10:
         item.price = item.price // 10
     elif new_price > 65000:
-        item_price = 65000
+        item.price = 65000
     else:
         item.price = new_price
 
@@ -422,7 +422,6 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         orig_effect = orig_stats.effect_id
         cur_effect = item.stats.effect_id
 
-        
         if (
                 (
                     cur_boost > orig_boost and
@@ -481,7 +480,6 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     IID = ctenums.ItemID
     Tier = treasuredata.ItemTier
     WE = itemdata.WeaponEffects
-    AE = itemdata.ArmorEffects
 
     item_db = config.itemdb
 
@@ -496,7 +494,6 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     weapon_effect_dict = get_weapon_effect_dict(settings, config)
     armor_effect_dict = get_armor_effect_dict(settings, config)
 
-
     ignored_effect_ids = (
         IID.WHITE_VEST, IID.BLUE_VEST, IID.BLACK_VEST, IID.RED_VEST,
         IID.WHITE_MAIL, IID.BLACK_MAIL, IID.BLACK_MAIL, IID.RED_MAIL,
@@ -506,13 +503,13 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     ignored_ids = (
         IID.RAINBOW, IID.WONDERSHOT, IID.VALKERYE, IID.DOOMSICKLE
     )
-    
+
     for tier in gear_tiers:
         gear_in_tier[tier] = [x for x in gear_in_tier[tier] if x < 0x94
                               and x not in ignored_ids]
 
     gear_in_tier[Tier.AWESOME_GEAR].append(IID.MASAMUNE_1)
-        
+
     for tier in gear_tiers:
         boost_dist = stat_boost_dict[tier]
         weapon_effect_dist = weapon_effect_dict[tier]
@@ -614,7 +611,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
                 wonder_names[item_id], 11
             )
         elif mode == 3:  # doom mode
-            item.stats.critical_rate = 180
+            item.stats.critical_rate = 10
             item.stats.attack = 180
             item.stats.has_effect = True
             item.stats.effect_id = WE.DOOMSICKLE
@@ -661,6 +658,7 @@ def append_to_item_name(item: itemdata.Item, append_str: str):
 
     append_start = min(len(item.name) - append_size, name_used_size)
     item.name[append_start:append_start+append_size] = append_ctstr
+
 
 # This doesn't do much!  Most accessories are going to stay as-is because
 # their name says what they do.
@@ -713,7 +711,7 @@ def randomize_accessories(settings: rset.Settings,
             rock.stats.has_battle_buff = False
             rock.stats.stat_boost_index = random.choice(rock_boosts)
             append_to_item_name(rock, '+')
-            
+
         elif rock_bonus < 0.9:
             rock.stats.has_battle_buff = True
             rock.stats.has_stat_boost = False
