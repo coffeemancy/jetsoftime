@@ -218,6 +218,45 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+    def __fix_northern_ruins_sealed(self, ct_rom: CTRom):
+         # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
+        #            0x7F01A3 & 0x08 is set for 1000AD ruins
+        
+        # In Jets 0x7F01A3 & 0x20 is set for 600AD ruins
+        #         0x7F01A3 & 0x10 is set for 1000AD ruins
+        
+        # In 0x44 Northern Ruins Antechamber, Object 0x10
+        #   Past obtained - 0x7F01A6 & 0x01
+        #   Present obtained - 0x7F01A9 & 0x20
+        #   Charged - 0x7F01A6 & 0x08  (Freed up)
+        # Jets does some different things, but we'll use the vanilla values b/c
+        # they seem to not have been repurposed.
+        # Note: This frees up 0x7F01A6 & 0x08 for other use.
+        script = ctevent.Event.from_flux(
+            './flux/VR_044_Northern_Ruins_Ante.Flux'
+        )
+        ct_rom.script_manager.set_script(
+            script,
+            ctenums.LocID.NORTHERN_RUINS_ANTECHAMBER
+        )
+        
+        # In 0x46 Northern Ruins Back Room, there two chests:
+        # 1) Object 0x10
+        #      Past obtained - 0x7F01A6 & 0x02
+        #      Present obtained - 0x7F01A9 & 0x40
+        #      Charged - 0x7F01A6 & 0x10  (Freed up)
+        # 1) Object 0x11
+        #      Past obtained - 0x7F01A6 & 0x04
+        #      Present obtained - 0x7F01A9 & 0x80
+        #      Charged - 0x7F01A6 & 0x20  (Freed up)
+        script = ctevent.Event.from_flux(
+            './flux/VR_046_Northern_Ruins_Back.Flux'
+        )
+        ct_rom.script_manager.set_script(
+            script,
+            ctenums.LocID.NORTHERN_RUINS_BACK_ROOM
+        )
+        
     def __update_trading_post_string(self, ct_rom: CTRom,
                                      config: cfg.RandoConfig):
         script_man = ct_rom.script_manager
@@ -633,6 +672,9 @@ class Randomizer:
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
 
+        # Split the NR "sealed" chests
+        self.__fix_northern_ruins_sealed(self.out_rom)
+        
         # Update the trading post descriptions
         self.__update_trading_post_string(self.out_rom, self.config)
 

@@ -16,7 +16,6 @@ def restore_scripts(ct_rom: ctrom.CTRom):
     restore_geno_dome_conveyor(ct_rom)
     restore_r_series(ct_rom)
     add_vanilla_clone_check_scripts(ct_rom)
-    restore_northern_ruins_sealed(ct_rom)
     restore_cyrus_grave_script(ct_rom)
     restore_tools_to_carpenter_script(ct_rom)
     use_easy_lavos(ct_rom)
@@ -151,44 +150,6 @@ def add_vanilla_clone_check_scripts(ct_rom: ctrom.CTRom):
 
     script = ctrom.ctevent.Event.from_flux('./flux/VR_1B2_Bekkler_Lab.Flux')
     ct_rom.script_manager.set_script(script, ctenums.LocID.BEKKLERS_LAB)
-
-
-def restore_northern_ruins_sealed(ct_rom: ctrom.CTRom):
-    # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
-    #            0x7F01A3 & 0x08 is set for 1000AD ruins
-
-    # In Jets 0x7F01A3 & 0x20 is set for 600AD ruins
-    #         0x7F01A3 & 0x10 is set for 1000AD ruins
-
-    # In 0x44 Northern Ruins Antechamber, Object 0x10
-    #   Past obtained - 0x7F01A6 & 0x01
-    #   Present obtained - 0x7F01A9 & 0x20
-    #   Charged - 0x7F01A6 & 0x08  (Freed up)
-    # Jets does some different things, but we'll use the vanilla values b/c
-    # they seem to not have been repurposed.
-    # Note: This frees up 0x7F01A6 & 0x08 for other use.
-    script = ctrom.ctevent.Event.from_flux(
-        './flux/VR_044_Northern_Ruins_Ante.Flux'
-    )
-    ct_rom.script_manager.set_script(script,
-                                     ctenums.LocID.NORTHERN_RUINS_ANTECHAMBER)
-
-    # In 0x46 Northern Ruins Back Room, there two chests:
-    # 1) Object 0x10
-    #      Past obtained - 0x7F01A6 & 0x02
-    #      Present obtained - 0x7F01A9 & 0x40
-    #      Charged - 0x7F01A6 & 0x10  (Freed up)
-    # 1) Object 0x11
-    #      Past obtained - 0x7F01A6 & 0x04
-    #      Present obtained - 0x7F01A9 & 0x80
-    #      Charged - 0x7F01A6 & 0x20  (Freed up)
-    script = ctrom.ctevent.Event.from_flux(
-        './flux/VR_046_Northern_Ruins_Back.Flux'
-    )
-    ct_rom.script_manager.set_script(
-        script,
-        ctenums.LocID.NORTHERN_RUINS_BACK_ROOM
-    )
 
 
 def restore_cyrus_grave_script(ct_rom: ctrom.CTRom):
