@@ -400,8 +400,7 @@ class EnemyStats:
         self._stat_data[0x16] = val
 
 
-def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
-                                          ctenums.EnemyID:EnemyStats]:
+def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID, EnemyStats]:
     stat_dict = dict()
     ct_rom = ctrom.CTRom(rom, True)
 
@@ -412,18 +411,7 @@ def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
 
 
 if __name__ == '__main__':
-    ct_rom = ctrom.CTRom.from_file('./roms/ct.sfc', True)
-    rom = ct_rom.rom_data
-
-    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.NU)
-    print(stats)
-
-    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.FLEA)
-    print(stats)
-
-    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.SLASH_SWORD)
-    print(stats)
-
+    pass
     # Byte 0,1 - hp
     # Byte 2 - level
     # Byte 3 - constant statuses
