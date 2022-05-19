@@ -1133,7 +1133,8 @@ class Randomizer:
         Randomizer.__apply_basic_patches(ctrom)
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
-            config = cfg.RandoConfig.get_config_from_rom(ct_vanilla)
+            config = cfg.RandoConfig.get_config_from_rom(
+                ct_vanilla, settings)
             vanillarando.fix_config(config)
 
         else:
