@@ -1294,6 +1294,7 @@ def _canAccessKingsTrialVR(game: Game):
         game.canAccessMtWoe()
     )
 
+
 def _canAccessFionasShrineVR(game: Game):
     return (
         game.hasCharacter(Characters.ROBO) and
@@ -1312,9 +1313,11 @@ def _canAccessCyrusGraveVR(game: Game):
         game.canAccessMtWoe()
     )
 
+
 _awesome_gear_dist = td.TreasureDist(
     (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
 )
+
 
 class VanillaRandoGameConfig(NormalGameConfig):
 
@@ -1351,16 +1354,16 @@ class VanillaRandoGameConfig(NormalGameConfig):
         cyrusKey.addLocation(
             BaselineLocation(TID.CYRUS_GRAVE_KEY, _awesome_gear_dist)
         )
+        self.locationGroups.append(cyrusKey)
 
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
     def initKeyItems(self):
-        NormalGameConfig.initKeyItems(self)
+        ChronosanityGameConfig.initKeyItems(self)
         self.keyItemList.append(ItemID.TOOLS)
         self.keyItemList.remove(ItemID.ROBORIBBON)
 
-            
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
 
