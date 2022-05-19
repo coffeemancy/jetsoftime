@@ -290,6 +290,9 @@ class AIScript:
             # print('Warning: tech not in self.tech_usage.')
             pass
 
+        if from_tech_id == to_tech_id:
+            return 0
+
         for block in range(2):
             while self._data[pos] != 0xFF:
                 while self._data[pos] != 0xFE:  # Conditions
