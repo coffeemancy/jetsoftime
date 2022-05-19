@@ -13,6 +13,9 @@ from ctenums import EnemyID, BossID, LocID
 import piecewiselinear
 import statcompute
 
+import randosettings as rset
+import randoconfig as cfg
+
 # Silly thing for typing classmethod return type from stackexchange
 # https://stackoverflow.com/questions/44640479
 T = TypeVar('T', bound='Boss')
@@ -88,7 +91,7 @@ class Boss:
             self, new_power,
             stat_dict: dict[EnemyID, EnemyStats],
             atk_db: enemytechdb.EnemyAttackDB,
-            ai_db: enemyai.EnemyAIDB
+            ai_db: enemyai.EnemyAIDB,
     ) -> dict[EnemyID: EnemyStats]:
         return {
             part: self.scale_stats(part, stat_dict[part],
@@ -375,7 +378,7 @@ class Boss:
         ids = [EnemyID.TWIN_BOSS, EnemyID.TWIN_BOSS]
         slots = [3, 6]
         disps = [(-0x20, 0), (0x20, 0)]
-        power = 30  # Should match mutant power
+        power = 25  # This is the power of a SINGLE twin.
         return cls.generic_multi_spot(ids, disps, slots, power)
 
     @classmethod
@@ -442,40 +445,48 @@ def get_default_boss_assignment():
 
 
 # Associate BossID with the Boss data structure.
-def get_boss_data_dict():
+def get_boss_data_dict(settings: rset.Settings) -> dict[BossID, Boss]:
+
+    if settings.game_mode == rset.GameMode.VANILLA_RANDO:
+        NormalType = VRScaleBoss
+        SoSType = VRScaleSonOfSon
+    else:
+        NormalType = ProgressiveScaleBoss
+        SoSType = SonOfSunScaleBoss
+
     return {
-        BossID.ATROPOS_XR: ProgressiveScaleBoss.ATROPOS_XR(),
-        BossID.DALTON_PLUS: ProgressiveScaleBoss.DALTON_PLUS(),
-        BossID.DRAGON_TANK: ProgressiveScaleBoss.DRAGON_TANK(),
-        BossID.ELDER_SPAWN: ProgressiveScaleBoss.ELDER_SPAWN(),
-        BossID.FLEA: ProgressiveScaleBoss.FLEA(),
-        BossID.FLEA_PLUS: ProgressiveScaleBoss.FLEA_PLUS(),
-        BossID.GIGA_GAIA: ProgressiveScaleBoss.GIGA_GAIA(),
-        BossID.GIGA_MUTANT: ProgressiveScaleBoss.GIGA_MUTANT(),
-        BossID.GOLEM: ProgressiveScaleBoss.GOLEM(),
-        BossID.GOLEM_BOSS: ProgressiveScaleBoss.GOLEM_BOSS(),
-        BossID.GUARDIAN: ProgressiveScaleBoss.GUARDIAN(),
-        BossID.HECKRAN: ProgressiveScaleBoss.HECKRAN(),
-        BossID.LAVOS_SPAWN: ProgressiveScaleBoss.LAVOS_SPAWN(),
-        BossID.MASA_MUNE: ProgressiveScaleBoss.MASA_MUNE(),
-        BossID.MEGA_MUTANT: ProgressiveScaleBoss.MEGA_MUTANT(),
-        BossID.MOTHER_BRAIN: ProgressiveScaleBoss.MOTHER_BRAIN(),
-        BossID.MUD_IMP: ProgressiveScaleBoss.MUD_IMP(),
-        BossID.NIZBEL: ProgressiveScaleBoss.NIZBEL(),
-        BossID.NIZBEL_2: ProgressiveScaleBoss.NIZBEL_II(),
-        BossID.RETINITE: ProgressiveScaleBoss.RETINITE(),
-        BossID.R_SERIES: ProgressiveScaleBoss.R_SERIES(),
-        BossID.RUST_TYRANO: ProgressiveScaleBoss.RUST_TYRANO(),
-        BossID.SLASH_SWORD: ProgressiveScaleBoss.SLASH_SWORD(),
-        BossID.SON_OF_SUN: SonOfSunScaleBoss.SON_OF_SUN(),
-        BossID.SUPER_SLASH: ProgressiveScaleBoss.SUPER_SLASH(),
-        BossID.TERRA_MUTANT: ProgressiveScaleBoss.TERRA_MUTANT(),
-        BossID.TWIN_BOSS: ProgressiveScaleBoss.TWIN_BOSS(),
-        BossID.YAKRA: ProgressiveScaleBoss.YAKRA(),
-        BossID.YAKRA_XIII: ProgressiveScaleBoss.YAKRA_XIII(),
-        BossID.ZOMBOR: ProgressiveScaleBoss.ZOMBOR(),
-        BossID.MAGUS: ProgressiveScaleBoss.MAGUS(),
-        BossID.BLACK_TYRANO: ProgressiveScaleBoss.BLACK_TYRANO(),
+        BossID.ATROPOS_XR: NormalType.ATROPOS_XR(),
+        BossID.DALTON_PLUS: NormalType.DALTON_PLUS(),
+        BossID.DRAGON_TANK: NormalType.DRAGON_TANK(),
+        BossID.ELDER_SPAWN: NormalType.ELDER_SPAWN(),
+        BossID.FLEA: NormalType.FLEA(),
+        BossID.FLEA_PLUS: NormalType.FLEA_PLUS(),
+        BossID.GIGA_GAIA: NormalType.GIGA_GAIA(),
+        BossID.GIGA_MUTANT: NormalType.GIGA_MUTANT(),
+        BossID.GOLEM: NormalType.GOLEM(),
+        BossID.GOLEM_BOSS: NormalType.GOLEM_BOSS(),
+        BossID.GUARDIAN: NormalType.GUARDIAN(),
+        BossID.HECKRAN: NormalType.HECKRAN(),
+        BossID.LAVOS_SPAWN: NormalType.LAVOS_SPAWN(),
+        BossID.MASA_MUNE: NormalType.MASA_MUNE(),
+        BossID.MEGA_MUTANT: NormalType.MEGA_MUTANT(),
+        BossID.MOTHER_BRAIN: NormalType.MOTHER_BRAIN(),
+        BossID.MUD_IMP: NormalType.MUD_IMP(),
+        BossID.NIZBEL: NormalType.NIZBEL(),
+        BossID.NIZBEL_2: NormalType.NIZBEL_II(),
+        BossID.RETINITE: NormalType.RETINITE(),
+        BossID.R_SERIES: NormalType.R_SERIES(),
+        BossID.RUST_TYRANO: NormalType.RUST_TYRANO(),
+        BossID.SLASH_SWORD: NormalType.SLASH_SWORD(),
+        BossID.SON_OF_SUN: SoSType.SON_OF_SUN(),
+        BossID.SUPER_SLASH: NormalType.SUPER_SLASH(),
+        BossID.TERRA_MUTANT: NormalType.TERRA_MUTANT(),
+        BossID.TWIN_BOSS: NormalType.TWIN_BOSS(),
+        BossID.YAKRA: NormalType.YAKRA(),
+        BossID.YAKRA_XIII: NormalType.YAKRA_XIII(),
+        BossID.ZOMBOR: NormalType.ZOMBOR(),
+        BossID.MAGUS: NormalType.MAGUS(),
+        BossID.BLACK_TYRANO: NormalType.BLACK_TYRANO(),
         BossID.LAVOS_SHELL: Boss.LAVOS_SHELL(),
         BossID.INNER_LAVOS: Boss.INNER_LAVOS(),
         BossID.LAVOS_CORE: Boss.LAVOS_CORE(),
@@ -501,7 +512,7 @@ def get_mdef(level: int):
     return min(BASE_MDEF + (level-1)*MDEF_GROWTH, 100)
 
 
-def get_phys_def(level: int):
+def get_phys_def(level: int, max_level = 35):
     BASE_STM = 8
     STM_GROWTH = 1.65
 
@@ -511,10 +522,14 @@ def get_phys_def(level: int):
     MID_ARMOR = 45 + 20  # ruby vest + rock helm
     LATE_ARMOR = 75 + 35  # aeon suit + mermaid cap
 
+    # This is calibrated for lv12, lv30 for normal jets cap of 35
+    mid_level = round(max_level/3)
+    late_level = max_level
+
     pwl = piecewiselinear.PiecewiseLinear(
         (1, LV1_ARMOR_DEF),
-        (12, MID_ARMOR),
-        (30, LATE_ARMOR)
+        (mid_level, MID_ARMOR),
+        (late_level, LATE_ARMOR)
     )
 
     armor = pwl(level)
@@ -523,9 +538,9 @@ def get_phys_def(level: int):
     return min(stamina + armor, 256)
 
 
-def get_eff_phys_hp(level: int):
+def get_eff_phys_hp(level: int, max_level: int = 35):
     hp = get_hp(level)
-    defense = get_phys_def(level)
+    defense = get_phys_def(level, max_level)
     def_reduction = defense/256
 
     return hp/(1-def_reduction)
@@ -547,6 +562,7 @@ def progressive_scale_stats(
         atk_db: enemytechdb.EnemyAttackDB,
         ai_db: enemyai.EnemyAIDB,
         from_power: int, to_power: int,
+        max_power: int = 30,
         scale_hp: bool = True,
         scale_level: bool = True,
         scale_speed: bool = True,
@@ -562,7 +578,9 @@ def progressive_scale_stats(
 
     new_stats = stats.get_copy()
 
-    off_scale_factor = get_eff_phys_hp(to_power)/get_eff_phys_hp(from_power)
+    off_scale_factor = \
+        get_eff_phys_hp(to_power, max_power) / \
+        get_eff_phys_hp(from_power, max_power)
     mag_scale_factor = get_eff_mag_hp(to_power)/get_eff_mag_hp(from_power)
 
     if scale_offense:
@@ -576,30 +594,35 @@ def progressive_scale_stats(
                           atk_db, ai_db)
 
     if scale_magic:
-        new_stats.magic = int(min(stats.magic*mag_scale_factor, 0xFF))
+        new_stats.magic = \
+            int(max(1, min(stats.magic*mag_scale_factor, 0xFF)))
 
     if scale_level:
-        new_stats.level = int(min(stats.level*mag_scale_factor, 0xFF))
+        new_stats.level = \
+            int(max(1, min(stats.level*mag_scale_factor, 0xFF)))
 
     # Player attack scales superlinearly.  Atk scales roughly linearly with
     # level, but tech power scales too, we need to do something extra.
     # TODO:  Be a little more accurate and model tech power growth.
     def get_hp_scale_factor(
-            from_power: float, to_power: float
+            from_power: float, to_power: float, max_power: float
     ) -> float:
 
         # This is super contrived.  It just scales from 1 to about 15 with
         # steeper scaling at the higher end.
-        def hp_marker(level: float):
-            return 1+15*(level/30)**1.5
+        def hp_marker(level: float, max_level: float):
+            return 1+15*(level/max_level)**1.5
 
         # print(f'from, marker: {from_power}, {hp_marker(from_power)}')
         # print(f'  to, marker: {to_power}, {hp_marker(to_power)}')
         if from_power*to_power == 0:
             return 0
-        return hp_marker(to_power)/hp_marker(from_power)
+        return (
+            hp_marker(to_power, max_power) /
+            hp_marker(from_power, max_power)
+        )
 
-    hp_scale_factor = get_hp_scale_factor(from_power, to_power)
+    hp_scale_factor = get_hp_scale_factor(from_power, to_power, max_power)
     if scale_hp:
         new_stats.hp = int(min(stats.hp*hp_scale_factor, 0x7FFF))
 
@@ -664,9 +687,9 @@ def scale_enemy_techs(enemy_id: EnemyID,
     # print(f'num unused_techs: {unused_tech_count}')
 
     new_offense = orig_stats.offense*off_scale_factor
-    effective_new_offense = min(new_offense, 0xFF)
+    effective_new_offense = max(1, min(new_offense, 0xFF))
+    effective_scale_factor = effective_new_offense/orig_stats.offense
     overflow_scale = new_offense/0xFF
-    effective_off_scale = effective_new_offense / orig_stats.offense
 
     for tech_id in enemy_techs:
         tech = atk_db.get_tech(tech_id)
@@ -680,7 +703,7 @@ def scale_enemy_techs(enemy_id: EnemyID,
                     new_power = round(effect.power*overflow_scale)
             elif effect.defense_byte == 0x3C:  # Defended by mdef (weird)
                 # print(f'Tech {tech_id:02X} is weird')
-                rescale = mag_scale_factor/effective_off_scale
+                rescale = mag_scale_factor/effective_scale_factor
                 new_power = round(effect.power*rescale)
 
         new_power = min(0xFF, new_power)
@@ -795,6 +818,8 @@ def linear_scale_stats(enemy_id: EnemyID,
 # progressing.
 class ProgressiveScaleBoss(Boss):
 
+    MAX_LEVEL = 30
+
     @classmethod
     def scale_stats(cls,
                     enemy_id: EnemyID,
@@ -804,12 +829,90 @@ class ProgressiveScaleBoss(Boss):
                     from_power: int, to_power: int) -> EnemyStats:
         return progressive_scale_stats(enemy_id, stats,
                                        atk_db, ai_db,
-                                       from_power, to_power)
+                                       from_power, to_power, cls.MAX_LEVEL)
+
+
+class VRScaleBoss(ProgressiveScaleBoss):
+    MAX_LEVEL = 50
+
+
+@dataclass
+class _Stats:
+    hp: float = 0.0
+    level: float = 0.0
+    speed: float = 0.0
+    magic: float = 0.0
+    hit: float = 0.0
+    evade: float = 0.0
+    mdef: float = 0.0
+    offense: float = 0.0
+    defense: float = 0.0
+
+    @classmethod
+    def from_enemystats(cls, enemy_stats: EnemyStats):
+        es = enemy_stats
+        return _Stats(
+            es.hp, es.level, es.speed, es.magic, es.hit, es.evade,
+            es.mdef, es.offense, es.defense
+        )
+
+    def __add__(self, other: _Stats):
+        return _Stats(
+            self.hp+other.hp,
+            self.level+other.level,
+            self.speed+other.speed,
+            self.magic+other.magic,
+            self.hit+other.hit,
+            self.evade+other.evade,
+            self.mdef+other.mdef,
+            self.offense+other.offense,
+            self.defense+other.defense
+        )
+
+    def __radd__(self, other: _Stats):
+        return self.__add__(other)
+
+
+# Incomplete, may never get used.
+class CopyStatsScaleBoss(Boss):
+
+    def gather_stats(self, config: cfg.RandoConfig) -> _Stats:
+        '''
+        Gather total hp and average of other stats.
+        '''
+        stat_dict = config.enemy_dict
+        enemy_ids = self.scheme.ids
+
+        if len(enemy_ids) == 1:
+            stats = stat_dict[enemy_ids[0]]
+            ret_stats = _Stats.from_enemystats(stats)
+        elif EnemyID.LAVOS_SPAWN_HEAD in enemy_ids:
+            stats = stat_dict[EnemyID.LAVOS_SPAWN_HEAD]
+            ret_stats = _Stats.from_enemystats(stats)
+        elif EnemyID.ELDER_SPAWN_HEAD in enemy_ids:
+            stats = stat_dict[EnemyID.ELDER_SPAWN_HEAD]
+            ret_stats = _Stats.from_enemystats(stats)
+        elif EnemyID.SON_OF_SUN_EYE in enemy_ids:
+            stats = stat_dict[EnemyID.SON_OF_SUN_EYE]
+            ret_stats = _Stats.from_enemystats(stats)
+        elif EnemyID.MOTHERBRAIN in enemy_ids:
+            stats = stat_dict[EnemyID.MOTHERBRAIN]
+            ret_stats = _Stats.from_enemystats(stats)
+
+            display_mag = stat_dict[EnemyID.DISPLAY].magic
+            ret_stats.magic += 3*display_mag
+            ret_stats.magic /= 4
+        elif EnemyID.TERRA_MUTANT_HEAD in enemy_ids:
+            stats = stat_dict[EnemyID.TERRA_MUTANT_HEAD]
+            ret_stats = _Stats.from_enemystats(stats)
+
+        return ret_stats
 
 
 # This isn't used anymore, but we'll keep it around
 class LinearScaleBoss(Boss):
 
+    @classmethod
     def scale_stats(cls,
                     enemy_id: EnemyID,
                     stats: EnemyStats,
@@ -821,6 +924,8 @@ class LinearScaleBoss(Boss):
 
 
 class SonOfSunScaleBoss(Boss):
+
+    MAX_LEVEL = 30
 
     @classmethod
     def scale_stats(cls,
@@ -836,5 +941,10 @@ class SonOfSunScaleBoss(Boss):
         return progressive_scale_stats(enemy_id, stats,
                                        atk_db, ai_db,
                                        from_power, to_power,
+                                       cls.MAX_LEVEL,
                                        scale_offense=False,
                                        scale_hp=False)
+
+
+class VRScaleSonOfSon(SonOfSunScaleBoss):
+    MAX_LEVEL = 50
