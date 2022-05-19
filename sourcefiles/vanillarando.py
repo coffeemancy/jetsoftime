@@ -377,6 +377,7 @@ def rescale_bosses(config: cfg.RandoConfig):
     bdd[BID.NIZBEL_2].power = 25
     bdd[BID.RETINITE].power = 40
     bdd[BID.RUST_TYRANO].power = 40
+    bdd[BID.SON_OF_SUN].power = 45
     bdd[BID.SLASH_SWORD].power = 20
     bdd[BID.SUPER_SLASH].power = 20
     bdd[BID.TERRA_MUTANT].power = 50
