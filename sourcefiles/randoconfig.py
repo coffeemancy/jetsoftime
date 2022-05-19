@@ -16,6 +16,8 @@ import ctrom
 import statcompute
 import techdb
 
+import randosettings as rset
+
 
 class PlayerChar:
 
@@ -472,7 +474,8 @@ class RandoConfig:
     # It is important that RandoConfig can get a reasonble configuration
     # without having a rom in hand.  Otherwise, we are forced to apply some
     # patches to the rom before we can extract the proper jets data.
-    def __init__(self, rom: bytearray = None):
+    def __init__(self, rom: bytearray = None,
+                 settings: rset.Settings = rset.Settings.get_race_presets()):
 
         LocID = ctenums.LocID
         TID = ctenums.TreasureID
@@ -1103,7 +1106,7 @@ class RandoConfig:
             LocID.ZENAN_BRIDGE_BOSS: BossID.ZOMBOR
         }
 
-        self.boss_data_dict = bossdata.get_boss_data_dict()
+        self.boss_data_dict = bossdata.get_boss_data_dict(settings)
         self.boss_rank = dict()
 
         self.key_item_locations = []
@@ -1192,8 +1195,11 @@ class RandoConfig:
             json.dump(json_dict, json_out, indent=4)
 
     @classmethod
-    def get_config_from_rom(cls, rom: bytearray):
-        ret_cfg = RandoConfig()
+    def get_config_from_rom(
+            cls,
+            rom: bytearray,
+            settings: rset.Settings = rset.Settings.get_race_presets()):
+        ret_cfg = RandoConfig(rom, settings)
 
         ret_cfg.enemy_dict = enemystats.get_stat_dict(rom)
         ret_cfg.shop_manager = ShopManager(rom)
