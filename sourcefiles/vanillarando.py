@@ -5,10 +5,10 @@ import ctenums
 import ctrom
 import ctstrings
 import eventcommand
+import itemdata
 import treasuredata
 
 import randoconfig as cfg
-import randosettings as rset
 
 
 def restore_scripts(ct_rom: ctrom.CTRom):
@@ -47,7 +47,6 @@ def restore_ribbon_boost(ct_rom: ctrom.CTRom):
     EC = ctrom.ctevent.EC
     EF = ctrom.ctevent.EF
     OP = eventcommand.Operation
-
 
     ribbon_str = \
         'Found AtroposXR\'s ribbon!{line break}' \
@@ -136,7 +135,7 @@ def add_vanilla_clone_check_to_config(config: cfg.RandoConfig):
     assigned_item = random.choice(
         td.get_item_list(td.ItemTier.AWESOME_GEAR)
     )
-    
+
     bekkler_check = BekklerTreasure(
         ctenums.LocID.CRONOS_ROOM, 0x13, 1, assigned_item, 0,
         ctenums.LocID.BEKKLERS_LAB, 0xB, 1
@@ -217,26 +216,39 @@ def restore_cyrus_grave_check_to_config(config: cfg.RandoConfig):
 
 
 def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
-    
-    bossrandoevent.set_sun_palace_boss(
-        ct_rom,
-        config.boss_data_dict[ctenums.BossID.SON_OF_SUN].scheme
-    )
-    ct_rom.script_manager.write_script_to_rom(ctenums.LocID.SUN_PALACE)
+
+    if config.boss_assign_dict[ctenums.LocID.SUN_PALACE] == \
+       ctenums.BossID.SON_OF_SUN:
+
+        bossrandoevent.set_sun_palace_boss(
+            ct_rom,
+            config.boss_data_dict[ctenums.BossID.SON_OF_SUN].scheme
+        )
 
 
 def fix_item_data(config: cfg.RandoConfig):
-    # Fix prices for normally unsellable things
-    item_db = config.itemdb
 
+    item_db = config.itemdb
     IID = ctenums.ItemID
-    
+
+    config.itemdb[IID.MASAMUNE_2].set_name_from_str('{blade}GrandLeon')
+    roboribbon = config.itemdb[IID.ROBORIBBON]
+
+    # Put roboribbon in (but inaccessible) so that roboribbon.py doesn't
+    # mess things up.
+    T9 = itemdata.Type_09_Buffs
+    roboribbon.stats.has_battle_buff = True
+    roboribbon.stats.has_stat_boost = True
+    roboribbon.stats.battle_buffs = (T9.SPECS, T9.SHIELD, T9.BARRIER)
+    roboribbon.secondary_stats.stat_boost_index = 9
+
+    # Fix prices for normally unsellable things
     for item_id in (IID.BANDANA, IID.RIBBON, IID.POWERGLOVE, IID.DEFENDER,
-                    IID.MAGICSCARF,IID.SIGHTSCOPE ):
+                    IID.MAGICSCARF, IID.SIGHTSCOPE):
         item_db[item_id].price = 100
 
     for item_id in (IID.HIT_RING, IID.BERSERKER, IID.POWERSCARF,
-                    IID.MUSCLERING, IID.SERAPHSONG ):
+                    IID.MUSCLERING, IID.SERAPHSONG):
         item_db[item_id].price = 1000
 
     for item_id in (IID.POWER_RING, IID.MAGIC_RING, IID.SILVERERNG):
@@ -263,125 +275,6 @@ def fix_item_data(config: cfg.RandoConfig):
     # Make things sellable
 
 
-def get_tyrano_nuke_dict():
-    Element = ctenums.Element
-    return {
-        Element.FIRE: 0x37,  # Original
-        Element.ICE: 0x04,
-        Element.LIGHTNING: 0x1C,
-        Element.NONELEMENTAL: 0x26,
-        Element.SHADOW: 0x28
-    }
-
-
-def get_magus_nuke_dict():
-    Element = ctenums.Element
-    return {
-        Element.FIRE: 0xA9,  # Original
-        Element.ICE: 0x2D,
-        Element.LIGHTNING: 0x3B,
-        Element.NONELEMENTAL: 0x8E,  # Original
-        Element.SHADOW: 0x6B  # Original
-    }
-
-
-def get_magus_char_nuke_dict():
-    Element = ctenums.Element
-    CharID = ctenums.CharID
-
-    nuke_dict = get_magus_nuke_dict()
-    ret_dict = dict()
-    
-    for char in list(CharID):
-        if char in (CharID.CRONO, CharID.ROBO):
-            ret_dict[char] = nuke_dict[Element.LIGHTNING]
-        elif char == CharID.LUCCA:
-            ret_dict[char] = nuke_dict[Element.FIRE]
-        elif char in (CharID.MARLE, CharID.FROG):
-            ret_dict[char] = nuke_dict[Element.ICE]
-        elif char == CharID.MAGUS:
-            ret_dict[char] = nuke_dict[Element.SHADOW]
-        else:
-            ret_dict[char] = nuke_dict[Element.NONELEMENTAL]
-
-    return ret_dict
-
-
-def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
-    CharID = ctenums.CharID
-    EnemyID = ctenums.EnemyID
-
-    # Magus
-    magus_char = random.choice(list(CharID))
-
-    magus_nukes = get_magus_char_nuke_dict()
-    new_nuke = magus_nukes[magus_char]
-    nuke_strs = {
-        CharID.CRONO: 'Luminaire / Crono\'s strongest attack!',
-        CharID.MARLE: 'Hexagon Mist /Marle\'s strongest attack!',
-        CharID.LUCCA: 'Flare / Lucca\'s strongest attack!',
-        CharID.ROBO: 'Luminaire /Robo\'s strongest attack!',
-        CharID.FROG: 'Hexagon Mist /Frog\'s strongest attack.',
-        CharID.AYLA: 'Energy Flare /Ayla\'s strongest attack!',
-        CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
-    }
-
-    # Vanilla so we know magus has the default Dark Matter 0x6B
-    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
-    magus_stats = config.enemy_dict[EnemyID.MAGUS]
-
-    magus_ai.change_tech_usage(0x6B, new_nuke)
-    magus_stats.sprite_data.set_sprite_to_pc(magus_char)
-    magus_stats.name = str(magus_char)
-
-    battle_msgs = config.enemy_aidb.battle_msgs
-    battle_msgs.set_msg_from_str(0x23, nuke_strs[magus_char])
-
-    # Black Tyrano
-    
-
-def fix_enemy_techs(config: cfg.RandoConfig):
-    # Magus/Tyrano randomization requires making new versions of nukes
-    # Need to alter the normal ones and then make copies for other enemies
-    # to use.
-    Element = ctenums.Element
-    enemy_techdb = config.techdb
-    enemy_aidb = config.enemy_aidb
-    # Tyrano has a power 23 flame breath
-    # Will need copies of Luminaire (0xBB), Mist (0x91), Dark Matter (0x6B),
-    # and Energy Release (0x8E)
-    tyrano_nuke_dict = get_tyrano_nuke_dict()
-    new_elems = (Element.ICE, Element.LIGHTNING, Element.NONELEMENTAL,
-                 Element.SHADOW)
-    base_tech_ids = (0x91, 0xBB, 0x8E, 0x6B)
-
-    tyrano_spell_power = 23
-    for pair in zip(new_elems, base_tech_ids):
-        elem = pair[0]
-        base_id = pair[1]
-        new_id = tyrano_nuke_dict[elem]
-
-        tech = enemy_techdb.get_tech(base_id)
-        tech.effect.power = 23
-        enemy_techdb.set_tech(tech, new_id)
-        
-    
-    # Magus has an 18 power Dark Matter
-    # Flare (0xA9 - 20) and Energy Release (0x8E - 18) are good as-is
-    # Luminaire (0xBB) and Mist (0x91) need a new copy.
-    magus_nuke_dict = get_magus_nuke_dict()
-    new_elems = (Element.ICE, Element.LIGHTNING)
-    base_tech_ids = (0x91, 0xBB)
-    for pair in zip(new_elems, base_tech_ids):
-        elem = pair[0]
-        base_id = pair[1]
-        new_id = tyrano_nuke_dict[elem]
-
-        tech = enemy_techdb.get_tech(base_id)
-        tech.effect.power = 18
-        enemy_techdb.set_tech(tech, new_id)
-
-
 def scale_enemy_xp_tp(config: cfg.RandoConfig,
                       xp_scale_factor: float = 4.0,
                       tp_scale_factor: float = 2.0):
@@ -402,7 +295,7 @@ def scale_enemy_xp_tp(config: cfg.RandoConfig,
 
 
 def fix_required_tp(config: cfg.RandoConfig):
-    
+
     CharID = ctenums.CharID
 
     # Crono, Lucca, Marle, and Frog have no TP for 3rd tech
@@ -432,8 +325,8 @@ def fix_magic_learning(config: cfg.RandoConfig):
             magic_byte = tech_id*0xB
             config.techdb.controls[magic_byte] |= 0x80
 
+
 def restore_son_of_sun_flame(config: cfg.RandoConfig):
-    
     EID = ctenums.EnemyID
     sos_scheme = cfg.bossdata.BossScheme(
         [EID.SON_OF_SUN_EYE, EID.SON_OF_SUN_FLAME, EID.SON_OF_SUN_FLAME,
@@ -447,10 +340,49 @@ def restore_son_of_sun_flame(config: cfg.RandoConfig):
 
 
 def fix_twin_boss(config: cfg.RandoConfig):
-    twin_data = config.boss_data_dict[ctenums.BossID.TWIN_BOSS]
-    twin_data.scheme.ids = [
-        ctenums.EnemyID.GOLEM, ctenums.EnemyID.GOLEM
-    ]
+    '''Rewrite Vanilla Twin Golem i the Twin Boss spot'''
+    EnemyID = ctenums.EnemyID
+    # In vanilla, the twin boss is just a copy of the golem
+    golem_stats = config.enemy_dict[EnemyID.GOLEM].get_copy()
+    config.enemy_dict[EnemyID.TWIN_BOSS] = golem_stats
+    config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, EnemyID.GOLEM)
+    config.enemy_atkdb.copy_atk_gfx(EnemyID.TWIN_BOSS, EnemyID.GOLEM)
+
+    base_slot = config.boss_data_dict[ctenums.BossID.GOLEM].scheme.slots[0]
+    alt_slot = bossrandoevent.get_alt_twin_slot(config, ctenums.BossID.GOLEM)
+
+    new_slots = [base_slot, alt_slot]
+    config.boss_data_dict[ctenums.BossID.TWIN_BOSS].scheme.slots = new_slots
+
+
+def rescale_bosses(config: cfg.RandoConfig):
+    BID = ctenums.BossID
+    bdd = config.boss_data_dict
+
+    bdd[BID.ATROPOS_XR].power = 20
+    bdd[BID.DALTON_PLUS].power = 30
+    bdd[BID.FLEA].power = 20
+    bdd[BID.FLEA_PLUS].power = 20
+    bdd[BID.GIGA_GAIA].power = 30
+    bdd[BID.GIGA_MUTANT].power = 45
+    bdd[BID.GOLEM].power = 25
+    bdd[BID.GOLEM_BOSS].power = 25
+    bdd[BID.GUARDIAN].power = 10
+    bdd[BID.HECKRAN].power = 10
+    bdd[BID.LAVOS_SPAWN].power = 25
+    bdd[BID.MASA_MUNE].power = 12
+    bdd[BID.MEGA_MUTANT].power = 40
+    bdd[BID.MOTHER_BRAIN].power = 30
+    bdd[BID.NIZBEL].power = 20
+    bdd[BID.NIZBEL_2].power = 25
+    bdd[BID.RETINITE].power = 40
+    bdd[BID.RUST_TYRANO].power = 40
+    bdd[BID.SLASH_SWORD].power = 20
+    bdd[BID.SUPER_SLASH].power = 20
+    bdd[BID.TERRA_MUTANT].power = 50
+    bdd[BID.TWIN_BOSS].power = 25  # power of single golem
+    bdd[BID.YAKRA].power = 3
+    bdd[BID.YAKRA_XIII].power = 40
 
 
 def use_easy_lavos(ct_rom: ctrom.CTRom):
@@ -473,3 +405,4 @@ def fix_config(config: cfg.RandoConfig):
     add_vanilla_clone_check_to_config(config)
     restore_cyrus_grave_check_to_config(config)
     fix_twin_boss(config)
+    rescale_bosses(config)
