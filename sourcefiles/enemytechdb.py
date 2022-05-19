@@ -80,6 +80,37 @@ class EnemyControlHeader(_FixedLengthRecord):
         self.verify_effect_num(eff_num)
         self._data[9+eff_num] = eff_mod
 
+    @property
+    def element(self):
+        elem_byte = self._data[3]
+        elem_byte &= 0xF0
+
+        if bin(elem_byte).count('1') > 1:
+            raise ValueError('A tech can only have one element set.')
+        elif bin(elem_byte).count('1') == 0:
+            return ctenums.Element.NONELEMENTAL
+        elif elem_byte & 0x80:
+            return ctenums.Element.LIGHTNING
+        elif elem_byte & 0x40:
+            return ctenums.Element.SHADOW
+        elif elem_byte & 0x20:
+            return ctenums.Element.ICE
+        elif elem_byte & 0x10:
+            return ctenums.Element.FIRE
+
+    @element.setter
+    def element(self, value: ctenums.Element):
+        self._data[3] &= 0x0F
+
+        if value == ctenums.Element.LIGHTNING:
+            self._data[3] |= 0x80
+        elif value == ctenums.Element.SHADOW:
+            self._data[3] |= 0x40
+        elif value == ctenums.Element.ICE:
+            self._data[3] |= 0x20
+        elif value == ctenums.Element.FIRE:
+            self._data[3] |= 0x10
+
 
 class EnemyAtkControlHeader(_FixedLengthRecord):
     SIZE = 0xB
