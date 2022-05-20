@@ -500,9 +500,13 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         IID.SIGHT_CAP, IID.MEMORY_CAP, IID.TIME_HAT, IID.VIGIL_HAT
     )
 
-    ignored_ids = (
-        IID.RAINBOW, IID.WONDERSHOT, IID.VALKERYE, IID.DOOMSICKLE
-    )
+    # Going to allow item rando to give a stat boost too
+    # ignored_ids = (
+    #     IID.RAINBOW, IID.WONDERSHOT, IID.VALKERYE, IID.DOOMSICKLE,
+    #     IID.CRISIS_ARM
+    # )
+
+    ignored_ids = []
 
     for tier in gear_tiers:
         gear_in_tier[tier] = [x for x in gear_in_tier[tier] if x < 0x94
