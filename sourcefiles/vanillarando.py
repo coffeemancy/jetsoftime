@@ -220,9 +220,12 @@ def fix_item_data(config: cfg.RandoConfig):
     item_db[IID.WALLET].price = 4000
     item_db[IID.WALL_RING].price = 4000
     item_db[IID.FRENZYBAND].price = 5500
+    item_db[IID.SLASHER].price = 16500
+    item_db[IID.RAINBOW].price = 650000
     item_db[IID.PRISMSPECS].price = 62000
     item_db[IID.SUN_SHADES].price = 62000
     item_db[IID.GOLD_STUD].price = 60000
+    item_db[IID.TABAN_SUIT].price = 53000
     item_db[IID.AMULET].price = 50000
     item_db[IID.DASH_RING].price = 40000
     item_db[IID.SILVERSTUD].price = 40000
@@ -322,6 +325,7 @@ def rescale_bosses(config: cfg.RandoConfig):
 
     bdd[BID.ATROPOS_XR].power = 20
     bdd[BID.DALTON_PLUS].power = 30
+    bdd[BID.ELDER_SPAWN].power = 45
     bdd[BID.FLEA].power = 20
     bdd[BID.FLEA_PLUS].power = 20
     bdd[BID.GIGA_GAIA].power = 30
@@ -361,7 +365,7 @@ def use_easy_lavos(ct_rom: ctrom.CTRom):
 def fix_config(config: cfg.RandoConfig):
     fix_item_data(config)
     fix_required_tp(config)  # Do before scaling.
-    scale_enemy_xp_tp(config, 4, 4)
+    scale_enemy_xp_tp(config, 2, 2)
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
     add_vanilla_clone_check_to_config(config)
