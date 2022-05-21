@@ -221,7 +221,7 @@ def fix_item_data(config: cfg.RandoConfig):
     item_db[IID.WALL_RING].price = 4000
     item_db[IID.FRENZYBAND].price = 5500
     item_db[IID.SLASHER].price = 16500
-    item_db[IID.RAINBOW].price = 650000
+    item_db[IID.RAINBOW].price = 65000
     item_db[IID.PRISMSPECS].price = 62000
     item_db[IID.SUN_SHADES].price = 62000
     item_db[IID.GOLD_STUD].price = 60000
