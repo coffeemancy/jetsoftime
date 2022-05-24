@@ -24,6 +24,7 @@ import iceage
 import legacyofcyrus
 import mystery
 import vanillarando
+import epochfail
 
 import byteops
 import ctenums
@@ -644,6 +645,7 @@ class Randomizer:
         locked_chars = rset.GameFlags.LOCKED_CHARS in flags
         lost_worlds = rset.GameMode.LOST_WORLDS == mode
         vanilla = rset.GameMode.VANILLA_RANDO == mode
+        epoch_fail = rset.GameFlags.EPOCH_FAIL in flags
 
         if dup_chars and not lost_worlds:
             # Lets Spekkio give magic properly to duplicates
@@ -665,12 +667,22 @@ class Randomizer:
             lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
-
+            
+        # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
+        # rolled into patch.ips.
+            
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
 
-        # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
-        # rolled into patch.ips.
+            if epoch_fail:
+                epochfail.ground_epoch(self.out_rom)
+                epochfail.update_keepers_dome(self.out_rom)
+                epochfail.undo_epoch_relocation(self.out_rom)
+                epochfail.restore_dactyls(self.out_rom)
+                epochfail.add_dalton_to_snail_stop(self.out_rom)
+
+                self.out_rom.rom_data.seek(0x1FFFF)  # debug stuff
+                self.out_rom.rom_data.write(b'\x01')
 
         # Split the NR "sealed" chests
         self.__fix_northern_ruins_sealed(self.out_rom)
@@ -1178,6 +1190,9 @@ class Randomizer:
             config = cfg.RandoConfig.get_config_from_rom(
                 ct_vanilla, settings)
             vanillarando.fix_config(config)
+
+            if rset.GameFlags.EPOCH_FAIL in settings.gameflags:
+                epochfail.update_config(config)
 
         else:
             # Apply hard mode if it's in the settings.
