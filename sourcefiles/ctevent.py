@@ -1050,6 +1050,7 @@ class Event:
 
             cmd = get_command(self.data, pos)
             cmd_len += len(cmd)
+            pos += len(cmd)
 
         self.__shift_jumps(before_pos=pos,
                            after_pos=pos+cmd_len,
