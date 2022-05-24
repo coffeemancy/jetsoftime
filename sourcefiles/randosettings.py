@@ -76,7 +76,7 @@ class GameFlags(Flag):
     FREE_MENU_GLITCH = auto()
     GEAR_RANDO = auto()
     FIRST_TWO = auto()
-
+    EPOCH_FAIL = auto()
 
 # Dictionary for what flags force what other flags off.
 # Note that this is NOT symmetric.  For example Lost Worlds will force
