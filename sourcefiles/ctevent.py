@@ -1052,6 +1052,8 @@ class Event:
             cmd_len += len(cmd)
             pos += len(cmd)
 
+        pos = del_pos
+
         self.__shift_jumps(before_pos=pos,
                            after_pos=pos+cmd_len,
                            shift=-cmd_len)
