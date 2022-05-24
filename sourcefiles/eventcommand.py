@@ -401,7 +401,7 @@ class EventCommand:
         if is_script_mem(from_addr) and is_script_mem(to_addr):
             # arg 1: offset of from_addr
             # arg 2: offset of to_addr
-            cmd_args = [get_offset(from_addr_), get_offset(to_addr)]
+            cmd_args = [get_offset(from_addr), get_offset(to_addr)]
             if num_bytes == 1:
                 cmd_id = 0x51
             else:
