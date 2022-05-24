@@ -236,6 +236,13 @@ class LocID(StrIntEnum):
     CRONOS_ROOM = 0x002
     NORTHERN_RUINS_HEROS_GRAVE = 0x049
     LAVOS = 0x1D3
+    LEENE_SQUARE = 0x1B7
+    KEEPERS_DOME_CORRIDOR = 0xF2
+    KEEPERS_DOME_HANGAR = 0xF3
+    FIONAS_VILLA = 0X9E
+    PREHISTORIC_CANYON = 0x105
+    MYSTIC_MTN_GULCH = 0x112
+    LAIR_RUINS_PORTAL = 0x133
 
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
@@ -525,6 +532,7 @@ class ItemID(StrIntEnum):
     HORNS_2 = 0xE6
     FEATHERS_2 = 0xE7
     BUCKETFRAG = 0xE8
+    JETSOFTIME = 0xE9
 
     @classmethod
     def get_key_items(cls):
