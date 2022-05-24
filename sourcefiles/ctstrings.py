@@ -139,8 +139,8 @@ class CTString(bytearray):
 
     symbols = [
         '!', '?', '/', '\"1', '\"2', ':', '&', '(', ')', '\'', '.',
-        ',', '=', '-', '+', '%', 'none', ' ', '{:heart:}', '...',
-        '{:inf:}', '{:music:}'
+        ',', '=', '-', '+', '%', 'note', ' ', '{:heart:}', '...',
+        '{:inf:}', 'none'
     ]
 
     huffman_table = pickle.load(open('./pickles/huffman_table.pickle', 'rb'))
@@ -252,8 +252,7 @@ class CTString(bytearray):
         ret_str = CTString()
 
         pos = 0
-        while pos < len(string):
-
+        while pos < len(string): 
             (ct_bytes, pos) = cls.get_token(string, pos)
             ret_str.extend(ct_bytes)
 
@@ -310,7 +309,10 @@ class CTString(bytearray):
             elif cur_byte in range(0xD4, 0xDE):
                 ret_str += f"{cur_byte-0xD4}"
             elif cur_byte in range(0xDE, 0xF4):
-                ret_str += self.symbols[cur_byte-0xDE]
+                symbol = self.symbols[cur_byte-0xDE]
+                if symbol in ('note', '\"1', '\"2'):
+                    symbol = '{' + symbol + '}'
+                ret_str += symbol
             elif cur_byte == 0xFF:
                 # enemies edited in TF seem to get FFs in their names
                 ret_str += ' '
