@@ -2100,6 +2100,20 @@ class RandoGUI:
             'available if Frog is among the starters.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Epoch Fail',
+            variable=self.flag_dict[GameFlags.EPOCH_FAIL]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'For Vanilla mode only.  Players start without wings on the '
+            'Epoch.  The \'Jets of Time\' can be obtained and turned in '
+            'to Dalton in the Snail Stop to upgrade the Epoch.'
+        )
+
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
             text='Bucket Fragments',
