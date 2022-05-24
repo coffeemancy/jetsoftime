@@ -1326,6 +1326,9 @@ class VanillaRandoGameConfig(NormalGameConfig):
         self.keyItemList.append(ItemID.TOOLS)
         self.keyItemList.remove(ItemID.ROBORIBBON)
 
+        if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
+            self.keyItemList.append(ItemID.JETSOFTIME)
+
     def initLocations(self):
         NormalGameConfig.initLocations(self)
 
@@ -1356,6 +1359,60 @@ class VanillaRandoGameConfig(NormalGameConfig):
         )
         self.locationGroups.append(cyrusKey)
 
+        if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
+            # Split FutureOpen group to get SoS in a flight-required group
+            futureOpen = self.getLocationGroup('FutureOpen')
+            futureOpen.removeLocationTIDs(
+                (TID.SUN_PALACE_KEY, TID.GENO_DOME_KEY)
+            )
+
+            futureSoS = LocationGroup(
+                "FutureFlight", 2,
+                lambda game: (
+                    game.canAccessFuture() and
+                    game.hasKeyItem(ItemID.JETSOFTIME)
+                )
+            )
+            futureSoS.addLocation(
+                BaselineLocation(TID.SUN_PALACE_KEY, _awesome_gear_dist)
+            )
+            futureSoS.addLocation(
+                BaselineLocation(TID.GENO_DOME_KEY, _awesome_gear_dist)
+            )
+            self.locationGroups.append(futureSoS)
+
+            # Split OpenKeys to get Carpenter flight-required
+            openKeys = self.getLocationGroup('OpenKeys')
+            openKeys.removeLocationTIDs(TID.LAZY_CARPENTER)
+
+            lazyCarpenter = LocationGroup(
+                "LazyCarpenter", 2,
+                lambda game: game.hasKeyItem(ItemID.JETSOFTIME)
+            )
+
+            lazyCarpenter.addLocation(
+                BaselineLocation(
+                    TID.LAZY_CARPENTER,
+                    td.TreasureDist(
+                        (1, td.get_item_list(td.ItemTier.MID_GEAR))
+                    )
+                )
+            )
+
+            self.locationGroups.append(lazyCarpenter)
+
+            # Add flight requirement to the groups that should require it
+            flightGroupNames = (
+                'Giantsclaw', 'MelchiorRefinements', 'HerosGrave'
+            )
+
+            for name in flightGroupNames:
+                group = self.getLocationGroup(name)
+                rule = group.accessRule
+                group.accessRule = lambda game: (
+                    rule(game) and game.hasKeyItem(ItemID.JETSOFTIME)
+                )
+
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
@@ -1363,6 +1420,9 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         ChronosanityGameConfig.initKeyItems(self)
         self.keyItemList.append(ItemID.TOOLS)
         self.keyItemList.remove(ItemID.ROBORIBBON)
+
+        if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
+            self.keyItemList.append(ItemID.JETSOFTIME)
 
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
@@ -1400,6 +1460,47 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
         northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
 
+        if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
+            # Split FutureOpen group to get SoS in a flight-required group
+            futureOpen = self.getLocationGroup('FutureOpen')
+            futureOpen.removeLocationTIDs(TID.SUN_PALACE_KEY)
+
+            futureSoS = LocationGroup(
+                "FutureSoS", 2,
+                lambda game: (
+                    game.canAccessFuture() and
+                    game.hasKeyItem(ItemID.JETSOFTIME)
+                )
+            )
+            futureSoS.addLocation(Location(TID.SUN_PALACE_KEY))
+            self.locationGroups.append(futureSoS)
+
+            # Split OpenKeys to get Carpenter flight-required
+            openKeys = self.getLocationGroup('OpenKeys')
+            openKeys.removeLocationTIDs(TID.LAZY_CARPENTER)
+
+            lazyCarpenter = LocationGroup(
+                "LazyCarpenter", 2,
+                lambda game: game.hasKeyItem(ItemID.JETSOFTIME)
+            )
+
+            lazyCarpenter.addLocation(Location(TID.LAZY_CARPENTER))
+            self.locationGroups.append(lazyCarpenter)
+
+            # Add flight requirement to the groups that should require it
+            flightGroupNames = (
+                'GenoDome', 'Giantsclaw', 'NorthernRuins',
+                'NorthernRuinsFrogLocked', 'Ozzie\'s Fort',
+                'MelchiorRefinements'
+            )
+
+            for name in flightGroupNames:
+                group = self.getLocationGroup(name)
+                rule = group.accessRule
+                group.accessRule = lambda game: (
+                    rule(game) and game.hasKeyItem(ItemID.JETSOFTIME)
+                )
+
 
 #
 # Get a GameConfig object based on randomizer flags.
@@ -1421,7 +1522,7 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
     iceAge = rset.GameMode.ICE_AGE == settings.game_mode
     legacyofcyrus = rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
     vanilla = rset.GameMode.VANILLA_RANDO == settings.game_mode
-    
+
     if chronosanity:
         if lostWorlds:
             CfgType = ChronosanityLostWorldsGameConfig
