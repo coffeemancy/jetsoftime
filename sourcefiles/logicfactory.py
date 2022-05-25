@@ -1068,6 +1068,10 @@ class ChronosanityLegacyOfCyrusGameConfig(ChronosanityGameConfig):
         if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
             removed_items.append(ItemID.DREAMSTONE)
 
+        for item_id in removed_items:
+            while item_id in self.keyItemList:
+                self.keyItemList.remove(item_id)
+
     def initLocations(self):
 
         ChronosanityGameConfig.initLocations(self)
@@ -1269,8 +1273,9 @@ class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
             ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
         ]
 
-        for item in removed_items:
-            self.keyItemList.remove(item)
+        for item_id in removed_items:
+            while item_id in self.keyItemList:
+                self.keyItemList.remove(item_id)
 
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
