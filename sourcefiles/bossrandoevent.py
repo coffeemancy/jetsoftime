@@ -1974,29 +1974,38 @@ _tyrano_minor_techs = {
 }
 
 
+def get_magus_nuke_id(config: cfg.RandoConfig):
+    '''
+    Get the tech id of Magus's big spell based on message id on cast.
+    '''
+    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
+    magus_ai_b = magus_ai.get_as_bytearray()
+
+    AI = cfg.enemyai.AIScript
+    tech_cmd_len = 6
+    tech_cmd_locs = AI.find_command(magus_ai_b, 2)
+
+    for loc in tech_cmd_locs:
+        msg = magus_ai_b[loc+tech_cmd_len-1]
+        if msg == 0x23:
+            tech_id = magus_ai_b[loc+1]
+            break
+
+    return tech_id
+
+
 def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
+
+    new_char = CharID.MAGUS
+
     magus_stats = config.enemy_dict[EnemyID.MAGUS]
-    name = magus_stats.name
-    name = name.replace(' ', '')
-    name_dict = {
-        'Crono': CharID.CRONO,
-        'Marle': CharID.MARLE,
-        'Lucca': CharID.LUCCA,
-        'Robo': CharID.ROBO,
-        'Frog': CharID.FROG,
-        'Ayla': CharID.AYLA,
-        'Magus': CharID.MAGUS
-    }
-
-    magus_char = name_dict[name]
-
 
     magus_nukes = {
         CharID.CRONO: 0xBB,  # Luminaire
-        CharID.MARLE: 0x52,  # Hexagon Mist
+        CharID.MARLE: 0x91,  # Hexagon Mist
         CharID.LUCCA: 0xA9,  # Flare
         CharID.ROBO: 0xBB,   # Luminaire
-        CharID.FROG: 0x52,   # Hexagon Mist
+        CharID.FROG: 0x91,   # Hexagon Mist
         CharID.AYLA: 0x8E,   # Energy Release
         CharID.MAGUS: 0x6B   # Dark Matter
     }
@@ -2011,40 +2020,49 @@ def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
         CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
     }
 
-    orig_nuke_id = magus_nukes[magus_char]
+    orig_nuke_id = get_magus_nuke_id(config)
     orig_nuke = config.enemy_atkdb.get_tech(orig_nuke_id)
 
     new_nuke_id = magus_nukes[new_char]
     new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
 
-    if new_nuke.effect.power != orig_nuke.effect.power:
-        new_nuke.effect.power = orig_nuke.effect.power
+    if new_nuke.effect != orig_nuke.effect:
+        new_nuke.effect = orig_nuke.effect
         new_nuke_id = config.enemy_aidb.unused_techs[-1]
         config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
 
-    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
-    magus_ai.change_tech_usage(orig_nuke_id, new_nuke_id)
+    config.enemy_aidb.change_tech_in_ai(
+        EnemyID.MAGUS, orig_nuke_id, new_nuke_id
+    )
 
     magus_stats.sprite_data.set_sprite_to_pc(new_char)
     magus_stats.name = str(new_char)
 
     battle_msgs = config.enemy_aidb.battle_msgs
-    battle_msgs.set_msg_from_str(0x23, nuke_strs[magus_char])
+    battle_msgs.set_msg_from_str(0x23, nuke_strs[new_char])
 
 
 def set_rust_tyrano_element(tyrano_id: EnemyID,
                             tyrano_element: Element,
                             config: cfg.RandoConfig):
-    orig_nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
+
+    nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
+    nuke = config.enemy_atkdb.get_tech(nuke_id)
+
     new_nuke_id = _tyrano_nukes[tyrano_element]
+    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
+
+    if nuke.effect != new_nuke.effect:
+        new_nuke.effect = nuke.effect
+        new_nuke_id = config.enemy_aidb.unused_techs[-1]
+        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
 
     if tyrano_element != Element.FIRE:
         power_string = 'Magic Pwr Up!'
         # String goes in 6D
         config.enemy_aidb.battle_msgs.set_msg_from_str(0x6D, power_string)
 
-    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
-    tyrano_ai.change_tech_usage(orig_nuke_id, new_nuke_id)
+    config.enemy_aidb.change_tech_in_ai(tyrano_id, nuke_id, new_nuke_id)
 
 
 def get_rust_tyrano_nuke_id(tyrano_id: EnemyID,
@@ -2128,14 +2146,17 @@ def set_black_tyrano_element(element: Element, config: cfg.RandoConfig):
     new_nuke_id = _tyrano_nukes[element]
     new_nuke = config.enemy_atkdb.get_tech(nuke_id)
 
-    if nuke.effect.power != new_nuke.effect.power:
-        new_nuke.effect.power = nuke.effect.power
+    if nuke.effect != new_nuke.effect:
+        new_nuke.effect = nuke.effect
         new_nuke_id = config.enemy_aidb.unused_techs[-1]
         config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
 
-    bt_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
-    bt_ai.change_tech_usage(nuke_id, new_nuke_id)
-    bt_ai.change_tech_usage(minor_tech_id, new_minor_tech_id)
+    config.enemy_aidb.change_tech_in_ai(
+        EnemyID.BLACKTYRANO, nuke_id, new_nuke_id
+    )
+    config.enemy_aidb.change_tech_in_ai(
+        EnemyID.BLACKTYRANO, minor_tech_id, new_minor_tech_id
+    )
 
 
 def get_black_tyrano_element(config: cfg.RandoConfig) -> Element:
