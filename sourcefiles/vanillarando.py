@@ -22,6 +22,9 @@ def restore_scripts(ct_rom: ctrom.CTRom):
 
 
 def restore_r_series(ct_rom: ctrom.CTRom):
+    '''
+    Puts the R-Series fight back to 6 robots.
+    '''
     script = ctrom.ctevent.Event.from_flux(
         './flux/VR_0E6_RSeries.Flux'
     )
@@ -32,6 +35,9 @@ def restore_r_series(ct_rom: ctrom.CTRom):
 
 
 def restore_tools_to_carpenter_script(ct_rom: ctrom.CTRom):
+    '''
+    Make the carpenter accept tools instead of GrandLeon.
+    '''
     script = ctrom.ctevent.Event.from_flux(
         './flux/VR_0BC_Choras_Cafe.Flux'
     )
@@ -39,6 +45,9 @@ def restore_tools_to_carpenter_script(ct_rom: ctrom.CTRom):
 
 
 def restore_ribbon_boost(ct_rom: ctrom.CTRom):
+    '''
+    Gives Robo +3 speed and +10 mdef after the Geno Dome.
+    '''
     script = ct_rom.script_manager.get_script(
         ctenums.LocID.GENO_DOME_MAINFRAME
     )
@@ -90,6 +99,9 @@ def restore_ribbon_boost(ct_rom: ctrom.CTRom):
 
 
 def restore_geno_dome_conveyor(ct_rom: ctrom.CTRom):
+    '''
+    Make the enemies on the Geno Dome conveyor the vanilla enemies.
+    '''
     script = ctrom.ctevent.Event.from_flux(
         './flux/orig_07E_geno_conveyor.Flux'
     )
@@ -97,6 +109,9 @@ def restore_geno_dome_conveyor(ct_rom: ctrom.CTRom):
 
 
 class BekklerTreasure(cfg.ScriptTreasure):
+    '''
+    Treasure type for setting the Bekkler key item.
+    '''
     def __init__(self,
                  location: ctenums.LocID,
                  object_id: int, function_id: int,
@@ -158,6 +173,18 @@ def restore_cyrus_grave_script(ct_rom: ctrom.CTRom):
     )
     ct_rom.script_manager.set_script(
         script, ctenums.LocID.NORTHERN_RUINS_HEROS_GRAVE
+    )
+
+
+def restore_magus_castle_decedents(config: cfg.RandoConfig):
+    '''Copy Decedent to Frog King spot'''
+    decedent_stats = config.enemy_dict[ctenums.EnemyID.DECEDENT].get_copy()
+    config.enemy_dict[ctenums.EnemyID.DECEDENT_II] = decedent_stats
+    config.enemy_aidb.change_enemy_ai(
+        ctenums.EnemyID.DECEDENT_II, ctenums.EnemyID.DECEDENT
+    )
+    config.enemy_atkdb.copy_atk_gfx(
+        ctenums.EnemyID.DECEDENT_II, ctenums.EnemyID.DECEDENT
     )
 
 
@@ -368,6 +395,7 @@ def fix_config(config: cfg.RandoConfig):
     scale_enemy_xp_tp(config, 2, 2)
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
+    restore_magus_castle_decedents(config)
     add_vanilla_clone_check_to_config(config)
     restore_cyrus_grave_check_to_config(config)
     fix_twin_boss(config)
