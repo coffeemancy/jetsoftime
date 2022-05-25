@@ -205,7 +205,7 @@ def undo_epoch_relocation(ct_rom: ctrom.CTRom):
         # Epoch is moved to 600.  The Epoch becomes unavailable until you
         # do bridge.
         jump_len = 13  # 1 + 2 assigns
-        if loc == LocID.MANORIA_COMMAND:
+        if loc in (LocID.MANORIA_COMMAND, LocID.GUARDIA_FOREST_DEAD_END):
             jump_len += 6  # Also jump over the map switch assign.
 
         jmp = EC.if_mem_op_value(0x7F00BA, OP.BITWISE_AND_NONZERO,
