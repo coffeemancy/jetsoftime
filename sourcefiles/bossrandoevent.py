@@ -1000,7 +1000,7 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
                                unk_0x20=True,
                                wait_vblank=False)
 
-    pos = script.get_object_start(0)
+    pos = script.get_function_start(0, 1)
     script.insert_commands(copy_tiles.to_bytearray(), pos)
 
     # copy the vblank waiting version to obj0 func 1 for post-menu
@@ -1856,7 +1856,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         # TODO: This got too big.  Break into own function?
         # orig_id = default_assignment[location]
         # new_id = current_assignment[location]
-        # print(f'{orig_id} --> {new_id}')
+        # print(f'{orig_id} ({orig_boss.power}) --> '
+        #       f'{new_id} ({new_boss.power})')
         spot_xp = sum(config.enemy_dict[part].xp
                       for part in orig_boss.scheme.ids)
         spot_tp = sum(config.enemy_dict[part].tp
