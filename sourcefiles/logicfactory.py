@@ -1328,6 +1328,7 @@ class VanillaRandoGameConfig(NormalGameConfig):
 
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
+
         self.keyItemList.append(ItemID.TOOLS)
         self.keyItemList.remove(ItemID.ROBORIBBON)
 
@@ -1423,11 +1424,16 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
     def initKeyItems(self):
         ChronosanityGameConfig.initKeyItems(self)
-        self.keyItemList.append(ItemID.TOOLS)
-        self.keyItemList.remove(ItemID.ROBORIBBON)
+
+        for i in range(5):
+            self.keyItemList.append(ItemID.TOOLS)
+
+        while ItemID.ROBORIBBON in self.keyItemList:
+            self.keyItemList.remove(ItemID.ROBORIBBON)
 
         if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
-            self.keyItemList.append(ItemID.JETSOFTIME)
+            for i in range(3):
+                self.keyItemList.append(ItemID.JETSOFTIME)
 
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
