@@ -991,11 +991,28 @@ class Item:
         # print(self.name)
         rom[name_st:name_end] = self.name
 
-    def get_name_as_str(self):
-        return str(ctstrings.CTNameString(self.name))
+    def get_name_as_str(self, remove_prefix: bool = False):
+        if remove_prefix:
+            start = 1
+        else:
+            start = 0
+        return str(ctstrings.CTNameString(self.name[start:]))
 
     def set_name_from_str(self, name_str: str):
         self.name = ctstrings.CTNameString.from_string(name_str, 11)
+
+    def get_desc_as_str(self):
+        return ctstrings.CTString.ct_bytes_to_ascii(
+            self.desc[0:-1]
+        )
+
+    def set_desc_from_str(self, name_str: str):
+        desc = ctstrings.CTString.from_str(name_str)
+        if desc[-1] != 0:
+            desc.append(0)
+
+        desc.compress()
+        self.desc = desc
 
     @classmethod
     def get_desc_ptr_file_start_from_rom(cls, rom: bytes):
@@ -1160,7 +1177,8 @@ class ItemDB:
                     }
                     start_str = tech_names[item_id]
                 elif item_id == IID.HERO_MEDAL:
-                    start_str = 'Masa C:50%'
+                    # start_str = 'Masa C:50%'
+                    pass
                 elif item_id in (IID.SIGHTSCOPE, IID.ROBORIBBON):
                     start_str = 'Show HP'
 
