@@ -100,17 +100,25 @@ class EnemyStats:
 
         self.sprite_data = EnemySpriteData(sprite_bytes)
 
-    def __str__(self):
+    def __str__(self, item_db = None):
         ret = ''
         stats = [str.rjust(str(x), 3)
                  for x in [self.speed, self.offense, self.defense,
                            self.magic, self.mdef, self.hit, self.evade]]
         stat_string = ' '.join(x for x in stats)
+
+        if item_db is None:
+            drop_str = str(self.drop_item)
+            charm_str = str(self.charm_item)
+        else:
+            drop_str = item_db[self.drop_item].get_name_as_str(True)
+            charm_str = item_db[self.charm_item].get_name_as_str(True)
+
         ret += (f"Name: {self.name}\n"
                 f"HP = {self.hp}\tLevel = {self.level}\n"
                 f"XP = {self.xp}\tTP = {self.tp}\tGP = {self.gp}\n"
-                f"Drop = {self.drop_item}\t"
-                f"Charm = {self.charm_item}\n"
+                f"Drop = {drop_str}\t"
+                f"Charm = {charm_str}\n"
                 "Spd Off Def Mag Mdf Hit Evd\n" +
                 stat_string + '\n')
 
