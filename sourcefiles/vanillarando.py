@@ -346,6 +346,29 @@ def fix_twin_boss(config: cfg.RandoConfig):
     config.boss_data_dict[ctenums.BossID.TWIN_BOSS].scheme.slots = new_slots
 
 
+def rebalance_nizbel(config: cfg.RandoConfig):
+    '''
+    Make Nizbel take ~50% damage without shock instead of almost none.
+    '''
+
+    nizbel = config.enemy_dict[ctenums.EnemyID.NIZBEL]
+    nizbel.defense = 0xC3  # 195
+    nizbel.mdef = 0x4B  # 75
+
+    nizbel_ai = config.enemy_aidb.scripts[ctenums.EnemyID.NIZBEL]
+    nizbel_ai_b = nizbel_ai.get_as_bytearray()
+
+    loc = nizbel_ai.find_command(nizbel_ai_b, 0x12)[0]
+    new_cmd = bytearray.fromhex(
+        '12 27 05 00 00 3E C3 3C 4B 3C 4B 3C 4B 3C 4B 24'
+    )
+
+    nizbel_ai_b[loc: loc + len(new_cmd)] = new_cmd
+
+    config.enemy_aidb.scripts[ctenums.EnemyID.NIZBEL] = \
+        cfg.enemyai.AIScript(nizbel_ai_b)
+
+
 def rescale_bosses(config: cfg.RandoConfig):
     BID = ctenums.BossID
     bdd = config.boss_data_dict
@@ -399,4 +422,5 @@ def fix_config(config: cfg.RandoConfig):
     add_vanilla_clone_check_to_config(config)
     restore_cyrus_grave_check_to_config(config)
     fix_twin_boss(config)
+    rebalance_nizbel(config)
     rescale_bosses(config)
