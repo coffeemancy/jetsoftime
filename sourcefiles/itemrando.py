@@ -413,6 +413,26 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
     else:
         item.price = new_price
 
+    # Special cases for naming.
+    # Currently only Haste Helm
+    if item_id == ctenums.ItemID.HASTE_HELM:
+        if new_effect == _AE.SHIELD:
+            new_str = '{helm}ShieldHelm'
+        elif new_effect == _AE.BARRIER:
+            new_str = '{helm}Wall Helm'
+        elif new_effect == _AE.IMMUNE_ALL:
+            new_str = '{helm}ImmuneHelm'
+        elif new_effect == _AE.HASTE:
+            new_str = '{helm}Haste Helm'
+        else:
+            new_str = '{helm}Waste Helm'
+
+        item.set_name_from_str(new_str)
+
+        # Since we rename, pretend these are the original stats.
+        # Now a + will be given if the stat boost is present.
+        orig_stats = item.stats
+
     if item.stats != orig_stats or item.secondary_stats != orig_sec_stats:
         orig_boost = item_db.stat_boosts[orig_sec_stats.stat_boost_index]
         cur_boost = item_db.stat_boosts[
@@ -452,23 +472,6 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
             append_str = '?'
 
         append_to_item_name(item, append_str)
-
-    # Special cases for naming.
-    # Currently only Haste Helm
-    AE = itemdata.ArmorEffects
-    if item_id == ctenums.ItemID.HASTE_HELM:
-        if new_effect == AE.SHIELD:
-            new_str = '{helm}ShieldHelm'
-        elif new_effect == AE.BARRIER:
-            new_str = '{helm}Wall Helm'
-        elif new_effect == AE.IMMUNE_ALL:
-            new_str = '{helm}ImmuneHelm'
-        elif new_effect == AE.HASTE:
-            new_str = '{helm}Haste Helm'
-        else:
-            new_str = '{helm}Waste Helm'
-
-        item.set_name_from_str(new_str)
 
 
 def randomize_weapon_armor_stats(settings: rset.Settings,
