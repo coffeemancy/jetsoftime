@@ -272,6 +272,9 @@ class Randomizer:
             item_db[IID.TOOLS].set_desc_from_str(
                 'Repair Ruins (Choras Cafe)'
             )
+            item_db[IID.JETSOFTIME].set_desc_from_str(
+                'Upgrade Epoch (Snail Stop)'
+            )
         else:
             grandleon_desc = item_db[IID.MASAMUNE_2].get_desc_as_str()
             grandleon_desc += ' (Tools)'
@@ -744,7 +747,7 @@ class Randomizer:
 
         # Split the NR "sealed" chests
         self.__fix_northern_ruins_sealed(self.out_rom)
-        
+
         # Update the trading post descriptions
         self.__update_trading_post_string(self.out_rom, self.config)
 
