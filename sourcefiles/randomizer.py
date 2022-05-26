@@ -184,6 +184,7 @@ class Randomizer:
         bucketfragment.write_fragments_to_config(self.settings, self.config)
 
         # Omen elevator
+        self.__update_key_item_descs()
         self.__set_omen_elevators_config()
 
         # Ice age GG buffs if IA flag is present in settings.
@@ -219,13 +220,70 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+    def __update_key_item_descs(self):
+        config = self.config
+        IID = ctenums.ItemID
+
+        item_db = config.itemdb
+        item_db[IID.GATE_KEY].set_desc_from_str(
+            'Unlocks 65m BC (Medina imp closet)'
+        )
+
+        item_db[IID.PENDANT].set_desc_from_str(
+            'Unlocks future (Castle 1000 Lawyer)'
+        )
+
+        item_db[IID.DREAMSTONE].set_desc_from_str(
+            'Opens Tyrano Lair (Kino cell switch)'
+        )
+
+        item_db[IID.BENT_SWORD].set_desc_from_str(
+            'Forge Masa w/ Hilt (Melchior\'s Hut)'
+        )
+
+        item_db[IID.BENT_HILT].set_desc_from_str(
+            'Forge Masa w/ Blade (Melchior\'s Hut)'
+        )
+
+        item_db[IID.PRISMSHARD].set_desc_from_str(
+            'Start Shell Trial (King 600 w/ Marle)'
+        )
+
+        item_db[IID.TOMAS_POP].set_desc_from_str(
+            'Open GiantsClaw (Choras 1000 grave)'
+        )
+
+        item_db[IID.CLONE].set_desc_from_str(
+            'Go DthPeak (KeeperDome w/ CT)'
+        )
+
+        item_db[IID.C_TRIGGER].set_desc_from_str(
+            'Go DthPeak (KeeperDome w/ Clone)'
+        )
+
+        medal_desc = item_db[IID.HERO_MEDAL].get_desc_as_str()
+        medal_desc += ' (Frog\'s Chest)'
+        item_db[IID.HERO_MEDAL].set_desc_from_str(medal_desc)
+
+        if self.settings.game_mode == rset.GameMode.VANILLA_RANDO:
+            item_db[IID.C_TRIGGER].set_desc_from_str(
+                'Go DthPeak (KeeperDome), Bekkler'
+            )
+            item_db[IID.TOOLS].set_desc_from_str(
+                'Repair Ruins (Choras Cafe)'
+            )
+        else:
+            grandleon_desc = item_db[IID.MASAMUNE_2].get_desc_as_str()
+            grandleon_desc += ' (Tools)'
+            item_db[IID.MASAMUNE_2].set_desc_from_str(grandleon_desc)
+
     def __fix_northern_ruins_sealed(self, ct_rom: CTRom):
-         # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
+        # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
         #            0x7F01A3 & 0x08 is set for 1000AD ruins
-        
+
         # In Jets 0x7F01A3 & 0x20 is set for 600AD ruins
         #         0x7F01A3 & 0x10 is set for 1000AD ruins
-        
+
         # In 0x44 Northern Ruins Antechamber, Object 0x10
         #   Past obtained - 0x7F01A6 & 0x01
         #   Present obtained - 0x7F01A9 & 0x20
@@ -240,7 +298,7 @@ class Randomizer:
             script,
             ctenums.LocID.NORTHERN_RUINS_ANTECHAMBER
         )
-        
+
         # In 0x46 Northern Ruins Back Room, there two chests:
         # 1) Object 0x10
         #      Past obtained - 0x7F01A6 & 0x02
@@ -257,7 +315,7 @@ class Randomizer:
             script,
             ctenums.LocID.NORTHERN_RUINS_BACK_ROOM
         )
-        
+
     def __update_trading_post_string(self, ct_rom: CTRom,
                                      config: cfg.RandoConfig):
         script_man = ct_rom.script_manager
@@ -806,8 +864,10 @@ class Randomizer:
         width = max(len(x.getName()) for x in self.config.key_item_locations)
 
         for location in self.config.key_item_locations:
+            item_id = location.lookupKeyItem(self.config)
+            item_name = self.config.itemdb[item_id].get_name_as_str(True)
             file_object.write(str.ljust(f"{location.getName()}", width+8) +
-                              str(location.lookupKeyItem(self.config)) + '\n')
+                              item_name + '\n')
         file_object.write('\n')
 
     def write_character_spoilers(self, file_object):
@@ -858,9 +918,11 @@ class Randomizer:
         file_object.write("-------------------\n")
         treasure_dict = self.config.treasure_assign_dict
         for treasure in treasure_dict.keys():
+            item_id = treasure_dict[treasure].held_item
+            name = self.config.itemdb[item_id].get_name_as_str(True)
+
             file_object.write(str.ljust(str(treasure), width+8) +
-                              str(treasure_dict[treasure].held_item) +
-                              '\n')
+                              name + '\n')
         file_object.write('\n')
 
     def write_shop_spoilers(self, file_object):
@@ -978,7 +1040,9 @@ class Randomizer:
             for part_id in part_ids:
                 if len(part_ids) > 1:
                     file_object.write(f"Part: {part_id}\n")
-                part_str = str(self.config.enemy_dict[part_id])
+                part_str = self.config.enemy_dict[part_id].__str__(
+                    self.config.itemdb
+                )
                 # put the string one tab out
                 part_str = '\t' + str.replace(part_str, '\n', '\n\t')
                 file_object.write(part_str+'\n')
@@ -1016,19 +1080,25 @@ class Randomizer:
         ids = [x for tier in tiers for x in tier]
         width = max(len(str(x)) for x in ids) + 8
 
+        item_db = self.config.itemdb
+
         for ind, tier in enumerate(tiers):
             file_object.write(labels[ind] + '\n')
             for enemy_id in tier:
+                drop_id = self.config.enemy_dict[enemy_id].drop_item
+                drop_str = item_db[drop_id].get_name_as_str(True)
+                charm_id = self.config.enemy_dict[enemy_id].charm_item
+                charm_str = item_db[charm_id].get_name_as_str(True)
                 file_object.write(
                     '\t' +
                     str.ljust(f"{enemy_id}", width) +
-                    " Drop: "
-                    f"{self.config.enemy_dict[enemy_id].drop_item}\n")
+                    " Drop: " + drop_str + '\n'
+                )
                 file_object.write(
                     '\t' +
                     str.ljust("", width) +
-                    "Charm: "
-                    f"{self.config.enemy_dict[enemy_id].charm_item}\n")
+                    "Charm: " + charm_str + '\n'
+                )
 
         file_object.write('\n')
 
