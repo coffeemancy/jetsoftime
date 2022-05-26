@@ -512,7 +512,7 @@ def get_mdef(level: int):
     return min(BASE_MDEF + (level-1)*MDEF_GROWTH, 100)
 
 
-def get_phys_def(level: int, max_level = 35):
+def get_phys_def(level: int, max_level):
     BASE_STM = 8
     STM_GROWTH = 1.65
 
@@ -523,7 +523,7 @@ def get_phys_def(level: int, max_level = 35):
     LATE_ARMOR = 75 + 35  # aeon suit + mermaid cap
 
     # This is calibrated for lv12, lv30 for normal jets cap of 35
-    mid_level = round(max_level/3)
+    mid_level = round(4*max_level/10)
     late_level = max_level
 
     pwl = piecewiselinear.PiecewiseLinear(
@@ -687,8 +687,12 @@ def scale_enemy_techs(enemy_id: EnemyID,
     # print(f'num unused_techs: {unused_tech_count}')
 
     new_offense = orig_stats.offense*off_scale_factor
-    effective_new_offense = max(1, min(new_offense, 0xFF))
-    effective_scale_factor = effective_new_offense/orig_stats.offense
+    effective_new_offense = min(new_offense, 0xFF)
+
+    if orig_stats.offense == 0:
+        effective_scale_factor = 1
+    else:
+        effective_scale_factor = effective_new_offense/orig_stats.offense
     overflow_scale = new_offense/0xFF
 
     for tech_id in enemy_techs:
