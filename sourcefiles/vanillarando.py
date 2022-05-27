@@ -397,7 +397,7 @@ def rescale_bosses(config: cfg.RandoConfig):
     bdd[BID.SUPER_SLASH].power = 20
     bdd[BID.TERRA_MUTANT].power = 50
     bdd[BID.TWIN_BOSS].power = 25  # power of single golem
-    bdd[BID.YAKRA].power = 3
+    bdd[BID.YAKRA].power = 1
     bdd[BID.YAKRA_XIII].power = 40
 
 
