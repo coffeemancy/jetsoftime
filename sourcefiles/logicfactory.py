@@ -1505,12 +1505,18 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
                 'MelchiorRefinements'
             )
 
+            def add_flight(func):
+                return (
+                    lambda game: (
+                        func(game) and
+                        game.hasKeyItem(ItemID.JETSOFTIME)
+                    )
+                )
+
             for name in flightGroupNames:
                 group = self.getLocationGroup(name)
                 rule = group.accessRule
-                group.accessRule = lambda game: (
-                    rule(game) and game.hasKeyItem(ItemID.JETSOFTIME)
-                )
+                group.accessRule = add_flight(rule)
 
 
 #
