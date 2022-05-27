@@ -1609,11 +1609,15 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         twin_boss.power = orig_power
         config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
 
+        # Special case scaling
         if base_id == EnemyID.RUST_TYRANO:
             elem = random.choice(list(Element))
             set_rust_tyrano_element(EnemyID.TWIN_BOSS, elem,
                                     config)
             set_rust_tyrano_script_mag(EnemyID.TWIN_BOSS, config)
+
+        if base_id == EnemyID.YAKRA_XIII:
+            set_yakra_xiii_offense_boost(EnemyID.TWIN_BOSS, config)
 
 
 # This function needs to write the boss assignment to the config respecting
@@ -1744,6 +1748,8 @@ def write_assignment_to_config(settings: rset.Settings,
         random.shuffle(bosses)
         for i in range(len(locations)):
             config.boss_assign_dict[locations[i]] = bosses[i]
+
+    config.boss_assign_dict[LocID.MANORIA_COMMAND] = BossID.SON_OF_SUN
 
     # Force GG on Woe for Ice Age
     if settings.game_mode == rset.GameMode.ICE_AGE:
@@ -1938,6 +1944,9 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # Update Rust Tyrano's magic boost in script
     set_rust_tyrano_script_mag(EnemyID.RUST_TYRANO, config)
 
+    # Update Yakra XIII's attack boost
+    set_yakra_xiii_offense_boost(EnemyID.YAKRA_XIII, config)
+
 
 def get_obstacle_id(enemy_id: EnemyID, config: cfg.RandoConfig) -> int:
     obstacle_msg_ids = (0xBA, 0x92)  # Only covers Terra, Mega
@@ -2087,6 +2096,36 @@ def get_rust_tyrano_element(tyrano_id: EnemyID,
     nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
     nuke = config.enemy_atkdb.get_tech(nuke_id)
     return nuke.control.element
+
+
+def set_yakra_xiii_offense_boost(
+        yakra_id: EnemyID,
+        config: cfg.RandoConfig
+):
+    '''
+    Update Yakra XIII AI script to boost atk by 1.5x instead of to 0xFD.
+    '''
+    yakra_ai = config.enemy_aidb.scripts[yakra_id]
+    yakra_ai_b = yakra_ai.get_as_bytearray()
+
+    AI = cfg.enemyai.AIScript
+
+    base_offense = config.enemy_dict[yakra_id].offense
+    boosted_offense = round(min(base_offense * 1.5, 0xFF))
+
+    loc = AI.find_command(yakra_ai_b, 0x12)[0]
+    cmd = yakra_ai_b[loc: loc+16]
+
+    stats_boosted = [cmd[x] for x in range(5, 14, 2)]
+    if 0x3D in stats_boosted:
+        # Jets actually removes the offense boost, so we should only find
+        # this in vanilla mode.
+        stat_ind = stats_boosted.index(0x3D)
+        cmd_ind = 5 + 2*stat_ind
+        ai_ind = loc + cmd_ind + 1
+        yakra_ai_b[ai_ind] = boosted_offense
+
+        config.enemy_aidb.scripts[yakra_id] = AI(yakra_ai_b)
 
 
 # Rust Tyrano magic stat scales
