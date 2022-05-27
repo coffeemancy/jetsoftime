@@ -103,7 +103,7 @@ def restore_geno_dome_conveyor(ct_rom: ctrom.CTRom):
     Make the enemies on the Geno Dome conveyor the vanilla enemies.
     '''
     script = ctrom.ctevent.Event.from_flux(
-        './flux/orig_07E_geno_conveyor.Flux'
+        './flux/VR_07E_geno_conveyor.Flux'
     )
     ct_rom.script_manager.set_script(script, ctenums.LocID.GENO_DOME_CONVEYOR)
 
