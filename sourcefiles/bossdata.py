@@ -952,3 +952,45 @@ class SonOfSunScaleBoss(Boss):
 
 class VRScaleSonOfSon(SonOfSunScaleBoss):
     MAX_LEVEL = 50
+
+    def update_scheme(self, new_power):
+        '''
+        Remove flames when SoS is lower level.
+        '''
+        if new_power < 15:
+            flames_removed = 2
+        elif new_power < 30:
+            flames_removed = 1
+        else:
+            flames_removed = 0
+
+        # There's a bug where removing more than 2 flames will make any hit
+        # on a flame count.  No idea why.
+        last_ind = len(self.scheme.ids)-flames_removed
+        del self.scheme.ids[last_ind:]
+        del self.scheme.slots[last_ind:]
+        del self.scheme.disps[last_ind:]
+
+    def scale_to_power(
+            self, new_power,
+            stat_dict: dict[EnemyID, EnemyStats],
+            atk_db: enemytechdb.EnemyAttackDB,
+            ai_db: enemyai.EnemyAIDB,
+    ) -> dict[EnemyID: EnemyStats]:
+        self.update_scheme(new_power)
+
+        return SonOfSunScaleBoss.scale_to_power(
+            self, new_power, stat_dict, atk_db, ai_db
+        )
+
+    def scale_relative_to(
+            self, other: Boss,
+            stat_dict: dict[EnemyID, EnemyStats],
+            atk_db: enemytechdb.EnemyAttackDB,
+            ai_db: enemyai.EnemyAIDB
+    ) -> dict[EnemyID: EnemyStats]:
+        self.update_scheme(other.power)
+
+        return SonOfSunScaleBoss.scale_relative_to(
+            self, other, stat_dict, atk_db, ai_db
+        )
