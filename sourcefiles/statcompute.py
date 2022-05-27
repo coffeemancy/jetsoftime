@@ -288,6 +288,20 @@ class PCStats:
 
         return ret
 
+    def _jot_json(self):
+        stats = {
+            'max_hp': self.max_hp,
+            'max_mp': self.max_mp,
+            'level': self.level
+        }
+
+        stat_names = ['pow', 'stm', 'spd', 'hit', 'evd', 'mag', 'mdf']
+        cur = get_stat_base_order(self.cur_stats)
+        for i in range(len(stat_names)):
+            stats[stat_names[i]] = cur[i]
+            stats[stat_names[i]+'_growth'] = self.stat_growth[i]
+        return stats
+
     def print_data(self):
         self.__update_statblock()
         print('Stat Block:')
