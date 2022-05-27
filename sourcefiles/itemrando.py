@@ -433,14 +433,15 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         # Now a + will be given if the stat boost is present.
         orig_stats = item.stats
 
-    if item.stats != orig_stats or item.secondary_stats != orig_sec_stats:
-        orig_boost = item_db.stat_boosts[orig_sec_stats.stat_boost_index]
-        cur_boost = item_db.stat_boosts[
-            item.secondary_stats.stat_boost_index
-        ]
+    orig_boost = item_db.stat_boosts[orig_sec_stats.stat_boost_index]
+    cur_boost = item_db.stat_boosts[
+        item.secondary_stats.stat_boost_index
+    ]
 
-        orig_effect = orig_stats.effect_id
-        cur_effect = item.stats.effect_id
+    orig_effect = orig_stats.effect_id
+    cur_effect = item.stats.effect_id
+
+    if orig_boost != cur_boost or orig_effect != cur_effect:
 
         if (
                 (
@@ -451,7 +452,8 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
                 or
                 (
                     cur_boost == orig_boost and
-                    orig_effect in none_effects
+                    orig_effect in none_effects and
+                    cur_effect not in none_effects
                 )
         ):
             append_str = '+'
