@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pickle
 import sys
+import json
 
 import itemrando
 import treasurewriter
@@ -37,6 +38,7 @@ import enemyrewards
 import randoconfig as cfg
 import randosettings as rset
 
+from jotjson import JOTJSONEncoder
 
 class NoSettingsException(Exception):
     pass
@@ -792,8 +794,11 @@ class Randomizer:
 
         return self.out_rom.rom_data.getvalue()
 
-    def write_spoiler_log(self, filename):
-        with open(filename, 'w') as outfile:
+    def write_spoiler_log(self, outfile):
+        if isinstance(outfile, str):
+            with open(outfile, 'w') as real_outfile:
+                self.write_spoiler_log(real_outfile)
+        else:
             self.write_settings_spoilers(outfile)
             self.write_tab_spoilers(outfile)
             self.write_consumable_spoilers(outfile)
@@ -805,6 +810,14 @@ class Randomizer:
             self.write_drop_charm_spoilers(outfile)
             self.write_shop_spoilers(outfile)
             self.write_item_stat_spoilers(outfile)
+
+    def write_json_spoiler_log(self, outfile):
+        if isinstance(outfile, str):
+            with open(outfile, 'w') as real_outfile:
+                self.write_json_spoiler_log(real_outfile)
+        else:
+            json.dump({"configuration": self.config, "settings": self.settings}, outfile, cls=JOTJSONEncoder)
+
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
@@ -1667,20 +1680,6 @@ def get_settings_from_command_line() -> rset.Settings:
         settings.shopprices = rset.ShopPrices.NORMAL
 
     return settings
-
-
-def test_json():
-    with open('./roms/ct.sfc', 'rb') as infile:
-        rom = infile.read()
-
-    settings = rset.Settings.get_race_presets()
-    settings.seed = 'asdfasf'
-
-    rando = Randomizer(rom, is_vanilla=True,
-                       settings=settings,
-                       config=None)
-    rando.set_random_config()
-    rando.config.to_json('./json/json_test.json')
 
 
 def main():

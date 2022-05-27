@@ -267,6 +267,18 @@ class Settings:
         self.cosmetic_flags = CosmeticFlags(0)
         self.seed = ''
 
+    def _jot_json(self):
+        return {
+            "seed": self.seed,
+            "mode": str(self.game_mode),
+            "enemy_difficulty": str(self.enemy_difficulty),
+            "item_difficulty": str(self.item_difficulty),
+            "tech_order": str(self.techorder),
+            "shops": str(self.shopprices),
+            "flags": self.gameflags,
+            "cosmetic_flags": self.cosmetic_flags
+        }
+
     def get_race_presets():
         ret = Settings()
 

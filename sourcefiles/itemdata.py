@@ -914,6 +914,13 @@ class Item:
         self.name = bytearray(name_bytes)
         self.desc = bytearray(desc_bytes)
 
+    def _jot_json(self):
+        return {
+            'name': self.get_name_as_str(True),
+            'desc': self.get_desc_as_str(),
+            'price': self.price
+        }
+
     def __eq__(self, other):
         return (
             self.stats == other.stats and
@@ -1360,3 +1367,6 @@ class ItemDB:
         rom_data.write(int.to_bytes(0x80 | self.base_mp_healing, 1, 'little'))
 
         # fs.print_blocks()
+
+    def _jot_json(self):
+        return {str(x): self.item_dict[x] for x in self.item_dict}

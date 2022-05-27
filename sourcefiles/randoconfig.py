@@ -7,12 +7,14 @@ import json
 
 import byteops
 import bossdata
+import bossrandoevent as bossrando
 import enemyai
 import enemytechdb
 import enemystats
 import itemdata
 import ctenums
 import ctrom
+import ctstrings
 import statcompute
 import techdb
 
@@ -40,6 +42,11 @@ class PlayerChar:
         # is guaranteed elsewhere
         self.tech_permutation = [x for x in range(8)]
         self.assigned_char = pc_id
+
+    def _jot_json(self):
+        return {str(self.pc_id):
+                {'assignment': str(self.assigned_char),
+                 'stats': self.stats}}
 
     # Being explicit here that we only write out the stats.
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom,
@@ -92,6 +99,9 @@ class CharManager:
                 self.mp_growth_start, self.stat_growth_start,
                 self.xp_thresh_start, self.tp_thresh_start
             ) for i in range(7)]
+
+    def _jot_json(self):
+        return {k: v for d in self.pcs for k, v in d._jot_json().items()}
 
     def write_stats_to_ctrom(self, ct_rom: ctrom.CTRom):
 
@@ -189,6 +199,15 @@ class ShopManager:
                           item_db: itemdata.ItemDB):
         print(self.__str__(item_db))
 
+    def _jot_json(self):
+        shops_ignored = [
+            ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14,
+            ctenums.ShopID.LAST_VILLAGE_UPDATED
+        ]
+        return {str(k): [str(i) for i in v]
+                for (k,v) in self.shop_dict.items()
+                if k not in shops_ignored }
+
     def __str__(self, item_db: itemdata.ItemDB):
         ret = ''
         for shop in sorted(self.shop_dict.keys()):
@@ -229,6 +248,9 @@ class CharRecruit:
         self.loc_id = loc_id
         self.load_obj_id = load_obj_id
         self.recruit_obj_id = recruit_obj_id
+
+    def _jot_json(self):
+        return str(self.held_char)
 
     # This might be poor naming, but the writing goes to the script manager
     # of the ct_rom.  A separate call has to commit those changes to the rom.
@@ -312,6 +334,9 @@ class StarterChar:
         self.held_char = held_char
         self.starter_num = starter_num
 
+    def _jot_json(self):
+        return str(self.held_char)
+
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
         script_manager = ct_rom.script_manager
         script = script_manager.get_script(self.loc_id)
@@ -358,6 +383,9 @@ class Treasure:
 
     def __init__(self, held_item: ctenums.ItemID = ctenums.ItemID.MOP):
         self.held_item = held_item
+
+    def _jot_json(self):
+        return str(self.held_item)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
         raise NotImplementedError
@@ -1136,63 +1164,73 @@ class RandoConfig:
             self.enemy_atkdb = enemytechdb.EnemyAttackDB.from_rom(rom)
             self.enemy_aidb = enemyai.EnemyAIDB.from_rom(rom)
 
-    def to_json(self, outfile_name):
-        # Make key item dict
-        # self.key_item_locations uses logictypes.Location (and subclasses)
-        # instead of tids because of linked locations
-        key_item_dict = {
-            loc.getName(): str(loc.getKeyItem())
-            for loc in self.key_item_locations
+    def _jot_json(self):
+        def enum_key_dict(d):
+            "Properly uses str(key) for dicts with StrIntEnum keys."
+            return { str(k): v for (k,v) in d.items() }
+
+        def merged_list_dict(l):
+            """For things that are a list of objects, each having a _jot_json
+            method that returns a single-key dict, this merges those dicts into
+            one."""
+            return {k: v for d in l for k, v in d._jot_json().items()}
+
+        def enum_enum_dict(d):
+            "For dicts with both keys and values that are StrIntEnums"
+            return { str(k): str(v) for (k,v) in d.items() }
+
+        # make boss details dict
+        # stats can be gotten from the enemies dict
+        BossID = ctenums.BossID
+        boss_ids = list(self.boss_assign_dict.values()) + \
+                [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2]
+        boss_details_dict = {
+                str(boss_id): {
+                    'scale': self.boss_rank[boss_id] if boss_id in self.boss_rank else None,
+                    'parts': [str(part_id) for part_id in list(dict.fromkeys(self.boss_data_dict[boss_id].scheme.ids))]
+                }
+                for boss_id in boss_ids
         }
 
-        # Make character location dict
-        char_assign_dict = {
-            str(recruit_spot): str(recruit.held_char)
-            for (recruit_spot, recruit) in self.char_assign_dict.items()
+        boss_details_dict[str(BossID.MAGUS)]['character'] = self.enemy_dict[ctenums.EnemyID.MAGUS].name.strip()
+        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = str(bossrando.get_black_tyrano_element(self))
+
+        chars = self.char_manager._jot_json()
+        # the below is ugly, would be nice to have tech lists on PlayerChar objects maybe
+        for char_id in range(7):
+            chars[str(ctenums.CharID(char_id))]['techs'] = [ctstrings.CTString.ct_bytes_to_techname(self.techdb.get_tech(1 + 8*char_id + i)['name']).strip(' *') for i in range(8)]
+
+        obstacle = self.enemy_atkdb.get_tech(0x58)
+        obstacle_status = ", ".join(str(x) for x in obstacle.effect.status_effect)
+
+        return {
+            'key_items': merged_list_dict(self.key_item_locations),
+            'characters': {
+                'locations': enum_key_dict(self.char_assign_dict),
+                'details': chars
+            },
+            'enemies': {
+                'details': enum_key_dict(self.enemy_dict),
+                # The boss in the twin golem spot will always be "Twin Boss"
+                # This can still be looked up in the boss details and enemy
+                # details structures, the latter of which can provide its name.
+                'bosses': {
+                    'locations': enum_enum_dict(self.boss_assign_dict),
+                    'details': boss_details_dict,
+                },
+                'obstacle_status': obstacle_status
+            },
+            'treasures': {
+                'assignments': enum_key_dict(self.treasure_assign_dict),
+                'tabs': {
+                    'power': self.power_tab_amt,
+                    'magic': self.magic_tab_amt,
+                    'speed': self.speed_tab_amt
+                }
+            },
+            'shops': self.shop_manager,
+            'items': self.itemdb
         }
-
-        # Make treasure dict
-        treasure_dict = {
-            str(treasure_loc): str(treasure.held_item)
-            for (treasure_loc, treasure) in self.treasure_assign_dict.items()
-        }
-
-        # dataclasses.asdict will turn the enums into strings, so I'm doing
-        # this.  It's awful.
-        def stats_to_dict(stats: enemystats.EnemyStats):
-            statdict = {
-                'hp': stats.hp,
-                'level': stats.level,
-                'speed': stats.speed,
-                'magic': stats.magic,
-                'mdef': stats.mdef,
-                'offense': stats.offense,
-                'defense': stats.defense,
-                'xp': stats.xp,
-                'gp': stats.gp,
-                'drop_item': str(stats.drop_item),
-                'charm_item': str(stats.charm_item),
-                'tp': stats.tp,
-                'can_sightscope': stats.can_sightscope,
-                'name': stats.name
-            }
-            return statdict
-
-        # Make enemies dict
-        enemy_dict = {
-            str(enemy): stats_to_dict(self.enemy_dict[enemy])
-            for enemy in self.enemy_dict
-        }
-
-        json_dict = {
-            'key_items': key_item_dict,
-            'character_locations': char_assign_dict,
-            'treasures': treasure_dict,
-            'enemies': enemy_dict
-        }
-
-        with open(outfile_name, 'w') as json_out:
-            json.dump(json_dict, json_out, indent=4)
 
     @classmethod
     def get_config_from_rom(
