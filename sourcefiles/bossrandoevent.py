@@ -1749,8 +1749,6 @@ def write_assignment_to_config(settings: rset.Settings,
         for i in range(len(locations)):
             config.boss_assign_dict[locations[i]] = bosses[i]
 
-    config.boss_assign_dict[LocID.MANORIA_COMMAND] = BossID.SON_OF_SUN
-
     # Force GG on Woe for Ice Age
     if settings.game_mode == rset.GameMode.ICE_AGE:
         woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
