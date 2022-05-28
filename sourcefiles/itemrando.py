@@ -372,6 +372,7 @@ _effect_price_dict: dict[int, int] = {
 
 def randomize_weapon_armor(item_id: ctenums.ItemID,
                            item_db: itemdata.ItemDB,
+                           settings: rset.Settings,
                            stat_dist: treasuredata.TreasureDist = None,
                            effect_dist: treasuredata.TreasureDist = None):
     item = item_db[item_id]
@@ -397,21 +398,22 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         if new_effect == _WE.CRISIS:
             item.stats.attack = 0
 
-    orig_price_mod = _effect_price_dict[orig_stats.effect_id] + \
-        _stat_price_dict[orig_sec_stats.stat_boost_index]
+    if settings.shopprices == rset.ShopPrices.NORMAL:
+        orig_price_mod = _effect_price_dict[orig_stats.effect_id] + \
+            _stat_price_dict[orig_sec_stats.stat_boost_index]
 
-    new_price_mod = _effect_price_dict[item.stats.effect_id] + \
-        _stat_price_dict[item.secondary_stats.stat_boost_index]
+        new_price_mod = _effect_price_dict[item.stats.effect_id] + \
+            _stat_price_dict[item.secondary_stats.stat_boost_index]
 
-    price_mod = new_price_mod - orig_price_mod
+        price_mod = new_price_mod - orig_price_mod
 
-    new_price = item.price + price_mod
-    if new_price < item.price // 10:
-        item.price = item.price // 10
-    elif new_price > 65000:
-        item.price = 65000
-    else:
-        item.price = new_price
+        new_price = item.price + price_mod
+        if new_price < item.price // 10:
+            item.price = item.price // 10
+        elif new_price > 65000:
+            item.price = 65000
+        else:
+            item.price = new_price
 
     # Special cases for naming.
     # Currently only Haste Helm
@@ -536,7 +538,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
             else:
                 raise ValueError('Item is not a weapon or armor.')
 
-            randomize_weapon_armor(item_id, item_db,
+            randomize_weapon_armor(item_id, item_db, settings,
                                    boost_dist, effect_dist)
 
     # Ultimate Gear needs something good.
@@ -633,7 +635,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         (_BID.NOTHING, _BID.SPEED_1, _BID.SPEED_2),
         (_BID.MAGIC_2, _BID.MAGIC_4, _BID.MAGIC_6),
         (_BID.HIT_2, _BID.HIT_10, _BID.HIT_10),
-        (_BID.POWER_2, _BID.POWER_4, _BID.POWER_6),
+        (_BID.POWER_2, _BID.POWER_6, _BID.POWER_STAMINA_10),
         (_BID.MDEF_5, _BID.MDEF_10, _BID.MDEF_15),
         (_BID.STAMINA_2, _BID.STAMINA_6, _BID.POWER_STAMINA_10),
         (_BID.NOTHING, _BID.NOTHING, _BID.NOTHING)
