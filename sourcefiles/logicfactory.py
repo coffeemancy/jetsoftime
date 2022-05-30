@@ -30,9 +30,13 @@ import randoconfig as cfg
 # game type.
 #
 class GameConfig:
-    def __init__(self):
+    def __init__(self,
+                 settings: rset.Settings,
+                 config: cfg.RandoConfig):
         self.keyItemList = []
-        self.locationGroups = []
+        self.locationGroups: list[LocationGroup] = []
+        self.settings = settings
+        self.config = config
         self.game = None
         self.initLocations()
         self.initKeyItems()
@@ -100,7 +104,7 @@ class GameConfig:
     #
     # return: A configured Game object for this mode
     #
-    def getGame(self):
+    def getGame(self) -> Game:
         return self.game
 
     #
@@ -131,12 +135,10 @@ class GameConfig:
 class ChronosanityGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings,
                  config: cfg.RandoConfig):
-        self.settings = settings
-        self.config = config
         self.charLocations = config.char_assign_dict
         self.earlyPendant = rset.GameFlags.FAST_PENDANT in settings.gameflags
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
 
     def initLocations(self):
         # Dark Ages
@@ -660,9 +662,7 @@ class ChronosanityGameConfig(GameConfig):
 class ChronosanityLostWorldsGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
         self.charLocations = config.char_assign_dict
-        self.settings = settings
-        self.config = config
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
@@ -856,12 +856,10 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
 #
 class NormalGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
-        self.settings = settings
-        self.config = config
         self.charLocations = config.char_assign_dict
         self.earlyPendant = rset.GameFlags.FAST_PENDANT in settings.gameflags
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
@@ -994,9 +992,7 @@ class NormalGameConfig(GameConfig):
 class LostWorldsGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
         self.charLocations = config.char_assign_dict
-        self.settings = settings
-        self.config = config
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
