@@ -64,8 +64,8 @@ class RandomRejectionFiller:
                 )
 
             random.shuffle(available_locations)
-            for ind, loc in enumerate(available_locations):
-                loc.setKeyItem(key_items_list[ind])
+            for ind, item in enumerate(key_items_list):
+                available_locations[ind].setKeyItem(item)
 
             if is_placement_valid(game_config):
                 return available_locations[0: len(key_items_list)]
@@ -483,6 +483,16 @@ def commitKeyItems(settings: rset.Settings,
                 additional_locs.append(location)
 
     config.key_item_locations = chosenLocations + additional_locs
+
+
+def get_proof_string_from_settings_config(
+        settings: rset.Settings,
+        config: cfg.RandoConfig
+        ) -> str:
+    game_config = logicfactory.getGameConfig(settings, config)
+    ki_locs = config.key_item_locations
+    make_assignment(game_config, ki_locs)
+    return get_proof_string(game_config)
 
 
 def get_proof_string(
