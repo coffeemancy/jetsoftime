@@ -398,7 +398,17 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
         if new_effect == _WE.CRISIS:
             item.stats.attack = 0
 
-    if settings.shopprices == rset.ShopPrices.NORMAL:
+    # We aren't going to randomize ultimate weapon price.  They will be
+    # good regardless, and the effect will be overwritten later anyway.
+    # we DO want to randomize their stat boost here though.
+    ultimate_wpns = (
+        ctenums.ItemID.RAINBOW, ctenums.ItemID.VALKERYE,
+        ctenums.ItemID.WONDERSHOT, ctenums.ItemID.CRISIS_ARM,
+        ctenums.ItemID.MASAMUNE_2, ctenums.ItemID.DOOMSICKLE
+    )
+
+    if settings.shopprices == rset.ShopPrices.NORMAL and \
+       item_id not in ultimate_wpns:
         orig_price_mod = _effect_price_dict[orig_stats.effect_id] + \
             _stat_price_dict[orig_sec_stats.stat_boost_index]
 
