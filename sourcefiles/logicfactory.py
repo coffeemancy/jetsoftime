@@ -281,21 +281,12 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.NORTHERN_RUINS_BASEMENT_600))
             .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_600))
             .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_1000))
-            # Sealed chests in Northern Ruins
-            # TODO - Sealed chests in this location are shared across time
-            #        periods in such a way that the player can end up with
-            #        two copies of a key item if they collect it in 1000AD
-            #        first, then in 600AD.  Commenting these out for now.
-            #        Either these chests will need to be separated
-            #        or removed from the pool of key item locations.
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600))
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000))
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600))
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000))
-            # .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600))
-            # .addLocation(Location(
-            #     TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000
-            # ))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000))
+            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000))
         )
 
         northernRuinsFrogLocked = \
@@ -1452,15 +1443,6 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         self.locationGroups.append(bekklerKey)
 
         northernRuinsLocations = self.getLocationGroup('NorthernRuins')
-        (
-            northernRuinsLocations
-            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600))
-            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000))
-            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600))
-            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000))
-            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600))
-            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000))
-        )
         northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
 
         northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
