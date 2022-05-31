@@ -142,7 +142,7 @@ class ALTTPRFiller:
                 assigned_locations.append(loc)
                 loc.setKeyItem(next_item)
 
-                # print(f'Assigned {next_item} to {loc.getName()} ')
+                print(f'Assigned {next_item} to {loc.getName()} ')
 
         return assigned_locations
 
@@ -154,7 +154,6 @@ class ChronosanityFiller:
     def __init__(self):
         self.locationGroups = []
 
-    
     #
     # Get a list of LocationGroups that are available for key item placement.
     #
@@ -484,3 +483,133 @@ def commitKeyItems(settings: rset.Settings,
                 additional_locs.append(location)
 
     config.key_item_locations = chosenLocations + additional_locs
+
+
+def get_proof_string(
+        game_config: logicfactory.GameConfig
+) -> str:
+    '''
+    Get string of 'spheres' of access.  Also prints inacccessibles.
+    '''
+
+    settings = game_config.settings
+    config = game_config.config
+    char_dict = {
+        spot: config.char_assign_dict[spot].held_char
+        for spot in config.char_assign_dict
+    }
+    inv_char_dict = {
+        v: k for k, v in char_dict.items()
+    }
+
+    cur_game = logictypes.Game(settings, config)
+    cur_game.keyItems = []
+
+    key_items = set(list(game_config.keyItemList))
+    groups = list(game_config.locationGroups)
+
+    ret_str = ''
+    cur_game.updateAvailableCharacters()
+
+    sphere = 0
+    for char in cur_game.characters:
+        spot = inv_char_dict[char]
+        ret_str += f'{sphere}: Recruit {char} from {spot}\n'
+
+    while True:
+        new_locs = []
+        exhausted_groups = []
+        for group in groups:
+            if group.accessRule(cur_game):
+                for location in group.locations:
+                    item = location.getKeyItem()
+                    if item in key_items:
+                        new_locs.append(location)
+                exhausted_groups.append(group)
+
+        for group in exhausted_groups:
+            groups.remove(group)
+
+        cur_chars = list(cur_game.characters)
+        cur_game.updateAvailableCharacters()
+        new_chars = [char for char in cur_game.characters
+                     if char not in cur_chars]
+
+        if new_locs or new_chars:
+            new_keys = [loc.getKeyItem() for loc in new_locs]
+            cur_game.keyItems.extend(new_keys)
+
+            for char in new_chars:
+                spot = inv_char_dict[char]
+                ret_str += f'{sphere}: Recruit {char} from {spot}\n'
+
+            for loc in new_locs:
+                item = loc.getKeyItem()
+                spot = loc.getName()
+                ret_str += f'{sphere}: Obtain {item} from {spot}\n'
+
+        else:
+            break
+
+        sphere += 1
+
+    unobtainable_items = ','.join(
+        str(item) for item in key_items if item not in cur_game.keyItems
+    )
+    if unobtainable_items:
+        ret_str += f'Failed to obtain {unobtainable_items}\n'
+
+    unobtainable_chars = ','.join(
+        str(char) for char in list(ctenums.CharID)
+        if char not in cur_game.characters
+    )
+    if unobtainable_chars:
+        ret_str += f'Failed to recruit {unobtainable_chars}\n'
+
+    return ret_str
+
+
+def get_assignment_string(
+        game_config: logicfactory.GameConfig
+        ) -> str:
+    '''
+    Gets a human-readable version of the key item assignment in game_config.
+    '''
+
+    groups = game_config.locationGroups
+
+    ki_locs = [
+        loc for group in groups for loc in group.locations
+        if loc.getKeyItem() in game_config.keyItemList
+    ]
+
+    ret_str = ''
+    name_width = max(len(loc.getName()) for loc in ki_locs)
+
+    for loc in ki_locs:
+        ret_str += loc.getName().ljust(name_width + 8)
+        ret_str += str(loc.getKeyItem())
+        ret_str += '\n'
+
+    return ret_str
+
+
+def make_assignment(
+        game_config: logicfactory.GameConfig,
+        assignment: typing.Iterable[_LocType]
+        ):
+    '''
+    Writes the assignment to the given game config.
+    '''
+
+    name_item_dict = {
+        loc.getName(): loc.getKeyItem()
+        for loc in assignment
+    }
+
+    for group in game_config.locationGroups:
+        for location in group.locations:
+            name = location.getName()
+            if name in name_item_dict:
+                item = name_item_dict[name]
+                location.setKeyItem(item)
