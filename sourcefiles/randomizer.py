@@ -8,7 +8,7 @@ import json
 import itemrando
 import treasurewriter
 import shopwriter
-import logicwriter_chronosanity as logicwriter
+import logicwriters as logicwriter
 import random as rand
 import bossrandoevent as bossrando
 import bossscaler
@@ -885,6 +885,11 @@ class Randomizer:
             file_object.write(str.ljust(f"{location.getName()}", width+8) +
                               item_name + '\n')
         file_object.write('\n')
+        file_object.write('Completion by Spheres:\n')
+        spheres = logicwriter.get_proof_string_from_settings_config(
+            self.settings, self.config
+        )
+        file_object.write(spheres + '\n')
 
     def write_character_spoilers(self, file_object):
         char_man = self.config.char_manager
