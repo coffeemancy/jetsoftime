@@ -197,8 +197,8 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # and Md+10 (Moon Armor).  Awesome Gear probably needs special casing.
     ret_dist[treasuredata.ItemTier.AWESOME_GEAR] = Dist(
         (50, [_BID.NOTHING]),
-        (25, [_BID.MDEF_9, _BID.MDEF_10, _BID.MDEF_15, _BID.POWER_STAMINA_10]),
-        (25, [_BID.SPEED_2, _BID.SPEED_3]),
+        (35, [_BID.MDEF_9, _BID.MDEF_10, _BID.MDEF_15, _BID.POWER_STAMINA_10]),
+        (15, [_BID.SPEED_2, _BID.SPEED_3]),
     )
 
     return ret_dist
