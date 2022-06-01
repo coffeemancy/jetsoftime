@@ -700,7 +700,7 @@ def scale_enemy_techs(enemy_id: EnemyID,
         effect = tech.effect
 
         new_power = effect.power
-        if effect.damage_formula_id == 0x3A:  # physical damage formulas
+        if effect.damage_formula_id == 4:  # physical damage formulas
             if effect.defense_byte == 0x3E:  # Defended by phys def (normal)
                 # print(f'Tech {tech_id:02X} is normal')
                 if overflow_scale > 1.05:
