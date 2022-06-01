@@ -578,7 +578,7 @@ def change_single_techs(from_ind, to_ind, orig_db, new_db):
         if orig_db.pc_target[from_i] != 0xFF:
             new_db.pc_target[to_i] = to_ind
         else:
-            new_db.pc_target[from_i] = 0xFF
+            new_db.pc_target[to_i] = 0xFF
 
 
 def get_ll_prot_all(old_db):
