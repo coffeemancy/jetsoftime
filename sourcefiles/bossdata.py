@@ -709,6 +709,10 @@ def scale_enemy_techs(enemy_id: EnemyID,
                 # print(f'Tech {tech_id:02X} is weird')
                 rescale = mag_scale_factor/effective_scale_factor
                 new_power = round(effect.power*rescale)
+        elif effect.damage_formula_id == 3 and effect.defense_byte == 0x3E:
+            # Magic calculated attack defended by physical defense
+            rescale = effective_scale_factor/mag_scale_factor
+            new_power = round(effect.power*rescale)
 
         new_power = min(0xFF, new_power)
         if new_power != effect.power:  # Need to scale
