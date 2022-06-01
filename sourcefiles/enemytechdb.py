@@ -129,12 +129,12 @@ class EnemyEffectHeader(_FixedLengthRecord):
 
     @property
     def damage_formula_id(self):
-        return self._data[3]
+        return self._data[5]
 
     @damage_formula_id.setter
     def damage_formula_id(self, val):
         val = DamageFormula(val)
-        self._data[3] = val
+        self._data[5] = val
 
     @property
     def power(self):
