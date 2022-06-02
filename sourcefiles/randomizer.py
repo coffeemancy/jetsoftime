@@ -733,19 +733,22 @@ class Randomizer:
             
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
-            
+
+
+        if epoch_fail:
+            epochfail.ground_epoch(self.out_rom)
+            epochfail.update_keepers_dome(self.out_rom)
+            epochfail.undo_epoch_relocation(self.out_rom)
+            epochfail.restore_dactyls(self.out_rom)
+            epochfail.add_dalton_to_snail_stop(self.out_rom)
+
+            self.out_rom.rom_data.seek(0x1FFFF)  # debug stuff
+            self.out_rom.rom_data.write(b'\x01')
+
+        
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
 
-            if epoch_fail:
-                epochfail.ground_epoch(self.out_rom)
-                epochfail.update_keepers_dome(self.out_rom)
-                epochfail.undo_epoch_relocation(self.out_rom)
-                epochfail.restore_dactyls(self.out_rom)
-                epochfail.add_dalton_to_snail_stop(self.out_rom)
-
-                self.out_rom.rom_data.seek(0x1FFFF)  # debug stuff
-                self.out_rom.rom_data.write(b'\x01')
 
         # Split the NR "sealed" chests
         self.__fix_northern_ruins_sealed(self.out_rom)
@@ -1282,9 +1285,6 @@ class Randomizer:
                 ct_vanilla, settings)
             vanillarando.fix_config(config)
 
-            if rset.GameFlags.EPOCH_FAIL in settings.gameflags:
-                epochfail.update_config(config)
-
         else:
             # Apply hard mode if it's in the settings.
             if settings.enemy_difficulty == rset.Difficulty.HARD:
@@ -1412,6 +1412,8 @@ class Randomizer:
                 effects[rock_pwr] = 0x23
 
         # The following changes can happen regardless of mode.
+        if rset.GameFlags.EPOCH_FAIL in settings.gameflags:
+            epochfail.update_config(config)
 
         # Add grandleon lowering magus's mdef
         # Editing AI is ugly right now, so just use raw binary
