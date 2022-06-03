@@ -2181,7 +2181,7 @@ def set_black_tyrano_element(element: Element, config: cfg.RandoConfig):
     new_minor_tech_id = _tyrano_minor_techs[element]
 
     new_nuke_id = _tyrano_nukes[element]
-    new_nuke = config.enemy_atkdb.get_tech(nuke_id)
+    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
 
     if nuke.effect != new_nuke.effect:
         new_nuke.effect = nuke.effect
