@@ -149,8 +149,8 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # accessories with various low boosts
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
         (80, [_BID.NOTHING]),
-        (18, [_BID.MAGIC_2, _BID.STAMINA_2, _BID.POWER_2, _BID.HIT_2]),
-        (2, [_BID.SPEED_1])
+        (19, [_BID.MAGIC_2, _BID.STAMINA_2, _BID.POWER_2, _BID.HIT_2]),
+        (1, [_BID.SPEED_1])
     )
 
     # Passable gear only has Mag+2 (Red Katana) and slightly better accessories
@@ -158,47 +158,47 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     ret_dist[treasuredata.ItemTier.PASSABLE_GEAR] = Dist(
         (75, [_BID.NOTHING]),
         (5, [_BID.MAGIC_2, _BID.STAMINA_2, _BID.POWER_2, _BID.HIT_2]),
-        (20, [_BID.MAGIC_4, _BID.STAMINA_6, _BID.POWER_4, _BID.HIT_10,
-              _BID.SPEED_1])
+        (24, [_BID.MAGIC_4, _BID.STAMINA_6, _BID.POWER_4, _BID.HIT_10]),
+        (1, [_BID.SPEED_1])
     )
 
     # Mid gear has Md+10 (TabanHelm), Sp+2 (TabanVest), and Md+5 (LuminRobe).
     # Also slightly better accessories.
 
     # Originally, there are 23 weapons/armors in this tier and only 1 sp+2.
-    # I'm approximating this as 5% chance of that particular bonus.
+    # I'm approximating this as 4% chance of that particular bonus.
     ret_dist[treasuredata.ItemTier.MID_GEAR] = Dist(
-        (70, [_BID.NOTHING]),
+        (71, [_BID.NOTHING]),
         (10, [_BID.MAGIC_4, _BID.STAMINA_6, _BID.POWER_4, _BID.HIT_10,
               _BID.SPEED_1, _BID.MDEF_5]),
         (15, [_BID.MAGIC_6, _BID.POWER_6, _BID.MDEF_10]),
-        (5, [_BID.SPEED_2])
+        (4, [_BID.SPEED_2])
     )
 
     # Good Gear gets Sp+2 (Slasher), Mg+4 (Rune Blade).  The Sp+2 is 1/22.
     # For accessories, we're at Flea vest, seals
     ret_dist[treasuredata.ItemTier.GOOD_GEAR] = Dist(
-        (70, [_BID.NOTHING]),
-        (10, [_BID.MAGIC_6, _BID.POWER_6, _BID.HIT_10]),
-        (15, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10, _BID.MDEF_12]),
-        (5, [_BID.SPEED_2])
+        (71, [_BID.NOTHING]),
+        (20, [_BID.MAGIC_6, _BID.POWER_6, _BID.HIT_10, _BID.MDEF_10]),
+        (5, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10]),
+        (4, [_BID.SPEED_2])
     )
 
     # High Gear only has Sp+1 (Gloom Helm), Md+10 (ZodiacCape).
     # Accessories get Sp+3 from Dash Ring
     ret_dist[treasuredata.ItemTier.HIGH_GEAR] = Dist(
         (70, [_BID.NOTHING]),
-        (25, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10, _BID.MDEF_10,
+        (27, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10, _BID.MDEF_10,
               _BID.MDEF_12, _BID.SPEED_1]),
-        (5, [_BID.SPEED_3]),
+        (3, [_BID.SPEED_2]),
     )
 
     # The only stat boosts are Sp+3 (Taban Suit, Swallow) Md+9 (Prism Helm),
     # and Md+10 (Moon Armor).  Awesome Gear probably needs special casing.
     ret_dist[treasuredata.ItemTier.AWESOME_GEAR] = Dist(
         (50, [_BID.NOTHING]),
-        (35, [_BID.MDEF_9, _BID.MDEF_10, _BID.MDEF_15, _BID.POWER_STAMINA_10]),
-        (15, [_BID.SPEED_2, _BID.SPEED_3]),
+        (40, [_BID.MDEF_9, _BID.MDEF_10, _BID.MDEF_15, _BID.POWER_STAMINA_10]),
+        (10, [_BID.SPEED_2, _BID.SPEED_3]),
     )
 
     return ret_dist
@@ -290,6 +290,7 @@ def get_armor_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     )
 
     # High gear gets all sorts of status protection, shield, and we might as
+    # 
     # We aren't randomizing the safe helm or weak status hats.  This leaves
     # only gloom helm, zodiaccape, ruby armor, gloom cape
     # Consider adding elem absorb in this group.
@@ -696,8 +697,10 @@ def randomize_accessories(settings: rset.Settings,
 
     for item_id in counter_accs:
         item = config.itemdb[item_id]
-        normal_counter = random.choice((True, False))
+        normal_counter = (random.random() < 0.75)
         item.stats.has_normal_counter_mode = normal_counter
+        if not item.stats.has_normal_counter_mode:
+            append_to_item_name(item, '?')
 
     # Put Random effects on rocks
     rocks = (IID.GOLD_ROCK, IID.SILVERROCK, IID.WHITE_ROCK,
@@ -749,7 +752,7 @@ def randomize_accessories(settings: rset.Settings,
     # randomize specs as specs or haste charm
     item_id = IID.PRISMSPECS
     x = random.random()
-    if x < 0.5:
+    if x < 0.25:
         item = config.itemdb[item_id]
         item.stats.battle_buffs = [T8.HASTE]
         item.name = ctstrings.CTNameString.from_string(
