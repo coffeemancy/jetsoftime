@@ -502,6 +502,35 @@ def get_proof_string(
     Get string of 'spheres' of access.  Also prints inacccessibles.
     '''
 
+    def has_tyrano_go(game: logictypes.Game):
+        IID = ctenums.ItemID
+        has_gate_key = game.hasKeyItem(IID.GATE_KEY)
+        return (
+            (has_gate_key or game.lostWorlds) and
+            game.hasKeyItem(IID.DREAMSTONE) and
+            game.hasKeyItem(IID.RUBY_KNIFE)
+        )
+
+    def has_omen_go(game: logictypes.Game):
+        IID = ctenums.ItemID
+        has_pendant = game.hasKeyItem(IID.PENDANT)
+        epoch_fail = rset.GameFlags.EPOCH_FAIL in game.settings.gameflags
+        return (
+            (game.hasKeyItem(IID.JETSOFTIME) or not epoch_fail) and 
+            (has_pendant or game.lostWorlds) and
+            game.hasKeyItem(IID.CLONE) and
+            game.hasKeyItem(IID.C_TRIGGER)
+        )
+
+    def has_magus_go(game: logictypes.Game):
+        IID = ctenums.ItemID
+        return (
+            (game.hasKeyItem(IID.MASAMUNE_2) or not game.legacyofcyrus) and
+            game.hasCharacter(ctenums.CharID.FROG) and
+            game.hasKeyItem(IID.BENT_HILT) and
+            game.hasKeyItem(IID.BENT_SWORD)
+        )
+
     settings = game_config.settings
     config = game_config.config
     char_dict = {
@@ -525,6 +554,10 @@ def get_proof_string(
     for char in cur_game.characters:
         spot = inv_char_dict[char]
         ret_str += f'{sphere}: Recruit {char} from {spot}\n'
+
+    found_tyrano_go = False
+    found_omen_go = False
+    found_magus_go = False
 
     while True:
         new_locs = []
@@ -558,6 +591,17 @@ def get_proof_string(
                 spot = loc.getName()
                 ret_str += f'{sphere}: Obtain {item} from {spot}\n'
 
+            if not found_tyrano_go and has_tyrano_go(cur_game):
+                ret_str += 'GO: Tyrano Lair\n'
+                found_tyrano_go = True
+
+            if not found_omen_go and has_omen_go(cur_game):
+                ret_str += 'GO: Black Omen\n'
+                found_omen_go = True
+
+            if not found_magus_go and has_magus_go(cur_game):
+                ret_str += 'GO: Magus\'s Castle\n'
+                found_magus_go = True
         else:
             break
 
