@@ -1324,6 +1324,11 @@ class Randomizer:
                 reraise['name'] = ctstrings.CTNameString.from_string(
                     '*Reraise'
                 )
+                reraise['desc_ptr'] = None
+                new_desc = ctstrings.CTString.from_str(
+                    'Greendream effect on one ally.{null}'
+                )
+                reraise['desc'] = new_desc
                 reraise['target'] = bytearray(cure['target'])
                 techdb.set_tech(reraise, ctenums.TechID.CURE)
                 techdb.menu_usable_ids[ctenums.TechID.CURE] = False
