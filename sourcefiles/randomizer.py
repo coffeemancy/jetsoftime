@@ -1221,7 +1221,7 @@ class Randomizer:
             qolhacks.set_free_menu_glitch(ctrom, settings)
 
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
-            fsastmagic.write_ctrom(ctrom, settings)
+            fastmagic.write_ctrom(ctrom, settings)
 
         if rset.GameFlags.FAST_TABS in flags:
             qolhacks.fast_tab_pickup(ctrom, settings)
