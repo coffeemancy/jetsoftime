@@ -2113,9 +2113,22 @@ class RandoGUI:
 
         CreateToolTip(
             checkbox,
-            'For Vanilla mode only.  Players start without wings on the '
+            'Players start without wings on the '
             'Epoch.  The \'Jets of Time\' can be obtained and turned in '
             'to Dalton in the Snail Stop to upgrade the Epoch.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Marle Rework',
+            variable=self.flag_dict[GameFlags.MARLE_REWORK]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Marle starts with 9 speed and cure becomes Reraise which '
+            'gives the Greendream effect.'
         )
 
         self.bucket_fragment_checkbox = tk.Checkbutton(

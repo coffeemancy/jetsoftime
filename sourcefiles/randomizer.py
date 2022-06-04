@@ -1221,7 +1221,7 @@ class Randomizer:
             qolhacks.set_free_menu_glitch(ctrom, settings)
 
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
-            fastmagic.write_ctrom(ctrom, settings)
+            fsastmagic.write_ctrom(ctrom, settings)
 
         if rset.GameFlags.FAST_TABS in flags:
             qolhacks.fast_tab_pickup(ctrom, settings)
@@ -1314,6 +1314,23 @@ class Randomizer:
             falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
             techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
 
+            # Change Cure to ReRaise
+            if rset.GameFlags.MARLE_REWORK in settings.gameflags:
+                cure = techdb.get_tech(ctenums.TechID.CURE)
+                reraise = techdb.get_tech(ctenums.TechID.LIFE_2_M)
+                reraise['gfx'][0] = 0x87
+                reraise['gfx'][6] = 0xFF
+                reraise['control'][5] = 0x3E
+                reraise['name'] = ctstrings.CTNameString.from_string(
+                    '*Reraise'
+                )
+                reraise['target'] = bytearray(cure['target'])
+                techdb.set_tech(reraise, ctenums.TechID.CURE)
+                techdb.menu_usable_ids[ctenums.TechID.CURE] = False
+
+                marle = config.char_manager.pcs[ctenums.CharID.MARLE]
+                marle.stats.cur_stats[2] = 9  # Speed to 9
+
             # Remove on-hit effects from robo tackle
             if rset.GameFlags.NO_CRISIS_TACKLE in settings.gameflags:
                 tackle_id = int(ctenums.TechID.ROBO_TACKLE)
@@ -1345,7 +1362,7 @@ class Randomizer:
 
                 techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
 
-                # Note for future (?) Marle changes
+            # Note for future (?) Marle changes
 
             # Statuses have different types.  Haste is type 3, everything else
             # just about is type 4.
