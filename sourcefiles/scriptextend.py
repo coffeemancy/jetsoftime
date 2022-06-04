@@ -492,6 +492,16 @@ def add_dup_dual_scripts(rom, bank_st, scr_ptrs_st, scr_st):
     pf = get_ll_point_flare_scr(rom, bank_st, scr_ptrs_st)
     pf.write_to_rom(rom, loc)
 
+    # single marle reraise to 0x87
+    loc += len(pf)
+    scr_id += 1
+    scr_ptr = to_little_endian(loc % 0x10000, 2)
+
+    rom[bank_st+scr_id] = bank
+    rom[scr_ptrs_st+scr_id*2:scr_ptrs_st+scr_id*2+2] = scr_ptr[:]
+
+    re = get_m_reraise_scr(rom, bank_st, scr_ptrs_st)
+    re.write_to_rom(rom, loc)
 
 def get_ff_hex_mist_scr(rom, bank_st, scr_ptrs_st):
 
@@ -1469,3 +1479,173 @@ def get_ll_point_flare_scr(rom, bank_st, scr_ptrs_st):
     )
 
     return pf_scr
+
+def get_m_reraise_scr(rom, bank_st, scr_ptrs_st):
+    script_id = 0x10
+    bank = rom[bank_st+script_id]
+    ptr = rom[scr_ptrs_st+2*script_id:scr_ptrs_st+2*script_id+2]
+
+    script_ptr = to_file_ptr((bank << 16)
+                             + get_value_from_bytes(ptr))
+    life_scr = TechScript.from_rom(rom, script_ptr)
+
+    # life_scr.print_data()
+
+    reraise_scr = TechScript()
+    # 100 11000 11100000 -- > 98E0
+    reraise_scr.header = bytearray.fromhex('98E08000')
+    reraise_scr.obj_scripts = [bytearray() for i in range(7)]
+    reraise_scr.num_objs = 7
+
+    '''
+    reraise_scr.obj_scripts[0] = bytearray.fromhex(
+        '720D' +
+        '0224' +
+        '2078' +
+        '3D03' +
+        # '78AE' +  # Play sound for life 2 -- Changing
+        '7889' +    # Play sound for life 1/lifeline
+        '341B' +    # Increment Layer3 -- Remove this and it locks
+        '0321' +
+        '0321' +
+        '2014' +
+        '0310' +
+        '0211' +
+        '36' +      # Increment Control 1D (0 to 1)
+        '20DC' +    # Pause DC
+        '36' +      # Increment Control 1D (1 ot 2)
+        '2402' +    # Wait for control to reach 2 (weird)
+        '341A' +    # Increment Process Geo -- Remove this and it locks
+        '0603' +
+        '2014' +
+        '50' +
+        '2014' +
+        '2E' +
+        '01' +
+        '00'
+    )
+    '''
+    
+    # Crono from life 1 for reference
+    reraise_scr.obj_scripts[0] = bytearray.fromhex(
+        '720D' +
+        '0224' +
+        '2078' +
+        # '061D' +
+        '2014' +
+        '7889' +
+        '0210' +
+        '3D03' +
+        '341B' +
+        '36' +
+        '20B0' +
+        '36' +
+        '2402' +
+        '341A' +
+        # '0603' +
+        '2024' +
+        '36' +
+        '2E' +
+        '01' +
+        '00'
+    )
+    # Target 1 -- should add something like spinning around?
+    reraise_scr.obj_scripts[1] = bytearray.fromhex(
+        '2402' +
+        '0224' +
+        '2403'
+        '0603' +
+        # '0612' +
+        '00'
+
+    )
+
+    reraise_scr.obj_scripts[2] = bytearray.fromhex(
+        # '2402' +
+        # '0224' +
+        # '2403'
+        # '0603' +
+        # '0612' +
+        '00'
+    )
+
+    
+    # Effect 1 -- Should be the charge up sparkles
+    reraise_scr.obj_scripts[3] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '6000' +
+        '0200' +
+        '0D' +
+        '70' +
+        '7A7C00' +
+        '1E1C' +
+        '71' +
+        '7303' +
+        '2401' +
+        '6002' +
+        '1B03' +
+        '0201' +
+        '78AD' +
+        '70' +
+        '2402' +
+        '6F' +
+        '00'
+    )
+
+    # Effect 2 -- Should be the spinning angel
+    reraise_scr.obj_scripts[4] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '2002' +
+        '0200' +
+        '0D' +
+        '2008' +
+        '70' +
+        '1E1C' +
+        '71' +
+        '7303' +
+        '6001' +
+        '2401' +
+        '203C' +
+        '1B03' +
+        '0302' +
+        '00'
+    )
+
+    # EFfect 3 -- Should be the sparkle dropped by the angel
+    reraise_scr.obj_scripts[5] = bytearray.fromhex(
+        '1B09' +
+        '7203' +
+        '7300' +
+        '2005' +
+        '0200' +
+        '0D' +
+        '2010' +
+        '70' +
+        '1E1C' +
+        '71' +
+        '7303' +
+        '2401' +
+        '205A' +
+        '1B03' +
+        '0302' +
+        '00'
+    )
+
+    # Miss Caster 1
+    reraise_scr.obj_scripts[6] = bytearray.fromhex(
+        '0619' +
+        '2014' +
+        '0317' +
+        '0317' +
+        '50' +
+        '0603' +
+        '2E' +
+        '01' +
+        '00'
+    )
+
+    return reraise_scr
