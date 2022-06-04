@@ -1330,6 +1330,7 @@ class Randomizer:
                 )
                 reraise['desc'] = new_desc
                 reraise['target'] = bytearray(cure['target'])
+                techdb.mps[ctenums.TechID.CURE] = 15
                 techdb.set_tech(reraise, ctenums.TechID.CURE)
                 techdb.menu_usable_ids[ctenums.TechID.CURE] = False
 
