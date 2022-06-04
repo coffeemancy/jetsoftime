@@ -2003,8 +2003,6 @@ def get_magus_nuke_id(config: cfg.RandoConfig):
 
 def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
 
-    new_char = CharID.MAGUS
-
     magus_stats = config.enemy_dict[EnemyID.MAGUS]
 
     magus_nukes = {
