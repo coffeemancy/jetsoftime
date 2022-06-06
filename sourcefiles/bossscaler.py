@@ -269,5 +269,5 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
                 config.enemy_aidb
             )
 
-            for ind, part_id in enumerate(boss_data.scheme.ids):
-                config.enemy_dict[part_id] = new_stats[ind]
+            for part in new_stats:
+                config.enemy_dict[part] = new_stats[part]
