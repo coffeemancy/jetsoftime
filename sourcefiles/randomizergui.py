@@ -2131,6 +2131,20 @@ class RandoGUI:
             'gives the Greendream effect.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Boss Spot HPs',
+            variable=self.flag_dict[GameFlags.BOSS_SPOT_HP]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Boss HP in boss rando is determined by the spot instead of the '
+            'usual scaling algorithm'
+        )
+
+
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
             text='Bucket Fragments',
