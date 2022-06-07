@@ -78,6 +78,7 @@ class GameFlags(Flag):
     FIRST_TWO = auto()
     EPOCH_FAIL = auto()
     MARLE_REWORK = auto()
+    BOSS_SPOT_HP = auto()
 
 # Dictionary for what flags force what other flags off.
 # Note that this is NOT symmetric.  For example Lost Worlds will force

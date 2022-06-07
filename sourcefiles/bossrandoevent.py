@@ -8,6 +8,7 @@ from byteops import to_little_endian
 
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import BossScheme, get_default_boss_assignment
+import bossspot
 from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect,\
     RecruitID
 from ctevent import Event, free_event, get_loc_event_ptr
@@ -1603,6 +1604,16 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
             config.enemy_aidb
         )[EnemyID.TWIN_BOSS]
 
+        if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
+            twin_hp = twin_stats.hp
+            new_hp = bossspot.get_part_new_hps(
+                base_boss.scheme,
+                config.enemy_dict,
+                twin_hp
+            )[base_id]
+
+            scaled_stats.hp = new_hp
+
         # Just here for rusty.
         scaled_stats.sprite_data.set_affect_layer_1(False)
 
@@ -1926,6 +1937,19 @@ def scale_bosses_given_assignment(settings: rset.Settings,
             )
 
         new_power_values[location] = orig_boss.power
+
+        if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
+            spot_hp = bossspot.get_boss_total_hp(
+                orig_boss.scheme,
+                config.enemy_dict
+            )
+            new_hps = bossspot.get_part_new_hps(
+                new_boss.scheme,
+                config.enemy_dict,
+                spot_hp
+            )
+            for part in new_hps:
+                scaled_stats[part].hp = new_hps[part]
 
         # Put the stats in scaled_dict
         scaled_dict.update(scaled_stats)
