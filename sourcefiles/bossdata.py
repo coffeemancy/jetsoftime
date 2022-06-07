@@ -14,7 +14,6 @@ import piecewiselinear
 import statcompute
 
 import randosettings as rset
-import randoconfig as cfg
 
 # Silly thing for typing classmethod return type from stackexchange
 # https://stackoverflow.com/questions/44640479
@@ -884,11 +883,11 @@ class _Stats:
 # Incomplete, may never get used.
 class CopyStatsScaleBoss(Boss):
 
-    def gather_stats(self, config: cfg.RandoConfig) -> _Stats:
+    def gather_stats(self,
+                     stat_dict: dict[EnemyID, EnemyStats]) -> _Stats:
         '''
         Gather total hp and average of other stats.
         '''
-        stat_dict = config.enemy_dict
         enemy_ids = self.scheme.ids
 
         if len(enemy_ids) == 1:
