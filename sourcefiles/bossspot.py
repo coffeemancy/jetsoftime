@@ -44,7 +44,10 @@ def get_boss_total_hp(
 ) -> int:
 
     EnID = ctenums.EnemyID
-    
+    main_ids = set([EnID.LAVOS_SPAWN_HEAD,
+                    EnID.ELDER_SPAWN_HEAD,
+                    EnID.GUARDIAN,
+                    EnID.GIGA_GAIA_HEAD])
     if len(boss_scheme.ids) == 1:
         ret_hp = stat_dict[boss_scheme.ids[0]].hp
         if boss_scheme.ids[0] == EnID.RUST_TYRANO:
@@ -52,16 +55,9 @@ def get_boss_total_hp(
     elif EnID.TERRA_MUTANT_HEAD in boss_scheme.ids:
         head_hp = max(1, stat_dict[EnID.TERRA_MUTANT_HEAD].hp)
         ret_hp = round(3*head_hp/2)
-    elif EnID.LAVOS_SPAWN_HEAD in boss_scheme.ids or \
-         EnID.ELDER_SPAWN_HEAD in boss_scheme.ids:
-
-        if EnID.LAVOS_SPAWN_HEAD in boss_scheme.ids:
-            head_id = EnID.LAVOS_SPAWN_HEAD
-        else:
-            head_id = EnID.ELDER_SPAWN_HEAD
-
-        head_hp = max(1, stat_dict[head_id].hp)
-        ret_hp = head_hp
+    elif not main_ids.isdisjoint(set(boss_scheme.ids)):
+        main_id = next(x for x in main_ids if x in boss_scheme.ids)
+        ret_hp = stat_dict[main_id].hp
     elif EnID.MOTHERBRAIN in boss_scheme.ids:
         ret_hp = stat_dict[EnID.MOTHERBRAIN].hp
     elif EnID.SON_OF_SUN_EYE in boss_scheme.ids:
@@ -81,6 +77,11 @@ def get_part_new_hps(
 ) -> dict[ctenums.EnemyID, int]:
 
     EnID = ctenums.EnemyID
+
+    main_ids = set([EnID.LAVOS_SPAWN_HEAD,
+                    EnID.ELDER_SPAWN_HEAD,
+                    EnID.GUARDIAN,
+                    EnID.GIGA_GAIA_HEAD])
     
     if len(boss_scheme.ids) == 1:
         if boss_scheme.ids[0] == EnID.RUST_TYRANO:
@@ -98,26 +99,14 @@ def get_part_new_hps(
             EnID.TERRA_MUTANT_HEAD: new_head_hp,
             EnID.TERRA_MUTANT_BOTTOM: new_bottom_hp
         }
-    elif EnID.LAVOS_SPAWN_HEAD in boss_scheme.ids or \
-         EnID.ELDER_SPAWN_HEAD in boss_scheme.ids:
-
-        if EnID.LAVOS_SPAWN_HEAD in boss_scheme.ids:
-            head_id = EnID.LAVOS_SPAWN_HEAD
-            shell_id = EnID.LAVOS_SPAWN_SHELL
-        else:
-            head_id = EnID.ELDER_SPAWN_HEAD
-            shell_id = EnID.ELDER_SPAWN_SHELL
-
-        head_hp = max(1, stat_dict[head_id].hp)
-        shell_hp = stat_dict[shell_id].hp
-        shell_proportion = shell_hp/head_hp
-
-        new_head_hp = new_hp
-        new_shell_hp = round(new_hp * shell_proportion)
-
+    elif not main_ids.isdisjoint(set(boss_scheme.ids)):
+        # Covers Lavos Spawns, Guardian, Giga Gaia
+        # Give the main part the spot hp.  Assign the others proportionally.
+        main_id = next(x for x in main_ids if x in boss_scheme.ids)
+        main_hp = stat_dict[main_id].hp
         ret_dict = {
-            head_id: new_head_hp,
-            shell_id: new_shell_hp
+            part: round(new_hp*(stat_dict[part].hp/main_hp))
+            for part in boss_scheme.ids
         }
     elif EnID.MOTHERBRAIN in boss_scheme.ids:
         ret_dict = {
