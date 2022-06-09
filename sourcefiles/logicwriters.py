@@ -159,8 +159,8 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
     Use a standarized weighing scheme for LocationGroups.
     '''
 
-    EARLY_DUNGEON_WEIGHT = 15
-    DUNGEON_WEIGHT = 30
+    EARLY_DUNGEON_WEIGHT = 20
+    DUNGEON_WEIGHT = 40
 
     EARLY_WEIGHT_PER_BOX = 1
     WEIGHT_PER_BOX = 2
@@ -194,6 +194,8 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
         group = game_config.getLocationGroup(name)
         num_boxes = len(group.locations)
         group.weight = num_boxes*WEIGHT_PER_BOX
+        if name == 'FutureOpen':
+            group.weight = 2*WEIGHT_PER_KI + 2*WEIGHT_PER_BOX
         group.weightDecay = lambda x: int(x*0.2)
             
 
