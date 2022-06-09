@@ -79,6 +79,79 @@ class RandomRejectionFiller:
                 raise LogicIterationException('Maximum Attempts Reached.')
 
 
+class ALTTPRWeightedFiller:
+    '''
+    Mimic ALTTPR's AssumedFiller but use LocationGroup weights.
+    '''
+    def __init__(self, max_attempts: int = 1000):
+        self.max_attempts = max_attempts
+
+    def fill_key_item_locations(
+            self,
+            game_config: logicfactory.GameConfig
+    ) -> list[_LocType]:
+        '''
+        Implement a Weighted version of ALTTPR's AssumedFiller algorithm
+        '''
+
+        settings = game_config.settings
+        config = game_config.config
+
+        key_items_list = set(list(game_config.keyItemList))
+        unassigned_key_items = list(key_items_list)
+        assigned_locations: list[_LocType] = []
+
+        failure_count = 0
+
+        while True:
+
+            if not unassigned_key_items:
+                break
+
+            random.shuffle(unassigned_key_items)
+            next_item = unassigned_key_items.pop()
+
+            collectable_key_items = get_collectable_key_items(game_config)
+            assumed_key_items = unassigned_key_items + collectable_key_items
+
+            max_game = logictypes.Game(settings, config)
+            max_game.keyItems = assumed_key_items
+            max_game.updateAvailableCharacters()
+
+            avail_groups = get_available_location_groups(
+                game_config, max_game, assigned_locations
+            )
+
+            if not avail_groups:
+                failure_count += 1
+                if failure_count > self.max_attempts:
+                    raise LogicIterationException('Exceeded Maximum Failures')
+
+                # Reset everything
+                for loc in assigned_locations:
+                    loc.unsetKeyItem()
+
+                unassigned_key_items = list(key_items_list)
+                assigned_locations = []
+
+                # Undo decay for all groups
+                for group in game_config.locationGroups:
+                    group.restoreInitialWeight()
+
+            else:
+                weights = [group.getWeight() for group in avail_groups]
+                group = random.choices(avail_groups, weights=weights, k=1)[0]
+                loc = random.choice([loc for loc in group.locations
+                                     if loc not in assigned_locations])
+                loc.setKeyItem(next_item)
+                assigned_locations.append(loc)
+
+                # Decay group's weight
+                group.decayWeight()
+
+        return assigned_locations
+
+    
 class ALTTPRFiller:
     '''
     Mimic ALTTPR's AssumedFiller.
@@ -95,10 +168,6 @@ class ALTTPRFiller:
         '''
         settings = game_config.settings
         config = game_config.config
-        char_dict = {
-            char: config.char_assign_dict[char].held_char
-            for char in config.char_assign_dict
-        }
 
         key_items_list = set(list(game_config.keyItemList))
         unassigned_key_items = list(key_items_list)
@@ -375,6 +444,28 @@ def is_placement_valid(
                          if x not in accessible_keys]
 
     return not inaccessible_keys
+
+
+def get_available_location_groups(
+        game_config: logicfactory.GameConfig,
+        game: logictypes.Game,
+        assigned_locs: list[_LocType]
+) -> list[logictypes.LocationGroup]:
+    '''
+    Find reachable LocaionGoups with space for a key item.
+    '''
+
+    location_groups = []
+    game.updateAvailableCharacters()
+
+    for group in game_config.locationGroups:
+        if group.accessRule(game):
+            unassigned_locs = [loc for loc in group.locations
+                               if loc not in assigned_locs]
+            if unassigned_locs:
+                location_groups.append(group)
+
+    return location_groups
 
 
 def get_available_locations(
