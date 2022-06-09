@@ -571,6 +571,16 @@ class LocationGroup:
         if len(self.weightStack) > 0:
             self.setWeight(self.weightStack.pop())
 
+
+    #
+    # Undo all weight decay of this LocationGroup.
+    #
+    def restoreInitialWeight(self):
+        if self.weightStack:
+            self.setWeight(self.weightStack[0])
+            self.weightStack = []
+
+
     #
     # Get the number of available locations in this group.
     #
