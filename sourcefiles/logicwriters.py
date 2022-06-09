@@ -94,6 +94,8 @@ class ALTTPRWeightedFiller:
         Implement a Weighted version of ALTTPR's AssumedFiller algorithm
         '''
 
+        reweigh_location_groups(game_config)
+
         settings = game_config.settings
         config = game_config.config
 
@@ -151,7 +153,91 @@ class ALTTPRWeightedFiller:
 
         return assigned_locations
 
-    
+
+def reweigh_location_groups(game_config: logicfactory.GameConfig):
+    '''
+    Use a standarized weighing scheme for LocationGroups.
+    '''
+
+    EARLY_DUNGEON_WEIGHT = 15
+    DUNGEON_WEIGHT = 30
+
+    EARLY_WEIGHT_PER_BOX = 1
+    WEIGHT_PER_BOX = 2
+
+    EARLY_WEIGHT_PER_KI = 4
+    WEIGHT_PER_KI = 6
+
+    early_dungeons = [
+        'Heckran', 'CathedralLocations', 'DenadoroLocations',
+    ]
+    for name in early_dungeons:
+        group = game_config.getLocationGroup(name)
+        group.weight = EARLY_DUNGEON_WEIGHT
+        group.weightDecay = lambda x: int(x*0.2)
+
+    early_non_dungeon_zones = [
+        'Open', 'GuardiaCastle'
+    ]
+    for name in early_non_dungeon_zones:
+        group = game_config.getLocationGroup(name)
+        num_boxes = len(group.locations)
+        group.weight = num_boxes*EARLY_WEIGHT_PER_BOX
+        group.weightDecay = lambda x: int(x*0.2)
+
+    non_dungeon_zones = [
+        'FutureSewers', 'FutureLabs', 'FutureOpen',
+        'PrehistoryForestMaze', 'PrehistoryDactylNest',
+        'Magic Cave', 'NorthernRuinsFrogLocked',
+    ]
+    for name in non_dungeon_zones:
+        group = game_config.getLocationGroup(name)
+        num_boxes = len(group.locations)
+        group.weight = num_boxes*WEIGHT_PER_BOX
+        group.weightDecay = lambda x: int(x*0.2)
+            
+
+    early_ki_spots = [
+        'Fionashrine', 'OpenKeys',
+    ]
+    for name in early_ki_spots:
+        group = game_config.getLocationGroup(name)
+        num_kis = len(group.locations)
+        group.weight = num_kis*EARLY_WEIGHT_PER_KI
+        group.weightDecay = lambda x: int(x*0.2)
+
+    ki_spots = [
+        'BekklersLab', 'FrogsBurrowLocation', 
+        'MelchiorRefinements'
+    ]
+    for name in ki_spots:
+        group = game_config.getLocationGroup(name)
+        if group is not None:
+            num_kis = len(group.locations)
+            group.weight = num_kis*WEIGHT_PER_KI
+            group.weightDecay = lambda x: int(x*0.2)
+
+    unknown = [
+        'SealedLocations',
+    ]
+
+    for name in unknown:
+        group = game_config.getLocationGroup(name)
+        num_boxes = len(group.locations)
+        group.weight = num_boxes*WEIGHT_PER_KI
+        group.weightDecay = lambda x: int(x*0.2)
+
+    normal_dungeons = [
+        'Darkages', 'GenoDome', 'Factory', 'Giantsclaw', 'NorthernRuins',
+        'GuardiaTreasury', 'Ozzie\'s Fort', 'PrehistoryReptite'
+    ]
+
+    for name in normal_dungeons:
+        group = game_config.getLocationGroup(name)
+        group.weight = DUNGEON_WEIGHT
+        group.weightDecay = lambda x: int(x*0.2)
+
+
 class ALTTPRFiller:
     '''
     Mimic ALTTPR's AssumedFiller.
