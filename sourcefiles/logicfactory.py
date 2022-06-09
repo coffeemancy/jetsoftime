@@ -90,8 +90,11 @@ class GameConfig:
     # return: The LocationGroup object with the given name
     #
     def getLocationGroup(self, name: str) -> LocationGroup:
-        return next(x for x in self.locationGroups
-                    if x.name == name)
+        try:
+            return next(x for x in self.locationGroups
+                        if x.name == name)
+        except StopIteration:
+            return None
 
     #
     # Get the list of key items associated with this game mode.
