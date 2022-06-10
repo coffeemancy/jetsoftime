@@ -1338,10 +1338,13 @@ class Randomizer:
                 marle.stats.cur_stats[2] = 9  # Speed to 9
 
             # Remove on-hit effects from robo tackle
-            if rset.GameFlags.NO_CRISIS_TACKLE in settings.gameflags:
+            # Reduce Robo tackle to 24 power (follow +15% rule)
+            if rset.GameFlags.ROBO_REWORK in settings.gameflags:
                 tackle_id = int(ctenums.TechID.ROBO_TACKLE)
                 on_hit_byte = tackle_id*techdb.effect_size + 8
                 techdb.effects[on_hit_byte] = 0
+                power_byte = tackle_id*techdb.effect_size + 9
+                techdb.effects[power_byte] = 24
 
             # Revert antilife to black hole
             if rset.GameFlags.BLACKHOLE_REWORK in settings.gameflags:
@@ -1351,7 +1354,7 @@ class Randomizer:
 
                 anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
                 anti_life['control'][8] = 0x16  # +Atk for down allies
-                anti_life['effects'][0][9] = 0x25  # 1.5x dark bomb
+                anti_life['effects'][0][9] = 0x20  # Megabomb power
                 al_eff_id = anti_life['control'][5]
 
                 # A note here that set_tech needs the effects to be set

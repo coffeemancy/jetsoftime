@@ -2044,15 +2044,16 @@ class RandoGUI:
         CreateToolTip(
             checkbox,
             'Black Hole regains its original animation and area of effect. '
-            'Instead of 40% chance of instant death, the spell does 1.5x '
-            'nonelemental Dark Bomb damage.  Additionally, Black Hole\'s '
-            'power increases with dead allies like doomsickle.'
+            'Instead of 40% chance of instant death, the spell does '
+            'nonelemental damage equal to Mega Bomb\'s power (32). '
+            'Additionally, Black Hole\'s power increases with dead allies '
+            'like Doomsickle.'
         )
 
         checkbox = tk.Checkbutton(
             frame,
-            text='No Robo Tackle On-Hit Effects',
-            variable=self.flag_dict[GameFlags.NO_CRISIS_TACKLE]
+            text='Robo Rework',
+            variable=self.flag_dict[GameFlags.ROBO_REWORK]
         )
         checkbox.pack(anchor=tk.W)
 
@@ -2060,6 +2061,8 @@ class RandoGUI:
             checkbox,
             'Robo Tackle regains its vanilla functionality in which it '
             'ignores on-hit effects from weapons, most notably the Crisis Arm.'
+            ' In addition, Robo tackle\'s power is reduced from 30 to 24, '
+            'putting it in line with other techs with the Ayla formula.'
         )
 
         checkbox = tk.Checkbutton(

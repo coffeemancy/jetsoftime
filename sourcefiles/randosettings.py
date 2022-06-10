@@ -71,7 +71,7 @@ class GameFlags(Flag):
     AYLA_REBALANCE = auto()
     BOSS_SIGHTSCOPE = auto()
     BLACKHOLE_REWORK = auto()
-    NO_CRISIS_TACKLE = auto()
+    ROBO_REWORK = auto()
     HEALING_ITEM_RANDO = auto()
     FREE_MENU_GLITCH = auto()
     GEAR_RANDO = auto()
