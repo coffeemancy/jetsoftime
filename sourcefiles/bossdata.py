@@ -180,7 +180,7 @@ class Boss:
 
     @classmethod
     def FLEA(cls: Type[T]) -> T:
-        return cls.generic_one_spot(EnemyID.FLEA, 7, 15)
+        return cls.generic_one_spot(EnemyID.FLEA, 7, 14)
 
     @classmethod
     def FLEA_PLUS(cls: Type[T]) -> T:
@@ -221,7 +221,7 @@ class Boss:
         slots = [3, 7, 8]
         # disps = [(0, 0), (-0x50, -0x08), (0x40, -0x08)]
         disps = [(0, 0), (-0x3A, -0x08), (0x40, -0x08)]
-        power = 15
+        power = 12
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
@@ -298,7 +298,7 @@ class Boss:
         # disps = [(0, 0), (-0x50, -0x1F), (-0x20, -0x2F), (0x40, -0x1F)]
         # Tighten up coords to fit better.  AoE still hits screens the same
         disps = [(0, 0), (-0x40, -0xF), (-0x8, -0x1F), (0x38, -0xF)]
-        power = 15
+        power = 14
 
         return cls.generic_multi_spot(ids, disps, slots, power)
 
