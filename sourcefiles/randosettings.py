@@ -65,7 +65,6 @@ class GameFlags(Flag):
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
     BUCKET_FRAGMENTS = auto()
-    GUARANTEED_DROPS = auto()
     BUFF_XSTRIKE = auto()
     MYSTERY = auto()
     AYLA_REBALANCE = auto()
@@ -101,7 +100,6 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
-    _GF.GUARANTEED_DROPS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
     _GM.STANDARD: _GF(0),
     _GM.LOST_WORLDS: _GF.BOSS_SCALE,
@@ -133,7 +131,6 @@ _forced_on_dict = {
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
-    _GF.GUARANTEED_DROPS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
     _GM.STANDARD: _GF(0),
     _GM.LOST_WORLDS: _GF.UNLOCKED_MAGIC,

@@ -1214,8 +1214,7 @@ class Randomizer:
         if rset.GameFlags.VISIBLE_HEALTH in flags:
             qolhacks.force_sightscope_on(ctrom, settings)
 
-        if rset.GameFlags.GUARANTEED_DROPS in flags:
-            qolhacks.set_guaranteed_drops(ctrom, settings)
+        qolhacks.set_guaranteed_drops(ctrom)
 
         if rset.GameFlags.FREE_MENU_GLITCH in flags:
             qolhacks.set_free_menu_glitch(ctrom, settings)

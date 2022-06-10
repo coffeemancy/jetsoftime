@@ -1994,20 +1994,6 @@ class RandoGUI:
 
         checkbox = tk.Checkbutton(
             frame,
-            text='Guaranteed Drops',
-            variable=self.flag_dict[GameFlags.GUARANTEED_DROPS]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'By default, if an enemy has a charm and a drop, the drop is not '
-            'guaranteed when the enemy is defeated.  This flag makes the drop '
-            'guaranteed.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
             text='Buff X-Strike',
             variable=self.flag_dict[GameFlags.BUFF_XSTRIKE]
         )
