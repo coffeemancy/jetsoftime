@@ -226,7 +226,7 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
     for name in unknown:
         group = game_config.getLocationGroup(name)
         num_boxes = len(group.locations)
-        group.weight = num_boxes*WEIGHT_PER_KI
+        group.weight = num_boxes*WEIGHT_PER_BOX
         group.weightDecay = lambda x: int(x*0.2)
 
     normal_dungeons = [
