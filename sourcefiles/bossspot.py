@@ -1,5 +1,6 @@
 from enum import auto
 import json
+import math
 import typing
 
 import bossdata
@@ -35,7 +36,40 @@ class BossSpotID(ctenums.StrIntEnum):
     MT_WOE = auto()
     ARRIS_DOME = auto()
 
-_AssignFunc = typing.Callable[[ctrom.CTRom, bossdata.BossScheme] , None]
+
+def get_scaled_hp_dict(
+        from_boss: bossdata.Boss,
+        to_boss: bossdata.Boss,
+        stat_dict: dict[ctenums.EnemyID, enemystats.EnemyStats],
+        additional_power_scaling: bool = False
+) -> dict[ctenums.EnemyID, int]:
+    boss_total_hp = get_boss_total_hp(from_boss.scheme, stat_dict)
+    hp_dict = get_part_new_hps(to_boss.scheme, stat_dict, boss_total_hp)
+
+    # I fear that many bosses become too easy in endgame spots with with
+    # spot-based hp values.  This does something do alleviate the problem.
+    if additional_power_scaling:
+        hp_mod = get_power_scale_factor(
+            from_boss.power, to_boss.power
+        )
+
+        for part in hp_dict:
+            hp_dict[part] = hp_dict[part] * hp_mod
+
+    return hp_dict
+
+
+def get_power_scale_factor(
+        from_power: int,
+        to_power: int
+) -> float:
+    '''
+    Determine additional hp scaling based on power differential.
+    '''
+    hp_mod = round(math.log2(to_power/from_power))
+    hp_mod = 1+0.1*hp_mod
+
+    return hp_mod
 
 
 def get_boss_total_hp(
@@ -52,6 +86,8 @@ def get_boss_total_hp(
         ret_hp = stat_dict[boss_scheme.ids[0]].hp
         if boss_scheme.ids[0] == EnID.RUST_TYRANO:
             ret_hp = round(ret_hp / 1.75)
+    elif boss_scheme.ids[0] == EnID.TWIN_BOSS:
+        ret_hp = round((stat_dict[EnID.TWIN_BOSS].hp*3)/2)
     elif EnID.TERRA_MUTANT_HEAD in boss_scheme.ids:
         head_hp = max(1, stat_dict[EnID.TERRA_MUTANT_HEAD].hp)
         ret_hp = round(3*head_hp/2)
@@ -87,6 +123,8 @@ def get_part_new_hps(
         if boss_scheme.ids[0] == EnID.RUST_TYRANO:
             new_hp = round(new_hp * 1.75)
         ret_dict = {boss_scheme.ids[0]: new_hp}
+    elif boss_scheme.ids[0] == EnID.TWIN_BOSS:
+        ret_dict = {EnID.TWIN_BOSS: round((new_hp*2)/3)}
     elif EnID.TERRA_MUTANT_HEAD in boss_scheme.ids:
         head_hp = max(1, stat_dict[EnID.TERRA_MUTANT_HEAD].hp)
         bottom_hp = stat_dict[EnID.TERRA_MUTANT_BOTTOM].hp

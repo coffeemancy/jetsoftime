@@ -1612,6 +1612,14 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
                 twin_hp
             )[base_id]
 
+            # This may be configurable in RO settings eventually
+            additional_power_scaling = False
+            if additional_power_scaling:
+                hp_mod = bossspot.get_power_scale_factor(
+                    base_boss.power, twin_boss.power
+                )
+                new_hp *= hp_mod
+
             scaled_stats.hp = new_hp
 
         # Just here for rusty.
@@ -1939,14 +1947,9 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         new_power_values[location] = orig_boss.power
 
         if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
-            spot_hp = bossspot.get_boss_total_hp(
-                orig_boss.scheme,
-                config.enemy_dict
-            )
-            new_hps = bossspot.get_part_new_hps(
-                new_boss.scheme,
-                config.enemy_dict,
-                spot_hp
+            new_hps = bossspot.get_scaled_hp_dict(
+                orig_boss, new_boss, config.enemy_dict,
+                additional_power_scaling=False
             )
             for part in new_hps:
                 scaled_stats[part].hp = new_hps[part]
