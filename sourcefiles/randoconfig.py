@@ -646,8 +646,8 @@ class RandoConfig:
             TID.FACTORY_RIGHT_FLOOR_LEFT: ChestTreasure(0x7D),
             TID.FACTORY_RIGHT_FLOOR_BOTTOM: ChestTreasure(0x7E),
             TID.FACTORY_RIGHT_FLOOR_SECRET: ChestTreasure(0x7F),
-            TID.FACTORY_RIGHT_CRANE_LOWER: ChestTreasure(0x80),
-            TID.FACTORY_RIGHT_CRANE_UPPER: ChestTreasure(0x81),
+            TID.FACTORY_RIGHT_CRANE_UPPER: ChestTreasure(0x80),
+            TID.FACTORY_RIGHT_CRANE_LOWER: ChestTreasure(0x81),
             TID.FACTORY_RIGHT_INFO_ARCHIVE: ChestTreasure(0x82),
             # Non-CS
             TID.FACTORY_RUINS_GENERATOR: ChestTreasure(0x83),
