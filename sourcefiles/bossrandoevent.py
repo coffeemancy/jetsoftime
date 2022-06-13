@@ -1818,7 +1818,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     orig_data = config.boss_data_dict
 
     endgame_locs = [
-        LocID.OCEAN_PALACE_ENTRANCE, LocID.OCEAN_PALACE_TWIN_GOLEM,
+        LocID.ZEAL_PALACE_THRONE_NIGHT, LocID.OCEAN_PALACE_TWIN_GOLEM,
         LocID.BLACK_OMEN_ELDER_SPAWN, LocID.BLACK_OMEN_GIGA_MUTANT,
         LocID.BLACK_OMEN_TERRA_MUTANT
     ]
