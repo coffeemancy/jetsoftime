@@ -1239,6 +1239,11 @@ class Randomizer:
         if rset.CosmeticFlags.DEATH_PEAK_ALT_MUSIC in cos_flags:
             cosmetichacks.death_peak_singing_mountain_music(ctrom, settings)
 
+        cosmetichacks.set_pc_names(
+            ctrom, *settings.char_names
+        )
+
+
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
         '''Turn vanilla ct rom into default objects for a config.'''

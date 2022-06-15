@@ -21,6 +21,7 @@ from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     BucketSettings, GameMode, MysterySettings
 from ctenums import LocID, BossID
 import ctrom
+import ctstrings
 
 
 #
@@ -174,6 +175,17 @@ class RandoGUI:
             for key in ms.flag_prob_dict.keys()
         }
 
+        self.char_names = {
+            'Crono': tk.StringVar(value='Crono'),
+            'Lucca': tk.StringVar(value='Lucca'),
+            'Marle': tk.StringVar(value='Marle'),
+            'Robo': tk.StringVar(value='Robo'),
+            'Frog': tk.StringVar(value='Frog'),
+            'Ayla': tk.StringVar(value='Ayla'),
+            'Magus': tk.StringVar(value='Magus'),
+            'Epoch': tk.StringVar(value='Epoch')
+        }
+
         # generation variables
         self.seed = tk.StringVar()
         self.input_file = tk.StringVar()
@@ -318,7 +330,7 @@ class RandoGUI:
         # Shop Prices
         self.settings.shopprices = \
             ShopPrices.inv_str_dict()[self.shop_prices.get()]
-            
+
         # Tech randomization
         self.settings.techorder = \
             TechOrder.inv_str_dict()[self.tech_order.get()]
@@ -330,6 +342,15 @@ class RandoGUI:
         # Cosmetic flags
         cosmetic_flags = [x for x in list(CosmeticFlags)
                           if self.cosmetic_flag_dict[x].get() == 1]
+
+        self.settings.char_names[0] = self.char_names['Crono'].get()
+        self.settings.char_names[1] = self.char_names['Marle'].get()
+        self.settings.char_names[2] = self.char_names['Lucca'].get()
+        self.settings.char_names[3] = self.char_names['Robo'].get()
+        self.settings.char_names[4] = self.char_names['Frog'].get()
+        self.settings.char_names[5] = self.char_names['Ayla'].get()
+        self.settings.char_names[6] = self.char_names['Magus'].get()
+        self.settings.char_names[7] = self.char_names['Epoch'].get()
 
         self.settings.gameflags = \
             reduce(lambda a, b: a | b, flags, GameFlags(False))
@@ -430,6 +451,16 @@ class RandoGUI:
                 self.cosmetic_flag_dict[x].set(1)
             else:
                 self.cosmetic_flag_dict[x].set(0)
+
+        # Char names
+        self.char_names['Crono'].set(self.settings.char_names[0])
+        self.char_names['Marle'].set(self.settings.char_names[1])
+        self.char_names['Lucca'].set(self.settings.char_names[2])
+        self.char_names['Robo'].set(self.settings.char_names[3])
+        self.char_names['Frog'].set(self.settings.char_names[4])
+        self.char_names['Ayla'].set(self.settings.char_names[5])
+        self.char_names['Magus'].set(self.settings.char_names[6])
+        self.char_names['Epoch'].set(self.settings.char_names[7])
 
         # Update difficulties
         self.enemy_difficulty.set(
@@ -1407,6 +1438,46 @@ class RandoGUI:
                     return False
         # End if boss rando set
 
+        # Check the default character names
+        good_symbols = set(
+            x for x in range(0xA0, 0xEE)
+        )
+        good_symbols.add(0)
+
+        for char_name, var in self.char_names.items():
+            try:
+                new_name = var.get()
+                ct_name = ctstrings.CTNameString.from_string(new_name,
+                                                             length=6,
+                                                             pad_val=0)
+            except ValueError as err:
+                messagebox.showerror(
+                    'Name Error',
+                    f'Error in {char_name}\'s name: Can\'t parse '
+                    f'\'{str(err)}\''
+                )
+                self.notebook.select(self.cosmetic_page)
+                return False
+
+            ct_name.append(0)
+            true_len = ct_name.find(0)
+            if true_len > 5:
+                messagebox.showerror(
+                    'Name Error',
+                    f'Error in {char_name}\'s name: length can not exceed '
+                    'five characters.'
+                )
+                self.notebook.select(self.cosmetic_page)
+                return False
+
+            symbol_set = set(x for x in ct_name)
+            if not symbol_set.issubset(good_symbols):
+                messagebox.showwarning(
+                    'Name Warning',
+                    f'{char_name}\'s name has unusual symbols.  This may be '
+                    'unstable.'
+                )
+
         # Check the paths so that we don't have to do it later.
         input_path = pathlib.Path(self.input_file.get())
         if not input_path.is_file():
@@ -2228,6 +2299,21 @@ class RandoGUI:
             checkbox,
             'Plays the unused Singing Mountain theme during Death Peak.'
         )
+
+        label = tk.Label(frame, text='Default Names:')
+        label.pack(anchor=tk.W)
+
+        default_names = ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog',
+                         'Ayla', 'Magus', 'Epoch']
+
+        for name, var in self.char_names.items():
+            tempframe = tk.Frame(frame)
+            label = tk.Label(tempframe, text=name+':', width=6)
+            entry = tk.Entry(tempframe, textvariable=var)
+
+            label.pack(side=tk.LEFT)
+            entry.pack(side=tk.LEFT)
+            tempframe.pack(anchor=tk.W)
 
         return frame
 

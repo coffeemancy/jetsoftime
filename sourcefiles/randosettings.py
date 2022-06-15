@@ -266,6 +266,11 @@ class Settings:
         self.cosmetic_flags = CosmeticFlags(0)
         self.seed = ''
 
+        self.char_names: list[str] = [
+            'Crono', 'Lucca', 'Marle', 'Robo', 'Frog', 'Ayla', 'Magus',
+            'Epoch'
+        ]
+
     def _jot_json(self):
         return {
             "seed": self.seed,
