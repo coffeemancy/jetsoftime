@@ -371,7 +371,7 @@ class CTNameString(bytearray):
                            for (key, value) in byte_to_symbol_dict.items()}
 
     @classmethod
-    def from_string(cls, string: str, length: int = 0xB):
+    def from_string(cls, string: str, length: int = 0xB, pad_val: int = 0xEF):
         str_pos = 0
 
         ct_bytes = bytearray()
@@ -390,11 +390,11 @@ class CTNameString(bytearray):
         if len(ct_bytes) > length:
             ct_bytes = ct_bytes[0:length+1]
         elif len(ct_bytes) < length:
-            ct_bytes.extend([0xEF for x in range(length-len(ct_bytes))])
+            ct_bytes.extend([pad_val for x in range(length-len(ct_bytes))])
 
         pos = len(ct_bytes) - 1
         while pos >= 0 and ct_bytes[pos] == 0xFF:
-            ct_bytes[pos] = 0xEF
+            ct_bytes[pos] = pad_val
             pos -= 1
 
         return CTNameString(ct_bytes)
