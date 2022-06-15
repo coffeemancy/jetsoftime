@@ -177,8 +177,8 @@ class RandoGUI:
 
         self.char_names = {
             'Crono': tk.StringVar(value='Crono'),
-            'Lucca': tk.StringVar(value='Lucca'),
             'Marle': tk.StringVar(value='Marle'),
+            'Lucca': tk.StringVar(value='Lucca'),
             'Robo': tk.StringVar(value='Robo'),
             'Frog': tk.StringVar(value='Frog'),
             'Ayla': tk.StringVar(value='Ayla'),
