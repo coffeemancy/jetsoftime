@@ -41,11 +41,12 @@ def set_pc_names(
         copy_str.extend(name_b)
 
     script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
+    # Finding a memcpy command (0x4E) writing to 0x7E2C32 with a payload of
+    # length 0x0032
     memcpy_cmd_b = bytes.fromhex('4E232C7E3200')
     pos = script.data.find(memcpy_cmd_b)
     pos += len(memcpy_cmd_b)
 
-    assert(len(copy_str) == 6*8)
     script.data[pos:pos+len(copy_str)] = copy_str[:]
 
 
