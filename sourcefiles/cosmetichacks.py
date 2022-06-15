@@ -6,8 +6,47 @@ from ctrom import CTRom
 # import randoconfig as cfg
 
 import ctevent
+import ctstrings
 import mapmangler
 import randosettings as rset
+
+
+def set_pc_names(
+        ct_rom: CTRom,
+        crono_name: str = None,
+        marle_name: str = None,
+        lucca_name: str = None,
+        robo_name: str = None,
+        frog_name: str = None,
+        ayla_name: str = None,
+        magus_name: str = None,
+        epoch_name: str = None
+):
+    default_names = (
+        'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch'
+    )
+
+    copy_str = bytearray()
+
+    provided_names =  (crono_name, marle_name, lucca_name, robo_name,
+                       frog_name, ayla_name, magus_name, epoch_name)
+
+    for default_name, given_name in zip(default_names, provided_names):
+        if given_name == '' or given_name is None:
+            given_name = default_name
+
+        name_b = ctstrings.CTNameString.from_string(given_name, length=5,
+                                                    pad_val = 0)
+        name_b.append(0)
+        copy_str.extend(name_b)
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
+    memcpy_cmd_b = bytes.fromhex('4E232C7E3200')
+    pos = script.data.find(memcpy_cmd_b)
+    pos += len(memcpy_cmd_b)
+
+    assert(len(copy_str) == 6*8)
+    script.data[pos:pos+len(copy_str)] = copy_str[:]
 
 
 # Play the unused alternate battle theme while going through Zenan Bridge
