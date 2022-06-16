@@ -56,7 +56,6 @@ class GameFlags(Flag):
     FAST_PENDANT = auto()
     LOCKED_CHARS = auto()
     UNLOCKED_MAGIC = auto()
-    QUIET_MODE = auto()
     CHRONOSANITY = auto()
     TAB_TREASURES = auto()  # Maybe needs to be part of treasure page?
     BOSS_RANDO = auto()
@@ -92,7 +91,6 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.FAST_PENDANT: _GF(0),
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.QUIET_MODE: _GF(0),
     _GF.CHRONOSANITY: _GF.BOSS_SCALE,
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
@@ -132,7 +130,6 @@ _forced_on_dict = {
     _GF.FAST_PENDANT: _GF(0),
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.QUIET_MODE: _GF(0),
     _GF.CHRONOSANITY: _GF(0),
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
@@ -165,6 +162,7 @@ def get_forced_on(flag: GameFlags) -> GameFlags:
 class CosmeticFlags(Flag):
     ZENAN_ALT_MUSIC = auto()
     DEATH_PEAK_ALT_MUSIC = auto()
+    QUIET_MODE = auto()
 
 
 class TabRandoScheme(StrIntEnum):
@@ -401,7 +399,6 @@ class Settings:
             GameFlags.FAST_PENDANT: 'p',
             GameFlags.LOCKED_CHARS: 'c',
             GameFlags.UNLOCKED_MAGIC: 'm',
-            GameFlags.QUIET_MODE: 'q',
             GameFlags.CHRONOSANITY: 'cr',
             GameFlags.TAB_TREASURES: 'tb',
             GameFlags.DUPLICATE_CHARS: 'dc',

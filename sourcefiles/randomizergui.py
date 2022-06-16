@@ -290,7 +290,7 @@ class RandoGUI:
                 try:
                     [settings, input_file, output_dir] = pickle.load(infile)
                     self.settings = settings
-                except (ValueError, AttributeError, EOFError):
+                except (ValueError, AttributeError, EOFError, KeyError):
                     tk.messagebox.showinfo(
                         title='Settings Error',
                         message='Unable to load saved settings.  This often'
@@ -893,21 +893,6 @@ class RandoGUI:
             "Disables common glitches such as the unequip and save " +
             "anywhere glitches."
         )
-
-        # Quiet Mode (No Music)
-        checkButton = tk.Checkbutton(
-            frame,
-            text="Quiet Mode - No Music (q)",
-            variable=self.flag_dict[GameFlags.QUIET_MODE]
-        )
-        checkButton.grid(
-            row=row, column=2, sticky=tk.W, columnspan=2
-        )
-        CreateToolTip(
-            checkButton,
-            "Music is disabled.  Sound effects will still play."
-        )
-        row = row + 1
 
         return frame
 
@@ -2298,6 +2283,18 @@ class RandoGUI:
         CreateToolTip(
             checkbox,
             'Plays the unused Singing Mountain theme during Death Peak.'
+        )
+
+        # Quiet Mode (No Music)
+        checkButton = tk.Checkbutton(
+            frame,
+            text="Quiet Mode - No Music",
+            variable=self.cosmetic_flag_dict[CosmeticFlags.QUIET_MODE]
+        )
+        checkButton.pack(anchor=tk.W)
+        CreateToolTip(
+            checkButton,
+            "Music is disabled.  Sound effects will still play."
         )
 
         label = tk.Label(frame, text='Default Names:')

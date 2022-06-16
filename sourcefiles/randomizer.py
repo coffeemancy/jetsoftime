@@ -1181,9 +1181,6 @@ class Randomizer:
             rom_data.patch_txt_file('./patches/fadeout_patch.txt')
             rom_data.patch_txt_file('./patches/hp_overflow_patch.txt')
 
-        if rset.GameFlags.QUIET_MODE in flags:
-            rom_data.patch_ips_file('./patches/nomusic.ips')
-
         # TODO:  I'd like to do this with .Flux event changes
         if rset.GameFlags.ZEAL_END in flags:
             rom_data.patch_txt_file('./patches/zeal_end_boss.txt')
@@ -1232,6 +1229,9 @@ class Randomizer:
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
                                  settings: rset.Settings):
         cos_flags = settings.cosmetic_flags
+
+        if rset.CosmeticFlags.QUIET_MODE in cos_flags:
+            cosmetichacks.apply_quiet_mode(ctrom, settings)
 
         if rset.CosmeticFlags.ZENAN_ALT_MUSIC in cos_flags:
             cosmetichacks.zenan_bridge_alt_battle_music(ctrom, settings)
@@ -1674,7 +1674,7 @@ def get_settings_from_command_line() -> rset.Settings:
     quiet_mode = input("Do you want to enable quiet mode (No music)(q)? Y/N ")
     quiet_mode = quiet_mode.upper()
     if quiet_mode == "Y":
-        settings.gameflags |= rset.GameFlags.QUIET_MODE
+        settings.cosmetic_flags |= rset.CosmeticFlags.QUIET_MODE
 
     chronosanity = input(
         "Do you want to enable Chronosanity "
