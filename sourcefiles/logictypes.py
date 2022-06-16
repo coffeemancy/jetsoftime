@@ -425,6 +425,9 @@ class LinkedLocation():
         self.location1 = location1
         self.location2 = location2
 
+    def _jot_json(self):
+        return {self.getName(): str(self.getKeyItem())}
+
     def getName(self):
         return (f"Linked: {self.location1.getName()} + "
                 f"{self.location2.getName()}")
