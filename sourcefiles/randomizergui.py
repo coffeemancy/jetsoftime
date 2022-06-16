@@ -2331,7 +2331,8 @@ class RandoGUI:
             GameMode.STANDARD: "Std",
             GameMode.LOST_WORLDS: "LW",
             GameMode.LEGACY_OF_CYRUS: "LoC",
-            GameMode.ICE_AGE: "IA"
+            GameMode.ICE_AGE: "IA",
+            GameMode.VANILLA_RANDO: "Van"
         }
 
         game_mode_frame = self.get_rel_freq_frame(
@@ -2415,7 +2416,10 @@ class RandoGUI:
             GameFlags.CHRONOSANITY: 'Chronosanity',
             GameFlags.DUPLICATE_CHARS: 'DupeChars',
             GameFlags.LOCKED_CHARS: 'LockChars',
-            GameFlags.TAB_TREASURES: 'TabTreas'
+            GameFlags.TAB_TREASURES: 'TabTreas',
+            GameFlags.EPOCH_FAIL: 'EpochFail',
+            GameFlags.GEAR_RANDO: 'GearRando',
+            GameFlags.HEALING_ITEM_RANDO: 'HealRando'
         }
 
         for flag in self.mys_flag_prob_dict:
