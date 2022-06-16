@@ -93,16 +93,21 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
     _GF.QUIET_MODE: _GF(0),
-    _GF.CHRONOSANITY: _GF(0),
+    _GF.CHRONOSANITY: _GF.BOSS_SCALE,
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
+    _GF.MYSTERY: _GF(0),
+    _GF.GEAR_RANDO: _GF(0),
+    _GF.HEALING_ITEM_RANDO: _GF(0),
+    _GF.EPOCH_FAIL: _GF(0),
     _GM.STANDARD: _GF(0),
-    _GM.LOST_WORLDS: _GF.BOSS_SCALE,
+    _GM.LOST_WORLDS: _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS,
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
         _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
@@ -111,6 +116,10 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.ZEAL_END |
         _GF.BUCKET_FRAGMENTS |
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
+    ),
+    _GM.VANILLA_RANDO: (
+        _GF.BUFF_XSTRIKE | _GF.BUCKET_FRAGMENTS | _GF.AYLA_REBALANCE |
+        _GF.BLACKHOLE_REWORK | _GF.MARLE_REWORK | _GF.ROBO_REWORK,
     )
 }
  
@@ -128,14 +137,20 @@ _forced_on_dict = {
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
+    _GF.MYSTERY: _GF(0),
+    _GF.GEAR_RANDO: _GF(0),
+    _GF.HEALING_ITEM_RANDO: _GF(0),
+    _GF.EPOCH_FAIL: _GF(0),
     _GM.STANDARD: _GF(0),
     _GM.LOST_WORLDS: _GF.UNLOCKED_MAGIC,
     _GM.ICE_AGE: _GF.UNLOCKED_MAGIC,
-    _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC
+    _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC,
+    _GM.VANILLA_RANDO: _GF(0)
 }
 
 
@@ -188,7 +203,8 @@ class MysterySettings:
             GameMode.STANDARD: 75,
             GameMode.LOST_WORLDS: 25,
             GameMode.LEGACY_OF_CYRUS: 0,
-            GameMode.ICE_AGE: 0
+            GameMode.ICE_AGE: 0,
+            GameMode.VANILLA_RANDO: 0
         }
         self.item_difficulty_freqs: dict[Difficulty, int] = {
             Difficulty.EASY: 15,
@@ -214,11 +230,14 @@ class MysterySettings:
             GameFlags.TAB_TREASURES: 0.10,
             GameFlags.UNLOCKED_MAGIC: 0.5,
             GameFlags.BUCKET_FRAGMENTS: 0.15,
-            GameFlags.CHRONOSANITY: 0.30,
+            GameFlags.CHRONOSANITY: 0.50,
             GameFlags.BOSS_RANDO: 0.50,
-            GameFlags.BOSS_SCALE: 0.30,
+            GameFlags.BOSS_SCALE: 0.10,
             GameFlags.LOCKED_CHARS: 0.25,
-            GameFlags.DUPLICATE_CHARS: 0.25
+            GameFlags.DUPLICATE_CHARS: 0.25,
+            GameFlags.EPOCH_FAIL: 0.5,
+            GameFlags.GEAR_RANDO: 0.25,
+            GameFlags.HEALING_ITEM_RANDO: 0.25
         }
 
     def __str__(self):
