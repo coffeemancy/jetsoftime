@@ -90,8 +90,7 @@ def zenan_bridge_alt_battle_music(ctrom: CTRom, settings: rset.Settings):
     pos, _ = script.find_command([0xEA], start, end)
 
     if pos is None:
-        print("Error finding Zenan Bridge battle song command")
-        input()
+        raise ValueError("Error finding Zenan Bridge battle song command")
 
     # Byte after the command id has the song id.
     script.data[pos+1] = 0x51
@@ -135,7 +134,6 @@ def death_peak_singing_mountain_music(ctrom: CTRom,
     pos = script.find_exact_command(change_music, start, end)
 
     if pos is None:
-        print('Error finding silent light')
-        raise SystemExit
+        raise ValueError('Error finding play \'Silent light\' command')
 
     script.data[pos+1] = 0x52
