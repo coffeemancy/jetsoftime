@@ -178,9 +178,9 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # Good Gear gets Sp+2 (Slasher), Mg+4 (Rune Blade).  The Sp+2 is 1/22.
     # For accessories, we're at Flea vest, seals
     ret_dist[treasuredata.ItemTier.GOOD_GEAR] = Dist(
-        (71, [_BID.NOTHING]),
+        (72, [_BID.NOTHING]),
         (20, [_BID.MAGIC_6, _BID.POWER_6, _BID.HIT_10, _BID.MDEF_10]),
-        (5, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10]),
+        (4, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10]),
         (4, [_BID.SPEED_2])
     )
 
@@ -188,8 +188,8 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # Accessories get Sp+3 from Dash Ring
     ret_dist[treasuredata.ItemTier.HIGH_GEAR] = Dist(
         (70, [_BID.NOTHING]),
-        (27, [_BID.MAG_MDEF_5, _BID.POWER_STAMINA_10, _BID.MDEF_10,
-              _BID.MDEF_12, _BID.SPEED_1]),
+        (27, [_BID.MAG_MDEF_5, _BID.MAGIC_6, _BID.POWER_STAMINA_10,
+              _BID.MDEF_10, _BID.MDEF_12, _BID.SPEED_1]),
         (3, [_BID.SPEED_2]),
     )
 
@@ -197,7 +197,8 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
     # and Md+10 (Moon Armor).  Awesome Gear probably needs special casing.
     ret_dist[treasuredata.ItemTier.AWESOME_GEAR] = Dist(
         (50, [_BID.NOTHING]),
-        (40, [_BID.MDEF_9, _BID.MDEF_10, _BID.MDEF_15, _BID.POWER_STAMINA_10]),
+        (40, [_BID.MDEF_9, _BID.MDEF_10, _BID.MDEF_15, _BID.POWER_STAMINA_10,
+              _BID.MAG_MDEF_5, _BID.MAGIC_6]),
         (10, [_BID.SPEED_2, _BID.SPEED_3]),
     )
 
@@ -715,28 +716,30 @@ def randomize_accessories(settings: rset.Settings,
     rock_buff_dist = {
         (T5.GREENDREAM): 10,
         (T6.PROT_STOP): 10,
-        (T8.HASTE): 2,
+        (T6.PROT_BLIND, T6.PROT_CHAOS, T6.PROT_HPDOWN, T6.PROT_LOCK,
+         T6.PROT_POISON, T6.PROT_SLEEP, T6.PROT_SLOW, T6.PROT_STOP): 2,
+        (T8.HASTE): 1,
         (T9.BARRIER): 10,
         (T9.SHIELD): 10,
-        (T9.BARRIER, T9.SHIELD): 5,
+        (T9.BARRIER, T9.SHIELD): 2,
         (T9.SHADES): 5,
-        (T9.SPECS): 2
+        (T9.SPECS): 1
     }
 
     rock_boosts = (_BID.SPEED_2, _BID.MDEF_12, _BID.HIT_10,
-                   _BID.MAG_MDEF_5, _BID.POWER_STAMINA_10)
+                   _BID.MAGIC_6, _BID.MAG_MDEF_5, _BID.POWER_STAMINA_10)
 
     for rock_id in rocks:
         rock = config.itemdb[rock_id]
 
         rock_bonus = random.random()
-        if rock_bonus < 0.45:
+        if rock_bonus < 0.4:
             rock.stats.has_stat_boost = True
             rock.stats.has_battle_buff = False
             rock.stats.stat_boost_index = random.choice(rock_boosts)
             append_to_item_name(rock, '+')
 
-        elif rock_bonus < 0.9:
+        elif rock_bonus < 0.8:
             rock.stats.has_battle_buff = True
             rock.stats.has_stat_boost = False
             buffs = list(rock_buff_dist.keys())
