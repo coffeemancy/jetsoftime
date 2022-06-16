@@ -152,11 +152,11 @@ _forced_on_dict = {
 
 
 def get_forced_off(flag: GameFlags) -> GameFlags:
-    return _forced_off_dict[flag]
+    return _forced_off_dict.get(flag, GameFlags(0))
 
 
 def get_forced_on(flag: GameFlags) -> GameFlags:
-    return _forced_on_dict[flag]
+    return _forced_on_dict.get(flag, GameFlags(0))
 
 
 class CosmeticFlags(Flag):
