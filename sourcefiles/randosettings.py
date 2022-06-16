@@ -120,7 +120,7 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.BLACKHOLE_REWORK | _GF.MARLE_REWORK | _GF.ROBO_REWORK,
     )
 }
- 
+
 
 # Similar dictionary for forcing flags on
 _forced_on_dict = {
@@ -191,8 +191,8 @@ class ROSettings:
 
 @dataclass
 class BucketSettings:
-    num_fragments: int = 30
-    needed_fragments: int = 20
+    num_fragments: int = 15
+    needed_fragments: int = 10
 
 
 class MysterySettings:
@@ -277,7 +277,7 @@ class Settings:
         loc_list = ctenums.LocID.get_boss_locations()
 
         self.ro_settings = ROSettings(loc_list, boss_list, False)
-        self.bucket_settings = BucketSettings(30, 20)
+        self.bucket_settings = BucketSettings()
 
         self.tab_settings = TabSettings()
         self.cosmetic_flags = CosmeticFlags(0)
