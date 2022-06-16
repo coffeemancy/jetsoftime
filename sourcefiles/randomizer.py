@@ -40,6 +40,7 @@ import randosettings as rset
 
 from jotjson import JOTJSONEncoder
 
+
 class NoSettingsException(Exception):
     pass
 
@@ -1243,11 +1244,10 @@ class Randomizer:
             ctrom, *settings.char_names
         )
 
-
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
-        '''Turn vanilla ct rom into default objects for a config.'''
-        '''Should run whenever a big patch (patch.ips, hard.ips) changes.'''
+        '''Turn vanilla ct rom into default objects for a config.
+        Should run whenever a big patch (patch.ips, hard.ips) changes.'''
         ctrom = CTRom(ct_vanilla, ignore_checksum=False)
         cls.__apply_basic_patches(ctrom)
 
@@ -1273,6 +1273,8 @@ class Randomizer:
           - char_manager: patch.ips changes character stat growths and base
                           stats.
           - techdb: patch.ips changes the basic techs (i.e. Antilife)
+          - enemy_atkdb: Various enemy techs are changed by patch.ips.
+          - enemy_aidb: Various enemy attack scripts are changed by patch.ips.
         '''
 
         # It's a little wasteful copying the rom data to partially patch it
@@ -1375,14 +1377,6 @@ class Randomizer:
 
                 techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
 
-            # Note for future (?) Marle changes
-
-            # Statuses have different types.  Haste is type 3, everything else
-            # just about is type 4.
-            # Type 4: berserk, barrier, Mp regen, unk, specs, shield,
-            #         shades, unk
-            # Araise is in another type altogether.
-
             # Make X-Strike use Spincut+Leapslash
             # Also buff 3d-attack and triple raid
             if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
@@ -1476,7 +1470,14 @@ class Randomizer:
     def get_randmomized_rom(cls,
                             rom: bytearray,
                             settings: rset.Settings) -> bytearray:
-        rando = Randomizer(rom, settings)
+        '''
+        Generate a random rom from the given (maybe not vanilla) rom.
+        Uses the seed in settings.seed.
+        '''
+        rando = Randomizer(rom,
+                           is_vanilla=False,
+                           settings=settings,
+                           config=None)
         rando.set_random_config()
         rando.generate_rom()
         return rando.get_generated_rom()
