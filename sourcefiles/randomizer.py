@@ -240,6 +240,10 @@ class Randomizer:
             'Opens Tyrano Lair (Kino cell switch)'
         )
 
+        item_db[IID.RUBY_KNIFE].set_desc_from_str(
+            'Opens Zeal Throneroom'
+        )
+
         item_db[IID.BENT_SWORD].set_desc_from_str(
             'Forge Masa w/ Hilt (Melchior\'s Hut)'
         )
@@ -262,6 +266,10 @@ class Randomizer:
 
         item_db[IID.C_TRIGGER].set_desc_from_str(
             'Go DthPeak (KeeperDome w/ Clone)'
+        )
+
+        item_db[IID.JERKY].set_desc_from_str(
+            'Unlock Porre Mayor (Porre Elder)'
         )
 
         medal_desc = item_db[IID.HERO_MEDAL].get_desc_as_str()
