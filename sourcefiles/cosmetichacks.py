@@ -1,5 +1,6 @@
-# File for hacks that just change looks/sounds without changing gameplay.
-# In a perfect world, cosmetic hacks can be turned on/off with a share link.
+'''
+Module for hacks that just change looks/sounds without changing gameplay.
+'''
 import ctenums
 
 from ctrom import CTRom
@@ -22,21 +23,24 @@ def set_pc_names(
         magus_name: str = None,
         epoch_name: str = None
 ):
+    '''
+    Provide names to be used for characters and epoch.
+    '''
     default_names = (
         'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch'
     )
 
     copy_str = bytearray()
 
-    provided_names =  (crono_name, marle_name, lucca_name, robo_name,
-                       frog_name, ayla_name, magus_name, epoch_name)
+    provided_names = (crono_name, marle_name, lucca_name, robo_name,
+                      frog_name, ayla_name, magus_name, epoch_name)
 
     for default_name, given_name in zip(default_names, provided_names):
         if given_name == '' or given_name is None:
             given_name = default_name
 
         name_b = ctstrings.CTNameString.from_string(given_name, length=5,
-                                                    pad_val = 0)
+                                                    pad_val=0)
         name_b.append(0)
         copy_str.extend(name_b)
 
@@ -51,6 +55,10 @@ def set_pc_names(
 
 
 def apply_quiet_mode(ct_rom: CTRom, settings: rset.Settings):
+    '''
+    Set the volume of all songs to 0.
+    '''
+
     if rset.CosmeticFlags.QUIET_MODE not in settings.cosmetic_flags:
         return
 
@@ -58,14 +66,15 @@ def apply_quiet_mode(ct_rom: CTRom, settings: rset.Settings):
     rom.seek(0x07241D)
 
     # Volumes of music tracks stored at 0x07241D.
-    # 2 Bytes per song x * -x53 songs = 0xA6 bytes.
+    # 2 Bytes per song x * 0x53 songs = 0xA6 bytes.
     payload = b'\x00' * 0xA6
     rom.write(payload)
 
 
-# Play the unused alternate battle theme while going through Zenan Bridge
 def zenan_bridge_alt_battle_music(ctrom: CTRom, settings: rset.Settings):
-
+    '''
+    Play the unused alternate battle theme while going through Zenan Bridge
+    '''
     if rset.CosmeticFlags.ZENAN_ALT_MUSIC not in settings.cosmetic_flags:
         return
 
@@ -78,7 +87,7 @@ def zenan_bridge_alt_battle_music(ctrom: CTRom, settings: rset.Settings):
     end = script.get_function_end(0x15, 3)
 
     # There should only be one playsong command in that function
-    pos, cmd = script.find_command([0xEA], start, end)
+    pos, _ = script.find_command([0xEA], start, end)
 
     if pos is None:
         print("Error finding Zenan Bridge battle song command")
@@ -88,10 +97,11 @@ def zenan_bridge_alt_battle_music(ctrom: CTRom, settings: rset.Settings):
     script.data[pos+1] = 0x51
 
 
-# Change Death Peak to use Singing Mountain music
 def death_peak_singing_mountain_music(ctrom: CTRom,
                                       settings: rset.Settings):
-
+    '''
+    Change Death Peak to use Singing Mountain music
+    '''
     if rset.CosmeticFlags.DEATH_PEAK_ALT_MUSIC not in settings.cosmetic_flags:
         return
 
