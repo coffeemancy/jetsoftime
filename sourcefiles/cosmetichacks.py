@@ -50,6 +50,19 @@ def set_pc_names(
     script.data[pos:pos+len(copy_str)] = copy_str[:]
 
 
+def apply_quiet_mode(ct_rom: CTRom, settings: rset.Settings):
+    if rset.CosmeticFlags.QUIET_MODE not in settings.cosmetic_flags:
+        return
+
+    rom = ct_rom.rom_data
+    rom.seek(0x07241D)
+
+    # Volumes of music tracks stored at 0x07241D.
+    # 2 Bytes per song x * -x53 songs = 0xA6 bytes.
+    payload = b'\x00' * 0xA6
+    rom.write(payload)
+
+
 # Play the unused alternate battle theme while going through Zenan Bridge
 def zenan_bridge_alt_battle_music(ctrom: CTRom, settings: rset.Settings):
 
