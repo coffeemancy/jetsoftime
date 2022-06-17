@@ -223,6 +223,18 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+    @classmethod
+    def __set_initial_gold(cls, ct_rom: CTRom, gold: int):
+        script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
+
+        # Cmd 4E (copy) to 0x7E2C53
+        cmd_b = bytes.fromhex('4E532C7E0500')
+        payload = gold.to_bytes(3, 'little')
+
+        pos = script.data.find(cmd_b)
+        pos += len(cmd_b)
+        script.data[pos:pos+3] = payload[:]
+
     def __update_key_item_descs(self):
         config = self.config
         IID = ctenums.ItemID
@@ -1214,8 +1226,10 @@ class Randomizer:
 
         # Big TODO:  Unwrap the hard patch into its component changes.
         #            As far as I can tell it's just enemies and starting GP.
-        if settings.enemy_difficulty == rset.Difficulty.HARD:
-            rom_data.patch_ips_file('./patches/hard.ips')
+        # The only thing the hard.ips would do is set the initial gold.
+        # We already read the enemy data with get_base_config_from_settings().
+        if settings.item_difficulty == rset.Difficulty.HARD:
+            cls.__set_initial_gold(ctrom, 10000)
 
         if rset.GameFlags.VISIBLE_HEALTH in flags:
             qolhacks.force_sightscope_on(ctrom, settings)
