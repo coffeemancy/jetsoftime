@@ -1314,13 +1314,23 @@ class Randomizer:
             vanillarando.fix_config(config)
 
         else:
-            # Apply hard mode if it's in the settings.
-            if settings.enemy_difficulty == rset.Difficulty.HARD:
-                ctrom.rom_data.patch_ips_file('./patches/hard.ips')
-
             config = cfg.RandoConfig.get_config_from_rom(
                 bytearray(ctrom.rom_data.getvalue())
             )
+
+            # Get hard versions of config items if needed.
+            # We're done with the rom at this point, so it's OK to patch
+            # regardless.
+            ctrom.rom_data.patch_ips_file('./patches/hard.ips')
+            if settings.enemy_difficulty == rset.Difficulty.HARD:
+                config.enemy_dict = cfg.enemystats.get_stat_dict(
+                    ctrom.rom_data.getvalue()
+                )
+
+            if settings.item_difficulty == rset.Difficulty.HARD:
+                config.itemdb = cfg.itemdata.ItemDB.from_rom(
+                    ctrom.rom_data.getvalue()
+                )
 
             # Why is Dalton worth so few TP?
             config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
