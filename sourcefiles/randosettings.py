@@ -284,7 +284,7 @@ class Settings:
         self.seed = ''
 
         self.char_names: list[str] = [
-            'Crono', 'Lucca', 'Marle', 'Robo', 'Frog', 'Ayla', 'Magus',
+            'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus',
             'Epoch'
         ]
 
