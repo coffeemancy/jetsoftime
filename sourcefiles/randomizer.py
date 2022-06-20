@@ -223,6 +223,33 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+
+    @classmethod
+    def __set_fast_magus_castle(cls, ct_rom: CTRom):
+        '''
+        Do not require the player to visit the Flea and Slash room in castle
+        Magus.
+
+        This function sets the flags for visiting the Flea and Slash rooms
+        in the telepod exhibit script.  The flags 0x7F00A3 & 0x10/0x20 are
+        unused in other events.
+        '''
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.TELEPOD_EXHIBIT
+        )
+        EC = ctevent.EC
+        EF = ctevent.EF
+        hook = EC.assign_val_to_mem(2, 0x7E027E, 1)
+
+        start = script.get_function_start(0x0E, 4)
+        end = script.get_function_end(0x0E, 4)
+        hook_pos = script.find_exact_command(hook, start, end)
+
+        # Slash's Room: Set 0x7F00A3 & 0x10
+        # Flea's Room: Set 0x7F00A3 & 0x20
+        set_flags_cmd = EC.assign_val_to_mem(0x30, 0x7F00A3, 1)
+        script.insert_commands(set_flags_cmd.to_bytearray(), hook_pos)
+
     @classmethod
     def __set_initial_gold(cls, ct_rom: CTRom, gold: int):
         script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
@@ -770,7 +797,9 @@ class Randomizer:
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
 
-
+        # Don't require visiting Flea/Slash rooms for Magus's Castle
+        self.__set_fast_magus_castle(self.out_rom)
+        
         # Split the NR "sealed" chests
         self.__fix_northern_ruins_sealed(self.out_rom)
 
