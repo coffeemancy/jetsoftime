@@ -250,6 +250,24 @@ class Randomizer:
         set_flags_cmd = EC.assign_val_to_mem(0x30, 0x7F00A3, 1)
         script.insert_commands(set_flags_cmd.to_bytearray(), hook_pos)
 
+
+    @classmethod
+    def __add_cat_pet_flag(cls, ct_rom: CTRom, addr: int, bit: int):
+        '''
+        Uses the bit (addr & bit) to determine whether a player has pet the
+        cat in Crono's house.
+        '''
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.CRONOS_KITCHEN
+        )
+        pos = script.get_function_start(0x09, 0x01)
+
+        EC = ctevent.EC
+        cmd = EC.set_bit(addr, bit)
+
+        script.insert_commands(cmd.to_bytearray(), pos)
+        
+        
     @classmethod
     def __set_initial_gold(cls, ct_rom: CTRom, gold: int):
         script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
@@ -344,6 +362,7 @@ class Randomizer:
         # Jets does some different things, but we'll use the vanilla values b/c
         # they seem to not have been repurposed.
         # Note: This frees up 0x7F01A6 & 0x08 for other use.
+        # Note to note.  We're using 0x7F01A6 for the cat counter.
         script = ctevent.Event.from_flux(
             './flux/VR_044_Northern_Ruins_Ante.Flux'
         )
@@ -793,13 +812,15 @@ class Randomizer:
             self.out_rom.rom_data.seek(0x1FFFF)  # debug stuff
             self.out_rom.rom_data.write(b'\x01')
 
-        
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
 
         # Don't require visiting Flea/Slash rooms for Magus's Castle
         self.__set_fast_magus_castle(self.out_rom)
-        
+
+        # Use 0x7F01A6 for the cat counter.
+        self.__add_cat_pet_flag(self.out_rom, 0x7F01A6, 0x08)
+
         # Split the NR "sealed" chests
         self.__fix_northern_ruins_sealed(self.out_rom)
 
