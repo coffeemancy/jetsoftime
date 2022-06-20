@@ -892,11 +892,32 @@ class Randomizer:
         else:
             json.dump({"configuration": self.config, "settings": self.settings}, outfile, cls=JOTJSONEncoder)
 
+    def _summarize_dupes(self):
+        CharID = ctenums.CharID
+        def summarize_single(choicelist):
+            if len(choicelist) < 4:
+                return "Only " + ", ".join([str(CharID(i)) for i in choicelist])
+            elif len(choicelist) == 7:
+                return "Any"
+            else:
+                return "No " + ", ".join([str(CharID(i)) for i in (set(range(7)) - set(choicelist))])
+
+        chars = {c: summarize_single(self.settings.char_choices[c]) for c in range(len(self.settings.char_choices))}
+        rv = ""
+        for c in sorted(chars.keys()):
+            if chars[c] != "Any":
+                rv = rv + "\n\t" + str(CharID(c)) + ": " + chars[c]
+        return rv
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
         file_object.write(f"Enemies: {self.settings.enemy_difficulty}\n")
         file_object.write(f"Items: {self.settings.item_difficulty}\n")
+        if self.settings.tab_settings != rset.TabSettings():
+            file_object.write(f"Tabs: Power {self.settings.tab_settings.power_min}-{self.settings.tab_settings.power_max}, Magic {self.settings.tab_settings.magic_min}-{self.settings.tab_settings.magic_max}, Speed {self.settings.tab_settings.speed_min}-{self.settings.tab_settings.speed_max}\n")
+        if rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags and self.settings.char_choices != rset.Settings().char_choices:
+            dupes = self._summarize_dupes()
+            file_object.write(f"Characters: {dupes}\n")
         file_object.write(f"Techs: {self.settings.techorder}\n")
         file_object.write(f"Shops: {self.settings.shopprices}\n")
         file_object.write(f"Flags: {self.settings.gameflags}\n")
