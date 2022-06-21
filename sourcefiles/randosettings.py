@@ -116,6 +116,7 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
     ),
     _GM.VANILLA_RANDO: (
+        _GF.BOSS_SCALE | 
         _GF.BUFF_XSTRIKE | _GF.BUCKET_FRAGMENTS | _GF.AYLA_REBALANCE |
         _GF.BLACKHOLE_REWORK | _GF.MARLE_REWORK | _GF.ROBO_REWORK,
     )
