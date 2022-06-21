@@ -223,7 +223,6 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
-
     @classmethod
     def __set_fast_magus_castle(cls, ct_rom: CTRom):
         '''
@@ -238,7 +237,6 @@ class Randomizer:
             ctenums.LocID.TELEPOD_EXHIBIT
         )
         EC = ctevent.EC
-        EF = ctevent.EF
         hook = EC.assign_val_to_mem(2, 0x7E027E, 1)
 
         start = script.get_function_start(0x0E, 4)
@@ -249,7 +247,6 @@ class Randomizer:
         # Flea's Room: Set 0x7F00A3 & 0x20
         set_flags_cmd = EC.assign_val_to_mem(0x30, 0x7F00A3, 1)
         script.insert_commands(set_flags_cmd.to_bytearray(), hook_pos)
-
 
     @classmethod
     def __add_cat_pet_flag(cls, ct_rom: CTRom, addr: int, bit: int):
@@ -266,8 +263,7 @@ class Randomizer:
         cmd = EC.set_bit(addr, bit)
 
         script.insert_commands(cmd.to_bytearray(), pos)
-        
-        
+
     @classmethod
     def __set_initial_gold(cls, ct_rom: CTRom, gold: int):
         script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
@@ -797,10 +793,9 @@ class Randomizer:
             lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
             script_manager.set_script(lc_proto_dome_event,
                                       ctenums.LocID.PROTO_DOME)
-            
+
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
-
 
         if epoch_fail:
             epochfail.ground_epoch(self.out_rom)
@@ -890,8 +885,11 @@ class Randomizer:
             with open(outfile, 'w') as real_outfile:
                 self.write_json_spoiler_log(real_outfile)
         else:
-            json.dump({"configuration": self.config, "settings": self.settings}, outfile, cls=JOTJSONEncoder)
-
+            json.dump(
+                {"configuration": self.config,
+                 "settings": self.settings},
+                outfile, cls=JOTJSONEncoder
+            )
 
     def write_settings_spoilers(self, file_object):
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
@@ -1295,7 +1293,11 @@ class Randomizer:
         if rset.GameFlags.FAST_TABS in flags:
             qolhacks.fast_tab_pickup(ctrom, settings)
 
-        if rset.GameFlags.BUCKET_FRAGMENTS in flags:
+        if rset.GameFlags.BUCKET_FRAGMENTS in flags and \
+           settings.game_mode != rset.GameMode.LOST_WORLDS:
+            # Apparently, LW really changes up the EoT event, so the bucket
+            # function can't work.  It's ok because bucket should be disabled
+            # in LW.
             bucketfragment.set_bucket_function(ctrom, settings)
 
     @classmethod
