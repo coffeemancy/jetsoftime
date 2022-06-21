@@ -811,7 +811,9 @@ class Randomizer:
             vanillarando.restore_scripts(self.out_rom)
 
         # Don't require visiting Flea/Slash rooms for Magus's Castle
-        self.__set_fast_magus_castle(self.out_rom)
+        if self.settings.game_mode != rset.GameMode.LOST_WORLDS:
+            # The Telepod script is different in LW.  Just ignore.
+            self.__set_fast_magus_castle(self.out_rom)
 
         # Use 0x7F01A6 for the cat counter.
         self.__add_cat_pet_flag(self.out_rom, 0x7F01A6, 0x08)
