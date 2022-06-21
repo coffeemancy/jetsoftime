@@ -172,7 +172,7 @@ class Randomizer:
         # This has to come before boss rando scaling  because some boss scaling
         # changes are defined absolutely instead of relatively, so they would
         # just overwrite the boss rando scaling.
-        bossscaler.set_boss_power(self.settings, self.config)
+        bossscaler.determine_boss_rank(self.settings, self.config)
 
         # Finally, scale based on new location.
         bossrando.scale_bosses_given_assignment(self.settings, self.config)

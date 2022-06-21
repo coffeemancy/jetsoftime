@@ -8,6 +8,7 @@ from byteops import to_little_endian
 
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import BossScheme, get_default_boss_assignment
+import bossscaler
 import bossspot
 from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect,\
     RecruitID
@@ -1866,6 +1867,14 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # to the config at the very end.
     scaled_dict = dict()
     new_power_values = dict()
+    hp_dict = bossspot.get_initial_hp_dict(settings, config)
+
+    # Now it's safe to put the boss scaling ranked stats in
+    if rset.GameFlags.BOSS_SCALE in settings.gameflags:
+        for boss_id in config.boss_rank:
+            rank = config.boss_rank[boss_id]
+            stats = bossscaler.get_ranked_boss_stats(boss_id, rank, config)
+            config.enemy_dict.update(stats)
 
     for location in settings.ro_settings.loc_list:
         orig_boss = orig_data[default_assignment[location]]
@@ -1948,7 +1957,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 
         if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
             new_hps = bossspot.get_scaled_hp_dict(
-                orig_boss, new_boss, config.enemy_dict,
+                orig_boss, new_boss, hp_dict,
                 additional_power_scaling=False
             )
             for part in new_hps:
