@@ -893,15 +893,20 @@ class Randomizer:
 
     def _summarize_dupes(self):
         CharID = ctenums.CharID
+
         def summarize_single(choicelist):
             if len(choicelist) < 4:
-                return "Only " + ", ".join([str(CharID(i)) for i in choicelist])
+                return "Only " + \
+                    ", ".join([str(CharID(i)) for i in choicelist])
             elif len(choicelist) == 7:
                 return "Any"
             else:
-                return "No " + ", ".join([str(CharID(i)) for i in (set(range(7)) - set(choicelist))])
+                return "No " + \
+                    ", ".join([str(CharID(i))
+                               for i in (set(range(7)) - set(choicelist))])
 
-        chars = {c: summarize_single(self.settings.char_choices[c]) for c in range(len(self.settings.char_choices))}
+        chars = {c: summarize_single(self.settings.char_choices[c])
+                 for c in range(len(self.settings.char_choices))}
         rv = ""
         for c in sorted(chars.keys()):
             if chars[c] != "Any":
@@ -913,8 +918,15 @@ class Randomizer:
         file_object.write(f"Enemies: {self.settings.enemy_difficulty}\n")
         file_object.write(f"Items: {self.settings.item_difficulty}\n")
         if self.settings.tab_settings != rset.TabSettings():
-            file_object.write(f"Tabs: Power {self.settings.tab_settings.power_min}-{self.settings.tab_settings.power_max}, Magic {self.settings.tab_settings.magic_min}-{self.settings.tab_settings.magic_max}, Speed {self.settings.tab_settings.speed_min}-{self.settings.tab_settings.speed_max}\n")
-        if rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags and self.settings.char_choices != rset.Settings().char_choices:
+            tab_set = self.settings.tab_settings
+            file_object.write(
+                f"Tabs: Power {tab_set.power_min}-{tab_set.power_max}, "
+                f"Magic {tab_set.magic_min}-{tab_set.magic_max}, "
+                f"Speed {tab_set.speed_min}-{tab_set.speed_max}\n"
+            )
+        if rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags and \
+           self.settings.char_choices != rset.Settings().char_choices:
+
             dupes = self._summarize_dupes()
             file_object.write(f"Characters: {dupes}\n")
         file_object.write(f"Techs: {self.settings.techorder}\n")
@@ -930,7 +942,7 @@ class Randomizer:
         consumables = (
             IID.TONIC, IID.MID_TONIC, IID.FULL_TONIC,
             IID.ETHER, IID.MID_ETHER, IID.FULL_ETHER,
-            IID.LAPIS
+            IID.LAPIS, IID.REVIVE
         )
 
         for item_id in consumables:
