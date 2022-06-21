@@ -237,11 +237,9 @@ class Randomizer:
             ctenums.LocID.TELEPOD_EXHIBIT
         )
         EC = ctevent.EC
-        hook = EC.assign_val_to_mem(2, 0x7E027E, 1)
 
-        start = script.get_function_start(0x0E, 4)
-        end = script.get_function_end(0x0E, 4)
-        hook_pos = script.find_exact_command(hook, start, end)
+        # Just put it at the start of the animation.  No reason to be fancy
+        hook_pos = script.get_function_start(0x0E, 4)
 
         # Slash's Room: Set 0x7F00A3 & 0x10
         # Flea's Room: Set 0x7F00A3 & 0x20
