@@ -375,6 +375,26 @@ class EnemyStats:
         else:
             self._stat_data[0x15] &= 0x02
 
+    @property
+    def immune_rock_throw(self):
+        return bool(self._stat_data[0x14] & 0x40)
+
+    @immune_rock_throw.setter
+    def immune_rock_throw(self, val: bool):
+        mask = 0xFF - 0x40
+        self._stat_data[0x14] &= mask
+        self._stat_data[0x14] |= (0x40 * val)
+
+    @property
+    def immune_slurp_cut(self):
+        return bool(self._stat_data[0x14] & 0x20)
+
+    @immune_slurp_cut.setter
+    def immune_slurp_cut(self, val: bool):
+        mask = 0xFF - 0x20
+        self._stat_data[0x14] &= mask
+        self._stat_data[0x14] |= (0x20 * val)
+
     # Properties for getting/setting rewards
     @property
     def xp(self):
