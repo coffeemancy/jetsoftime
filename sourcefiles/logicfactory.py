@@ -1,4 +1,6 @@
 import typing
+from math import ceil
+
 from logictypes import BaselineLocation, Location, LocationGroup,\
     LinkedLocation, Game
 import treasuredata as td
@@ -30,9 +32,13 @@ import randoconfig as cfg
 # game type.
 #
 class GameConfig:
-    def __init__(self):
+    def __init__(self,
+                 settings: rset.Settings,
+                 config: cfg.RandoConfig):
         self.keyItemList = []
-        self.locationGroups = []
+        self.locationGroups: list[LocationGroup] = []
+        self.settings = settings
+        self.config = config
         self.game = None
         self.initLocations()
         self.initKeyItems()
@@ -84,8 +90,11 @@ class GameConfig:
     # return: The LocationGroup object with the given name
     #
     def getLocationGroup(self, name: str) -> LocationGroup:
-        return next(x for x in self.locationGroups
-                    if x.name == name)
+        try:
+            return next(x for x in self.locationGroups
+                        if x.name == name)
+        except StopIteration:
+            return None
 
     #
     # Get the list of key items associated with this game mode.
@@ -100,7 +109,7 @@ class GameConfig:
     #
     # return: A configured Game object for this mode
     #
-    def getGame(self):
+    def getGame(self) -> Game:
         return self.game
 
     #
@@ -131,12 +140,11 @@ class GameConfig:
 class ChronosanityGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings,
                  config: cfg.RandoConfig):
-        self.settings = settings
-        self.config = config
         self.charLocations = config.char_assign_dict
         self.earlyPendant = rset.GameFlags.FAST_PENDANT in settings.gameflags
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
+        apply_epoch_fail(self)
 
     def initLocations(self):
         # Dark Ages
@@ -279,21 +287,12 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.NORTHERN_RUINS_BASEMENT_600))
             .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_600))
             .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_1000))
-            # Sealed chests in Northern Ruins
-            # TODO - Sealed chests in this location are shared across time
-            #        periods in such a way that the player can end up with
-            #        two copies of a key item if they collect it in 1000AD
-            #        first, then in 600AD.  Commenting these out for now.
-            #        Either these chests will need to be separated
-            #        or removed from the pool of key item locations.
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600))
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000))
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600))
-            # .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000))
-            # .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600))
-            # .addLocation(Location(
-            #     TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000
-            # ))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000))
+            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600))
+            .addLocation(Location(TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000))
         )
 
         northernRuinsFrogLocked = \
@@ -660,9 +659,7 @@ class ChronosanityGameConfig(GameConfig):
 class ChronosanityLostWorldsGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
         self.charLocations = config.char_assign_dict
-        self.settings = settings
-        self.config = config
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
@@ -850,18 +847,136 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
 # end ChronosanityLostWorldsGameConfig class
 
 
+def apply_epoch_fail(game_config: GameConfig):
+    '''
+    Split and/or add flight requirements to group.  Add JoT to KI list.
+    '''
+    settings = game_config.settings
+
+    if settings.game_mode not in (rset.GameMode.STANDARD,
+                                  rset.GameMode.LEGACY_OF_CYRUS,
+                                  rset.GameMode.ICE_AGE,
+                                  rset.GameMode.VANILLA_RANDO):
+        return
+
+    if rset.GameFlags.EPOCH_FAIL not in settings.gameflags:
+        return
+
+    flight_tids = (
+        # Sun Palace
+        TID.SUN_PALACE_KEY,
+        # Geno Dome
+        TID.GENO_DOME_1F_1, TID.GENO_DOME_1F_2, TID.GENO_DOME_1F_3,
+        TID.GENO_DOME_1F_4, TID.GENO_DOME_2F_1, TID.GENO_DOME_2F_2,
+        TID.GENO_DOME_2F_3, TID.GENO_DOME_2F_4, TID.GENO_DOME_KEY,
+        TID.GENO_DOME_PROTO4_1, TID.GENO_DOME_PROTO4_2,
+        TID.GENO_DOME_ROOM_1, TID.GENO_DOME_ROOM_2,
+        # Giant's Claw
+        TID.GIANTS_CLAW_CAVES_1, TID.GIANTS_CLAW_CAVES_2,
+        TID.GIANTS_CLAW_CAVES_3, TID.GIANTS_CLAW_CAVES_4,
+        TID.GIANTS_CLAW_CAVES_5, TID.GIANTS_CLAW_KEY,
+        TID.GIANTS_CLAW_TRAPS, TID.GIANTS_CLAW_KINO_CELL,
+        TID.GIANTS_CLAW_THRONE_1, TID.GIANTS_CLAW_THRONE_2,
+        # Northern Ruins
+        TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_1000,
+        TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_600,
+        TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_1000,
+        TID.NORTHERN_RUINS_ANTECHAMBER_SEALED_600,
+        TID.NORTHERN_RUINS_BACK_LEFT_SEALED_1000,
+        TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600,
+        TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_1000,
+        TID.NORTHERN_RUINS_BACK_RIGHT_SEALED_600,
+        TID.NORTHERN_RUINS_BASEMENT_1000, TID.NORTHERN_RUINS_BASEMENT_600,
+        TID.CYRUS_GRAVE_KEY,
+        # Ozzie's Fort
+        TID.OZZIES_FORT_FINAL_1, TID.OZZIES_FORT_FINAL_2,
+        TID.OZZIES_FORT_GUILLOTINES_1, TID.OZZIES_FORT_GUILLOTINES_2,
+        TID.OZZIES_FORT_GUILLOTINES_3, TID.OZZIES_FORT_GUILLOTINES_4,
+        # OpenKeys
+        TID.LAZY_CARPENTER,
+        # MelchiorRefinements
+        TID.MELCHIOR_KEY
+    )
+
+    def add_flight(func):
+        return lambda game: func(game) and game.hasKeyItem(ItemID.JETSOFTIME)
+
+    new_groups = []
+    for group in game_config.locationGroups:
+        # print(f'{group.getName()}, weight={group.getWeight()}')
+        flight_locs = []
+        grounded_locs = []
+        for location in group.locations:
+            # print(f'{location.getName()}')
+            if isinstance(location, LinkedLocation):
+                tid = location.location1.treasure_id
+            else:
+                tid = location.treasure_id
+
+            if tid in flight_tids:
+                # print('Adding to flight_locs')
+                flight_locs.append(location)
+            else:
+                # print('Adding to grounded_locs')
+                grounded_locs.append(location)
+
+        if flight_locs:
+            if grounded_locs:
+                orig_weight = group.weight
+                weight_per_loc = orig_weight / len(group.locations)
+                for loc in flight_locs:
+                    group.removeLocation(loc)
+
+                new_name = group.getName() + '_flight'
+                new_weight = ceil(weight_per_loc * len(flight_locs))
+                new_rule = add_flight(group.accessRule)
+                new_group = LocationGroup(new_name, new_weight, new_rule)
+                # print(f'Splitting {group.getName()}, weight={new_weight}')
+                for flight_loc in flight_locs:
+                    # print(f'\tAdding {flight_loc.getName()} to {new_name}')
+                    new_group.addLocation(flight_loc)
+                new_groups.append(new_group)
+            else:
+                # print(f'Adding flight to {group.getName()}')
+                group.accessRule = add_flight(group.accessRule)
+
+    game_config.locationGroups.extend(new_groups)
+
+    # Make sure that JoT gets added to the key item list, and that something
+    # gets removed when there's no room.  For now, we're just always going
+    # to remove Jerky.  An alternate idea would be to make Jerky a KI check?
+    if rset.GameFlags.CHRONOSANITY in settings.gameflags:
+        for temp in range(3):
+            game_config.keyItemList.append(ItemID.JETSOFTIME)
+    else:
+        # Vanilla Rando has extra KI spots, and IA has fewer KIs.
+        # For other modes, trade out Jerky for Jets
+
+        # LoC has a free KI spot if locked char is on, otherwise it needs
+        # something (jerky) removed.
+        loc_remove_jerky = (
+            settings.game_mode == rset.GameMode.LEGACY_OF_CYRUS and
+            rset.GameFlags.LOCKED_CHARS in settings.gameflags
+        )
+
+        if settings.game_mode == rset.GameMode.STANDARD or \
+           loc_remove_jerky:
+            game_config.keyItemList.remove(ItemID.JERKY)
+
+        game_config.keyItemList.append(ItemID.JETSOFTIME)
+
+
 #
 # This class represents the game configuration for a
 # Normal game.
 #
 class NormalGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
-        self.settings = settings
-        self.config = config
         self.charLocations = config.char_assign_dict
         self.earlyPendant = rset.GameFlags.FAST_PENDANT in settings.gameflags
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
+        apply_epoch_fail(self)
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
@@ -983,6 +1098,7 @@ class NormalGameConfig(GameConfig):
         self.locationGroups.append(fionaShrineLocations)
         # 2300
         self.locationGroups.append(futureKeys)
+
 # end NormalGameConfig class
 
 #
@@ -994,9 +1110,7 @@ class NormalGameConfig(GameConfig):
 class LostWorldsGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
         self.charLocations = config.char_assign_dict
-        self.settings = settings
-        self.config = config
-        GameConfig.__init__(self)
+        GameConfig.__init__(self, settings, config)
 
     def initGame(self):
         self.game = Game(self.settings, self.config)
@@ -1067,6 +1181,10 @@ class ChronosanityLegacyOfCyrusGameConfig(ChronosanityGameConfig):
 
         if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
             removed_items.append(ItemID.DREAMSTONE)
+
+        for item_id in removed_items:
+            while item_id in self.keyItemList:
+                self.keyItemList.remove(item_id)
 
     def initLocations(self):
 
@@ -1269,14 +1387,134 @@ class ChronosanityIceAgeGameConfig(ChronosanityGameConfig):
             ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
         ]
 
-        for item in removed_items:
-            self.keyItemList.remove(item)
+        for item_id in removed_items:
+            while item_id in self.keyItemList:
+                self.keyItemList.remove(item_id)
 
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
 
         # For Chronosanity, just remove the Woe group.
         self.locationGroups.remove(self.getLocationGroup('Darkages'))
+
+
+# Note: Accessing MtWoe is the same as accessing EoT in current logic.
+#       This means you can grind for levels if you really need it.
+def _canAccessGiantsClawVR(game: Game):
+    return (
+        game.hasKeyItem(ItemID.TOMAS_POP) and
+        game.canAccessMtWoe()
+    )
+
+
+def _canAccessKingsTrialVR(game: Game):
+    return (
+        game.hasCharacter(Characters.MARLE) and
+        game.hasKeyItem(ItemID.PRISMSHARD) and
+        game.canAccessMtWoe()
+    )
+
+
+def _canAccessFionasShrineVR(game: Game):
+    return (
+        game.hasCharacter(Characters.ROBO) and
+        game.canAccessMtWoe()
+    )
+
+
+def _canAccessNorthernRuinsVR(game: Game):
+    return game.hasKeyItem(ItemID.TOOLS)
+
+
+def _canAccessCyrusGraveVR(game: Game):
+    return (
+        _canAccessNorthernRuinsVR(game) and
+        game.hasCharacter(Characters.FROG) and
+        game.canAccessMtWoe()
+    )
+
+
+_awesome_gear_dist = td.TreasureDist(
+    (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
+)
+
+
+class VanillaRandoGameConfig(NormalGameConfig):
+
+    def initKeyItems(self):
+        NormalGameConfig.initKeyItems(self)
+
+        self.keyItemList.append(ItemID.TOOLS)
+        self.keyItemList.remove(ItemID.ROBORIBBON)
+
+    def initLocations(self):
+        NormalGameConfig.initLocations(self)
+
+        # Gate the endgame quests behind EOT (Mt. Woe) access.
+        giants_claw = self.getLocationGroup('Giantsclaw')
+        giants_claw.accessRule = _canAccessGiantsClawVR
+
+        kings_trial = self.getLocationGroup('GuardiaTreasury')
+        kings_trial.accessRule = _canAccessKingsTrialVR
+
+        fiona_shrine = self.getLocationGroup('Fionashrine')
+        fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+        bekklerKey = LocationGroup(
+            "BekklersLab", 1,
+            lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
+        )
+        bekklerKey.addLocation(
+            BaselineLocation(TID.BEKKLER_KEY, _awesome_gear_dist)
+        )
+        self.locationGroups.append(bekklerKey)
+
+        cyrusKey = LocationGroup(
+            "HerosGrave", 1, _canAccessCyrusGraveVR
+        )
+        cyrusKey.addLocation(
+            BaselineLocation(TID.CYRUS_GRAVE_KEY, _awesome_gear_dist)
+        )
+        self.locationGroups.append(cyrusKey)
+
+
+class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
+
+    def initKeyItems(self):
+        ChronosanityGameConfig.initKeyItems(self)
+
+        for i in range(5):
+            self.keyItemList.append(ItemID.TOOLS)
+
+        while ItemID.ROBORIBBON in self.keyItemList:
+            self.keyItemList.remove(ItemID.ROBORIBBON)
+
+    def initLocations(self):
+        ChronosanityGameConfig.initLocations(self)
+
+        giants_claw = self.getLocationGroup('Giantsclaw')
+        giants_claw.accessRule = _canAccessGiantsClawVR
+
+        kings_trial = self.getLocationGroup('GuardiaTreasury')
+        kings_trial.accessRule = _canAccessKingsTrialVR
+
+        fiona_shrine = self.getLocationGroup('Fionashrine')
+        fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+        bekklerKey = LocationGroup(
+            "BekklersLab", 2,
+            lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
+        )
+        bekklerKey.addLocation(Location(TID.BEKKLER_KEY))
+
+        self.locationGroups.append(bekklerKey)
+
+        northernRuinsLocations = self.getLocationGroup('NorthernRuins')
+        northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
+
+        northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
+        northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
+        northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
 
 
 #
@@ -1298,6 +1536,7 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
     lostWorlds = rset.GameMode.LOST_WORLDS == settings.game_mode
     iceAge = rset.GameMode.ICE_AGE == settings.game_mode
     legacyofcyrus = rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
+    vanilla = rset.GameMode.VANILLA_RANDO == settings.game_mode
 
     if chronosanity:
         if lostWorlds:
@@ -1306,6 +1545,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
             CfgType = ChronosanityLegacyOfCyrusGameConfig
         elif iceAge:
             CfgType = ChronosanityIceAgeGameConfig
+        elif vanilla:
+            CfgType = ChronosanityVanillaRandoGameConfig
         elif standard:
             CfgType = ChronosanityGameConfig
         else:
@@ -1317,6 +1558,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
             CfgType = LegacyOfCyrusGameConfig
         elif iceAge:
             CfgType = IceAgeGameConfig
+        elif vanilla:
+            CfgType = VanillaRandoGameConfig
         elif standard:
             CfgType = NormalGameConfig
         else:

@@ -578,7 +578,7 @@ def change_single_techs(from_ind, to_ind, orig_db, new_db):
         if orig_db.pc_target[from_i] != 0xFF:
             new_db.pc_target[to_i] = to_ind
         else:
-            new_db.pc_target[from_i] = 0xFF
+            new_db.pc_target[to_i] = 0xFF
 
 
 def get_ll_prot_all(old_db):
@@ -644,7 +644,7 @@ def get_mm_haste_all(old_db):
     ha['control'][6] = 0x80 | 0x0D
 
     ha['lrn_req'] = [5, 5, 0xFF]
-    ha['mmp'] = [0x20, 0x20]
+    ha['mmp'] = [0x0D, 0x0D]
 
     ha['target'][0] = 0x81
 
@@ -655,6 +655,46 @@ def get_mm_haste_all(old_db):
 
     return ha
 
+
+def get_mm_glacier(old_db):
+    gl = old_db.get_tech(0x4F)
+
+    gl['bat_grp'] = [1, 1, 0xFF]
+    gl['control'][0] &= 0x7F
+    gl['control'][5:7] = [0x0E, 0x0E]
+    gl['control'][8:10] = [9, 9]
+
+    gl['lrn_req'] = [6, 6, 0xFF]
+    gl['mmp'] = [0x0E, 0x0E]
+
+    gl['gfx'][0] = 0x85
+    gl['name'] = get_ct_name('Glacier')
+
+    return gl
+
+
+def get_ll_point_flare(old_db):
+    pf = old_db.get_tech(0x16)
+    fi1 = old_db.get_tech(0x13)
+
+    pf['bat_grp'] = [2, 2, 0xFF]
+    pf['control'][0] &= 0x7F
+    pf['control'][1] = 0x61  # see hex mist
+    pf['control'][6] = 0x16
+    pf['control'][5:7] = [0x16, 0x16]
+    pf['control'][8:10] = [9, 9]
+
+    pf['lrn_req'] = [6, 6, 0xFF]
+    pf['mmp'] = [0x16, 0x16]
+
+    pf['target'] = fi1['target']
+
+    pf['gfx'][0] = 0x86
+    pf['gfx'][6] = 0x5D
+    
+    pf['name'] = get_ct_name('PointFlare')
+
+    return pf
 
 def get_aa_beast_toss(old_db):
     beast_toss = old_db.get_tech(0x5F)
@@ -767,9 +807,10 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                     # print("Skipping.")
                     pass
                 elif dup_duals and reassign[i] in set([0, 1, 2, 3, 4, 5]):
+                    num_duals = 1
                     to_start_id = new_db.group_sizes[to_mg_ind]
                     if reassign[i] == 0:
-                        # Cr-Cr X-strike
+                        # Cr-Cr X-strike (Crono Cross)
                         x_strike = old_db.get_tech(0x42)
                         x_strike['bat_grp'] = [0, 0, 0xFF]
                         x_strike['lrn_req'] = [4, 4, 0xFF]
@@ -785,11 +826,24 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                         ha = get_mm_haste_all(old_db)
                         reassign_tech(ha, [i, j], reassign)
                         new_db.set_tech(ha, to_start_id)
+
+                        gl = get_mm_glacier(old_db)
+                        reassign_tech(gl, [i, j], reassign)
+                        new_db.set_tech(gl, to_start_id+1)
+
+                        num_duals = 2
                     elif reassign[i] == 2:
                         # Lu-Lu Prot All
                         prot_all = get_ll_prot_all(old_db)
                         reassign_tech(prot_all, [i, j], reassign)
                         new_db.set_tech(prot_all, to_start_id)
+
+                        # Lu-Lu Point Flare
+                        pf = get_ll_point_flare(old_db)
+                        reassign_tech(pf, [i, j], reassign)
+                        new_db.set_tech(pf, to_start_id+1)
+
+                        num_duals = 2
                     elif reassign[i] == 3:
                         # Ro-Ro Supervolt
                         sv = get_rr_supervolt(old_db)
@@ -808,7 +862,7 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                         new_db.set_tech(beast_toss, to_start_id)
 
                     # Make the rest unlearnable
-                    for k in range(1, 3):
+                    for k in range(num_duals, 3):
                         id = to_start_id + k
                         new_db.controls[id*TechDB.control_size] |= 0x80
                 else:

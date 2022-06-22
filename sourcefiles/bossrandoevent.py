@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from byteops import to_little_endian
-import dataclasses
 import copy
 from collections.abc import Callable
 import random
 
+from byteops import to_little_endian
+
 # from ctdecompress import compress, decompress, get_compressed_length
 from bossdata import BossScheme, get_default_boss_assignment
+import bossscaler
+import bossspot
 from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect,\
     RecruitID
 from ctevent import Event, free_event, get_loc_event_ptr
@@ -646,6 +648,15 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
     # Really, 0x10 should just be removed from the start.
     script.remove_object(0x10)
 
+    pos, _ = script.find_command([0x96],
+                                 script.get_function_start(0x0B, 4))
+    script.data[pos+2] = 0x1F
+    pos += 3
+    cmd = EC.set_object_coordinates(0x100, 0x1FF, False)
+
+    script.delete_commands(pos, 1)
+    script.insert_commands(cmd.to_bytearray(), pos)
+
     boss_objs = [0xB, 0xC, 0xD, 0xE, 0xF]
     num_used = min(len(boss.ids), len(boss_objs))
 
@@ -661,12 +672,13 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
         new_y = first_y + boss.disps[i][1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[i], new_x, new_y, True)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y, True,
+                               shift=False)
 
         if i == 0:
             # SoS is weird about the first part moving before the rest are
             # visible.  So the rest will pop in relative to these coords
-            first_x, first_y = 0x100, 0x200
+            first_x, first_y = 0x100, 0x1FF
 
     # Remove unused boss objects.  In reverse order of course.
     for i in range(len(boss_objs), len(boss.ids), -1):
@@ -684,14 +696,15 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
         # The coordinate setting is in init
-        set_object_coordinates(script, obj_id, new_x, new_y, True)
+        set_object_coordinates(script, obj_id, new_x, new_y, True,
+                               shift=False)
 
         # mimic call of other objects
         call = EF()
         if i == len(boss.ids)-1:
-            call.add(EC.call_obj_function(obj_id, 1, FuncSync.SYNC))
+            call.add(EC.call_obj_function(obj_id, 1, 1, FuncSync.SYNC))
         else:
-            call.add(EC.call_obj_function(obj_id, 1, FuncSync.HALT))
+            call.add(EC.call_obj_function(obj_id, 1, 1, FuncSync.HALT))
 
         call.add(EC.generic_one_arg(0xAD, 0x01))
         calls.extend(call.get_bytearray())
@@ -707,7 +720,8 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
         print("Error: Couldn't find insertion point (SoS)")
         exit()
     else:
-        pos -= (len(ins_cmd) + 2)  # +2 for the pause command prior
+        # pos -= (len(ins_cmd) + 2)  # +2 for the pause command prior
+        pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -988,7 +1002,7 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
                                unk_0x20=True,
                                wait_vblank=False)
 
-    pos = script.get_object_start(0)
+    pos = script.get_function_start(0, 1)
     script.insert_commands(copy_tiles.to_bytearray(), pos)
 
     # copy the vblank waiting version to obj0 func 1 for post-menu
@@ -1183,8 +1197,9 @@ def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
                 script.data[pos:pos+len(new_coord_cmd)] = \
                     new_coord_cmd.to_bytearray()
             else:
+                script.insert_commands(new_coord_cmd.to_bytearray(),
+                                       pos+len(cmd))
                 script.delete_commands(pos, 1)
-                script.insert_commands(new_coord_cmd.to_bytearray(), pos)
 
             break
 
@@ -1509,6 +1524,35 @@ def duplicate_maps(fsrom: FS):
     Event.write_to_rom_fs(fsrom, 0xC1, script)
 
 
+def get_alt_twin_slot(config: cfg.RandoConfig,
+                      one_spot_boss: BossID) -> int:
+    base_boss = config.boss_data_dict[one_spot_boss]
+    base_slot = base_boss.scheme.slots[0]
+    base_id = base_boss.scheme.ids[0]
+
+    # The enemy slot for the twin is finnicky.  There is a general rule
+    # that works based on the base boss's slot.
+    if base_slot == 3:
+        alt_slot = 7
+    elif base_slot == 6:
+        alt_slot = 3
+    elif base_slot == 7:
+        alt_slot = 9
+    else:
+        alt_slot = 7
+
+    # But it doesn't always work.
+    if base_id == EnemyID.GOLEM_BOSS:
+        alt_slot = 8
+    elif base_id == EnemyID.GOLEM:
+        alt_slot = 6
+    elif base_id in (EnemyID.NIZBEL, EnemyID.NIZBEL_II,
+                     EnemyID.RUST_TYRANO):
+        alt_slot = 6
+
+    return alt_slot
+
+
 # Write the new EnemyID and slots into the Twin Boss data.
 # This is also a convenient time to do the scaling, but it does make it weird
 # when doing the rest of the scaling.
@@ -1527,29 +1571,13 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
 
         config.twin_boss_type = base_id
 
-        # The enemy slot for the twin is finnicky.  There is a general rule
-        # that works based on the base boss's slot.
-        if base_slot == 3:
-            alt_slot = 7
-        elif base_slot == 6:
-            alt_slot = 3
-        elif base_slot == 7:
-            alt_slot = 9
-        else:
-            alt_slot = 7
-
-        if base_id == EnemyID.GOLEM_BOSS:
-            alt_slot = 8
-        elif base_id in (EnemyID.NIZBEL, EnemyID.NIZBEL_II,
-                         EnemyID.RUST_TYRANO):
-            alt_slot = 6
+        alt_slot = get_alt_twin_slot(config, one_spot_boss)
 
         # Set the twin boss scheme
         # Note, we do not change the EnemyID from EnemyID.TWIN_BOSS.
         # The stats, graphics, etc will all be copies from the original boss
         # into the Twin spot.
-        twin_scheme = twin_boss.scheme
-        twin_scheme.slots = [base_slot, alt_slot]
+        twin_boss.scheme.slots = [base_slot, alt_slot]
 
         # Give the twin boss the base boss's ai
         config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
@@ -1564,18 +1592,36 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         base_stats.gp = twin_stats.gp
 
         config.enemy_dict[EnemyID.TWIN_BOSS] = base_stats
+        orig_twin_power = config.boss_data_dict[BossID.TWIN_BOSS].power
         orig_power = config.boss_data_dict[one_spot_boss].power
         twin_boss.power = orig_power
 
         # Scale the stats and write them to the twin boss spot in the config
         # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
-
         scaled_stats = twin_boss.scale_to_power(
-            25,  # vs 18 in ocean palace
+            orig_twin_power,
             config.enemy_dict,
             config.enemy_atkdb,
             config.enemy_aidb
         )[EnemyID.TWIN_BOSS]
+
+        if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
+            twin_hp = twin_stats.hp
+            new_hp = bossspot.get_part_new_hps(
+                base_boss.scheme,
+                config.enemy_dict,
+                twin_hp
+            )[base_id]
+
+            # This may be configurable in RO settings eventually
+            additional_power_scaling = False
+            if additional_power_scaling:
+                hp_mod = bossspot.get_power_scale_factor(
+                    base_boss.power, twin_boss.power
+                )
+                new_hp *= hp_mod
+
+            scaled_stats.hp = new_hp
 
         # Just here for rusty.
         scaled_stats.sprite_data.set_affect_layer_1(False)
@@ -1583,11 +1629,16 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         twin_boss.power = orig_power
         config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
 
+        # Special case scaling
         if base_id == EnemyID.RUST_TYRANO:
             elem = random.choice(list(Element))
             set_rust_tyrano_element(EnemyID.TWIN_BOSS, elem,
                                     config)
             set_rust_tyrano_script_mag(EnemyID.TWIN_BOSS, config)
+
+        if base_id == EnemyID.YAKRA_XIII:
+            set_yakra_xiii_offense_boost(EnemyID.TWIN_BOSS, config)
+
 
 # This function needs to write the boss assignment to the config respecting
 # the provided settings.
@@ -1694,7 +1745,6 @@ def write_assignment_to_config(settings: rset.Settings,
             # Make a decision on how frequently to see a multi-part boss
             # in the twin spot.  For now, always choose a one-parter if
             # there is one.
-
             one_part_bosses = [boss for boss in bosses if
                                boss in BossID.get_one_part_bosses()]
 
@@ -1769,7 +1819,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     orig_data = config.boss_data_dict
 
     endgame_locs = [
-        LocID.OCEAN_PALACE_ENTRANCE, LocID.OCEAN_PALACE_TWIN_GOLEM,
+        LocID.ZEAL_PALACE_THRONE_NIGHT, LocID.OCEAN_PALACE_TWIN_GOLEM,
         LocID.BLACK_OMEN_ELDER_SPAWN, LocID.BLACK_OMEN_GIGA_MUTANT,
         LocID.BLACK_OMEN_TERRA_MUTANT
     ]
@@ -1817,6 +1867,14 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     # to the config at the very end.
     scaled_dict = dict()
     new_power_values = dict()
+    hp_dict = bossspot.get_initial_hp_dict(settings, config)
+
+    # Now it's safe to put the boss scaling ranked stats in
+    if rset.GameFlags.BOSS_SCALE in settings.gameflags:
+        for boss_id in config.boss_rank:
+            rank = config.boss_rank[boss_id]
+            stats = bossscaler.get_ranked_boss_stats(boss_id, rank, config)
+            config.enemy_dict.update(stats)
 
     for location in settings.ro_settings.loc_list:
         orig_boss = orig_data[default_assignment[location]]
@@ -1825,9 +1883,13 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                                                   config.enemy_dict,
                                                   config.enemy_atkdb,
                                                   config.enemy_aidb)
-        
+
         # Update rewards to match original boss
         # TODO: This got too big.  Break into own function?
+        # orig_id = default_assignment[location]
+        # new_id = current_assignment[location]
+        # print(f'{orig_id} ({orig_boss.power}) --> '
+        #       f'{new_id} ({new_boss.power})')
         spot_xp = sum(config.enemy_dict[part].xp
                       for part in orig_boss.scheme.ids)
         spot_tp = sum(config.enemy_dict[part].tp
@@ -1867,9 +1929,24 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                 if part_id == part
             )
 
-            scaled_stats[part].xp = round(part_xp/(part_count*boss_xp)*spot_xp)
-            scaled_stats[part].tp = round(part_tp/(part_count*boss_tp)*spot_tp)
-            scaled_stats[part].gp = round(part_gp/(part_count*boss_gp)*spot_gp)
+            if boss_xp == 0:
+                scaled_stats[part].xp = 0
+            else:
+                scaled_stats[part].xp = \
+                    round(part_xp/(part_count*boss_xp)*spot_xp)
+
+            if boss_tp == 0:
+                scaled_stats[part].tp = 0
+            else:
+                scaled_stats[part].tp = \
+                    round(part_tp/(part_count*boss_tp)*spot_tp)
+
+            if boss_gp == 0:
+                scaled_stats[part].gp = 0
+            else:
+                scaled_stats[part].gp = \
+                    round(part_gp/(part_count*boss_gp)*spot_gp)
+
             enemyrewards.set_enemy_charm_drop(
                 scaled_stats[part],
                 spot_reward_group,
@@ -1877,6 +1954,14 @@ def scale_bosses_given_assignment(settings: rset.Settings,
             )
 
         new_power_values[location] = orig_boss.power
+
+        if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
+            new_hps = bossspot.get_scaled_hp_dict(
+                orig_boss, new_boss, hp_dict,
+                additional_power_scaling=False
+            )
+            for part in new_hps:
+                scaled_stats[part].hp = new_hps[part]
 
         # Put the stats in scaled_dict
         scaled_dict.update(scaled_stats)
@@ -1892,6 +1977,9 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 
     # Update Rust Tyrano's magic boost in script
     set_rust_tyrano_script_mag(EnemyID.RUST_TYRANO, config)
+
+    # Update Yakra XIII's attack boost
+    set_yakra_xiii_offense_boost(EnemyID.YAKRA_XIII, config)
 
 
 def get_obstacle_id(enemy_id: EnemyID, config: cfg.RandoConfig) -> int:
@@ -1909,11 +1997,12 @@ def get_obstacle_id(enemy_id: EnemyID, config: cfg.RandoConfig) -> int:
 
     return None
 
+
 # getting/setting tyrano element share this data, so I'm putting here in a
 # private global.
 _tyrano_nukes = {
     Element.FIRE: 0x37,
-    Element.ICE: 0x52,
+    Element.ICE: 0x91,
     Element.LIGHTNING: 0xBB,
     Element.NONELEMENTAL: 0x8E,
     Element.SHADOW: 0x6B
@@ -1928,46 +2017,147 @@ _tyrano_minor_techs = {
 }
 
 
+def get_magus_nuke_id(config: cfg.RandoConfig):
+    '''
+    Get the tech id of Magus's big spell based on message id on cast.
+    '''
+    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
+    magus_ai_b = magus_ai.get_as_bytearray()
+
+    AI = cfg.enemyai.AIScript
+    tech_cmd_len = 6
+    tech_cmd_locs = AI.find_command(magus_ai_b, 2)
+
+    for loc in tech_cmd_locs:
+        msg = magus_ai_b[loc+tech_cmd_len-1]
+        if msg == 0x23:
+            tech_id = magus_ai_b[loc+1]
+            break
+
+    return tech_id
+
+
+def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
+
+    magus_stats = config.enemy_dict[EnemyID.MAGUS]
+
+    magus_nukes = {
+        CharID.CRONO: 0xBB,  # Luminaire
+        CharID.MARLE: 0x91,  # Hexagon Mist
+        CharID.LUCCA: 0xA9,  # Flare
+        CharID.ROBO: 0xBB,   # Luminaire
+        CharID.FROG: 0x91,   # Hexagon Mist
+        CharID.AYLA: 0x8E,   # Energy Release
+        CharID.MAGUS: 0x6B   # Dark Matter
+    }
+
+    nuke_strs = {
+        CharID.CRONO: 'Luminaire / Crono\'s strongest attack!',
+        CharID.MARLE: 'Hexagon Mist /Marle\'s strongest attack!',
+        CharID.LUCCA: 'Flare / Lucca\'s strongest attack!',
+        CharID.ROBO: 'Luminaire /Robo\'s strongest attack!',
+        CharID.FROG: 'Hexagon Mist /Frog\'s strongest attack.',
+        CharID.AYLA: 'Energy Flare /Ayla\'s strongest attack!',
+        CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
+    }
+
+    orig_nuke_id = get_magus_nuke_id(config)
+    orig_nuke = config.enemy_atkdb.get_tech(orig_nuke_id)
+
+    new_nuke_id = magus_nukes[new_char]
+    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
+
+    if new_nuke.effect != orig_nuke.effect:
+        new_nuke.effect = orig_nuke.effect
+        new_nuke_id = config.enemy_aidb.unused_techs[-1]
+        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
+
+    config.enemy_aidb.change_tech_in_ai(
+        EnemyID.MAGUS, orig_nuke_id, new_nuke_id
+    )
+
+    magus_stats.sprite_data.set_sprite_to_pc(new_char)
+    magus_stats.name = str(new_char)
+
+    battle_msgs = config.enemy_aidb.battle_msgs
+    battle_msgs.set_msg_from_str(0x23, nuke_strs[new_char])
+
+
 def set_rust_tyrano_element(tyrano_id: EnemyID,
                             tyrano_element: Element,
                             config: cfg.RandoConfig):
-    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
-    tyrano_usage = tyrano_ai.tech_usage
 
-    orig_nuke = [x for x in _tyrano_nukes.values()
-                 if x in tyrano_usage]
+    nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
+    nuke = config.enemy_atkdb.get_tech(nuke_id)
 
-    elem_str = {
-        Element.FIRE: 'Fire',
-        Element.ICE: 'Water',
-        Element.SHADOW: 'Shadow',
-        Element.LIGHTNING: 'Lightning',
-        Element.NONELEMENTAL: 'Magic'
-    }
-    power_string = elem_str[tyrano_element] + ' Pwr Up!'
-    # String goes in 6D
-    config.enemy_aidb.battle_msgs.set_msg_from_str(0x6D, power_string)
+    new_nuke_id = _tyrano_nukes[tyrano_element]
+    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
 
-    assert len(orig_nuke) == 1
-    orig_nuke = orig_nuke[0]
-    new_nuke = _tyrano_nukes[tyrano_element]
+    if nuke.effect != new_nuke.effect:
+        new_nuke.effect = nuke.effect
+        new_nuke_id = config.enemy_aidb.unused_techs[-1]
+        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
 
-    tyrano_ai.change_tech_usage(orig_nuke, new_nuke)
+    if tyrano_element != Element.FIRE:
+        power_string = 'Magic Pwr Up!'
+        # String goes in 6D
+        config.enemy_aidb.battle_msgs.set_msg_from_str(0x6D, power_string)
+
+    config.enemy_aidb.change_tech_in_ai(tyrano_id, nuke_id, new_nuke_id)
+
+
+def get_rust_tyrano_nuke_id(tyrano_id: EnemyID,
+                            config: cfg.RandoConfig) -> int:
+    tyrano_ai_b = config.enemy_aidb.scripts[tyrano_id].get_as_bytearray()
+    AI = cfg.enemyai.AIScript
+
+    tech_cmd_locs = AI.find_command(tyrano_ai_b, 0x02)
+    tech_cmd_len = 6
+
+    for loc in tech_cmd_locs:
+        msg = tyrano_ai_b[loc+tech_cmd_len-1]
+        if msg == 0x33:
+            tech_id = tyrano_ai_b[loc+1]
+            break
+
+    return tech_id
 
 
 def get_rust_tyrano_element(tyrano_id: EnemyID,
                             config: cfg.RandoConfig) -> Element:
-    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
-    tyrano_usage = tyrano_ai.tech_usage
+    nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
+    nuke = config.enemy_atkdb.get_tech(nuke_id)
+    return nuke.control.element
 
-    nuke_elem = [
-        elem for elem in _tyrano_nukes
-        if _tyrano_nukes[elem] in tyrano_usage
-    ]
 
-    assert len(nuke_elem) == 1
+def set_yakra_xiii_offense_boost(
+        yakra_id: EnemyID,
+        config: cfg.RandoConfig
+):
+    '''
+    Update Yakra XIII AI script to boost atk by 1.5x instead of to 0xFD.
+    '''
+    yakra_ai = config.enemy_aidb.scripts[yakra_id]
+    yakra_ai_b = yakra_ai.get_as_bytearray()
 
-    return nuke_elem[0]
+    AI = cfg.enemyai.AIScript
+
+    base_offense = config.enemy_dict[yakra_id].offense
+    boosted_offense = round(min(base_offense * 1.5, 0xFF))
+
+    loc = AI.find_command(yakra_ai_b, 0x12)[0]
+    cmd = yakra_ai_b[loc: loc+16]
+
+    stats_boosted = [cmd[x] for x in range(5, 14, 2)]
+    if 0x3D in stats_boosted:
+        # Jets actually removes the offense boost, so we should only find
+        # this in vanilla mode.
+        stat_ind = stats_boosted.index(0x3D)
+        cmd_ind = 5 + 2*stat_ind
+        ai_ind = loc + cmd_ind + 1
+        yakra_ai_b[ai_ind] = boosted_offense
+
+        config.enemy_aidb.scripts[yakra_id] = AI(yakra_ai_b)
 
 
 # Rust Tyrano magic stat scales
@@ -2001,110 +2191,95 @@ def set_rust_tyrano_script_mag(tyrano_id: EnemyID,
     config.enemy_aidb.scripts[tyrano_id] = AI(tyrano_ai_b)
 
 
-def set_black_tyrano_element(tyrano_element: Element,
-                             config: cfg.RandoConfig):
-    # Update black tyrano AI to use the right elemental techs
-    tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
-    tyrano_usage = tyrano_ai.tech_usage
+# This needs some explaining.
+# patch.ips sets BlackTyrano to Water with a jets-specific hex mist copy.
+# Vanilla rando mode can't use that tech.  It could be added, but in general
+# vanilla rando needs to make a new copy with a different power anyway.
+# Vanilla mode is going to need multiple copies of some of the elemental
+# spells with different powers because of Magus anyway.
 
-    orig_nuke = [x for x in _tyrano_nukes.values()
-                 if x in tyrano_usage]
-    orig_minor_tech = [x for x in _tyrano_minor_techs.values()
-                       if x in tyrano_usage]
+# This method of setting does the following
+# 1) Identify the nuke id based on corresponding battle message.  This works
+#    regardless standard or vanilla rando.
+# 2) Identify the element of the nuke by inspecting the tech.
+# 3) Identify the minor tech by the element.  By happenstance, the minor tech
+#    ids do not need to change between vanilla and standard.
+# 4) Identify the new nuke and new minor tech based on the desired element,
+#    and make the switch.
+def set_black_tyrano_element(element: Element, config: cfg.RandoConfig):
+    nuke_id = get_black_tyrano_nuke_id(config)
+    nuke = config.enemy_atkdb.get_tech(nuke_id)
 
-    assert len(orig_nuke) == 1 and len(orig_minor_tech) == 1
+    orig_elem = nuke.control.element
+    minor_tech_id = _tyrano_minor_techs[orig_elem]
+    new_minor_tech_id = _tyrano_minor_techs[element]
 
-    orig_nuke = orig_nuke[0]
-    orig_minor_tech = orig_minor_tech[0]
+    new_nuke_id = _tyrano_nukes[element]
+    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
 
-    new_nuke = _tyrano_nukes[tyrano_element]
-    new_minor_tech = _tyrano_minor_techs[tyrano_element]
+    if nuke.effect != new_nuke.effect:
+        new_nuke.effect = nuke.effect
+        new_nuke_id = config.enemy_aidb.unused_techs[-1]
+        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
 
-    tyrano_ai.change_tech_usage(orig_nuke, new_nuke)
-    tyrano_ai.change_tech_usage(orig_minor_tech, new_minor_tech)
+    config.enemy_aidb.change_tech_in_ai(
+        EnemyID.BLACKTYRANO, nuke_id, new_nuke_id
+    )
+    config.enemy_aidb.change_tech_in_ai(
+        EnemyID.BLACKTYRANO, minor_tech_id, new_minor_tech_id
+    )
 
 
 def get_black_tyrano_element(config: cfg.RandoConfig) -> Element:
-    # Update black tyrano AI to use the right elemental techs
+    nuke_id = get_black_tyrano_nuke_id(config)
+    nuke = config.enemy_atkdb.get_tech(nuke_id)
+    return nuke.control.element
+
+
+def get_black_tyrano_nuke_id(config: cfg.RandoConfig) -> int:
+    # Find tyrano nuke by looking for the tech that has the "0" msg.
     tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
-    tyrano_usage = tyrano_ai.tech_usage
+    tyrano_ai_b = tyrano_ai.get_as_bytearray()
 
-    nuke_elem = [
-        elem for elem in _tyrano_nukes
-        if _tyrano_nukes[elem] in tyrano_usage
-    ]
+    AI = cfg.enemyai.AIScript
+    stat_cmd_len = 16
 
-    assert len(nuke_elem) == 1, 'Multiple Tyrano nukes'
+    stat_set_cmd_locs = AI.find_command(tyrano_ai_b, 0x12)
 
-    minor_elem = [
-        elem for elem in _tyrano_minor_techs
-        if _tyrano_minor_techs[elem] in tyrano_usage
-    ]
+    for loc in stat_set_cmd_locs:
+        msg = tyrano_ai_b[loc+stat_cmd_len-1]
+        if msg == 0x33:
+            tech_id = tyrano_ai_b[loc+1]
+            break
 
-    assert len(minor_elem) == 1, 'Multiple Tyrano minor attacks'
-    assert minor_elem[0] == nuke_elem[0], 'Element mismatch'
-
-    return minor_elem[0]
+    return tech_id
 
 
 # Magus gets random hp and a random character sprite (ctenums.CharID)
 # Black Tyrano gets random hp and a random element (ctenums.Element)
 def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
 
-    # Random hp from 10k to 15k
-    magus_stats = config.enemy_dict[EnemyID.MAGUS]
-    magus_stats.hp = random.randrange(10000, 15001, 1000)
+    if settings.game_mode != rset.GameMode.VANILLA_RANDO:
+        # Random hp from 10k to 15k
+        magus_stats = config.enemy_dict[EnemyID.MAGUS]
+        magus_stats.hp = random.randrange(10000, 15001, 1000)
 
     if settings.game_mode == rset.GameMode.LEGACY_OF_CYRUS:
         magus_char = config.char_assign_dict[RecruitID.PROTO_DOME].held_char
     else:
         magus_char = random.choice(list(CharID))
 
-    magus_nukes = {
-        CharID.CRONO: 0xBB,  # Luminaire
-        CharID.MARLE: 0x52,  # Hexagon Mist
-        CharID.LUCCA: 0xA9,  # Flare
-        CharID.ROBO: 0xBB,   # Luminaire
-        CharID.FROG: 0x52,   # Hexagon Mist
-        CharID.AYLA: 0x8E,   # Energy Release
-        CharID.MAGUS: 0x6B   # Dark Matter
-    }
+    set_magus_character(magus_char, config)
 
-    nuke_strs = {
-        CharID.CRONO: 'Luminaire / Crono\'s strongest attack!',
-        CharID.MARLE: 'Hexagon Mist /Marle\'s strongest attack!',
-        CharID.LUCCA: 'Flare / Lucca\'s strongest attack!',
-        CharID.ROBO: 'Luminaire /Robo\'s strongest attack!',
-        CharID.FROG: 'Hexagon Mist /Frog\'s strongest attack.',
-        CharID.AYLA: 'Energy Flare /Ayla\'s strongest attack!',
-        CharID.MAGUS: 'Dark Matter / Magus\' strongest attack!',
-    }
-
-    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
-    magus_usage = magus_ai.tech_usage
-
-    orig_nukes = [x for x in magus_nukes.values()
-                  if x in magus_usage]
-
-    assert len(orig_nukes) == 1
-
-    orig_nuke = orig_nukes[0]
-    magus_ai.change_tech_usage(orig_nuke, magus_nukes[magus_char])
-    magus_stats.sprite_data.set_sprite_to_pc(magus_char)
-    magus_stats.name = str(magus_char)
-
-    battle_msgs = config.enemy_aidb.battle_msgs
-    battle_msgs.set_msg_from_str(0x23, nuke_strs[magus_char])
-
-    config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
-        random.randrange(8000, 13001, 1000)
+    if settings.game_mode != rset.GameMode.VANILLA_RANDO:
+        config.enemy_dict[EnemyID.BLACKTYRANO].hp = \
+            random.randrange(8000, 13001, 1000)
 
     tyrano_element = random.choice(list(Element))
     set_black_tyrano_element(tyrano_element, config)
     set_rust_tyrano_element(EnemyID.RUST_TYRANO, tyrano_element, config)
 
     # We're going to jam obstacle randomization here
-    # Small block to randomize status inflicted by Obstacle/Chaotic Zone
     SE = StatusEffect
     rand_num = random.randrange(0, 10, 1)
 

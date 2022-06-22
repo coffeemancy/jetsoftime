@@ -1,10 +1,11 @@
 from __future__ import annotations
+import copy
+
 from ctenums import EnemyID, TreasureID as TID, LocID, ItemID, \
-    RecruitID, CharID
+    RecruitID, CharID, BossID
 
 from enemystats import EnemyStats
-import logicfactory
-import logicwriter_chronosanity as logicwriter
+# import logicfactory
 
 import randoconfig as cfg
 import randosettings as rset
@@ -74,9 +75,11 @@ scaling_data = {
 }
 
 
-# TODO: Separate determining rank from setting power.  Maybe the rank can be
-#       stored in the config and then written out later.
-def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
+def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
+    '''
+    Use the key item placement and boss assignment to determine the rank of
+    each boss.
+    '''
     # First, boss scaling only works for normal logic
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
     lost_worlds = settings.game_mode == rset.GameMode.LOST_WORLDS
@@ -90,8 +93,12 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
               'Chronosanity.  Returning.')
         return
 
-    game_config = logicfactory.getGameConfig(settings, config)
-    key_item_list = game_config.keyItemList
+    # I can't do this because of a circular import.
+    # game_config = logicfactory.getGameConfig(settings, config)
+    # key_item_list = game_config.keyItemList
+
+    # It's ok to get more KIs than needed
+    key_item_list = ItemID.get_key_items()
 
     # To match the original implementation, make a dict with
     # ItemID --> TreasureID  for key items
@@ -247,27 +254,39 @@ def set_boss_power(settings: rset.Settings, config: cfg.RandoConfig):
 
     config.boss_rank = boss_rank
 
-    for boss in boss_rank.keys():
-        boss_data = config.boss_data_dict[boss]
-        part_ids = list(set(boss_data.scheme.ids))
-        rank = boss_rank[boss]
 
-        has_scaling_data = boss_data.scheme.ids[0] in scaling_data
+# Perhaps replace config with the parts actually used: enemy, ai, atk data
+# Otherwise it's silly because config has the boss rank dict already.
+def get_ranked_boss_stats(
+        boss_id: BossID,
+        rank: int,
+        config: cfg.RandoConfig
+) -> dict[EnemyID, EnemyStats]:
 
-        if has_scaling_data:
-            for part in part_ids:
-                stat_list = scaling_data[part][rank-1]
-                config.enemy_dict[part].replace_from_stat_list(stat_list)
-        else:
-            orig_power = boss_data.power
-            new_power = orig_power + 4*rank
+    boss = config.boss_data_dict[boss_id]
+    has_scaling_data = boss.scheme.ids[0] in scaling_data
+    scaled_stats = {}
 
-            new_stats = boss_data.scale_to_power(
-                new_power,
-                config.enemy_dict,
-                config.enemy_atkdb,
-                config.enemy_aidb
-            )
+    if has_scaling_data and rank > 0:
+        for part in boss.scheme.ids:
+            stats = copy.deepcopy(config.enemy_dict[part])
+            stat_list = scaling_data[part][rank-1]
+            stats.replace_from_stat_list(stat_list)
 
-            for ind, part_id in enumerate(boss_data.scheme.ids):
-                config.enemy_dict[part_id] = new_stats[ind]
+            scaled_stats[part] = stats
+    elif rank == 0:
+        scaled_stats = {
+            part: copy.deepcopy(config.enemy_dict[part])
+            for part in boss.scheme.ids
+        }
+    else:
+        cur_level = boss.power
+        new_level = cur_level + 4*rank
+        scaled_stats = boss.scale_to_power(
+            new_level,
+            config.enemy_dict,
+            config.enemy_atkdb,
+            config.enemy_aidb
+        )
+
+    return scaled_stats

@@ -97,20 +97,45 @@ class EnemyStats:
         self._set_stats(stat_data)
         self._set_name(name_bytes)
         self._set_rewards(reward_bytes)
-
         self.sprite_data = EnemySpriteData(sprite_bytes)
 
-    def __str__(self):
+    def _jot_json(self):
+        return {
+            'hp': self.hp,
+            'level': self.level,
+            'speed': self.speed,
+            'magic': self.magic,
+            'mdef': self.mdef,
+            'offense': self.offense,
+            'defense': self.defense,
+            'xp': self.xp,
+            'gp': self.gp,
+            'drop_item': str(self.drop_item),
+            'charm_item': str(self.charm_item),
+            'tp': self.tp,
+            'can_sightscope': self.can_sightscope,
+            'name': self.name.strip()
+        }
+
+    def __str__(self, item_db = None):
         ret = ''
         stats = [str.rjust(str(x), 3)
                  for x in [self.speed, self.offense, self.defense,
                            self.magic, self.mdef, self.hit, self.evade]]
         stat_string = ' '.join(x for x in stats)
+
+        if item_db is None:
+            drop_str = str(self.drop_item)
+            charm_str = str(self.charm_item)
+        else:
+            drop_str = item_db[self.drop_item].get_name_as_str(True)
+            charm_str = item_db[self.charm_item].get_name_as_str(True)
+
         ret += (f"Name: {self.name}\n"
                 f"HP = {self.hp}\tLevel = {self.level}\n"
                 f"XP = {self.xp}\tTP = {self.tp}\tGP = {self.gp}\n"
-                f"Drop = {self.drop_item}\t"
-                f"Charm = {self.charm_item}\n"
+                f"Drop = {drop_str}\t"
+                f"Charm = {charm_str}\n"
                 "Spd Off Def Mag Mdf Hit Evd\n" +
                 stat_string + '\n')
 
@@ -350,6 +375,26 @@ class EnemyStats:
         else:
             self._stat_data[0x15] &= 0x02
 
+    @property
+    def immune_rock_throw(self):
+        return bool(self._stat_data[0x14] & 0x40)
+
+    @immune_rock_throw.setter
+    def immune_rock_throw(self, val: bool):
+        mask = 0xFF - 0x40
+        self._stat_data[0x14] &= mask
+        self._stat_data[0x14] |= (0x40 * val)
+
+    @property
+    def immune_slurp_cut(self):
+        return bool(self._stat_data[0x14] & 0x20)
+
+    @immune_slurp_cut.setter
+    def immune_slurp_cut(self, val: bool):
+        mask = 0xFF - 0x20
+        self._stat_data[0x14] &= mask
+        self._stat_data[0x14] |= (0x20 * val)
+
     # Properties for getting/setting rewards
     @property
     def xp(self):
@@ -400,8 +445,7 @@ class EnemyStats:
         self._stat_data[0x16] = val
 
 
-def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
-                                          ctenums.EnemyID:EnemyStats]:
+def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID, EnemyStats]:
     stat_dict = dict()
     ct_rom = ctrom.CTRom(rom, True)
 
@@ -412,18 +456,7 @@ def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID,
 
 
 if __name__ == '__main__':
-    ct_rom = ctrom.CTRom.from_file('./roms/ct.sfc', True)
-    rom = ct_rom.rom_data
-
-    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.NU)
-    print(stats)
-
-    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.FLEA)
-    print(stats)
-
-    stats = EnemyStats.from_ctrom(ct_rom, ctenums.EnemyID.SLASH_SWORD)
-    print(stats)
-
+    pass
     # Byte 0,1 - hp
     # Byte 2 - level
     # Byte 3 - constant statuses

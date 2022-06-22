@@ -220,9 +220,10 @@ class PCStats:
             get_value_from_bytes(self.stat_block[off:off+size])
 
         if self.xp_next != self.xp_thresh[self.level]:
-            print('Warning. xp_thresh does not match stat block')
-            print(f"Level: {self.level}")
-            print(f"{self.xp_next}, {self.xp_thresh[self.level]}")
+            # print('Warning. xp_thresh does not match stat block')
+            # print(f"Level: {self.level}")
+            # print(f"{self.xp_next}, {self.xp_thresh[self.level]}")
+            pass
 
         self.tp_next = \
             get_value_from_bytes(self.stat_block[0x2D:0x2D+2])
@@ -286,6 +287,20 @@ class PCStats:
         ret += '\t(Growth/Lvl, 100 growth = 1 point)\n'
 
         return ret
+
+    def _jot_json(self):
+        stats = {
+            'max_hp': self.max_hp,
+            'max_mp': self.max_mp,
+            'level': self.level
+        }
+
+        stat_names = ['pow', 'stm', 'spd', 'hit', 'evd', 'mag', 'mdf']
+        cur = get_stat_base_order(self.cur_stats)
+        for i in range(len(stat_names)):
+            stats[stat_names[i]] = cur[i]
+            stats[stat_names[i]+'_growth'] = self.stat_growth[i]
+        return stats
 
     def print_data(self):
         self.__update_statblock()

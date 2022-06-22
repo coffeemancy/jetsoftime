@@ -1,5 +1,6 @@
 from __future__ import annotations
-
+import copy
+import functools
 import typing
 
 import random
@@ -7,29 +8,21 @@ import randosettings as rset
 
 
 def random_weighted_choice_from_dict(choice_dict: dict[typing.Any, int]):
+    '''Make a random choice from dict keys given weights in dict values.'''
     keys, weights = zip(*choice_dict.items())
     return random.choices(keys, weights, k=1)[0]
 
 
 def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
-
+    '''
+    Use the mystery settings in base_settings to generate a new settings
+    object with random flags.
+    '''
     if rset.GameFlags.MYSTERY not in base_settings.gameflags:
         return base_settings
 
     GF = rset.GameFlags
-    ret_settings = rset.Settings()
-
-    ret_flags = GF(0)
-    qol_cosm_options = [GF.FAST_TABS, GF.VISIBLE_HEALTH,
-                        GF.FAST_PENDANT, GF.ZEAL_END,
-                        GF.QUIET_MODE, GF.FIX_GLITCH,
-                        GF.DUPLICATE_TECHS, GF.BUFF_XSTRIKE,
-                        GF.GUARANTEED_DROPS, GF.AYLA_REBALANCE]
-
-    # Set the qol flags specified in base settings
-    for x in qol_cosm_options:
-        if x in base_settings.gameflags:
-            ret_flags |= x
+    ret_settings = copy.deepcopy(base_settings)
 
     weighted_choice = random_weighted_choice_from_dict
     ms = base_settings.mystery_settings
@@ -40,19 +33,26 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
     ret_settings.techorder = weighted_choice(ms.tech_order_freqs)
     ret_settings.shopprices = weighted_choice(ms.shop_price_freqs)
 
-    # Now Flags
-    force_disabled_flags = rset.get_forced_off(ret_settings.game_mode)
-    force_enabled_flags = rset.get_forced_on(ret_settings.game_mode)
-
     # Order is important in that some flags block off others.
     # Really, once game mode is determined, it's just chronosanity that
     # blocks off boss scaling.
-    flags = [GF.TAB_TREASURES, GF.BUCKET_FRAGMENTS, GF.CHRONOSANITY,
-             GF.BOSS_RANDO, GF.UNLOCKED_MAGIC,
-             GF.BOSS_SCALE, GF.LOCKED_CHARS, GF.DUPLICATE_CHARS]
+    mystery_flags = list(ms.flag_prob_dict.keys())
 
-    for flag in flags:
-        added_flag = GF(0)
+    extra_flags = [flag for flag in list(GF)
+                   if flag in base_settings.gameflags
+                   and flag not in mystery_flags]
+
+    force_disabled_flags = rset.get_forced_off(ret_settings.game_mode)
+    force_enabled_flags = rset.get_forced_on(ret_settings.game_mode)
+    for flag in extra_flags:
+        force_disabled_flags |= rset.get_forced_off(flag)
+        force_enabled_flags |= rset.get_forced_on(flag)
+
+    # Check that we don't have any conflicts here.
+    assert (force_disabled_flags & force_enabled_flags) == GF(0)
+
+    ret_flags = GF(0)
+    for flag in mystery_flags:
         if flag in force_disabled_flags:
             added_flag = GF(0)
         elif flag in force_enabled_flags:
@@ -63,18 +63,22 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
                 added_flag = flag
             else:
                 added_flag = GF(0)
+        else:
+            raise ValueError('Error: ' + str(flag))
 
         if added_flag == flag:
             force_disabled_flags |= rset.get_forced_off(flag)
             force_enabled_flags |= rset.get_forced_on(flag)
             ret_flags |= flag
 
-    ret_flags |= GF.MYSTERY
+    extra_flags = functools.reduce(
+        lambda x, y: x | y,
+        extra_flags,
+        GF(0)
+    )
 
-    ret_settings.cosmetic_flags = base_settings.cosmetic_flags
+    # Note that GF.MYSTERY is in extra flags
+    ret_flags |= extra_flags
     ret_settings.gameflags = ret_flags
-    ret_settings.tab_settings = base_settings.tab_settings
-    ret_settings.ro_settings = base_settings.ro_settings
-    ret_settings.char_choices = base_settings.char_choices
 
     return ret_settings

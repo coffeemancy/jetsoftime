@@ -236,7 +236,7 @@ _uncommon_enemies = [
     EnemyID.RUNNER, EnemyID.PROTO_2, EnemyID.PROTO_3, EnemyID.BUG,
     EnemyID.MASA, EnemyID.MUNE, EnemyID.MUTANT, EnemyID.DECEDENT_II,
     EnemyID.SPEKKIO_FROG, EnemyID.SPEKKIO_KILWALA, EnemyID.HEXAPOD,
-    EnemyID.ROLY_BOMBER,
+    EnemyID.ROLY_BOMBER, EnemyID.FAKE_FLEA
 ]
 
 _rare_enemies = [

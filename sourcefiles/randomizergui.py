@@ -21,6 +21,7 @@ from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     BucketSettings, GameMode, MysterySettings
 from ctenums import LocID, BossID
 import ctrom
+import ctstrings
 
 
 #
@@ -174,6 +175,17 @@ class RandoGUI:
             for key in ms.flag_prob_dict.keys()
         }
 
+        self.char_names = {
+            'Crono': tk.StringVar(value='Crono'),
+            'Marle': tk.StringVar(value='Marle'),
+            'Lucca': tk.StringVar(value='Lucca'),
+            'Robo': tk.StringVar(value='Robo'),
+            'Frog': tk.StringVar(value='Frog'),
+            'Ayla': tk.StringVar(value='Ayla'),
+            'Magus': tk.StringVar(value='Magus'),
+            'Epoch': tk.StringVar(value='Epoch')
+        }
+
         # generation variables
         self.seed = tk.StringVar()
         self.input_file = tk.StringVar()
@@ -278,7 +290,7 @@ class RandoGUI:
                 try:
                     [settings, input_file, output_dir] = pickle.load(infile)
                     self.settings = settings
-                except (ValueError, AttributeError, EOFError):
+                except (ValueError, AttributeError, EOFError, KeyError):
                     tk.messagebox.showinfo(
                         title='Settings Error',
                         message='Unable to load saved settings.  This often'
@@ -318,7 +330,7 @@ class RandoGUI:
         # Shop Prices
         self.settings.shopprices = \
             ShopPrices.inv_str_dict()[self.shop_prices.get()]
-            
+
         # Tech randomization
         self.settings.techorder = \
             TechOrder.inv_str_dict()[self.tech_order.get()]
@@ -330,6 +342,15 @@ class RandoGUI:
         # Cosmetic flags
         cosmetic_flags = [x for x in list(CosmeticFlags)
                           if self.cosmetic_flag_dict[x].get() == 1]
+
+        self.settings.char_names[0] = self.char_names['Crono'].get()
+        self.settings.char_names[1] = self.char_names['Marle'].get()
+        self.settings.char_names[2] = self.char_names['Lucca'].get()
+        self.settings.char_names[3] = self.char_names['Robo'].get()
+        self.settings.char_names[4] = self.char_names['Frog'].get()
+        self.settings.char_names[5] = self.char_names['Ayla'].get()
+        self.settings.char_names[6] = self.char_names['Magus'].get()
+        self.settings.char_names[7] = self.char_names['Epoch'].get()
 
         self.settings.gameflags = \
             reduce(lambda a, b: a | b, flags, GameFlags(False))
@@ -430,6 +451,16 @@ class RandoGUI:
                 self.cosmetic_flag_dict[x].set(1)
             else:
                 self.cosmetic_flag_dict[x].set(0)
+
+        # Char names
+        self.char_names['Crono'].set(self.settings.char_names[0])
+        self.char_names['Marle'].set(self.settings.char_names[1])
+        self.char_names['Lucca'].set(self.settings.char_names[2])
+        self.char_names['Robo'].set(self.settings.char_names[3])
+        self.char_names['Frog'].set(self.settings.char_names[4])
+        self.char_names['Ayla'].set(self.settings.char_names[5])
+        self.char_names['Magus'].set(self.settings.char_names[6])
+        self.char_names['Epoch'].set(self.settings.char_names[7])
 
         # Update difficulties
         self.enemy_difficulty.set(
@@ -862,21 +893,6 @@ class RandoGUI:
             "Disables common glitches such as the unequip and save " +
             "anywhere glitches."
         )
-
-        # Quiet Mode (No Music)
-        checkButton = tk.Checkbutton(
-            frame,
-            text="Quiet Mode - No Music (q)",
-            variable=self.flag_dict[GameFlags.QUIET_MODE]
-        )
-        checkButton.grid(
-            row=row, column=2, sticky=tk.W, columnspan=2
-        )
-        CreateToolTip(
-            checkButton,
-            "Music is disabled.  Sound effects will still play."
-        )
-        row = row + 1
 
         return frame
 
@@ -1407,6 +1423,46 @@ class RandoGUI:
                     return False
         # End if boss rando set
 
+        # Check the default character names
+        good_symbols = set(
+            x for x in range(0xA0, 0xEE)
+        )
+        good_symbols.add(0)
+
+        for char_name, var in self.char_names.items():
+            try:
+                new_name = var.get()
+                ct_name = ctstrings.CTNameString.from_string(new_name,
+                                                             length=6,
+                                                             pad_val=0)
+            except ValueError as err:
+                messagebox.showerror(
+                    'Name Error',
+                    f'Error in {char_name}\'s name: Can\'t parse '
+                    f'\'{str(err)}\''
+                )
+                self.notebook.select(self.cosmetic_page)
+                return False
+
+            ct_name.append(0)
+            true_len = ct_name.find(0)
+            if true_len > 5:
+                messagebox.showerror(
+                    'Name Error',
+                    f'Error in {char_name}\'s name: length can not exceed '
+                    'five characters.'
+                )
+                self.notebook.select(self.cosmetic_page)
+                return False
+
+            symbol_set = set(x for x in ct_name)
+            if not symbol_set.issubset(good_symbols):
+                messagebox.showwarning(
+                    'Name Warning',
+                    f'{char_name}\'s name has unusual symbols.  This may be '
+                    'unstable.'
+                )
+
         # Check the paths so that we don't have to do it later.
         input_path = pathlib.Path(self.input_file.get())
         if not input_path.is_file():
@@ -1554,7 +1610,11 @@ class RandoGUI:
             spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.txt"
             spoiler_path = \
                 str(pathlib.Path(out_dir).joinpath(spoiler_filename))
+            json_spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.json"
+            json_spoiler_path = \
+                str(pathlib.Path(out_dir).joinpath(json_spoiler_filename))
             rando.write_spoiler_log(spoiler_path)
+            rando.write_json_spoiler_log(json_spoiler_path)
 
             tk.messagebox.showinfo(
                 title='Randomization Complete',
@@ -1990,20 +2050,6 @@ class RandoGUI:
 
         checkbox = tk.Checkbutton(
             frame,
-            text='Guaranteed Drops',
-            variable=self.flag_dict[GameFlags.GUARANTEED_DROPS]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'By default, if an enemy has a charm and a drop, the drop is not '
-            'guaranteed when the enemy is defeated.  This flag makes the drop '
-            'guaranteed.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
             text='Buff X-Strike',
             variable=self.flag_dict[GameFlags.BUFF_XSTRIKE]
         )
@@ -2040,15 +2086,16 @@ class RandoGUI:
         CreateToolTip(
             checkbox,
             'Black Hole regains its original animation and area of effect. '
-            'Instead of 40% chance of instant death, the spell does 1.5x '
-            'nonelemental Dark Bomb damage.  Additionally, Black Hole\'s '
-            'power increases with dead allies like doomsickle.'
+            'Instead of 40% chance of instant death, the spell does '
+            'nonelemental damage equal to Mega Bomb\'s power (32). '
+            'Additionally, Black Hole\'s power increases with dead allies '
+            'like Doomsickle.'
         )
 
         checkbox = tk.Checkbutton(
             frame,
-            text='No Robo Tackle On-Hit Effects',
-            variable=self.flag_dict[GameFlags.NO_CRISIS_TACKLE]
+            text='Robo Rework',
+            variable=self.flag_dict[GameFlags.ROBO_REWORK]
         )
         checkbox.pack(anchor=tk.W)
 
@@ -2056,6 +2103,8 @@ class RandoGUI:
             checkbox,
             'Robo Tackle regains its vanilla functionality in which it '
             'ignores on-hit effects from weapons, most notably the Crisis Arm.'
+            ' In addition, Robo tackle\'s power is reduced from 30 to 24, '
+            'putting it in line with other techs with the Ayla formula.'
         )
 
         checkbox = tk.Checkbutton(
@@ -2099,6 +2148,47 @@ class RandoGUI:
             'It is possible but not guaranteed that Magus\'s castle will be '
             'available if Frog is among the starters.'
         )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Epoch Fail',
+            variable=self.flag_dict[GameFlags.EPOCH_FAIL]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Players start without wings on the '
+            'Epoch.  The \'Jets of Time\' can be obtained and turned in '
+            'to Dalton in the Snail Stop to upgrade the Epoch.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Marle Rework',
+            variable=self.flag_dict[GameFlags.MARLE_REWORK]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Marle starts with 9 speed and cure becomes Reraise which '
+            'gives the Greendream effect.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Boss Spot HPs',
+            variable=self.flag_dict[GameFlags.BOSS_SPOT_HP]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Boss HP in boss rando is determined by the spot instead of the '
+            'usual scaling algorithm'
+        )
+
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
@@ -2195,6 +2285,33 @@ class RandoGUI:
             'Plays the unused Singing Mountain theme during Death Peak.'
         )
 
+        # Quiet Mode (No Music)
+        checkButton = tk.Checkbutton(
+            frame,
+            text="Quiet Mode - No Music",
+            variable=self.cosmetic_flag_dict[CosmeticFlags.QUIET_MODE]
+        )
+        checkButton.pack(anchor=tk.W)
+        CreateToolTip(
+            checkButton,
+            "Music is disabled.  Sound effects will still play."
+        )
+
+        label = tk.Label(frame, text='Default Names:')
+        label.pack(anchor=tk.W)
+
+        default_names = ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog',
+                         'Ayla', 'Magus', 'Epoch']
+
+        for name, var in self.char_names.items():
+            tempframe = tk.Frame(frame)
+            label = tk.Label(tempframe, text=name+':', width=6)
+            entry = tk.Entry(tempframe, textvariable=var)
+
+            label.pack(side=tk.LEFT)
+            entry.pack(side=tk.LEFT)
+            tempframe.pack(anchor=tk.W)
+
         return frame
 
     def get_mystery_page(self):
@@ -2211,7 +2328,8 @@ class RandoGUI:
             GameMode.STANDARD: "Std",
             GameMode.LOST_WORLDS: "LW",
             GameMode.LEGACY_OF_CYRUS: "LoC",
-            GameMode.ICE_AGE: "IA"
+            GameMode.ICE_AGE: "IA",
+            GameMode.VANILLA_RANDO: "Van"
         }
 
         game_mode_frame = self.get_rel_freq_frame(
@@ -2295,7 +2413,10 @@ class RandoGUI:
             GameFlags.CHRONOSANITY: 'Chronosanity',
             GameFlags.DUPLICATE_CHARS: 'DupeChars',
             GameFlags.LOCKED_CHARS: 'LockChars',
-            GameFlags.TAB_TREASURES: 'TabTreas'
+            GameFlags.TAB_TREASURES: 'TabTreas',
+            GameFlags.EPOCH_FAIL: 'EpochFail',
+            GameFlags.GEAR_RANDO: 'GearRando',
+            GameFlags.HEALING_ITEM_RANDO: 'HealRando'
         }
 
         for flag in self.mys_flag_prob_dict:

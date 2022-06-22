@@ -271,10 +271,11 @@ class Game:
     def canAccessSealedChests(self):
         # With 3.1.1. logic change, canAccessDarkAges isn't correct for
         # checking sealed chest access.  Instead check for actual go modes.
-
         return (
-            (self.hasKeyItem(ItemID.PENDANT) and self.earlyPendant) or
-            self.canAccessTyranoLair or self.canAccessMagusCastle
+            self.hasKeyItem(ItemID.PENDANT) and
+             (self.earlyPendant or
+              self.canAccessTyranoLair() or
+              self.canAccessMagusCastle())
         )
 
     def canAccessBurrowItem(self):
@@ -294,6 +295,9 @@ class Location:
     def __init__(self, treasure_id: TreasureID):
         self.treasure_id = treasure_id
         self.keyItem = None
+
+    def _jot_json(self):
+        return {self.getName(): str(self.getKeyItem())}
 
     #
     # Get the name of this location.
@@ -420,6 +424,9 @@ class LinkedLocation():
     def __init__(self, location1: Location, location2: Location):
         self.location1 = location1
         self.location2 = location2
+
+    def _jot_json(self):
+        return {self.getName(): str(self.getKeyItem())}
 
     def getName(self):
         return (f"Linked: {self.location1.getName()} + "
@@ -566,6 +573,16 @@ class LocationGroup:
     def undoWeightDecay(self):
         if len(self.weightStack) > 0:
             self.setWeight(self.weightStack.pop())
+
+
+    #
+    # Undo all weight decay of this LocationGroup.
+    #
+    def restoreInitialWeight(self):
+        if self.weightStack:
+            self.setWeight(self.weightStack[0])
+            self.weightStack = []
+
 
     #
     # Get the number of available locations in this group.

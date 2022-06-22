@@ -27,6 +27,7 @@ class GameMode(StrIntEnum):
     LOST_WORLDS = auto()
     ICE_AGE = auto()
     LEGACY_OF_CYRUS = auto()
+    VANILLA_RANDO = auto()
 
 
 class Difficulty(StrIntEnum):
@@ -55,7 +56,6 @@ class GameFlags(Flag):
     FAST_PENDANT = auto()
     LOCKED_CHARS = auto()
     UNLOCKED_MAGIC = auto()
-    QUIET_MODE = auto()
     CHRONOSANITY = auto()
     TAB_TREASURES = auto()  # Maybe needs to be part of treasure page?
     BOSS_RANDO = auto()
@@ -64,18 +64,19 @@ class GameFlags(Flag):
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
     BUCKET_FRAGMENTS = auto()
-    GUARANTEED_DROPS = auto()
     BUFF_XSTRIKE = auto()
     MYSTERY = auto()
     AYLA_REBALANCE = auto()
     BOSS_SIGHTSCOPE = auto()
     BLACKHOLE_REWORK = auto()
-    NO_CRISIS_TACKLE = auto()
+    ROBO_REWORK = auto()
     HEALING_ITEM_RANDO = auto()
     FREE_MENU_GLITCH = auto()
     GEAR_RANDO = auto()
     FIRST_TWO = auto()
-
+    EPOCH_FAIL = auto()
+    MARLE_REWORK = auto()
+    BOSS_SPOT_HP = auto()
 
 # Dictionary for what flags force what other flags off.
 # Note that this is NOT symmetric.  For example Lost Worlds will force
@@ -90,18 +91,21 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.FAST_PENDANT: _GF(0),
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.QUIET_MODE: _GF(0),
-    _GF.CHRONOSANITY: _GF(0),
+    _GF.CHRONOSANITY: _GF.BOSS_SCALE,
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
-    _GF.GUARANTEED_DROPS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
+    _GF.MYSTERY: _GF(0),
+    _GF.GEAR_RANDO: _GF(0),
+    _GF.HEALING_ITEM_RANDO: _GF(0),
+    _GF.EPOCH_FAIL: _GF(0),
     _GM.STANDARD: _GF(0),
-    _GM.LOST_WORLDS: _GF.BOSS_SCALE,
+    _GM.LOST_WORLDS: _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS,
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
         _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
@@ -110,9 +114,14 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.ZEAL_END |
         _GF.BUCKET_FRAGMENTS |
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
+    ),
+    _GM.VANILLA_RANDO: (
+        _GF.BOSS_SCALE | 
+        _GF.BUFF_XSTRIKE | _GF.BUCKET_FRAGMENTS | _GF.AYLA_REBALANCE |
+        _GF.BLACKHOLE_REWORK | _GF.MARLE_REWORK | _GF.ROBO_REWORK
     )
 }
- 
+
 
 # Similar dictionary for forcing flags on
 _forced_on_dict = {
@@ -122,34 +131,39 @@ _forced_on_dict = {
     _GF.FAST_PENDANT: _GF(0),
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.QUIET_MODE: _GF(0),
     _GF.CHRONOSANITY: _GF(0),
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
+    _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
-    _GF.GUARANTEED_DROPS: _GF(0),
     _GF.BUFF_XSTRIKE: _GF(0),
+    _GF.MYSTERY: _GF(0),
+    _GF.GEAR_RANDO: _GF(0),
+    _GF.HEALING_ITEM_RANDO: _GF(0),
+    _GF.EPOCH_FAIL: _GF(0),
     _GM.STANDARD: _GF(0),
     _GM.LOST_WORLDS: _GF.UNLOCKED_MAGIC,
     _GM.ICE_AGE: _GF.UNLOCKED_MAGIC,
-    _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC
+    _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC,
+    _GM.VANILLA_RANDO: _GF(0)
 }
 
 
 def get_forced_off(flag: GameFlags) -> GameFlags:
-    return _forced_off_dict[flag]
+    return _forced_off_dict.get(flag, GameFlags(0))
 
 
 def get_forced_on(flag: GameFlags) -> GameFlags:
-    return _forced_on_dict[flag]
+    return _forced_on_dict.get(flag, GameFlags(0))
 
 
 class CosmeticFlags(Flag):
     ZENAN_ALT_MUSIC = auto()
     DEATH_PEAK_ALT_MUSIC = auto()
+    QUIET_MODE = auto()
 
 
 class TabRandoScheme(StrIntEnum):
@@ -178,8 +192,8 @@ class ROSettings:
 
 @dataclass
 class BucketSettings:
-    num_fragments: int = 30
-    needed_fragments: int = 20
+    num_fragments: int = 15
+    needed_fragments: int = 10
 
 
 class MysterySettings:
@@ -188,7 +202,8 @@ class MysterySettings:
             GameMode.STANDARD: 75,
             GameMode.LOST_WORLDS: 25,
             GameMode.LEGACY_OF_CYRUS: 0,
-            GameMode.ICE_AGE: 0
+            GameMode.ICE_AGE: 0,
+            GameMode.VANILLA_RANDO: 0
         }
         self.item_difficulty_freqs: dict[Difficulty, int] = {
             Difficulty.EASY: 15,
@@ -214,11 +229,14 @@ class MysterySettings:
             GameFlags.TAB_TREASURES: 0.10,
             GameFlags.UNLOCKED_MAGIC: 0.5,
             GameFlags.BUCKET_FRAGMENTS: 0.15,
-            GameFlags.CHRONOSANITY: 0.30,
+            GameFlags.CHRONOSANITY: 0.50,
             GameFlags.BOSS_RANDO: 0.50,
-            GameFlags.BOSS_SCALE: 0.30,
+            GameFlags.BOSS_SCALE: 0.10,
             GameFlags.LOCKED_CHARS: 0.25,
-            GameFlags.DUPLICATE_CHARS: 0.25
+            GameFlags.DUPLICATE_CHARS: 0.25,
+            GameFlags.EPOCH_FAIL: 0.5,
+            GameFlags.GEAR_RANDO: 0.25,
+            GameFlags.HEALING_ITEM_RANDO: 0.25
         }
 
     def __str__(self):
@@ -246,7 +264,7 @@ class Settings:
 
         self.mystery_settings = MysterySettings()
 
-        self.gameflags = GameFlags.FIX_GLITCH
+        self.gameflags = GameFlags(0)
         self.char_choices = [[i for i in range(7)] for j in range(7)]
 
         BossID = ctenums.BossID
@@ -258,15 +276,30 @@ class Settings:
                       BossID.GUARDIAN]
 
         loc_list = ctenums.LocID.get_boss_locations()
-        # loc_list.remove(LocID.SUN_PALACE)
-        # loc_list.remove(LocID.SUNKEN_DESERT_DEVOURER)
 
         self.ro_settings = ROSettings(loc_list, boss_list, False)
-        self.bucket_settings = BucketSettings(30, 20)
+        self.bucket_settings = BucketSettings()
 
         self.tab_settings = TabSettings()
-        self.cosmetic_flags = CosmeticFlags(False)
+        self.cosmetic_flags = CosmeticFlags(0)
         self.seed = ''
+
+        self.char_names: list[str] = [
+            'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus',
+            'Epoch'
+        ]
+
+    def _jot_json(self):
+        return {
+            "seed": self.seed,
+            "mode": str(self.game_mode),
+            "enemy_difficulty": str(self.enemy_difficulty),
+            "item_difficulty": str(self.item_difficulty),
+            "tech_order": str(self.techorder),
+            "shops": str(self.shopprices),
+            "flags": self.gameflags,
+            "cosmetic_flags": self.cosmetic_flags
+        }
 
     def get_race_presets():
         ret = Settings()
@@ -355,7 +388,8 @@ class Settings:
             GameMode.STANDARD: 'st',
             GameMode.LOST_WORLDS: 'lw',
             GameMode.ICE_AGE: 'ia',
-            GameMode.LEGACY_OF_CYRUS: 'loc'
+            GameMode.LEGACY_OF_CYRUS: 'loc',
+            GameMode.VANILLA_RANDO: 'van'
         }
 
         flag_str_dict = {
@@ -366,7 +400,6 @@ class Settings:
             GameFlags.FAST_PENDANT: 'p',
             GameFlags.LOCKED_CHARS: 'c',
             GameFlags.UNLOCKED_MAGIC: 'm',
-            GameFlags.QUIET_MODE: 'q',
             GameFlags.CHRONOSANITY: 'cr',
             GameFlags.TAB_TREASURES: 'tb',
             GameFlags.DUPLICATE_CHARS: 'dc',
@@ -384,9 +417,16 @@ class Settings:
         else:
             # Now we have difficulty for enemies and items separated, but to
             # match the old flag string, just use enemy difficulty.
+            # This won't match for easy, since there's no easy enemy
+            # difficulty.
             flag_string = ''
             flag_string += (game_mode_dict[self.game_mode] + '.')
             flag_string += diff_str_dict[self.enemy_difficulty]
+
+            # Add the item difficulty if it differs
+            # (old 'e' will end up as 'ne')
+            if self.item_difficulty != self.enemy_difficulty:
+                flag_string += diff_str_dict[self.item_difficulty]
 
             for flag in flag_str_dict:
                 if flag in self.gameflags:

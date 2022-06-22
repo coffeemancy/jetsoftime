@@ -2,6 +2,8 @@
 from byteops import to_little_endian as tle, to_rom_ptr
 from ctrom import CTRom
 from freespace import FSWriteType
+import ctenums
+import ctevent
 
 # This is what happens to XP when an enemy is defeated
 # $FD/ABD6 BF 00 5E CC LDA $CC5E00,x[$CC:5E85] <-- XP
@@ -86,6 +88,16 @@ def double_xp(ctrom: CTRom, mem_addr: int = 0x7E287E):
 
     fsrom.seek(rt_addr)
     fsrom.write(rt, FSWriteType.MARK_USED)
+
+    script = ctrom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
+    EF = ctevent.EF
+    EC = ctevent.EC
+
+    st_cmd = EC.assign_val_to_mem(0x100, 0x7F01CD, 2)
+    pos = script.find_exact_command(st_cmd)
+
+    new_cmd = EC.assign_val_to_mem(0, mem_addr, 1)
+    script.insert_commands(new_cmd.to_bytearray(), pos)
 
 
 def scale_xp(ctrom: CTRom, mem_addr: int, scale_factor: int):

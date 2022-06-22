@@ -816,15 +816,23 @@ class ConsumableKeyEffect(ItemData):
     MAX_ID = 0xF1
 
     @property
-    def heals_in_battle(self):
+    def heals_in_menu(self):
         return self._data[0] == 0x80
 
-    @heals_in_battle.setter
-    def heals_in_battle(self, val: bool):
-        if val:
-            self._data[0] = 0x80
-        else:
-            self._data[0] &= 0x7F
+    @heals_in_menu.setter
+    def heals_in_menu(self, val: bool):
+        self._data[0] &= 0x7F
+        self._data[0] |= (0x80 * val)
+    
+    @property
+    def heals_in_battle_only(self):
+        return self._data[0] == 0x04
+
+    @heals_in_battle_only.setter
+    def heals_in_battle_only(self, val: bool):
+        bit = 0x04
+        self._data[0] &= (0xFF - bit)
+        self._data[0] |= (bit * val)
 
     @property
     def heals_at_save(self):
@@ -906,6 +914,21 @@ class Item:
         self.name = bytearray(name_bytes)
         self.desc = bytearray(desc_bytes)
 
+    def _jot_json(self):
+        return {
+            'name': self.get_name_as_str(True),
+            'desc': self.get_desc_as_str(),
+            'price': self.price
+        }
+
+    def __eq__(self, other):
+        return (
+            self.stats == other.stats and
+            self.secondary_stats == other.secondary_stats and
+            self.name == other.name and
+            self.desc == other.desc
+        )
+
     def is_armor(self):
         return isinstance(self.stats, ArmorStats)
 
@@ -975,11 +998,28 @@ class Item:
         # print(self.name)
         rom[name_st:name_end] = self.name
 
-    def get_name_as_str(self):
-        return str(ctstrings.CTNameString(self.name))
+    def get_name_as_str(self, remove_prefix: bool = False):
+        if remove_prefix:
+            start = 1
+        else:
+            start = 0
+        return str(ctstrings.CTNameString(self.name[start:]))
 
     def set_name_from_str(self, name_str: str):
         self.name = ctstrings.CTNameString.from_string(name_str, 11)
+
+    def get_desc_as_str(self):
+        return ctstrings.CTString.ct_bytes_to_ascii(
+            self.desc[0:-1]
+        )
+
+    def set_desc_from_str(self, name_str: str):
+        desc = ctstrings.CTString.from_str(name_str)
+        if desc[-1] != 0:
+            desc.append(0)
+
+        desc.compress()
+        self.desc = desc
 
     @classmethod
     def get_desc_ptr_file_start_from_rom(cls, rom: bytes):
@@ -1144,7 +1184,8 @@ class ItemDB:
                     }
                     start_str = tech_names[item_id]
                 elif item_id == IID.HERO_MEDAL:
-                    start_str = 'Masa C:50%'
+                    # start_str = 'Masa C:50%'
+                    pass
                 elif item_id in (IID.SIGHTSCOPE, IID.ROBORIBBON):
                     start_str = 'Show HP'
 
@@ -1184,7 +1225,7 @@ class ItemDB:
             else:
                 mag_str = str(item.stats.get_heal_amount())
 
-            if item.stats.heals_in_battle:
+            if item.stats.heals_in_menu:
                 string = 'Restores ' + mag_str + ' ' + stat_str
                 # Item targeting is not in this data.
                 # Vanilla Mid Tonic == Lapis
@@ -1199,6 +1240,11 @@ class ItemDB:
                 string = 'Restores ' + mag_str + ' ' + stat_str \
                     + ' at Save Pts.{null}'
                 item.desc = ctstrings.CTString.from_str(string)
+            elif item.stats.heals_in_battle_only:
+                if item_id == ctenums.ItemID.REVIVE:
+                    heal_amt = item.stats.get_heal_amount()
+                    string = f'Revives fallen ally w/ {heal_amt} HP{{null}}'
+                    item.desc = ctstrings.CTString.from_str(string)
 
             return
 
@@ -1321,3 +1367,6 @@ class ItemDB:
         rom_data.write(int.to_bytes(0x80 | self.base_mp_healing, 1, 'little'))
 
         # fs.print_blocks()
+
+    def _jot_json(self):
+        return {str(x): self.item_dict[x] for x in self.item_dict}

@@ -273,7 +273,8 @@ def commitKeyItems(settings: rset.Settings,
 
                 # This is a baseline location without a key item.
                 # Assign a piece of treasure if it has none.
-                if location.getKeyItem() in (ctenums.ItemID.NONE,
+                if location.getKeyItem() in (None,
+                                             ctenums.ItemID.NONE,
                                              ctenums.ItemID.MOP):
                     location.writeRandomItem(config)
 

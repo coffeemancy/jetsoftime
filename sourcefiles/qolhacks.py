@@ -226,17 +226,14 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
 
 
 def enable_boss_sightscope(config: cfg.RandoConfig):
-
+    
     for boss in list(ctenums.BossID):
         boss_data = config.boss_data_dict[boss]
         for part in set(boss_data.scheme.ids):
             config.enemy_dict[part].can_sightscope = True
 
 
-def set_guaranteed_drops(ctrom: CTRom, settings: rset.Settings):
-    if rset.GameFlags.GUARANTEED_DROPS not in settings.gameflags:
-        return
-
+def set_guaranteed_drops(ctrom: CTRom):
     # If charm == drop, item drops are guaranteed.  However, when the
     # charm and drop are different, there is a chance of no drop.
     # It looks like CT checks (random_num % 100) < 90
