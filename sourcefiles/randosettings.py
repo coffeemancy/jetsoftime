@@ -282,6 +282,7 @@ class Settings:
 
         self.tab_settings = TabSettings()
         self.cosmetic_flags = CosmeticFlags(0)
+        self.cosmetic_menu_background = 0
         self.seed = ''
 
         self.char_names: list[str] = [
