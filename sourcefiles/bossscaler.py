@@ -80,17 +80,13 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
     Use the key item placement and boss assignment to determine the rank of
     each boss.
     '''
-    # First, boss scaling only works for normal logic
+    # First, boss scaling only works for normal logic, standard_mode
     chronosanity = rset.GameFlags.CHRONOSANITY in settings.gameflags
-    lost_worlds = settings.game_mode == rset.GameMode.LOST_WORLDS
+    # epoch_fail = rset.GameFlags.EPOCH_FAIL in settings.gameflags
+    standard_mode = settings.game_mode == rset.GameMode.STANDARD
     boss_scaling = rset.GameFlags.BOSS_SCALE in settings.gameflags
 
-    if not boss_scaling:
-        return
-
-    if chronosanity or lost_worlds:
-        print('Boss scaling not compatible with either Lost Worlds or '
-              'Chronosanity.  Returning.')
+    if not boss_scaling or not standard_mode or chronosanity:
         return
 
     # I can't do this because of a circular import.
@@ -214,24 +210,23 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
                 # Other TIDs are straightforward.  Add their prerequisite item
                 # to the important_keys pool if they have one.  Rank their
                 # boss if they have one.
-                if tid in loc_dict.keys():
+                if tid in loc_dict:
                     location = loc_dict[tid]
                     boss = boss_assign[location]
                     boss_rank[boss] = rank
                     # print(f"Setting {boss} to rank {rank}")
 
-                if tid in item_req_dict.keys():
+                if tid in item_req_dict:
                     item = item_req_dict[tid]
                     important_keys.append(item)
                     # print(f"Adding {item} to important keys")
 
-                if (
-                        tid not in loc_dict.keys() and
-                        tid not in item_req_dict.keys() and
-                        tid not in no_req_tids
-                ):
-                    print(f"Warning: {tid} not in either dictionary")
-                    input()
+                # if (
+                #         tid not in loc_dict.keys() and
+                #         tid not in item_req_dict.keys() and
+                #         tid not in no_req_tids
+                # ):
+                #     print(f"Warning: {tid} not in either dictionary")
 
         # Really, this just happens on the first iteration of the loop.
         if rank > 2:
