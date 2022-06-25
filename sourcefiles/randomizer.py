@@ -1438,40 +1438,41 @@ class Randomizer:
             falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
             techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
 
-            # Change Cure to ReRaise
-            if rset.GameFlags.MARLE_REWORK in settings.gameflags:
-                cure = techdb.get_tech(ctenums.TechID.CURE)
-                reraise = techdb.get_tech(ctenums.TechID.LIFE_2_M)
-                reraise['gfx'][0] = 0x87
-                reraise['gfx'][6] = 0xFF
-                reraise['control'][5] = 0x3E
-                reraise['name'] = ctstrings.CTNameString.from_string(
-                    '*Reraise'
-                )
-                reraise['desc_ptr'] = None
-                new_desc = ctstrings.CTString.from_str(
-                    'Greendream effect on one ally.{null}'
-                )
-                reraise['desc'] = new_desc
-                reraise['target'] = bytearray(cure['target'])
-                techdb.mps[ctenums.TechID.CURE] = 15
-                techdb.set_tech(reraise, ctenums.TechID.CURE)
-                techdb.menu_usable_ids[ctenums.TechID.CURE] = False
+            # Change Cure to ReRaise, Speed to 9 for Marle
+            cure = techdb.get_tech(ctenums.TechID.CURE)
+            reraise = techdb.get_tech(ctenums.TechID.LIFE_2_M)
+            reraise['gfx'][0] = 0x87
+            reraise['gfx'][6] = 0xFF
+            reraise['control'][5] = 0x3E
+            reraise['name'] = ctstrings.CTNameString.from_string(
+                '*Reraise'
+            )
+            reraise['desc_ptr'] = None
+            new_desc = ctstrings.CTString.from_str(
+                'Greendream effect on one ally.{null}'
+            )
+            reraise['desc'] = new_desc
+            reraise['target'] = bytearray(cure['target'])
+            techdb.mps[ctenums.TechID.CURE] = 15
+            techdb.set_tech(reraise, ctenums.TechID.CURE)
+            techdb.menu_usable_ids[ctenums.TechID.CURE] = False
 
-                marle = config.char_manager.pcs[ctenums.CharID.MARLE]
-                marle.stats.cur_stats[2] = 9  # Speed to 9
+            marle = config.char_manager.pcs[ctenums.CharID.MARLE]
+            marle.stats.cur_stats[2] = 9  # Speed to 9
 
-            # Remove on-hit effects from robo tackle
             # Reduce Robo tackle to 24 power (follow +15% rule)
-            if rset.GameFlags.ROBO_REWORK in settings.gameflags:
-                tackle_id = int(ctenums.TechID.ROBO_TACKLE)
+            tackle_id = int(ctenums.TechID.ROBO_TACKLE)
+            power_byte = tackle_id*techdb.effect_size + 9
+            techdb.effects[power_byte] = 24
+
+            # Now, the flag keeps tackle effects on (do nothing vs patch.ips)
+            # If the flag is not present, reset the on-hit byte.
+            if rset.GameFlags.TACKLE_EFFECTS_ON not in settings.gameflags:
                 on_hit_byte = tackle_id*techdb.effect_size + 8
                 techdb.effects[on_hit_byte] = 0
-                power_byte = tackle_id*techdb.effect_size + 9
-                techdb.effects[power_byte] = 24
 
             # Revert antilife to black hole
-            if rset.GameFlags.BLACKHOLE_REWORK in settings.gameflags:
+            if rset.GameFlags.USE_ANTILIFE not in settings.gameflags:
                 TechDB = charrando.TechDB
                 vanilla_db = TechDB.get_default_db(ct_vanilla)
                 black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
@@ -1497,61 +1498,56 @@ class Randomizer:
 
             # Make X-Strike use Spincut+Leapslash
             # Also buff 3d-attack and triple raid
-            if rset.GameFlags.BUFF_XSTRIKE in settings.gameflags:
-                techdb = config.techdb
-                x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
-                x_strike['control'][5] = int(ctenums.TechID.SPINCUT)
-                x_strike['control'][6] = int(ctenums.TechID.LEAP_SLASH)
+            x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
+            x_strike['control'][5] = int(ctenums.TechID.SPINCUT)
+            x_strike['control'][6] = int(ctenums.TechID.LEAP_SLASH)
 
-                # Crono's techlevel = 4 (spincut)
-                # Frog's techlevel = 5 (leapslash)
-                x_strike['lrn_req'] = [4, 5, 0xFF]
+            # Crono's techlevel = 4 (spincut)
+            # Frog's techlevel = 5 (leapslash)
+            x_strike['lrn_req'] = [4, 5, 0xFF]
 
-                x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
-                x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
-                techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
+            x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
+            x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
+            techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
 
-                # 3d-atk
-                three_d_atk = techdb.get_tech(ctenums.TechID.THREE_D_ATTACK)
-                three_d_atk['control'][6] = int(ctenums.TechID.SPINCUT)
-                three_d_atk['control'][7] = int(ctenums.TechID.LEAP_SLASH)
+            # 3d-atk
+            three_d_atk = techdb.get_tech(ctenums.TechID.THREE_D_ATTACK)
+            three_d_atk['control'][6] = int(ctenums.TechID.SPINCUT)
+            three_d_atk['control'][7] = int(ctenums.TechID.LEAP_SLASH)
 
-                three_d_atk['mmp'][0] = int(ctenums.TechID.SPINCUT)
-                three_d_atk['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
+            three_d_atk['mmp'][0] = int(ctenums.TechID.SPINCUT)
+            three_d_atk['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
 
-                three_d_atk['lrn_req'] = [4, 5, 8]
-                techdb.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
+            three_d_atk['lrn_req'] = [4, 5, 8]
+            techdb.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
 
-                # Triple Raid
-                triple_raid = techdb.get_tech(ctenums.TechID.TRIPLE_RAID)
-                triple_raid['control'][5] = int(ctenums.TechID.SPINCUT)
-                triple_raid['control'][7] = int(ctenums.TechID.LEAP_SLASH)
+            # Triple Raid
+            triple_raid = techdb.get_tech(ctenums.TechID.TRIPLE_RAID)
+            triple_raid['control'][5] = int(ctenums.TechID.SPINCUT)
+            triple_raid['control'][7] = int(ctenums.TechID.LEAP_SLASH)
 
-                triple_raid['mmp'][0] = int(ctenums.TechID.SPINCUT)
-                triple_raid['mmp'][2] = int(ctenums.TechID.LEAP_SLASH)
+            triple_raid['mmp'][0] = int(ctenums.TechID.SPINCUT)
+            triple_raid['mmp'][2] = int(ctenums.TechID.LEAP_SLASH)
 
-                triple_raid['lrn_req'] = [4, 4, 5]
-                techdb.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
+            triple_raid['lrn_req'] = [4, 4, 5]
+            techdb.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
 
-            if rset.GameFlags.AYLA_REBALANCE in settings.gameflags:
-                # Apply Ayla Changes
-                combo_tripkick_effect_id = 0x3D
-                rock_tech_effect_id = int(ctenums.TechID.ROCK_THROW)
+            # Ayla changes
+            combo_tripkick_effect_id = 0x3D
+            rock_tech_effect_id = int(ctenums.TechID.ROCK_THROW)
 
-                techdb = config.techdb
-                effects = techdb.effects
-                power_byte = 9
+            effects = techdb.effects
+            power_byte = 9
+            # Triple Kick combo power set to 0x2B=43 to match single
+            # tech power
+            trip_pwr = combo_tripkick_effect_id*techdb.effect_size + \
+                power_byte
+            effects[trip_pwr] = 0x2B
 
-                # Triple Kick combo power set to 0x2B=43 to match single
-                # tech power
-                trip_pwr = combo_tripkick_effect_id*techdb.effect_size + \
-                    power_byte
-                effects[trip_pwr] = 0x2B
-
-                # Rock throw getting the 15% boost that tripkick got
-                # From 0x1E=30 to 0x23=35
-                rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
-                effects[rock_pwr] = 0x23
+            # Rock throw getting the 15% boost that tripkick got
+            # From 0x1E=30 to 0x23=35
+            rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
+            effects[rock_pwr] = 0x23
 
         # The following changes can happen regardless of mode.
         if rset.GameFlags.EPOCH_FAIL in settings.gameflags:

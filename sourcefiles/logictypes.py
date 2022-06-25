@@ -148,7 +148,7 @@ class Game:
         # backtrack and a character is no longer available.
         self.characters.clear()
 
-        if rset.GameFlags.FIRST_TWO in self.settings.gameflags and \
+        if rset.GameFlags.STARTERS_SUFFICIENT in self.settings.gameflags and \
            self.settings.game_mode == rset.GameMode.STANDARD:
             self.addCharacter(
                 self.charLocations[RecruitID.STARTER_1].held_char

@@ -1146,6 +1146,34 @@ class RandoGUI:
             'character.')
         row = row + 1
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Randomize Healing Items (h)',
+            variable=self.flag_dict[GameFlags.HEALING_ITEM_RANDO]
+        )
+        checkbox.grid(row=row, column=0, stick=tk.W, columnspan=2)
+
+        CreateToolTip(
+            checkbox,
+            'Amount healed by Tonics and Ethers are randomized.  Strength '
+            'order of regular/mid/full is preserved.  Lapis can roll as a '
+            'party-wide MP heal.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Randomize Gear (q)',
+            variable=self.flag_dict[GameFlags.GEAR_RANDO]
+        )
+        checkbox.grid(row=row, column=2, stick=tk.W, columnspan=2)
+
+        CreateToolTip(
+            checkbox,
+            'Random effects on some accessories.  Random stat boosts and '
+            'effects on weapons and armor according to their tier.'
+        )
+        row += 1
+
         # Mystery seed checkbox
         self.mystery_checkbox = tk.Checkbutton(
             frame,
@@ -1961,10 +1989,10 @@ class RandoGUI:
 
         frame.pack(side=tk.TOP)
 
-        extraoptionframe = ttk.Frame(parent)
+        extraoptionframe = ttk.Frame(outerframe)
 
         checkbox = tk.Checkbutton(
-            outerframe,
+            extraoptionframe,
             text='Legacy Boss Placement',
             variable=self.preserve_part_count
         )
@@ -1976,7 +2004,20 @@ class RandoGUI:
             'be placed in locations which normally contain an N part boss. '
         )
 
-        extraoptionframe.pack()
+        checkbox = tk.Checkbutton(
+            extraoptionframe,
+            text='Boss Spot HPs',
+            variable=self.flag_dict[GameFlags.BOSS_SPOT_HP]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Boss HP in boss rando is determined by the spot instead of the '
+            'usual scaling algorithm'
+        )
+
+        extraoptionframe.pack(anchor=tk.W)
 
         return outerframe
 
@@ -2050,94 +2091,35 @@ class RandoGUI:
 
         checkbox = tk.Checkbutton(
             frame,
-            text='Buff X-Strike',
-            variable=self.flag_dict[GameFlags.BUFF_XSTRIKE]
+            text='Use Anti-Life',
+            variable=self.flag_dict[GameFlags.USE_ANTILIFE]
         )
         checkbox.pack(anchor=tk.W)
 
         CreateToolTip(
             checkbox,
-            'Change X-Strike to use Spincut + Leapslash.  Also alters the '
-            'triple techs 3D-Attack and Triple Raid which obviously use '
-            'X-Strike as a component.'
+            'Anti-Life is a powerful, single target, nonelemental spell '
+            'which also kills its user.  If enabled, this will replace black '
+            'hole in Magus\'s tech list.'
         )
 
         checkbox = tk.Checkbutton(
             frame,
-            text='Ayla Rebalance',
-            variable=self.flag_dict[GameFlags.AYLA_REBALANCE]
+            text='Tackle On-Hit Effects',
+            variable=self.flag_dict[GameFlags.TACKLE_EFFECTS_ON]
         )
         checkbox.pack(anchor=tk.W)
 
         CreateToolTip(
             checkbox,
-            'Reduce triple kick from 50 to 43 power in combo techs to match '
-            'the single tech version.  Increase rock throw from 30 to 35 '
-            'power to match the ~15% boost given to triple kick.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Black Hole Rework',
-            variable=self.flag_dict[GameFlags.BLACKHOLE_REWORK]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Black Hole regains its original animation and area of effect. '
-            'Instead of 40% chance of instant death, the spell does '
-            'nonelemental damage equal to Mega Bomb\'s power (32). '
-            'Additionally, Black Hole\'s power increases with dead allies '
-            'like Doomsickle.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Robo Rework',
-            variable=self.flag_dict[GameFlags.ROBO_REWORK]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Robo Tackle regains its vanilla functionality in which it '
-            'ignores on-hit effects from weapons, most notably the Crisis Arm.'
-            ' In addition, Robo tackle\'s power is reduced from 30 to 24, '
-            'putting it in line with other techs with the Ayla formula.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Randomize Healing Items',
-            variable=self.flag_dict[GameFlags.HEALING_ITEM_RANDO]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Amount healed by Tonics and Ethers are randomized.  Strength '
-            'order of regular/mid/full is preserved.  Lapis can roll as a '
-            'party-wide MP heal.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Randomize Gear',
-            variable=self.flag_dict[GameFlags.GEAR_RANDO]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Random effects on some accessories.  Random stat boosts and '
-            'effects on weapons and armor according to their tier.'
+            'Allow Robo Tackle to gain the on hit effects of weapons, most '
+            'notably, the Crisis Arm.'
         )
 
         checkbox = tk.Checkbutton(
             frame,
             text='Starters Sufficient',
-            variable=self.flag_dict[GameFlags.FIRST_TWO]
+            variable=self.flag_dict[GameFlags.STARTERS_SUFFICIENT]
         )
         checkbox.pack(anchor=tk.W)
 
@@ -2151,7 +2133,7 @@ class RandoGUI:
 
         checkbox = tk.Checkbutton(
             frame,
-            text='Epoch Fail',
+            text='Epoch Fail (ef)',
             variable=self.flag_dict[GameFlags.EPOCH_FAIL]
         )
         checkbox.pack(anchor=tk.W)
@@ -2163,36 +2145,9 @@ class RandoGUI:
             'to Dalton in the Snail Stop to upgrade the Epoch.'
         )
 
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Marle Rework',
-            variable=self.flag_dict[GameFlags.MARLE_REWORK]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Marle starts with 9 speed and cure becomes Reraise which '
-            'gives the Greendream effect.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Boss Spot HPs',
-            variable=self.flag_dict[GameFlags.BOSS_SPOT_HP]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Boss HP in boss rando is determined by the spot instead of the '
-            'usual scaling algorithm'
-        )
-
-
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
-            text='Bucket Fragments',
+            text='Bucket Fragments (k)',
             variable=self.flag_dict[GameFlags.BUCKET_FRAGMENTS]
         )
         self.bucket_fragment_checkbox.pack(anchor=tk.W)

@@ -64,18 +64,15 @@ class GameFlags(Flag):
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
     BUCKET_FRAGMENTS = auto()
-    BUFF_XSTRIKE = auto()
     MYSTERY = auto()
-    AYLA_REBALANCE = auto()
     BOSS_SIGHTSCOPE = auto()
-    BLACKHOLE_REWORK = auto()
-    ROBO_REWORK = auto()
+    USE_ANTILIFE = auto()
+    TACKLE_EFFECTS_ON = auto()
     HEALING_ITEM_RANDO = auto()
     FREE_MENU_GLITCH = auto()
     GEAR_RANDO = auto()
-    FIRST_TWO = auto()
+    STARTERS_SUFFICIENT = auto()
     EPOCH_FAIL = auto()
-    MARLE_REWORK = auto()
     BOSS_SPOT_HP = auto()
 
 # Dictionary for what flags force what other flags off.
@@ -99,7 +96,6 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
-    _GF.BUFF_XSTRIKE: _GF(0),
     _GF.MYSTERY: _GF(0),
     _GF.GEAR_RANDO: _GF(0),
     _GF.HEALING_ITEM_RANDO: _GF(0),
@@ -116,9 +112,7 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
     ),
     _GM.VANILLA_RANDO: (
-        _GF.BOSS_SCALE | 
-        _GF.BUFF_XSTRIKE | _GF.BUCKET_FRAGMENTS | _GF.AYLA_REBALANCE |
-        _GF.BLACKHOLE_REWORK | _GF.MARLE_REWORK | _GF.ROBO_REWORK
+        _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
     )
 }
 
@@ -139,7 +133,6 @@ _forced_on_dict = {
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
     _GF.BUCKET_FRAGMENTS: _GF(0),
-    _GF.BUFF_XSTRIKE: _GF(0),
     _GF.MYSTERY: _GF(0),
     _GF.GEAR_RANDO: _GF(0),
     _GF.HEALING_ITEM_RANDO: _GF(0),
@@ -403,6 +396,10 @@ class Settings:
             GameFlags.CHRONOSANITY: 'cr',
             GameFlags.TAB_TREASURES: 'tb',
             GameFlags.DUPLICATE_CHARS: 'dc',
+            GameFlags.HEALING_ITEM_RANDO: 'h',  # h for Healing
+            GameFlags.GEAR_RANDO: 'q',  # q for eQuipment (g taken)
+            GameFlags.EPOCH_FAIL: 'ef',  # ef for Epoch Fail
+            GameFlags.BUCKET_FRAGMENTS: 'k'  # k for bucKet
         }
 
         shop_str_dict = {
@@ -428,6 +425,8 @@ class Settings:
             if self.item_difficulty != self.enemy_difficulty:
                 flag_string += diff_str_dict[self.item_difficulty]
 
+            # Add a . between mode and difficulty to free up symbols
+            flag_string += '.'
             for flag in flag_str_dict:
                 if flag in self.gameflags:
                     flag_string += flag_str_dict[flag]
