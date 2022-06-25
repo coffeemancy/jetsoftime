@@ -253,6 +253,9 @@ class EnemyStats:
 
         self._reward_data = bytearray(reward_bytes)
 
+    def get_stat_bytes(self):
+        return bytes(self._stat_data)
+
     # Property for getting/setting name
     @property
     def name(self) -> str:
