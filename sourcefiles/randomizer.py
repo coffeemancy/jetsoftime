@@ -1352,6 +1352,8 @@ class Randomizer:
             ctrom, *settings.char_names
         )
 
+        cosmetichacks.set_default_background_menu(ctrom, settings)
+
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
         '''Turn vanilla ct rom into default objects for a config.

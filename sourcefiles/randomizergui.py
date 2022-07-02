@@ -141,6 +141,9 @@ class RandoGUI:
         self.bucket_frag_extra_scale = None
         self.bucket_frag_extra = tk.IntVar(value=10)
 
+        self.cosmetic_menu_background = tk.IntVar(value=1)
+        self.cosmetic_menu_background.trace_add('write', lambda name, index, mode, iv=self.cosmetic_menu_background: iv.set(sorted((1, iv.get(), 8))[1]))
+
         # Mystery Settings.
         # We have to make tk variable copies of the data structure.
         # There must be a better way.
@@ -342,6 +345,8 @@ class RandoGUI:
         # Cosmetic flags
         cosmetic_flags = [x for x in list(CosmeticFlags)
                           if self.cosmetic_flag_dict[x].get() == 1]
+                          
+        self.settings.cosmetic_menu_background = self.cosmetic_menu_background.get()-1
 
         self.settings.char_names[0] = self.char_names['Crono'].get()
         self.settings.char_names[1] = self.char_names['Marle'].get()
@@ -461,6 +466,9 @@ class RandoGUI:
         self.char_names['Ayla'].set(self.settings.char_names[5])
         self.char_names['Magus'].set(self.settings.char_names[6])
         self.char_names['Epoch'].set(self.settings.char_names[7])
+
+        #menu background
+        self.cosmetic_menu_background.set(self.settings.cosmetic_menu_background + 1)
 
         # Update difficulties
         self.enemy_difficulty.set(
@@ -2267,6 +2275,36 @@ class RandoGUI:
             entry.pack(side=tk.LEFT)
             tempframe.pack(anchor=tk.W)
 
+        self.get_cosmetic_menu_background_frame(frame).pack(fill=tk.X)
+
+        return frame
+        
+    def get_cosmetic_menu_background_frame(self, parent):
+        frame = tk.Frame(
+            parent, borderwidth=1, highlightbackground='black',
+            highlightthickness=1
+        )
+        
+        frame.columnconfigure(0, weight=1)
+        
+        label = tk.Label(frame, text='Menu Background')
+        label.grid(column=0, row=0, sticky=tk.W, ipadx=10, ipady=8)
+        CreateToolTip(
+            label,
+            'Controls the default menu background option. '
+            'Corrosponds to the in-game options menu, i.e. '
+            '1 = default gray, 3 = Final Fantasy blue, etc'
+        )
+        
+        bg = self.cosmetic_menu_background
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                bg,
+                                *[i+1 for i in range(8)],
+                                )
+        dropdown.grid(column=2, row=0, sticky=tk.E)
+        
         return frame
 
     def get_mystery_page(self):
