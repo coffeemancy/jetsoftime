@@ -1,7 +1,8 @@
 
 from byteops import get_value_from_bytes, to_file_ptr
-from ctenums import CharID
+from ctenums import CharID, LocID
 from ctrom import CTRom
+import ctevent
 
 import randosettings as rset
 import randoconfig as cfg
@@ -59,6 +60,16 @@ def write_ctrom(ctrom: CTRom,
             # 0xFF works here but confuses the dc flag into thinking that the
             # chars are not magic users.
             rom_data.write(b'\x08')
+
+def add_tracker_hook(ct_rom: CTRom):
+    # For the tracker:  Set the flag 0x7F00E1 & 0x02 to indicate
+    # magic is learned
+    script = ct_rom.script_manager.get_script(LocID.TELEPOD_EXHIBIT)
+    EC = ctevent.EC
+
+    hook_pos = script.get_function_start(0x0E, 4)
+    set_flag_cmd = EC.set_bit(0x7F00E1, 0x02)
+    script.insert_commands(set_flag_cmd.to_bytearray(), hook_pos)
 
 
 # This is more in line with how the other randomizer functions work

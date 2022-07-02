@@ -808,6 +808,9 @@ class Randomizer:
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
 
+        if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
+            fastmagic.add_tracker_hook(self.out_rom)
+
         # Don't require visiting Flea/Slash rooms for Magus's Castle
         if self.settings.game_mode != rset.GameMode.LOST_WORLDS:
             # The Telepod script is different in LW.  Just ignore.
