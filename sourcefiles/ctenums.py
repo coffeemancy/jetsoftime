@@ -245,6 +245,11 @@ class LocID(StrIntEnum):
     MYSTIC_MTN_GULCH = 0x112
     LAIR_RUINS_PORTAL = 0x133
 
+    # Black Omen Panel Flashes
+    # BLACK_OMEN_TERRA_MUTANT
+    BLACK_OMEN_DEFENSE_CORRIDOR = 0x136
+    BLACK_OMEN_OMEGA_DEFENSE = 0x1C2
+
     # Death Peak for music change
     DEATH_PEAK_SOUTH_FACE = 0xF5
     DEATH_PEAK_SOUTHEAST_FACE = 0xF6

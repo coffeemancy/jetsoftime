@@ -26,6 +26,7 @@ import legacyofcyrus
 import mystery
 import vanillarando
 import epochfail
+import flashreduce
 
 import byteops
 import ctenums
@@ -1354,6 +1355,9 @@ class Randomizer:
         cosmetichacks.set_pc_names(
             ctrom, *settings.char_names
         )
+
+        if rset.CosmeticFlags.REDUCE_FLASH in cos_flags:
+            flashreduce.apply_all_flash_hacks(ctrom)
 
         cosmetichacks.set_default_background_menu(ctrom, settings)
 

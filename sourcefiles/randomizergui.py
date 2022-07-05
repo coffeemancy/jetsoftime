@@ -2260,6 +2260,17 @@ class RandoGUI:
             "Music is disabled.  Sound effects will still play."
         )
 
+        checkButton = tk.Checkbutton(
+            frame,
+            text="Reduce Flashes",
+            variable=self.cosmetic_flag_dict[CosmeticFlags.REDUCE_FLASH]
+        )
+        checkButton.pack(anchor=tk.W)
+        CreateToolTip(
+            checkButton,
+            "Reduces the number of bright flashes in the game."
+        )
+
         label = tk.Label(frame, text='Default Names:')
         label.pack(anchor=tk.W)
 

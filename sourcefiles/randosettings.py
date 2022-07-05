@@ -157,6 +157,7 @@ class CosmeticFlags(Flag):
     ZENAN_ALT_MUSIC = auto()
     DEATH_PEAK_ALT_MUSIC = auto()
     QUIET_MODE = auto()
+    REDUCE_FLASH = auto()
 
 
 class TabRandoScheme(StrIntEnum):
