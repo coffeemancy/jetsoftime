@@ -86,14 +86,17 @@ def remove_anim_cmd_80_flashes(ct_rom: ctrom.CTRom):
     Remove mode 0x40 flashes from animation command 0x80.
     '''
 
+    # If the routine would do a mode 0x50 (color add), instruct it to always
+    # use a setting which resets the palette to default.
     rt = bytearray.fromhex(
         'A5 54'        # LDA $54
         '29 40'        # AND #$40
         'D0 04'        # BNE #$04
-        '5C 3C F8 D1'  # JMP $D1F83C
+        'A9 20'        # LDA #$20  # This mode will reset the palettes
+        '80 04'        # BRA [OLD_START]
         'A5 53'        # LDA $53
         '29 F0'        # AND #$F0
-        'AA'           # TAX
+        'AA'           # TAX [OLD_START]
         '7B'           # TDC
         'A8'           # TAY
         '5C 54 F7 D1'  # JMP $D1F754
