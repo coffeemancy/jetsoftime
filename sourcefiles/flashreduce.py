@@ -4,13 +4,44 @@ import ctevent
 import ctrom
 
 
+def remove_effect_script_flashes(ct_rom: ctrom.CTRom):
+    '''
+    Manually edit effect scripts to remove flashes.
+    '''
+
+    # Ideally, we would have a parser for these effects, but since they are
+    # unlikely to move around on the rom, we're going to edit them in-place
+    # manually.
+    rom = ct_rom.rom_data
+
+    # Twister
+    twister_locs = (
+        0x117826,
+    )
+
+    spire_locs = (
+        0x1177D0, 0x1177CD, 0x1177D4, 0x1177D8, 0x1177DC, 0x1177E0, 0x1177E4,
+        0x1177E8, 0x1177EC, 0x1177F0, 0x1177F4, 0x1177F8
+    )
+
+    triple_raid_locs = (
+        0x1178E9, 0x1178EE, 0x116FB3, 0x116FBE, 0x116FC6, 0x116FC9,
+    )
+
+    total_locs = twister_locs + spire_locs + triple_raid_locs
+
+    for loc in total_locs:
+        rom.seek(loc)
+        rom.write(b'\xE0\x00')
+
+
 def remove_effect_cmd_C9_flashes(ct_rom: ctrom.CTRom):
     '''
     Disable effect command 0xC9 which allows effects to do color math.
     '''
     
     # Effect command 0xC9 will just be disabled.  There's no safe way to keep
-    # it unless every script is parsed and altered.
+    # it unless every script is parsed and altered... which we're doing now.
 
     # This frees up the data [0x0D3041, 0x0D3083)
     new_rt = bytearray.fromhex(
@@ -32,8 +63,6 @@ def remove_effect_cmd_C9_flashes(ct_rom: ctrom.CTRom):
 def remove_effect_cmd_E8_flashes(ct_rom: ctrom.CTRom):
     '''
     Disable some modes of command 0x8E which are used to flash the screen.
-    
-    Call after remove_effect_cmd_C9_flashes to ensure free bytes.
     '''
 
     FSE = ctrom.freespace.FreeSpaceError
@@ -78,7 +107,7 @@ def remove_effect_cmd_80_flashes(ct_rom: ctrom.CTRom):
 
     # Free the rest of the routine.
     FSW = ctrom.freespace.FSWriteType
-    rom.space_manager.mark_block((0x11E899, 0x11E8C1), FSW.MARK_FREE)
+    rom.space_manager.mark_block((0x11E89A, 0x11E8C1), FSW.MARK_FREE)
 
 
 def remove_anim_cmd_80_flashes(ct_rom: ctrom.CTRom):
@@ -212,11 +241,11 @@ def remove_event_script_flashes(ct_rom: ctrom.CTRom):
             if pos is None:
                 break
 
-            script.delete_commands(pos, 1)
+            script.data[pos+1] = 0xE0
 
 
 def apply_all_flash_hacks(ct_rom: ctrom.CTRom):
-    remove_effect_cmd_C9_flashes(ct_rom)
+    # remove_effect_cmd_C9_flashes(ct_rom)
     remove_effect_cmd_E8_flashes(ct_rom)
     remove_effect_cmd_80_flashes(ct_rom)
     remove_anim_cmd_80_flashes(ct_rom)
@@ -225,3 +254,4 @@ def apply_all_flash_hacks(ct_rom: ctrom.CTRom):
     disable_ow_color_math(ct_rom)
 
     remove_event_script_flashes(ct_rom)
+    remove_effect_script_flashes(ct_rom)
