@@ -5,6 +5,8 @@ from typing import Tuple
 
 import byteops
 
+class FreeSpaceError(Exception):
+    pass
 
 class FSWriteType(Enum):
     MARK_USED = 0
@@ -98,6 +100,18 @@ class FreeSpace():
         if end > start+1:
             del(self.markers[start+1:end])
     # End of mark_block
+
+    def is_block_free(self, block) -> bool:
+        left = block[0]
+        right = block[1]
+
+        left_ind = self.__search(0, len(self.markers)-2, left)
+        right_ind = self.__search(0, len(self.mark_block)-2, right)
+
+        left_parity = left_ind % 2 == 0
+        left_free = left_parity == (self.first_free is True)
+
+        return (left_ind == right_ind) and left_free
 
     def extend_end_marker(self, new_end, is_free):
         last_free = self.__is_free(len(self.markers)-2)
