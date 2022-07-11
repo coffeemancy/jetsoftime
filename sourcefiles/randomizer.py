@@ -859,6 +859,7 @@ class Randomizer:
             vanillarando.restore_sos(self.out_rom, self.config)
 
         self.out_rom.write_all_scripts_to_rom()
+        self.out_rom.fix_snes_checksum()
         self.has_generated = True
 
     def get_generated_rom(self) -> bytearray:
@@ -1267,10 +1268,8 @@ class Randomizer:
         rom_data.patch_txt_file('./patches/faster_epoch_patch.txt')
         rom_data.patch_txt_file('./patches/faster_menu_dpad.txt')
 
-        # It should be safe to move the robo's ribbon code here since it
-        # also doesn't depend on flags and should be applied prior to anything
-        # else that messes with the items because it shuffles effects
-        # roboribbon.robo_ribbon_speed(rom_data.getbuffer())
+        # Add qwertymodo's MSU-1 patch
+        rom_data.patch_ips_file('./patches/chrono_msu1.ips')
 
     @classmethod
     def __apply_settings_patches(cls, ctrom: CTRom,
