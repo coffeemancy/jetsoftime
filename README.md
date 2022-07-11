@@ -30,7 +30,9 @@ Lastly, if you're having trouble running the executable, you can try using the o
 
 Designers: Anskiy, Abyssonym, Pseudoarc, Anguirel
 
-Developers: Anskiy, Abyssonym, Myself086, Anguirel, FutureForce14, gameboyf9, Psuedoarc, zeroPraxis
+Developers: Anskiy, Abyssonym, Myself086, Anguirel, FutureForce14, gameboyf9, Psuedoarc, zeroPraxis, mian, Rythyrix
+
+MSU-1 Support: Darkshock, qwertymodo, Cthulhu
 
 Technical Assistance: Mauron, Myself086, Lagolunatic, Psuedoarc
 
