@@ -1,4 +1,4 @@
-
+import functools
 import hashlib
 
 import ctevent
@@ -79,6 +79,52 @@ class CTRom():
             start += chunk_size
 
         return hasher.hexdigest() == 'a2bc447961e52fd2227baed164f729dc'
+
+    def fix_snes_checksum(self):
+        rom = self.rom_data
+
+        if len(rom.getbuffer()) == 0x400000:
+            exhirom = False
+        elif len(rom.getbuffer()) == 0x600000:
+            exhirom = True
+        else:
+            raise InvalidRomException('Invalid ROM size.')
+
+        # Write dummy checksums that add up to 0xFFFF like they ought.
+        rom.seek(0xFFDC)
+        rom.write(int(0xFFFF0000).to_bytes(4, 'little'))
+
+        if exhirom:
+            rom.seek(0x40FFDC)
+            rom.write(int(0xFFFF0000).to_bytes(4, 'little'))
+
+        def get_checksum(byte_seq: bytes) -> int:
+            return functools.reduce(
+                lambda x, y: (x+y) % 0x10000,
+                byte_seq,
+                0
+            )
+
+        # Compute the checksum of the first 0x400000
+        checksum = get_checksum(self.rom_data.getbuffer()[0:0x400000])
+
+        # Compute twice the expanded 2MB if exhirom
+        if exhirom:
+            checksum += 2*get_checksum(rom.getbuffer()[0x400000:0x600000])
+            checksum = checksum % 0x10000
+
+        inverse_checksum = checksum ^ 0xFFFF
+        checksum_b = inverse_checksum.to_bytes(2, 'little') + \
+            checksum.to_bytes(2, 'little')
+
+        # Write correct checksum out
+        rom.seek(0xFFDC)
+        rom.write(checksum_b)
+
+        # Mirror in bank 0x40 if exhirom
+        if exhirom:
+            rom.seek(0x40FFDC)
+            rom.write(checksum_b)
 
 
 def main():
