@@ -225,6 +225,24 @@ def disable_epoch_flash(ct_rom: ctrom.CTRom):
 
 
 def remove_event_script_flashes(ct_rom: ctrom.CTRom):
+
+    def remove_script_flashes(script: ctrom.ctevent.Event):
+        pos = script.get_function_start(0, 0)
+
+        # Any instantaneous flash is replaced with a return to no addition.
+        # This is represented by 'F1 E0 00'
+        while True:
+            pos, cmd = script.find_command([0xF1], pos)
+            if pos is None:
+                break
+
+            if script.data[pos+2] & 0x7F == 0:  # instantaneous
+                script.data[pos+1] = 0xE0  # Reset color.
+
+            pos += len(cmd)
+
+    # Be delicate with these because they sometimes have other color additions
+    # that are not actually a problem.
     loc_ids = (ctenums.LocID.BLACK_OMEN_DEFENSE_CORRIDOR,
                ctenums.LocID.BLACK_OMEN_TERRA_MUTANT,
                ctenums.LocID.BLACK_OMEN_OMEGA_DEFENSE)
@@ -242,6 +260,15 @@ def remove_event_script_flashes(ct_rom: ctrom.CTRom):
                 break
 
             script.data[pos+1] = 0xE0
+
+    generic_loc_ids = (
+        ctenums.LocID.HECKRAN_CAVE_PASSAGEWAYS,
+        ctenums.LocID.HECKRAN_CAVE_NEW
+    )
+
+    for loc_id in generic_loc_ids:
+        script = ct_rom.script_manager.get_script(loc_id)
+        remove_script_flashes(script)
 
 
 def apply_all_flash_hacks(ct_rom: ctrom.CTRom):
