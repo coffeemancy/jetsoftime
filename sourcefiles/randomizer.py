@@ -1269,7 +1269,7 @@ class Randomizer:
         rom_data.patch_txt_file('./patches/faster_menu_dpad.txt')
 
         # Add qwertymodo's MSU-1 patch
-        rom_data.patch_ips_file('./patches/chrono_msu1.ips')
+        # rom_data.patch_ips_file('./patches/chrono_msu1.ips')
 
     @classmethod
     def __apply_settings_patches(cls, ctrom: CTRom,
