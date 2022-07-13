@@ -8,7 +8,7 @@ URL: https://github.com/Anskiy/jetsoftime/
 
 https://sites.google.com/view/ctrandoinfo/home
 
-Online generator: http://anguirel.ddns.net/jot/
+Online generator: http://beta.ctjot.com (http://www.ctjot.com for stable)
 
 Contact: https://discord.gg/cKYjHwj
          
