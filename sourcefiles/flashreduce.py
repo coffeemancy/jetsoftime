@@ -263,7 +263,8 @@ def remove_event_script_flashes(ct_rom: ctrom.CTRom):
 
     generic_loc_ids = (
         ctenums.LocID.HECKRAN_CAVE_PASSAGEWAYS,
-        ctenums.LocID.HECKRAN_CAVE_NEW
+        ctenums.LocID.HECKRAN_CAVE_NEW,
+        ctenums.LocID.NORTHERN_RUINS_HEROS_GRAVE
     )
 
     for loc_id in generic_loc_ids:
