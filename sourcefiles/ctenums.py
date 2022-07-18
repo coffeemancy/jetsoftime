@@ -1406,6 +1406,7 @@ class StatusEffect(StrIntEnum):
     STOP = 0x80
 
 #structure of button bytes at 7e00{f6,f8,fa}, respects player rebound controls
+#order is the order of the array in which the button mappings are stored
 class ActionMap(StrIntEnum):
     CONFIRM = 0x80
     CANCEL = 0x08

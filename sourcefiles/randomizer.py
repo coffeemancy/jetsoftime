@@ -1361,7 +1361,7 @@ class Randomizer:
         settings.ctoptions.write_to_ctrom(ctrom)
         
         if settings.ctoptions.menu_background != 0:
-            cosmetichacks.set_default_background_menu(ctrom, settings) #GREPME needs to be rewritten to detect an already-hooked ROM
+            cosmetichacks.set_save_slot_background_hook(ctrom, settings)
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):

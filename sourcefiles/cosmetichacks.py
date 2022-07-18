@@ -140,70 +140,61 @@ def death_peak_singing_mountain_music(ctrom: CTRom,
     script.data[pos+1] = 0x52
 
 
-def set_default_background_menu(ctrom: CTRom,
-                             settings: rset.Settings):
+def set_save_slot_background_hook(ctrom: CTRom,
+                                  settings: rset.Settings):
 
     '''
-    Set the default menu background
+    Add hook to include empty save slots in default menu background.
+    Default menu background already handled by ctoptions.
     '''
     
     '''
-    The RAM address 7E2991, bits 0-2 store the current runtime menu background.
-    It is initialized from ROM into RAM from offset 0x02FCA7 , ref:
-    0295F1	02960A	CODE	N	Routines copy default config and button settings	2007.06.29
-
-        0295F1 ( A2 A6 FC ) LDX.W #$FCA6 ; source address, combined with MVN data bank operands, == C2FCA6
-
-        0295F4 ( A0 90 29 ) LDY.W #$2990 ; destination address, combined with MVN data bank operands, == 7E2990
-
-        0295F7 ( A9 0B 00 ) LDA.W #$000B ; length to copy -1 , ergo $0B == 11, thus total bytes == 11 + 1 = 12
-
-        0295FA ( 54 7E C2 ) MVN $C2, $7E ; execute copy, data banks C2 source 7E dest
+    The subroutine to clear memory for entering the menu zeroes out the memory region used to store the menu background index of each save slot.
     
-    The subroutine to render the save slots on the boot menu, save
-    Entry condition to hook is immediately after X register is read, and no further reads exist prior to TAX
+    The subroutine to render the save slots on the boot menu and save menus only reads SRAM for save data if the checksum passes.
     
-    most   least
-    xxxxx000 0x00 Default grey
-    xxxxx001 0x01 Brownish slate
-    xxxxx010 0x02 Final Fantasy blue
-    xxxxx011 0x03 Brown tiles
-    xxxxx100 0x04 Green w/ gold trim
-    xxxxx101 0x05 Faux Wood
-    xxxxx110 0x06 Black w/ silver trim
-    xxxxx111 0x07 Red wheat
+    If the checksum for a save slot fails, the index remains at 0, causing the renderer subroutine to read 00 as the menu background index
+    resulting in the default grey background.
+    
+    Entry condition from 0x02D2A6, save slot render subroutine:
+        A and X/Y are 16 bits wide
+        X and Y both contain nothing we want to keep
+        $79 contains current save slot
+        Z and C are clear
     '''
+
+    #TODO: prevent multiple calls to function from creating multiple copies of this subroutine in ROM, use case reconfiguring a ROM for which one does not have the settings object and seed / sharelink
     
-    if settings.cosmetic_menu_background == 0:
-        return
-        
+    val = settings.ctoptions.menu_background
     rom = ctrom.rom_data
     space_man = rom.space_manager
 
-    off = 0x02FCA7
+    vanilla = bytearray.fromhex(
+        'A5 78'            # LDA $78
+        '29 00 03'         # AND #$0300
+    )
 
-    rom.seek(off)
-    default_value = rom.read(1)
-    rom.seek(off)
+    rom.seek(0x02D2A6)
     
-    new_value = byteops.get_value_from_bytes(default_value) | settings.cosmetic_menu_background
-    
-    rom.write(new_value.to_bytes(1, 'little'))
+    hooked = rom.read(5) != vanilla
 
-    #Entry condition (from 0x02D2A6, save slot render subroutine), A and X/Y are 16 bits wide, X contains nothing we want to keep, $79 contains current save slot
+    #TODO: allow editing of already-extant hooked subroutine; use case: reconfiguring a ROM for which one does not have the settings object and seed / sharelink    
+    
+    if hooked:
+        return
     
     bg = bytearray.fromhex(
-        'E2 30'                         # SEP #$30 ; set A and X/Y to 8 bits; clears high byte of X/Y; irrelevent
-        'AD 0C 02'                      # LDA $020C ; check if slot has no data, will be 1A if there is no data or invalid data in the save slot
-        'C9 1A'                         # CMP #$1A ; known value
-        'D0 07'                         # BNE exit
-       f'A9 {new_value & 0x07:02x}'     # LDA #${new_value} ; Could do LDA $C2FCA7 here, but that consumes runtime clocks for no extra benefit
-        'A6 79'                         # LDX $79 ; get current save slot from memory, 16 bits wide
-        '9D 79 0D'                      # STA $0D79, X
-        'C2 33'                         # REP #$33 [exit]; reset A and X/Y to 16 bits, clear carry and zero flags, same as entry condition
-        'A5 78'                         # LDA #$78
-        '29 00 03'                      # AND #$0300
-        '6B'                            # RTL
+        'E2 30'            # SEP #$30 ; set A and X/Y to 8 bits; clears high byte of X/Y
+        'AD 0C 02'         # LDA $020C ; check if slot has no data, will be 1A if there is no data or invalid data in the save slot
+        'C9 1A'            # CMP #$1A ; known value
+        'D0 07'            # BNE exit
+       f'A9 {val:02x}'     # LDA #${new_value} ; Could do LDA $C2FCA7 and then AND #$07 here, but that consumes runtime clocks for no extra benefit
+        'A6 79'            # LDX $79 ; get current save slot from memory, 16 bits wide
+        '9D 79 0D'         # STA $0D79, X
+        'C2 33'            # REP #$33 [exit]; reset A and X/Y to 16 bits, clear carry and zero flags, same as entry condition
+        'A5 78'            # LDA $78
+        '29 00 03'         # AND #$0300
+        '6B'               # RTL
     )
     
     start = space_man.get_same_bank_free_addrs([len(bg)])

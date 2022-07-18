@@ -142,9 +142,6 @@ class RandoGUI:
         self.bucket_frag_extra_scale = None
         self.bucket_frag_extra = tk.IntVar(value=10)
 
-        self.cosmetic_menu_background = tk.IntVar(value=1)
-        self.cosmetic_menu_background.trace_add('write', lambda name, index, mode, iv=self.cosmetic_menu_background: iv.set(sorted((1, iv.get(), 8))[1]))
-
         #GREPME ctoptions vars
        
         self.ctopts = {
@@ -154,7 +151,7 @@ class RandoGUI:
             'save_menu_cursor': tk.BooleanVar(value = False),
             'active_battle': tk.BooleanVar(value = False),
             'skill_item_info': tk.BooleanVar(value = True),
-            'menu_background': tk.IntVar(value = 1), # GREPME delete cosmetic_menu_background at some point
+            'menu_background': tk.IntVar(value = 1),
             'battle_msg_speed': tk.IntVar(value = 5),
             'save_battle_cursor': tk.BooleanVar(value = False),
             'save_tech_cursor': tk.BooleanVar(value = True),
@@ -373,49 +370,26 @@ class RandoGUI:
         # Cosmetic flags
         cosmetic_flags = [x for x in list(CosmeticFlags)
                           if self.cosmetic_flag_dict[x].get() == 1]
-                          
-        self.settings.cosmetic_menu_background = self.cosmetic_menu_background.get()-1
         
-        
-        #~~~GREPME ctopts vars to settings
         self.settings.ctoptions = ctoptions.CTOpts()
+
         #controller bindings should not be updated directly in a loop, due to _replace_overlap() 
         binds = bytearray(8)
         
         for idx, button in enumerate(self.controller_binds.values()):
-            #must convert string back to ActionMap key...
             value = InputMap[button.get().upper().replace(' ','_')]
             binds[idx] = value
 
-
-        print(f'gui_vars_to_settings binds: {binds}')
         self.settings.ctoptions.controller_binds.update_from_bytes(binds)
-        print(f'gui_vars_to_settings binds updated, printing...')
-        print(self.settings.ctoptions.controller_binds)
-
-
-        print(f'gui_vars_to_settings options before, printing...')
-        print(self.settings.ctoptions)
-        print(self.settings.ctoptions.to_bytearray())
         
         for attr, value in self.ctopts.items():
-            
-            if type(value.get()) == bool:
-                print(f'attr, value loop, boolean true, value to write: {value.get()}')
-                setattr(self.settings.ctoptions, attr, value.get())
-                print(f'attr, value loop, boolean true, value as written: {getattr(self.settings.ctoptions, attr)}')
-                continue
-            
-            print(f'inside attr, value loop, attr: {attr}, value: {value.get()}')
+
             if attr != 'battle_gauge_style' and type(value.get()) != bool:
                 setattr(self.settings.ctoptions, attr, value.get()-1)
                 continue
             
             setattr(self.settings.ctoptions, attr, value.get())
-        print(f'gui_vars_to_settings options after, printing...')
-        print(self.settings.ctoptions)
-        print(self.settings.ctoptions.to_bytearray())
-        #~~~
+        
         self.settings.char_names[0] = self.char_names['Crono'].get()
         self.settings.char_names[1] = self.char_names['Marle'].get()
         self.settings.char_names[2] = self.char_names['Lucca'].get()
@@ -535,9 +509,6 @@ class RandoGUI:
         self.char_names['Magus'].set(self.settings.char_names[6])
         self.char_names['Epoch'].set(self.settings.char_names[7])
 
-        #menu background
-        self.cosmetic_menu_background.set(self.settings.cosmetic_menu_background + 1)
-        
         #GREPME ctopts update gui vars
         for key, item in self.settings.ctoptions:
             #We only worry about ints that aren't battle_gauge_style
@@ -2367,7 +2338,6 @@ class RandoGUI:
 
 
         self.get_ctoptions_frame(frame).pack(fill=tk.X)
-        #self.get_cosmetic_menu_background_frame(frame).pack(fill=tk.X)
 
         return frame
         
@@ -2377,17 +2347,11 @@ class RandoGUI:
             highlightthickness=1
         )
         
-        #frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
 
-        self.get_ctoptions_config_frame(frame).grid(row = 0, column = 0, sticky=tk.W)
-        self.get_ctoptions_button_frame(frame).grid(row = 0, column = 1, sticky=tk.E)
+        self.get_ctoptions_config_frame(frame).grid(row = 0, column = 0, sticky='we')
+        self.get_ctoptions_button_frame(frame).grid(row = 0, column = 1, sticky='ew')
 
-        
-        '''
-        self.get_ctoptions_config_frame(frame).pack(fill=tk.X, anchor=tk.W)
-        self.get_ctoptions_button_frame(frame).pack(fill=tk.X, anchor=tk.E)
-        self.get_ctoptions_slider_frame(frame).pack(fill=tk.X, anchor=tk.S)
-        '''
         return frame
         
     def get_ctoptions_config_frame(self, parent):
@@ -2453,11 +2417,11 @@ class RandoGUI:
                     variable=self.ctopts['save_battle_cursor']
                     ).grid(row=3, column=1)
 
-        label = tk.Label(frame, text='Save Tech/Item Cursor')
+        label = tk.Label(frame, text='Save Skill/Item Cursor')
         label.grid(row=4, column=0, sticky=tk.W)
         CreateToolTip(
             label,
-            'Cursor position for in-battle Tech and Inventory menus '
+            'Cursor positions for in-battle Tech and Inventory menus '
             'are saved, and returned to when the action is chosen .'
         )
         
@@ -2466,7 +2430,7 @@ class RandoGUI:
                     variable=self.ctopts['save_tech_cursor']
                     ).grid(row=4, column=1)
 
-        label = tk.Label(frame, text='Tech/Item Info')
+        label = tk.Label(frame, text='Skill/Item Info')
         label.grid(row=5, column=0, sticky=tk.W)
         CreateToolTip(
             label,
@@ -2536,7 +2500,7 @@ class RandoGUI:
 
         dropdown = tk.OptionMenu(
                                 frame,
-                                self.ctopts['battle_msg_speed'],
+                                self.ctopts['battle_gauge_style'],
                                 *[i for i in range(0,3)],
                                 )
         dropdown.grid(row=9, column=1, sticky=tk.E)
@@ -2714,37 +2678,14 @@ class RandoGUI:
                                 )
         dropdown.grid(row=7, column=1, sticky=tk.E)
         
-        tk.Button(
+        button = tk.Button(
             frame, text="Reset to Vanilla", command=lambda : reset_to_vanilla(cache)
-        ).grid(row=8, column=0, sticky=tk.W, columnspan=2)
-        
-        return frame
-        
-    def get_cosmetic_menu_background_frame(self, parent):
-        frame = tk.Frame(
-            parent, borderwidth=1, highlightbackground='black',
-            highlightthickness=1
         )
-        
-        frame.columnconfigure(0, weight=1)
-        
-        label = tk.Label(frame, text='Menu Background')
-        label.grid(column=0, row=0, sticky=tk.W, ipadx=10, ipady=8)
+        button.grid(row=8, column=0, sticky='ew', columnspan=2)
         CreateToolTip(
-            label,
-            'Controls the default menu background option. '
-            'Corrosponds to the in-game options menu, i.e. '
-            '1 = default gray, 3 = Final Fantasy blue, etc'
+            button,
+            'Reset button bindings to their vanilla values.'
         )
-        
-        bg = self.cosmetic_menu_background
-        
-        dropdown = tk.OptionMenu(
-                                frame,
-                                bg,
-                                *[i+1 for i in range(8)],
-                                )
-        dropdown.grid(column=2, row=0, sticky=tk.E)
         
         return frame
 

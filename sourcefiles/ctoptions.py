@@ -13,12 +13,6 @@ class ControllerBinds:
     def __init__(self, data: bytearray = None):
 
         self._mappings = self.get_vanilla()
-
-        '''
-        #only support a single parameter, but optionally
-        if args:
-           data = args[0]
-        '''
         
         if data is None:
             return
@@ -46,9 +40,6 @@ class ControllerBinds:
             ActionMap.PG_DN: InputMap.L_SHOULDER
         }
         
-        print(f'debug ControllerBinds.get_vanilla() finished ret: {[hex(x) for x in ret.values()]}, len thereof: {len([hex(x) for x in ret.values()])}')
-        print(f'debug ControllerBinds.get_vanilla() wrapped in bytearray(): {bytearray(ret)}, len thereof: {len(bytearray(ret))}')
-        
         return ret
 
     #return bytearray in order CT expects it in, suitable for writing back to CTRom
@@ -57,11 +48,7 @@ class ControllerBinds:
         ret = bytearray(8)
         
         for idx, button in enumerate(self._mappings.values()):
-            print(f'debug ControllerBinds.to_bytearray inside idx loop, idx: {idx}, button: {button}')
             ret[idx] = button
-        
-        print(f'debug ControllerBinds.to_bytearray() finished ret: {[hex(x) for x in ret]}')
-        print(f'debug ControllerBinds.to_bytearray() wrapped in bytearray(): {bytearray(ret)}, len thereof: {len(bytearray(ret))}')
         
         return ret
 
@@ -86,7 +73,35 @@ class ControllerBinds:
     #do not call directly; helper function to mimic functionality observed when rebinding buttons in-game
     def _replace_overlap(self, button: InputMap, cmd: ActionMap):
         '''
-        CT has eight actions and seven bindable buttons. All actions must be bound. Thus, two actions will be bound to one buttom.
+        CT uses bitmasks stored in a known order to implement button mapping.
+        The action is controlled by the index in the array.
+        The button to which the action is bound is controlled by the value of the indexed byte
+        
+        During vblank (and inside an NMI), the functions at 0x0284EC (rearranger) and 0x028545 (translator)
+        rearrange the raw data from the SNES's joypad registers such that all buttons are on the low byte and all
+        d-pad input is on the high byte, and additional addresses are written according to the user's bindings.
+        These addresses are referenced depending on what the game needs to check for, actions or specific buttons,
+        and whether the game needs to check for a held button, a pressed button that requires releasing before
+        accepting more input, or how long the user has pressed the button.
+        
+        The Start button is never allowed to be rebound. All eight actions will still need to be mapped, thus
+        one button will always trigger two actions (or conversely, two actions will always have the same button bound to them)
+        
+        CT uses four copies of the button mapping in RAM at any one time:
+            The in-use copy, used by 0x028585 and therefore everywhere that respects user binds; 7E2993
+            
+            The persistant user copy, saved from RAM to SRAM when the user saves the game; 7e0408
+            
+            A cache of the persistant user copy, exists when user is editing binds ; 7e9890
+            
+            User proposed copy, edited when user is rebinding and checked against the cached copy
+            to prevent undesired lack of actions being bound to a button. ; 7e0f00
+                
+        To mimic reference functions at c2c5c7 (checks for overlap):
+        
+        Save the original state of target action
+        Iterate over array, replace actions which match target action with original action.
+        Write target action to target button
         '''
         
         data = self._mappings
@@ -223,15 +238,13 @@ class CTOpts:
         
         return bytearray(data)
 
-    #write current to provided CTRom
+    #write current configuration to provided CTRom
     def write_to_ctrom(self, ct_rom: CTRom, offset: int = CONFIG_OFFSET):
         
         orig_pos = ct_rom.rom_data.tell()
         self.custom_control_pad = False # update the controller settings if different from vanilla
         
         out = self.to_bytearray()
-        
-        print(f'debug CTOpts.write_to_ctrom, out: {[hex(x) for x in out]}')
         
         ct_rom.rom_data.seek(offset)
         ct_rom.rom_data.write(out)
@@ -269,7 +282,9 @@ class CTOpts:
     @stereo_audio.setter
     def stereo_audio(self, val):
         filt = not(bool(val))
+        #print(f'debug inside stereo_audio setter, before write: {bool(self.get_opt(0, 0x08))}')
         self.set_opt(0, 0x08, filt)
+        #print(f'debug inside stereo_audio setter, after write: {bool(self.get_opt(0, 0x08))}')
         
     @property
     #Bit clear == standard controls, bit set == custom controls
@@ -279,12 +294,12 @@ class CTOpts:
     @custom_control_pad.setter
     #Force the custom controller on if it deviates from vanilla settings
     #TODO: actually make CT respect this with some free bytes and editing c2c599 controller button mapping update function
-    #current revision s/b no visible change fro custom and default controls when toggling setting in game (unless, ofc, the player has rebound their controls previously)
+    #current revision s/b no visible change from custom and default controls when toggling setting in game (unless, ofc, the player has rebound their controls previously)
     def custom_control_pad(self, val):
-        if self.controller_binds.to_bytearray() != bytearray(self.controller_binds.get_vanilla()):
-            print(f'inside custom_control_pad setter, binds were not equal')
-            print(f'self.controller_binds.to_bytearray(): {self.controller_binds.to_bytearray()}')
-            print(f'bytearray(self.controller_binds.get_vanilla()): {bytearray(self.controller_binds.get_vanilla())}')
+        if self.controller_binds.to_bytearray() != bytearray(self.controller_binds.get_vanilla().values()):
+            #print(f'inside custom_control_pad setter, binds were not equal')
+            #print(f'self.controller_binds.to_bytearray(): {self.controller_binds.to_bytearray()}')
+            #print(f'bytearray(self.controller_binds.get_vanilla()): {bytearray([x for x in self.controller_binds.get_vanilla().values()])}')
             self.set_opt(0, 0x10, True)
             return
             
@@ -295,12 +310,13 @@ class CTOpts:
     #Bit clear == Menu always starts on equipment, bit set == Menu saves position
     def save_menu_cursor(self):
         return bool(self.get_opt(0, 0x20))
-
         
     @save_menu_cursor.setter
     def save_menu_cursor(self, val):
         filt = bool(val)
+        #print(f'debug inside save_menu_cursor setter, before write: {bool(self.get_opt(0, 0x20))}')
         self.set_opt(0, 0x20, filt)
+        #print(f'debug inside save_menu_cursor setter, after write: {bool(self.get_opt(0, 0x20))}')
 
     @property
     #Bit clear == battle mode is Wait, bit set == battle mode is Active
@@ -310,7 +326,9 @@ class CTOpts:
     @active_battle.setter
     def active_battle(self, val):
         filt = bool(val)
+        #print(f'debug inside active_battle setter, before write: {bool(self.get_opt(0, 0x40))}')
         self.set_opt(0, 0x40, filt)
+        #print(f'debug inside active_battle setter, before write: {bool(self.get_opt(0, 0x40))}')
         
     @property
     #Bit clear == in battle, tech and item descriptions are not displayed, bit set == in battle, tech and item descriptions are displayed
@@ -320,8 +338,9 @@ class CTOpts:
     @skill_item_info.setter
     def skill_item_info(self, val):
         filt = bool(val)
+        #print(f'debug inside active_battle setter, before write: {bool(self.get_opt(0, 0x40))}')
         self.set_opt(0, 0x80, filt)
-    
+        #print(f'debug inside active_battle setter, after write: {bool(self.get_opt(0, 0x40))}')
 
     #Byte 1
     @property
@@ -352,8 +371,10 @@ class CTOpts:
     @save_battle_cursor.setter
     def save_battle_cursor(self, val):
         filt = bool(val)
+        #print(f'debug inside save_battle_cursor, before write: {bool(self.get_opt(1, 0x40))}')
         self.set_opt(1, 0x40, filt)
-
+        #print(f'debug inside save_battle_cursor setter, after write: {bool(self.get_opt(1, 0x40))}')
+        
     @property
     #Bit clear == tech and inventory cursors are not kept, bit set == tech cursors for each PC, and one for item inventory, are kept
     def save_tech_cursor(self):
@@ -362,8 +383,10 @@ class CTOpts:
     @save_tech_cursor.setter
     def save_tech_cursor(self, val):
         filt = bool(val)
+        #print(f'debug inside save_tech_cursor setter, before write: {bool(self.get_opt(1, 0x80))}')
         self.set_opt(1, 0x80, filt)
-        
+        #print(f'debug inside save_tech_cursor setter, after write: {bool(self.get_opt(1, 0x80))}')
+
     #Byte 2
     @property
     #Range, 0-2
@@ -403,12 +426,14 @@ class CTOpts:
     def set_opt(self, idx, clear, val):
         shift = 0
         isolated = self._data[idx] & (0xFF - clear)
-        
+               
         while clear & 0x01 == 0:
             clear >>= 1
             shift += 1
         
+        #print(f'#~~~ inside set_opt, self._data[idx] before: {hex(self._data[idx])}')
         self._data[idx] = isolated | (val << shift)
+        #print(f'#~~~ inside set_opt, self._data[idx] after: {hex(self._data[idx])}')
             
     def __str__(self):
         
@@ -445,6 +470,13 @@ class CTOpts:
         
 
         return iter(ret.items())
-        
+
+#TODO actually flesh this out
+def add_user_binds_to_new_games():
+    '''
+    Add an event to new game setup to copy the button binds to persistant user storage
+    '''
+    pass
+
 if __name__ == '__main__':
     pass
