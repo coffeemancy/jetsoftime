@@ -1358,7 +1358,10 @@ class Randomizer:
         if rset.CosmeticFlags.REDUCE_FLASH in cos_flags:
             flashreduce.apply_all_flash_hacks(ctrom)
 
-        cosmetichacks.set_default_background_menu(ctrom, settings)
+        settings.ctoptions.write_to_ctrom(ctrom)
+        
+        if settings.ctoptions.menu_background != 0:
+            cosmetichacks.set_default_background_menu(ctrom, settings) #GREPME needs to be rewritten to detect an already-hooked ROM
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):

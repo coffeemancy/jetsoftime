@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Union
 
 import ctenums
+import ctoptions
 
 
 class StrIntEnum(IntEnum):
@@ -277,12 +278,16 @@ class Settings:
         self.tab_settings = TabSettings()
         self.cosmetic_flags = CosmeticFlags(0)
         self.cosmetic_menu_background = 0
+        
+        self.ctoptions = ctoptions.CTOpts()
+        
         self.seed = ''
 
         self.char_names: list[str] = [
             'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus',
             'Epoch'
         ]
+        
 
     def _jot_json(self):
         return {

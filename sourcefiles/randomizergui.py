@@ -19,7 +19,8 @@ import bossdata
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags, \
     BucketSettings, GameMode, MysterySettings
-from ctenums import LocID, BossID
+from ctenums import LocID, BossID, ActionMap, InputMap
+import ctoptions
 import ctrom
 import ctstrings
 
@@ -144,6 +145,33 @@ class RandoGUI:
         self.cosmetic_menu_background = tk.IntVar(value=1)
         self.cosmetic_menu_background.trace_add('write', lambda name, index, mode, iv=self.cosmetic_menu_background: iv.set(sorted((1, iv.get(), 8))[1]))
 
+        #GREPME ctoptions vars
+       
+        self.ctopts = {
+            'battle_speed': tk.IntVar(value = 5),
+            'stereo_audio': tk.BooleanVar(value = True),
+            'custom_control_pad': tk.BooleanVar(value = False),
+            'save_menu_cursor': tk.BooleanVar(value = False),
+            'active_battle': tk.BooleanVar(value = False),
+            'skill_item_info': tk.BooleanVar(value = True),
+            'menu_background': tk.IntVar(value = 1), # GREPME delete cosmetic_menu_background at some point
+            'battle_msg_speed': tk.IntVar(value = 5),
+            'save_battle_cursor': tk.BooleanVar(value = False),
+            'save_tech_cursor': tk.BooleanVar(value = True),
+            'battle_gauge_style': tk.IntVar(value = 1)
+        }
+       
+        self.controller_binds = {
+            ActionMap.CONFIRM: tk.StringVar(value = InputMap.A_BUTTON),
+            ActionMap.CANCEL: tk.StringVar(value = InputMap.B_BUTTON),
+            ActionMap.MENU: tk.StringVar(value = InputMap.X_BUTTON),
+            ActionMap.DASH: tk.StringVar(value = InputMap.B_BUTTON),
+            ActionMap.MAP: tk.StringVar(value = InputMap.SELECT_BUTTON),
+            ActionMap.WARP: tk.StringVar(value = InputMap.Y_BUTTON),
+            ActionMap.PG_UP: tk.StringVar(value = InputMap.R_SHOULDER),
+            ActionMap.PG_DN: tk.StringVar(value = InputMap.L_SHOULDER)
+        }
+        
         # Mystery Settings.
         # We have to make tk variable copies of the data structure.
         # There must be a better way.
@@ -347,7 +375,47 @@ class RandoGUI:
                           if self.cosmetic_flag_dict[x].get() == 1]
                           
         self.settings.cosmetic_menu_background = self.cosmetic_menu_background.get()-1
+        
+        
+        #~~~GREPME ctopts vars to settings
+        self.settings.ctoptions = ctoptions.CTOpts()
+        #controller bindings should not be updated directly in a loop, due to _replace_overlap() 
+        binds = bytearray(8)
+        
+        for idx, button in enumerate(self.controller_binds.values()):
+            #must convert string back to ActionMap key...
+            value = InputMap[button.get().upper().replace(' ','_')]
+            binds[idx] = value
 
+
+        print(f'gui_vars_to_settings binds: {binds}')
+        self.settings.ctoptions.controller_binds.update_from_bytes(binds)
+        print(f'gui_vars_to_settings binds updated, printing...')
+        print(self.settings.ctoptions.controller_binds)
+
+
+        print(f'gui_vars_to_settings options before, printing...')
+        print(self.settings.ctoptions)
+        print(self.settings.ctoptions.to_bytearray())
+        
+        for attr, value in self.ctopts.items():
+            
+            if type(value.get()) == bool:
+                print(f'attr, value loop, boolean true, value to write: {value.get()}')
+                setattr(self.settings.ctoptions, attr, value.get())
+                print(f'attr, value loop, boolean true, value as written: {getattr(self.settings.ctoptions, attr)}')
+                continue
+            
+            print(f'inside attr, value loop, attr: {attr}, value: {value.get()}')
+            if attr != 'battle_gauge_style' and type(value.get()) != bool:
+                setattr(self.settings.ctoptions, attr, value.get()-1)
+                continue
+            
+            setattr(self.settings.ctoptions, attr, value.get())
+        print(f'gui_vars_to_settings options after, printing...')
+        print(self.settings.ctoptions)
+        print(self.settings.ctoptions.to_bytearray())
+        #~~~
         self.settings.char_names[0] = self.char_names['Crono'].get()
         self.settings.char_names[1] = self.char_names['Marle'].get()
         self.settings.char_names[2] = self.char_names['Lucca'].get()
@@ -469,6 +537,17 @@ class RandoGUI:
 
         #menu background
         self.cosmetic_menu_background.set(self.settings.cosmetic_menu_background + 1)
+        
+        #GREPME ctopts update gui vars
+        for key, item in self.settings.ctoptions:
+            #We only worry about ints that aren't battle_gauge_style
+            if key != 'battle_gauge_style' and type(item) != bool:
+                self.ctopts[key].set(item + 1)
+            else:
+                self.ctopts[key].set(item)
+
+        for key, item in self.settings.ctoptions.controller_binds:
+            self.controller_binds[key].set(item)
 
         # Update difficulties
         self.enemy_difficulty.set(
@@ -2219,7 +2298,7 @@ class RandoGUI:
 
         return frame
 
-    def get_cosmetic_page(self):
+    def get_cosmetic_page(self): #GREPME page
         frame = ttk.Frame(self.notebook)
 
         checkbox = tk.Checkbutton(
@@ -2286,8 +2365,359 @@ class RandoGUI:
             entry.pack(side=tk.LEFT)
             tempframe.pack(anchor=tk.W)
 
-        self.get_cosmetic_menu_background_frame(frame).pack(fill=tk.X)
 
+        self.get_ctoptions_frame(frame).pack(fill=tk.X)
+        #self.get_cosmetic_menu_background_frame(frame).pack(fill=tk.X)
+
+        return frame
+        
+    def get_ctoptions_frame(self, parent):
+        frame = tk.Frame(
+            parent, borderwidth=1, highlightbackground='black',
+            highlightthickness=1
+        )
+        
+        #frame.columnconfigure(0, weight=1)
+
+        self.get_ctoptions_config_frame(frame).grid(row = 0, column = 0, sticky=tk.W)
+        self.get_ctoptions_button_frame(frame).grid(row = 0, column = 1, sticky=tk.E)
+
+        
+        '''
+        self.get_ctoptions_config_frame(frame).pack(fill=tk.X, anchor=tk.W)
+        self.get_ctoptions_button_frame(frame).pack(fill=tk.X, anchor=tk.E)
+        self.get_ctoptions_slider_frame(frame).pack(fill=tk.X, anchor=tk.S)
+        '''
+        return frame
+        
+    def get_ctoptions_config_frame(self, parent):
+        frame = tk.Frame(
+            parent, borderwidth=1, highlightbackground='black',
+            highlightthickness=1
+        )
+        
+        frame.columnconfigure(0, weight=1)
+        
+        label = tk.Label(frame, text='Stereo Audio')
+        label.grid(row=0, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Audio output is dual channel, rather than '
+            'single channel.'
+        )
+        
+        tk.Checkbutton(
+                    frame,
+                    variable=self.ctopts['stereo_audio']
+                    ).grid(row=0, column=1)
+
+                    
+        label = tk.Label(frame, text='Active Battle')
+        label.grid(row=1, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Enemies will not wait for you to pick '
+            'your actions in battle.'
+        )
+        
+        tk.Checkbutton(
+                    frame,
+                    variable=self.ctopts['active_battle']
+                    ).grid(row=1, column=1)
+
+        label = tk.Label(frame, text='Save Menu Cursor')
+        label.grid(row=2, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'The menu saves the last page displayed, and '
+            'starts on it every time the menu opens. Additionally, '
+            'in menu, inventory cursor position is saved.'
+        )
+        
+        tk.Checkbutton(
+                    frame,
+                    variable=self.ctopts['save_menu_cursor']
+                    ).grid(row=2, column=1)
+
+        label = tk.Label(frame, text='Save Battle Cursor')
+        label.grid(row=3, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Battle cursor position is saved for each character. '
+            'When changing which character to command, the cursor '
+            'moves to that character\'s previously-used option.'
+        )
+        
+        tk.Checkbutton(
+                    frame,
+                    variable=self.ctopts['save_battle_cursor']
+                    ).grid(row=3, column=1)
+
+        label = tk.Label(frame, text='Save Tech/Item Cursor')
+        label.grid(row=4, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Cursor position for in-battle Tech and Inventory menus '
+            'are saved, and returned to when the action is chosen .'
+        )
+        
+        tk.Checkbutton(
+                    frame,
+                    variable=self.ctopts['save_tech_cursor']
+                    ).grid(row=4, column=1)
+
+        label = tk.Label(frame, text='Tech/Item Info')
+        label.grid(row=5, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'In battle, Tech and item descriptions are displayed '
+            'when using them.'
+        )
+        
+        tk.Checkbutton(
+                    frame,
+                    variable=self.ctopts['skill_item_info']
+                    ).grid(row=5, column=1)
+
+        label = tk.Label(frame, text='Menu Background')
+        label.grid(row=6, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'In battle, controls how quickly ATB ticks occur. '
+            'Lower numbers are faster.'
+        )
+
+        dropdown = tk.OptionMenu(
+                                frame,
+                                self.ctopts['menu_background'],
+                                *[i for i in range(1,9)],
+                                )
+        dropdown.grid(row=6, column=1, sticky=tk.E)
+
+        label = tk.Label(frame, text='Battle Speed')
+        label.grid(row=7, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'In battle, controls how quickly ATB ticks occur. '
+            'Lower numbers are faster.'
+        )
+
+        dropdown = tk.OptionMenu(
+                                frame,
+                                self.ctopts['battle_speed'],
+                                *[i for i in range(1,9)],
+                                )
+        dropdown.grid(row=7, column=1, sticky=tk.E)
+        
+        label = tk.Label(frame, text='Battle Message Speed')
+        label.grid(row=8, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'In battle, controls how quickly messages about enemy '
+            'status and loot drops disappear.'
+            'Lower numbers are faster.'
+        )
+
+        dropdown = tk.OptionMenu(
+                                frame,
+                                self.ctopts['battle_msg_speed'],
+                                *[i for i in range(1,9)],
+                                )
+        dropdown.grid(row=8, column=1, sticky=tk.E)
+        
+        
+        label = tk.Label(frame, text='Battle Gauge Style')
+        label.grid(row=9, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'In battle, controls position of ATB bar, character '
+            'names, and HP/MP values.'
+        )
+
+        dropdown = tk.OptionMenu(
+                                frame,
+                                self.ctopts['battle_msg_speed'],
+                                *[i for i in range(0,3)],
+                                )
+        dropdown.grid(row=9, column=1, sticky=tk.E)
+
+        return frame
+        
+    def get_ctoptions_button_frame(self, parent):
+        frame = tk.Frame(
+            parent, borderwidth=1, highlightbackground='black',
+            highlightthickness=1
+        )
+        
+        frame.columnconfigure(0, weight=1)
+
+        def reset_to_vanilla(cache):
+            binds = self.controller_binds
+            vanilla = ctoptions.ControllerBinds().get_vanilla()
+            for action, item in vanilla.items():
+                binds[action].set(item)
+                
+            _set_cache(binds, cache)
+        
+        #cache stores the string value of the StrIntEnum for comparisons
+        def _set_cache(binds, cache):
+            for key, value in binds.items():
+                cache[key] = str(value.get())
+
+        def _replace_overlap(button: InputMap, cmd: ActionMap, cache):
+            #called after tk.OptionsMenu updates the value in controller_binds[]
+            #thus original button to which the action was assigned is unavailable directly
+            #reference a preprepared cache
+            
+            binds = self.controller_binds
+            button = str(button)
+                        
+            orig_button = cache[cmd]
+            
+            for key in binds:
+                item = binds[key].get()            
+                if item == button:
+                    binds[key].set(orig_button)
+                    
+            binds[cmd].set(button)
+            
+            _set_cache(binds, cache)
+        
+        binds = self.controller_binds
+        cache = {}
+        
+        _set_cache(binds, cache)
+                        
+        label = tk.Label(frame, text='Confirm')
+        label.grid(row=0, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Chooses selections, activates NPCs and objects.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.CONFIRM],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.CONFIRM, cache)
+                                )
+        dropdown.grid(row=0, column=1, sticky=tk.E)
+        
+        label = tk.Label(frame, text='Cancel')
+        label.grid(row=1, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Backs out of menus, deselects targets of techs and items.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.CANCEL],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.CANCEL, cache)
+                                )
+        dropdown.grid(row=1, column=1, sticky=tk.E)
+
+        label = tk.Label(frame, text='Menu')
+        label.grid(row=2, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Opens the equipment, inventory, tech, etc menu. '
+            'If Save Battle Cursor is on, also selects and performs '
+            'basic attacks.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.MENU],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.MENU, cache)
+                                )
+        dropdown.grid(row=2, column=1, sticky=tk.E)
+        
+        
+        label = tk.Label(frame, text='Dash')
+        label.grid(row=3, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'If held, causes characters to run faster.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.DASH],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.DASH, cache)
+                                )
+        dropdown.grid(row=3, column=1, sticky=tk.E)
+        
+        label = tk.Label(frame, text='Map')
+        label.grid(row=4, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'On the overworld, shows a zoomed-out world map of '
+            'the current time period.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.MAP],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.MAP, cache)
+                                )
+        dropdown.grid(row=4, column=1, sticky=tk.E)
+        
+        label = tk.Label(frame, text='Warp')
+        label.grid(row=5, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Opens the character exchange or the Epoch time gauge. '
+            'Also swaps text boxes and battle menus from top to bottom '
+            'of screen, and vice versa.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.WARP],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.WARP, cache)
+                                )
+        dropdown.grid(row=5, column=1, sticky=tk.E)
+        
+        label = tk.Label(frame, text='Page Down')
+        label.grid(row=6, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Traverses scrollable lists towards the end.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.PG_DN],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.PG_DN, cache)
+                                )
+        dropdown.grid(row=6, column=1, sticky=tk.E)
+        
+        label = tk.Label(frame, text='Page Up')
+        label.grid(row=7, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            'Traverses scrollable lists towards the beginning.'
+        )
+        
+        dropdown = tk.OptionMenu(
+                                frame,
+                                binds[ActionMap.PG_UP],
+                                *[i for i in InputMap],
+                                command=lambda x: _replace_overlap(x, ActionMap.PG_UP, cache)
+                                )
+        dropdown.grid(row=7, column=1, sticky=tk.E)
+        
+        tk.Button(
+            frame, text="Reset to Vanilla", command=lambda : reset_to_vanilla(cache)
+        ).grid(row=8, column=0, sticky=tk.W, columnspan=2)
+        
         return frame
         
     def get_cosmetic_menu_background_frame(self, parent):
