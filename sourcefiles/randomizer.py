@@ -1359,9 +1359,6 @@ class Randomizer:
             flashreduce.apply_all_flash_hacks(ctrom)
 
         settings.ctoptions.write_to_ctrom(ctrom)
-        
-        if settings.ctoptions.menu_background != 0:
-            cosmetichacks.set_save_slot_background_hook(ctrom, settings)
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):

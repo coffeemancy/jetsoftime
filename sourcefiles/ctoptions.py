@@ -2,29 +2,24 @@
 Module for preconfiguring in-game options at compile time
 '''
 
-from ctenums import ActionMap, InputMap
+import byteops
+from ctenums import ActionMap, InputMap, LocID
 from ctrom import CTRom
-
-'''
-TODO fill in explaination of controller remapping CT uses
-'''
+import ctevent
 
 class ControllerBinds:
+
+    BUTTONS_OFFSET = 0x02FCA9
+    BUTTONS_LENGTH = 8
+
     def __init__(self, data: bytearray = None):
 
         self._mappings = self.get_vanilla()
         
         if data is None:
             return
-    
-        #only support 8 or 11 bytes
-        if len(data) == 11:
-            self.update_from_bytes(data[3:])
-        elif len(data) == 8:
-            self.update_from_bytes(data[:])
-        else:
-            raise ValueError('Button mappings must be either 8 or 11 bytes in length')
-            exit()
+
+        self.update_from_bytes(data[-8:])
 
     @classmethod
     def get_vanilla(cls):
@@ -42,22 +37,35 @@ class ControllerBinds:
         
         return ret
 
+    def from_rom(self, ctrom: CTRom):
+        rom = ctrom.rom_data
+        
+        rom.seek(BUTTONS_OFFSET)
+        data = rom.read(BUTTONS_LENGTH)
+       
+        return self.to_bytearray(data)
+
     #return bytearray in order CT expects it in, suitable for writing back to CTRom
-    def to_bytearray(self):
+    #optionally, accept an iterable of ints to write in its stead, order not checked from input
+    def to_bytearray(self, data = None):
     
         ret = bytearray(8)
+
+        if not data:
+            data = bytearray(self._mappings.values())
         
-        for idx, button in enumerate(self._mappings.values()):
+        for idx, button in enumerate(data):
             ret[idx] = button
-        
+                
         return ret
 
     #updates button bindings given bytearray; bytearray assumed to be ordered in the same way as out
     def update_from_bytes(self, bytes: bytearray):
 
-        if not len(bytes) == 8:
-            raise ValueError('bytes must be 8 bytes long')
+        if not (8 <= len(bytes) <= 11):
             return
+
+        bytes = bytes[-8:]
 
         for idx, byte in zip(ActionMap, bytes):
             for input in InputMap:
@@ -88,20 +96,20 @@ class ControllerBinds:
         one button will always trigger two actions (or conversely, two actions will always have the same button bound to them)
         
         CT uses four copies of the button mapping in RAM at any one time:
-            The in-use copy, used by 0x028585 and therefore everywhere that respects user binds; 7E2993
+            The in-use copy, used by 0x028585 and therefore everywhere that respects user binds; 0x7E2993
             
-            The persistant user copy, saved from RAM to SRAM when the user saves the game; 7e0408
+            The persistent user copy, saved from RAM to SRAM when the user saves the game; 0x7E0408
             
-            A cache of the persistant user copy, exists when user is editing binds ; 7e9890
+            A cache of the persistent user copy, exists when user is editing binds ; 0x7E9890
             
             User proposed copy, edited when user is rebinding and checked against the cached copy
-            to prevent undesired lack of actions being bound to a button. ; 7e0f00
+            to prevent undesired lack of actions being bound to a button. ; 0x7E0f00
                 
-        To mimic reference functions at c2c5c7 (checks for overlap):
+        To mimic reference functions at 0x02C5C7 (checks for overlap):
         
-        Save the original state of target action
-        Iterate over array, replace actions which match target action with original action.
-        Write target action to target button
+        Save the original button of target action
+        Iterate over array, replace actions which match target action with original button.
+        Write target button to target action
         '''
         
         data = self._mappings
@@ -178,6 +186,33 @@ class ControllerBinds:
     def pg_dn(self, button: InputMap):
         self._replace_overlap(button, ActionMap.PG_DN)
         
+    def write_routine_offsets(self, ctrom: CTRom):
+        '''
+        Repoint routine to control default/custom user binds to point to saved copy of vanilla binds
+        '''
+        
+        rom = ctrom.rom_data
+        space_man = rom.space_manager
+
+        binds = self.to_bytearray(self.get_vanilla().values())
+
+        start = space_man.get_free_addr(len(binds))
+        rom_start = byteops.to_rom_ptr(start)
+        
+        rom_start_addr = byteops.to_little_endian(rom_start & 0x00FFFF, 2)
+        rom_start_bank = (rom_start >> 16).to_bytes(1, 'little')
+        
+        #source addr (LDX)
+        rom.seek(0x02C558 + 1)
+        rom.write(rom_start_addr)
+        
+        #source bank (MVN)
+        rom.seek(0x02C561 + 2)
+        rom.write(rom_start_bank)
+
+        rom.seek(start)
+        rom.write(binds, ctevent.FSWriteType.MARK_USED)
+
     def __str__(self):
         ret = ''
             
@@ -194,18 +229,29 @@ class ControllerBinds:
 
     def __iter__(self):
         return iter(self._mappings.items())
+        
 
+        
 class CTOpts:
 
     CONFIG_OFFSET = 0x02FCA6
-    CONFIG_LENGTH = 11
+    CONFIG_LENGTH = 3
     
-    def __init__(self):
+    def __init__(self,  data: bytearray = None):
                 
-        self._data = self.get_vanilla()
-               
-        #Controller bitmasks
-        self.controller_binds = ControllerBinds(self._data)
+        self._data = self.get_vanilla()[:3]
+
+        self.controller_binds = ControllerBinds()
+        
+        self.consistent_paging = False
+        
+        if data is None:
+            return
+        
+        self.update_from_bytes(data)
+        
+        self.controller_binds.update_from_bytes(data)
+
         
     @classmethod
     def get_vanilla(cls):
@@ -227,40 +273,41 @@ class CTOpts:
         return ret
     
     #Read provided CTRom, get config
-    def from_rom(self, ct_rom: CTRom, offset: int = CONFIG_OFFSET):
-        rom = ct_rom.rom_data
-        
-        orig_pos = rom.tell()
-        
+    def from_rom(self, ctrom: CTRom, offset: int = CONFIG_OFFSET):
+        rom = ctrom.rom_data
+
         rom.seek(offset)
         data = rom.read(self.CONFIG_LENGTH)
-        rom.seek(orig_pos)
-        
+    
         return bytearray(data)
 
     #write current configuration to provided CTRom
-    def write_to_ctrom(self, ct_rom: CTRom, offset: int = CONFIG_OFFSET):
+    def write_to_ctrom(self, ctrom: CTRom, offset: int = CONFIG_OFFSET):
         
-        orig_pos = ct_rom.rom_data.tell()
-        self.custom_control_pad = False # update the controller settings if different from vanilla
+        self.custom_control_pad = False # update the custom controller option if different from vanilla
         
         out = self.to_bytearray()
+        binds = self.controller_binds.to_bytearray()
         
-        ct_rom.rom_data.seek(offset)
-        ct_rom.rom_data.write(out)
-                
-        ct_rom.rom_data.seek(orig_pos)
+        ctrom.rom_data.seek(offset)
+        ctrom.rom_data.write(out + binds)
+
+        if self.menu_background != 0:
+            self.set_save_slot_background_hook(ctrom)
+        
+        if self.custom_control_pad:
+            self.controller_binds.write_routine_offsets(ctrom)
+            
+        if self.consistent_paging:
+            self.make_page_up_down_consistent(ctrom)
+    
     
     def update_from_bytes(self, data: bytearray):
-        self._data[0:3] = data[0:3]
+        self._data[:3] = data[:3]
         
-    #Returns all bytes of config, including current controller button bindings, suitable for writing back to CTRom
+    #Returns all bytes of config, suitable for writing back to CTRom
     def to_bytearray(self):
-    
-        options = bytearray(self._data[0:3])
-        controls = self.controller_binds.to_bytearray()
-        
-        return options + controls
+        return bytearray(self._data[0:3])
         
     #Properties, byte 0
     @property
@@ -282,9 +329,7 @@ class CTOpts:
     @stereo_audio.setter
     def stereo_audio(self, val):
         filt = not(bool(val))
-        #print(f'debug inside stereo_audio setter, before write: {bool(self.get_opt(0, 0x08))}')
         self.set_opt(0, 0x08, filt)
-        #print(f'debug inside stereo_audio setter, after write: {bool(self.get_opt(0, 0x08))}')
         
     @property
     #Bit clear == standard controls, bit set == custom controls
@@ -293,13 +338,8 @@ class CTOpts:
         
     @custom_control_pad.setter
     #Force the custom controller on if it deviates from vanilla settings
-    #TODO: actually make CT respect this with some free bytes and editing c2c599 controller button mapping update function
-    #current revision s/b no visible change from custom and default controls when toggling setting in game (unless, ofc, the player has rebound their controls previously)
     def custom_control_pad(self, val):
-        if self.controller_binds.to_bytearray() != bytearray(self.controller_binds.get_vanilla().values()):
-            #print(f'inside custom_control_pad setter, binds were not equal')
-            #print(f'self.controller_binds.to_bytearray(): {self.controller_binds.to_bytearray()}')
-            #print(f'bytearray(self.controller_binds.get_vanilla()): {bytearray([x for x in self.controller_binds.get_vanilla().values()])}')
+        if self.controller_binds.to_bytearray() != self.controller_binds.to_bytearray(self.controller_binds.get_vanilla().values()):
             self.set_opt(0, 0x10, True)
             return
             
@@ -314,9 +354,7 @@ class CTOpts:
     @save_menu_cursor.setter
     def save_menu_cursor(self, val):
         filt = bool(val)
-        #print(f'debug inside save_menu_cursor setter, before write: {bool(self.get_opt(0, 0x20))}')
         self.set_opt(0, 0x20, filt)
-        #print(f'debug inside save_menu_cursor setter, after write: {bool(self.get_opt(0, 0x20))}')
 
     @property
     #Bit clear == battle mode is Wait, bit set == battle mode is Active
@@ -326,9 +364,7 @@ class CTOpts:
     @active_battle.setter
     def active_battle(self, val):
         filt = bool(val)
-        #print(f'debug inside active_battle setter, before write: {bool(self.get_opt(0, 0x40))}')
         self.set_opt(0, 0x40, filt)
-        #print(f'debug inside active_battle setter, before write: {bool(self.get_opt(0, 0x40))}')
         
     @property
     #Bit clear == in battle, tech and item descriptions are not displayed, bit set == in battle, tech and item descriptions are displayed
@@ -338,9 +374,7 @@ class CTOpts:
     @skill_item_info.setter
     def skill_item_info(self, val):
         filt = bool(val)
-        #print(f'debug inside active_battle setter, before write: {bool(self.get_opt(0, 0x40))}')
         self.set_opt(0, 0x80, filt)
-        #print(f'debug inside active_battle setter, after write: {bool(self.get_opt(0, 0x40))}')
 
     #Byte 1
     @property
@@ -371,9 +405,7 @@ class CTOpts:
     @save_battle_cursor.setter
     def save_battle_cursor(self, val):
         filt = bool(val)
-        #print(f'debug inside save_battle_cursor, before write: {bool(self.get_opt(1, 0x40))}')
         self.set_opt(1, 0x40, filt)
-        #print(f'debug inside save_battle_cursor setter, after write: {bool(self.get_opt(1, 0x40))}')
         
     @property
     #Bit clear == tech and inventory cursors are not kept, bit set == tech cursors for each PC, and one for item inventory, are kept
@@ -383,9 +415,7 @@ class CTOpts:
     @save_tech_cursor.setter
     def save_tech_cursor(self, val):
         filt = bool(val)
-        #print(f'debug inside save_tech_cursor setter, before write: {bool(self.get_opt(1, 0x80))}')
         self.set_opt(1, 0x80, filt)
-        #print(f'debug inside save_tech_cursor setter, after write: {bool(self.get_opt(1, 0x80))}')
 
     #Byte 2
     @property
@@ -431,10 +461,75 @@ class CTOpts:
             clear >>= 1
             shift += 1
         
-        #print(f'#~~~ inside set_opt, self._data[idx] before: {hex(self._data[idx])}')
         self._data[idx] = isolated | (val << shift)
-        #print(f'#~~~ inside set_opt, self._data[idx] after: {hex(self._data[idx])}')
-            
+        
+    def set_save_slot_background_hook(self, ctrom: CTRom):
+
+        '''
+        Add hook to include empty save slots in default menu background.
+        '''
+        
+        '''
+        The subroutine to clear memory for entering the menu zeroes out the memory region used to store the menu background index of each save slot.
+        
+        The subroutine to render the save slots on the boot menu and save menus only reads SRAM for save data if the checksum passes.
+        
+        If the checksum for a save slot fails, the index remains at 0, causing the renderer subroutine to read 00 as the menu background index
+        resulting in the default grey background.
+        
+        Entry condition from 0x02D2A6, save slot render subroutine:
+            A and X/Y are 16 bits wide
+            X and Y both contain nothing we want to keep
+            $79 contains current save slot
+            Z and C are clear
+        '''
+        
+        val = self.menu_background
+        rom = ctrom.rom_data
+        space_man = rom.space_manager
+
+        vanilla = bytearray.fromhex(
+            'A5 78'            # LDA $78
+            '29 00 03'         # AND #$0300
+        )
+
+        rom.seek(0x02D2A6)
+        
+        hooked = rom.read(5) != vanilla
+
+        #TODO: allow editing of already-extant hooked subroutine; use case: reconfiguring a ROM for which one does not have the settings object and seed / sharelink
+        
+        if hooked:
+            return
+        
+        bg = bytearray.fromhex(
+            'E2 30'            # SEP #$30 ; set A and X/Y to 8 bits; clears high byte of X/Y
+            'AD 0C 02'         # LDA $020C ; check if slot has no data, will be 1A if there is no data or invalid data in the save slot
+            'C9 1A'            # CMP #$1A ; known value
+            'D0 07'            # BNE exit
+           f'A9 {val:02x}'     # LDA #${new_value} ; Could do LDA $C2FCA7 and then AND #$07 here, but that consumes runtime clocks for no extra benefit
+            'A6 79'            # LDX $79 ; get current save slot from memory, 16 bits wide
+            '9D 79 0D'         # STA $0D79, X
+            'C2 33'            # REP #$33 [exit]; reset A and X/Y to 16 bits, clear carry and zero flags, same as entry condition
+            'A5 78'            # LDA $78
+            '29 00 03'         # AND #$0300
+            '6B'               # RTL
+        )
+        
+        start = space_man.get_same_bank_free_addrs([len(bg)])
+        rom_start = byteops.to_rom_ptr(start[0])
+        rom_start_bytes = rom_start.to_bytes(3, 'little')
+        jsl = b'\x22' + rom_start_bytes
+        
+        nop = b'\xEA'
+        
+        rom.seek(0x02D2A6)
+        rom.write(jsl + nop)
+        
+        mark_used = ctevent.FSWriteType.MARK_USED
+        rom.seek(start[0])
+        rom.write(bg, mark_used)
+        
     def __str__(self):
         
         ret = ''
@@ -471,12 +566,42 @@ class CTOpts:
 
         return iter(ret.items())
 
-#TODO actually flesh this out
-def add_user_binds_to_new_games():
-    '''
-    Add an event to new game setup to copy the button binds to persistant user storage
-    '''
-    pass
+    def make_page_up_down_consistent(self, ctrom: CTRom):
+        '''
+        Modify bit checks to test the opposite bits in inventory scrolls to flip effects of Pg Dn/Up
+
+        Default behavior of Pg Up/Dn is inconsistent. In most scrollable menus (inventory, shops),
+        and in the battle inventory menu, Pg Up pages up, and Pg Dn pages down. With them being bound
+        to R and L, respectively, by default, it produces L to page down and R to page up. This hurts
+        my brain, so go fix it to make it consistent with other uses of Pg Dn and Pg Up.
+        
+        Trivia: This would result in having to rename ActionMap keys, but ActionMap is as vanilla.
+        '''
+
+        rom = ctrom.rom_data
+        
+        '''
+        The menu program does not directly read the input rearrange and translate bytes
+        Input collator function c2e987 collates Confirm, Cancel, Pg Dn and Pg Up into 0x7E0D1D ,
+        for use with BMI and BVS opcodes for efficient checking of the two most common inputs.
+
+        #Used for basically everywhere inside shops, menu (including techs), and inventory.
+        '''
+        rom.seek(0x0293C9 + 1) # BIT $02
+        rom.write(0x01.to_bytes(1, 'little'))
+
+        '''
+        Battle inventory scrolling is handled by a different subroutine than menu inventory scrolling.
+        It does not collate input like the menu program, and instead isolates bitmasks of translated input
+        sourced from $fb and $fc. The function of note 0x01143D controls input during Item menu.
+        Overwrite the checks to reverse their effects.
+        '''
+        rom.seek(0x011477 + 1) # AND #$20
+        rom.write(0x10.to_bytes(1, 'little'))
+        
+        rom.seek(0x011483 + 1) # AND #$10
+        rom.write(0x20.to_bytes(1, 'little'))
+        
 
 if __name__ == '__main__':
     pass
