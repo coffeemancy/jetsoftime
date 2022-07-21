@@ -239,7 +239,7 @@ class CTOpts:
     
     def __init__(self,  data: bytearray = None):
                 
-        self._data = self.get_vanilla()[:3]
+        self._data = self.get_vanilla()
 
         self.controller_binds = ControllerBinds()
         
@@ -260,14 +260,6 @@ class CTOpts:
             0x84, #Battle Speed 4, Stereo Audio, Standard Controls, Save Menu Cursor off, Wait Battle Mode, Skill/Item Info On
             0xa0, #Menu Background 0, Battle Message Speed 4, Save Battle Cursor off, Save Skill/Item Cursor on
             0x01, #Battle Gauge Style 1
-            0x80, #Confirm, A
-            0x08, #Cancel, B
-            0x40, #Menu, X
-            0x08, #Dash, B
-            0x02, #Map, Select
-            0x04, #Warp, Y
-            0x10, #Pg Dn, R
-            0x20  #Pg Dn, L
         ])
         
         return ret
@@ -307,7 +299,7 @@ class CTOpts:
         
     #Returns all bytes of config, suitable for writing back to CTRom
     def to_bytearray(self):
-        return bytearray(self._data[0:3])
+        return bytearray(self._data)
         
     #Properties, byte 0
     @property
@@ -543,7 +535,8 @@ class CTOpts:
         ret += f'Battle Message Speed: {self.battle_msg_speed + 1}' + '\n'
         ret += f'Save Battle Cursor: {self.save_battle_cursor}' + '\n'
         ret += f'Save Skill/Item Cursor: {self.save_tech_cursor}' + '\n'
-        ret += f'Battle Gauge Style: {self.battle_gauge_style}'
+        ret += f'Battle Gauge Style: {self.battle_gauge_style}' + '\n'
+        ret += f'Consistent Paging: {self.consistent_paging}'
         
         return ret
 
@@ -560,7 +553,8 @@ class CTOpts:
             'battle_msg_speed': self.battle_msg_speed,
             'save_battle_cursor': self.save_battle_cursor,
             'save_tech_cursor': self.save_tech_cursor,
-            'battle_gauge_style': self.battle_gauge_style
+            'battle_gauge_style': self.battle_gauge_style,
+            'consistent_paging': self.consistent_paging
         }
         
 
@@ -571,9 +565,12 @@ class CTOpts:
         Modify bit checks to test the opposite bits in inventory scrolls to flip effects of Pg Dn/Up
 
         Default behavior of Pg Up/Dn is inconsistent. In most scrollable menus (inventory, shops),
-        and in the battle inventory menu, Pg Up pages up, and Pg Dn pages down. With them being bound
-        to R and L, respectively, by default, it produces L to page down and R to page up. This hurts
-        my brain, so go fix it to make it consistent with other uses of Pg Dn and Pg Up.
+        and in the battle inventory menu, (Pg Up / R) scrolls up, and (Pg Dn / L) scrolls down.
+        This is in contrast to the actions performing decrement (Pg Dn / L) / increment (Pg Up / R) of 
+        character indices during equipment select, or pastwards (Pg Dn / L) / futurewards (Pg Up / R)
+        on the Epoch time gauge.
+        
+        This hurts my brain, so go fix it to make scrolling menus consistent with other uses of Pg Dn and Pg Up.
         
         Trivia: This would result in having to rename ActionMap keys, but ActionMap is as vanilla.
         '''
@@ -582,7 +579,7 @@ class CTOpts:
         
         '''
         The menu program does not directly read the input rearrange and translate bytes
-        Input collator function c2e987 collates Confirm, Cancel, Pg Dn and Pg Up into 0x7E0D1D ,
+        Input collator function 0x02E987 collates Confirm, Cancel, Pg Dn and Pg Up into 0x7E0D1D ,
         for use with BMI and BVS opcodes for efficient checking of the two most common inputs.
 
         #Used for basically everywhere inside shops, menu (including techs), and inventory.
