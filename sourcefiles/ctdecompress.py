@@ -116,7 +116,7 @@ def get_compressed_length(rom, addr):
         # reason.  There are some bad packets out there.
 
         # print(f"Compressed len = {compr_len:04X}")
-    return compr_len
+    return compr_len + 1
 
 
 # Just isolate a compressed packet starting at a certain address
