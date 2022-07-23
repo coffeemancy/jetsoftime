@@ -35,8 +35,10 @@ class FreeSpace():
 
         # maybe verify block is valid?
         if block[1] <= block[0]:
-            print('Error: Block [%d, %d) has nonpositive size. Returning.'
-                  % (block[0], block[1]))
+            print(
+                'Error: Block [%6.6X, %6.6X) has nonpositive size. Returning.'
+                % (block[0], block[1])
+            )
 
         # If the block to mark goes past the end of the file, extend?
         # This should probably throw an error.
@@ -143,21 +145,31 @@ class FreeSpace():
                 # print(f"({self.markers[x]}, {self.markers[x+1]})")
                 # print(f"Size: {self.markers[x+1]-self.markers[x]}")
 
-                # Almost always you want to avoid a write overlapping two
-                # different banks, so there's an additional check beyond
-                # just having enough room.
-                if self.markers[x+1]-self.markers[x] >= size and \
-                   self.markers[x] % 0x10000 + size < 0x10000:
+                block_st = self.markers[x]
+                block_end = self.markers[x+1]
+                next_bank = (block_st & 0xFF0000) + 0x010000
 
-                    # print('Found.')
-                    ret = self.markers[x]
+                true_block_end = min(block_end, next_bank)
+                if true_block_end - block_st >= size:
+                    ret = block_st
+                    break
+
+                # If the block ends before the next bank starts, then
+                # block_end == true_block_end, and this if won't trigger.
+                # Otherwise, true_block_end is the start of the next bank, and
+                # we're trying to fit at the start of the next bank.
+                if block_end - true_block_end >= size:
+                    ret = true_block_end  # == next bank start
                     break
 
             if ret is None:
-                print("Error: Not enough free space.")
-                print(f"size: {size:06X}, hint: {hint:06X}")
-                self.print_blocks()
-                exit()
+                # print("Error: Not enough free space.")
+                # print(f"size: {size:06X}, hint: {hint:06X}")
+                # self.print_blocks()
+                raise FreeSpaceError(
+                    f'Not Enough Free Space.  Size: {size:06X}, '
+                    f'hint: {hint:06X}'
+                )
 
             return ret
 
@@ -418,6 +430,7 @@ class FSRom(BytesIO):
 
             self.seek(addr)
             self.write(payload, mark_set)
+            # print(f'Wrote {len(payload):04X} bytes to {addr:06X}')
 
     def mark(self, num_bytes: int, mark_type: FSWriteType):
         start = self.tell()
