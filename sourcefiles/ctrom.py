@@ -6,9 +6,11 @@ import freespace
 
 
 class InvalidRomException(Exception):
+    pass
 
-    def __init__(self, message='Invalid Chrono Trigger rom file.'):
-        self.message = message
+
+class RomFormatException(Exception):
+    pass
 
 
 # CTRom is just a combination FSRom and ScriptManager
@@ -41,6 +43,7 @@ class CTRom():
             if script_dict[loc_id] is not None:
                 self.script_manager.write_script_to_rom(loc_id)
 
+    @staticmethod
     def validate_ct_rom_file(filename: str) -> bool:
         with open(filename, 'rb') as infile:
             hasher = hashlib.md5()
@@ -64,6 +67,7 @@ class CTRom():
             # print('Known good hash: a2bc447961e52fd2227baed164f729dc')
             return hasher.hexdigest() == 'a2bc447961e52fd2227baed164f729dc'
 
+    @staticmethod
     def validate_ct_rom_bytes(rom: bytes) -> bool:
         hasher = hashlib.md5()
         # Check if this is the size of a headered ROM.
@@ -126,9 +130,54 @@ class CTRom():
             rom.seek(0x40FFDC)
             rom.write(checksum_b)
 
+    def make_exhirom(self):
+        '''
+        Turns a HiROM CTRom into an ExHiROM CTRom.
+
+        Throws an exception if the rom is not HiROM
+        '''
+
+        rom = self.rom_data
+
+        def header_is_hirom(buffer) -> bool:
+            if buffer[0xFFD5] != 0x31 or buffer[0xFFD7] != 0x0C:
+                print('asdf')
+                return False
+            return True
+
+        if len(rom.getbuffer()) != 0x400000 or \
+           not header_is_hirom(rom.getbuffer()):
+            raise RomFormatException('Existing ROM not HiRom')
+
+        # ROM type:  Old value was 0x31 - HiROM + fastrom
+        #            New value is  0x35 for ExHiROM
+        rom.seek(0xFFD5)
+        rom.write(b'\x35')
+
+        # ROM size:  Old value was 0x0C - 4Mbit (why?)
+        #            New value is  0x0D
+        # I don't know how the value is determined, but ok.
+        rom.seek(0xFFD7)
+        rom.write(b'\x0D')
+
+        FSW = freespace.FSWriteType
+        # Mirror [0x008000, 0x010000) to [0x408000, 0x410000)
+        rom.seek(0x008000)
+        mirror_bytes = rom.read(0x8000)
+
+        # 00s to [0x400000, 0x408000)
+        rom.seek(0x400000)
+        rom.write(b'\x00' * 0x8000, FSW.MARK_FREE)
+        # Mirror
+        rom.write(mirror_bytes, FSW.MARK_USED)
+        rom.write(b'\x00' * 0x1F0000, FSW.MARK_FREE)
+
+        self.fix_snes_checksum()
+
 
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()
