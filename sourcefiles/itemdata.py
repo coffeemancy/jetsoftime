@@ -318,6 +318,16 @@ class ItemSecondaryData(ItemData):
     def price(self, val: int):
         self._data[1:3] = val.to_bytes(2, 'little')
 
+    @property
+    def ngplus_carryover(self) -> bool:
+        return not (self._data[0] & 0x10)
+
+    @ngplus_carryover.setter
+    def ngplus_carryover(self, val: bool):
+        val = bool(val)
+        self._data[0] &= 0xFF - 0x10
+        self._data[0] |= 0x10*(val is False)
+
     def get_equipable_by(self) -> list[ctenums.CharID]:
         equip_list = []
         for char in list(ctenums.CharID):
