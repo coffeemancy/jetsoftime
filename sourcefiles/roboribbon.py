@@ -18,6 +18,7 @@ def set_robo_ribbon_in_config(config: cfg.RandoConfig):
 
     item_db = config.itemdb
     robo_ribbon = item_db[ItemID.ROBORIBBON]
+    robo_ribbon.secondary_stats.ngplus_carryover = False
     robo_ribbon.stats.has_stat_boost = True
 
     # Find +3 speed boost in item_db
