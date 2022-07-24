@@ -21,8 +21,8 @@ class ControllerBinds:
 
         self.update_from_bytes(data[-8:])
 
-    @classmethod
-    def get_vanilla(cls):
+    @staticmethod
+    def get_vanilla():
 
         ret = {
             ActionMap.CONFIRM: InputMap.A_BUTTON,
@@ -37,11 +37,12 @@ class ControllerBinds:
         
         return ret
 
-    def from_rom(self, ctrom: CTRom):
+    @classmethod
+    def from_rom(cls, ctrom: CTRom, offset: int = BUTTONS_OFFSET):
         rom = ctrom.rom_data
         
-        rom.seek(BUTTONS_OFFSET)
-        data = rom.read(BUTTONS_LENGTH)
+        rom.seek(offset)
+        data = rom.read(cls.BUTTONS_LENGTH)
        
         return self.to_bytearray(data)
 
@@ -51,7 +52,7 @@ class ControllerBinds:
     
         ret = bytearray(8)
 
-        if not data:
+        if data is None:
             data = bytearray(self._mappings.values())
         
         for idx, button in enumerate(data):
@@ -122,6 +123,7 @@ class ControllerBinds:
 
         data[cmd] = button
 
+
     @property
     def confirm(self):
         return self._mappings[ActionMap.CONFIRM]
@@ -185,7 +187,8 @@ class ControllerBinds:
     @pg_dn.setter
     def pg_dn(self, button: InputMap):
         self._replace_overlap(button, ActionMap.PG_DN)
-        
+
+    
     def write_routine_offsets(self, ctrom: CTRom):
         '''
         Repoint routine to control default/custom user binds to point to saved copy of vanilla binds
@@ -253,8 +256,8 @@ class CTOpts:
         self.controller_binds.update_from_bytes(data)
 
         
-    @classmethod
-    def get_vanilla(cls):
+    @staticmethod
+    def get_vanilla():
     
         ret = bytearray([
             0x84, #Battle Speed 4, Stereo Audio, Standard Controls, Save Menu Cursor off, Wait Battle Mode, Skill/Item Info On
@@ -265,11 +268,12 @@ class CTOpts:
         return ret
     
     #Read provided CTRom, get config
-    def from_rom(self, ctrom: CTRom, offset: int = CONFIG_OFFSET):
+    @classmethod
+    def from_rom(cls, ctrom: CTRom, offset: int = CONFIG_OFFSET):
         rom = ctrom.rom_data
 
         rom.seek(offset)
-        data = rom.read(self.CONFIG_LENGTH)
+        data = rom.read(cls.CONFIG_LENGTH)
     
         return bytearray(data)
 
