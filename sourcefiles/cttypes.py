@@ -21,7 +21,10 @@ def bytes_prop(start_idx: int, num_bytes: int, mask: int,
       - byteorder: Indicates how range(start_idx, start_idx+num_bytes) should
         be interpreted before applying mask.
       - ret_type: Type to return (derives from int)
-      - input_filter: BinaryData method for massaging input before setting.
+      - input_filter: Method for massaging input when setting.  Assumed to be
+          a method of BinaryData, so it is self, val -> val.
+      - output_filter: Method for massaging output when getting.  Similar to
+          input_filter.
     '''
     def getter(self) -> ret_type:
         val = self.get_masked_range(start_idx, num_bytes, mask,
