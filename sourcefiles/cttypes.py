@@ -1,9 +1,38 @@
+import inspect
 import typing
 
+import byteops
 import ctenums
+import ctrom
 
 ValFilter = typing.Callable[[typing.Any, int], int]
 IntBase = typing.TypeVar('IntBase', bound=int)
+
+class BytesProp(property):
+    '''
+    Implement masked byte getter/setters as an extension of property.  This
+    allows for introspection of these types of properties.
+    '''
+    def __init__(self, start_idx: int, num_bytes: int, mask: int,
+                 byteorder: str = 'little',
+                 ret_type: IntBase = int,
+                 input_filter: ValFilter = lambda self, val: val,
+                 output_filter: ValFilter = lambda self, val: val):
+
+        def getter(self) -> ret_type:
+            val = self.get_masked_range(start_idx, num_bytes, mask,
+                                        byteorder)
+            val = output_filter(self, val)
+            return ret_type(val)
+
+        def setter(self, val: ret_type):
+            val = int(val)
+            val = input_filter(self, val)
+            self.set_masked_range(start_idx, num_bytes, mask, val,
+                                  byteorder)
+
+        property.__init__(self, getter, setter)
+
 
 def bytes_prop(start_idx: int, num_bytes: int, mask: int,
                byteorder: str = 'little',
@@ -43,8 +72,11 @@ def bytes_prop(start_idx: int, num_bytes: int, mask: int,
 
 def byte_prop(index, mask, byteorder: str = 'little',
               ret_type: IntBase = int,
-              input_filter: ValFilter = None,
-              output_filter: ValFilter = None):
+              input_filter: ValFilter = lambda self, val: val,
+              output_filter: ValFilter = lambda self, val: val):
+    '''
+    Special case of a bytes_prop that uses only one byte.
+    '''
     return bytes_prop(index, 1, mask, byteorder, ret_type,
                       input_filter, output_filter)
 
@@ -52,9 +84,30 @@ def byte_prop(index, mask, byteorder: str = 'little',
 class BinaryData(bytearray):
     SIZE = None
 
+    @classmethod
+    def do_bytesprop_bookkeeping(cls):
+        '''
+        Dummy classmethod for inspecting BytesProp objects.
+        '''
+
+        def is_bytesprop(x):
+            return isinstance(x, BytesProp)
+
+        bytes_props = [
+            name for (name, value)
+            in inspect.getmembers(cls, is_bytesprop)
+        ]
+
+        if bytes_props:
+            print(bytes_props)
+
+
     def __init__(self, *args, **kwargs):
         bytearray.__init__(self, *args, **kwargs)
         self.validate_data(self)
+
+        self.do_bytesprop_bookkeeping()
+
 
     @classmethod
     def validate_data(cls, data: bytes):
@@ -146,20 +199,53 @@ class TestBin(BinaryData):
                              input_filter=lambda self, val: not val,
                              output_filter=lambda self, val: not val)
 
+    test3 = BytesProp(2, 1, 0x0F)
+
+
+T = typing.TypeVar('T', bound='PointedBinaryRecord')
+
+class PointedBinaryRecord(BinaryData):
+    '''
+    A class for binary data that exists as fixed-length records in a block on
+    the rom which also has a pointer on the rom.
+    '''
+    DATA_PTR = None  # Address on the ROM where the pointer to the data is
+
+    @classmethod
+    def get_data_start_from_ctrom(cls, ct_rom: ctrom.CTRom):
+        rom = ct_rom.rom_data
+        rom.seek(cls.DATA_PTR)
+        rom_ptr = int.from_bytes(rom.read(3), 'little')
+        file_ptr = byteops.to_file_ptr(rom_ptr)
+
+        return file_ptr
+
+    @classmethod
+    def get_record_from_ctrom(cls: typing.Type[T], ct_rom: ctrom.CTRom,
+                              record_id: int) -> T:
+        data_st = cls.get_data_start_from_ctrom(ct_rom)
+        record_st = data_st + record_id*cls.SIZE
+        ct_rom.rom_data.seek(record_st)
+        data = ct_rom.rom_data.read(cls.SIZE)
+        return cls(data)
+
+
+class ControlHeader(PointedBinaryRecord):
+    pass
+    
+
+class PCTechControlHeader(ControlHeader):
+    SIZE = 0xB
+    DATA_PTR = 0x01CBA1
+
 
 def main():
-    test = TestBin(b'\x00\x00')
-    item_id = ctenums.ItemID.AEON_HELM
 
-    print(f'{int(item_id):02X}')
-    test.test_prop = item_id
-    test.test2 = 0x8
-    test.stereo_audio = False
-    print(test)  # The 0x10 bit is set, as desired
-    print(test.stereo_audio)  # But the property correctly reads as false.
-    test.stereo_audio = True
+    test = TestBin(b'\x00\x00')
+    print(test.test3)
+    test.test3 = 5
+    print(test.test3)
     print(test)
-    print(test.test_prop)  # prints prism helm because of test_filter incr
 
 
 if __name__ == '__main__':
