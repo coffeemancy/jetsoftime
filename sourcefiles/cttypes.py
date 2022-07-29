@@ -1,3 +1,7 @@
+'''
+Experimental module exploring better ways to represent binary data on ROM.
+'''
+
 import inspect
 import typing
 
@@ -8,88 +12,128 @@ import ctrom
 ValFilter = typing.Callable[[typing.Any, int], int]
 IntBase = typing.TypeVar('IntBase', bound=int)
 
+
 class BytesProp(property):
     '''
     Implement masked byte getter/setters as an extension of property.  This
-    allows for introspection of these types of properties.
+    allows for inspection of these types of properties.
     '''
-    def __init__(self, start_idx: int, num_bytes: int, mask: int,
+    def __init__(self, start_idx: int, num_bytes: int = 1,
+                 mask: int = 0xFF,
                  byteorder: str = 'little',
                  ret_type: IntBase = int,
                  input_filter: ValFilter = lambda self, val: val,
                  output_filter: ValFilter = lambda self, val: val):
+        '''
+        Constructs a property for getting/setting a masked range in BinaryData.
 
-        def getter(self) -> ret_type:
-            val = self.get_masked_range(start_idx, num_bytes, mask,
-                                        byteorder)
-            val = output_filter(self, val)
-            return ret_type(val)
+        Parameters:
+        - start_idx (no default), num_bytes (defaults to 1): Get the bytes in
+          range(start_idx, start_idx+num_bytes).
+        - mask: integer with contiguous set bits.  Only the portion of the data
+          corresponding to the set bits of mask are gotten/set. Defaults to
+          0xFF.
+        - byteorder: Indicates how range(start_idx, start_idx+num_bytes) should
+          be interpreted before applying mask.  Defaults to 'little'.
+        - ret_type: Type to return (derives from int).  Defaults to int.
+        - input_filter: Method for massaging input when setting.  Assumed to
+          be a method of BinaryData, so it is self, val -> val.  Defaults to
+          do nothing.
+        - output_filter: Method for massaging output when getting.  Similar to
+          input_filter.  Defaults to do nothing.
+        '''
 
-        def setter(self, val: ret_type):
-            val = int(val)
-            val = input_filter(self, val)
-            self.set_masked_range(start_idx, num_bytes, mask, val,
-                                  byteorder)
+        # Store some state for fun (and the __str__ method)
+        # Private because changing them won't change the underlying get/setter.
+        self._start_idx = start_idx
+        self._num_bytes = num_bytes
+        self._mask = mask
+
+        getter = self._make_getter(start_idx, num_bytes, mask, byteorder,
+                                   ret_type, output_filter)
+        setter = self._make_setter(start_idx, num_bytes, mask, byteorder,
+                                   ret_type, input_filter)
 
         property.__init__(self, getter, setter)
 
+    @staticmethod
+    def _make_getter(start_idx: int, num_bytes: int, mask: int,
+                     byteorder: str, ret_type: typing.Type,
+                     output_filter: ValFilter):
+        '''
+        Construct the getter function for a BytesProp.
+        '''
+        def getter(obj) -> ret_type:
+            val = obj.get_masked_range(start_idx, num_bytes, mask,
+                                       byteorder)
+            val = output_filter(obj, val)
+            return ret_type(val)
 
-def bytes_prop(start_idx: int, num_bytes: int, mask: int,
+        return getter
+
+    @staticmethod
+    def _make_setter(start_idx: int, num_bytes: int, mask: int,
+                     byteorder: str, ret_type: typing.Type,
+                     input_filter: ValFilter):
+        '''
+        Construct the setter function for a BytesProp.
+        '''
+        def setter(obj, val: ret_type):
+            val = int(val)
+            val = input_filter(obj, val)
+            obj.set_masked_range(start_idx, num_bytes, mask, val,
+                                 byteorder)
+        return setter
+
+    def __str__(self):
+        '''
+        Simple string method that gives the basic information about the
+        property.
+        '''
+        ret_str = f'{self.__class__.__name__}: '
+        st = self._start_idx
+        end = self._start_idx + self._num_bytes
+        ret_str += f'On range({st}, {end}) with mask {bin(self._mask)}'
+        return ret_str
+
+
+# These two functions exist so the properties can be used indepdendently of the
+# implementation of the byte properties.
+def bytes_prop(start_idx: int, num_bytes: int = 1, mask: int = 0xFF,
                byteorder: str = 'little',
                ret_type: IntBase = int,
                input_filter: ValFilter = lambda self, val: val,
                output_filter: ValFilter = lambda self, val: val):
-    '''
-    Returns a property for getting/setting a masked range in BinaryData.
-
-    Parameters:
-      - start_idx, num_bytes: Get the bytes in 
-        range(start_idx, start_idx+num_bytes)
-      - mask: integer with contiguous set bits.  Only the portion of the data
-        corresponding to the set bits of mask are gotten/set.
-      - byteorder: Indicates how range(start_idx, start_idx+num_bytes) should
-        be interpreted before applying mask.
-      - ret_type: Type to return (derives from int)
-      - input_filter: Method for massaging input when setting.  Assumed to be
-          a method of BinaryData, so it is self, val -> val.
-      - output_filter: Method for massaging output when getting.  Similar to
-          input_filter.
-    '''
-    def getter(self) -> ret_type:
-        val = self.get_masked_range(start_idx, num_bytes, mask,
-                                    byteorder)
-        val = output_filter(self, val)
-        return ret_type(val)
-
-    def setter(self, val: ret_type):
-        val = int(val)
-        val = input_filter(self, val)
-        self.set_masked_range(start_idx, num_bytes, mask, val,
-                              byteorder)
-
-    return property(getter, setter)
+    return BytesProp(start_idx, num_bytes, mask, byteorder, ret_type,
+                     input_filter, output_filter)
 
 
-def byte_prop(index, mask, byteorder: str = 'little',
+def byte_prop(index: int, mask: int = 0xFF, byteorder: str = 'little',
               ret_type: IntBase = int,
               input_filter: ValFilter = lambda self, val: val,
               output_filter: ValFilter = lambda self, val: val):
     '''
     Special case of a bytes_prop that uses only one byte.
     '''
-    return bytes_prop(index, 1, mask, byteorder, ret_type,
-                      input_filter, output_filter)
+    return BytesProp(index, 1, mask, byteorder, ret_type,
+                     input_filter, output_filter)
 
 
 class BinaryData(bytearray):
+    '''
+    Class for representing binary data on a ROM.
+
+    Includes methods for getting/setting bytes with a mask applied which are
+    used by BytesProp for generating properties.
+    '''
     SIZE = None
 
     @classmethod
-    def do_bytesprop_bookkeeping(cls):
+    def get_bytesprops(cls):
         '''
-        Dummy classmethod for inspecting BytesProp objects.
+        Dummy classmethod for inspecting BytesProp objects just to show how it
+        can be done.
         '''
-
         def is_bytesprop(x):
             return isinstance(x, BytesProp)
 
@@ -98,15 +142,16 @@ class BinaryData(bytearray):
             in inspect.getmembers(cls, is_bytesprop)
         ]
 
-        if bytes_props:
-            print(bytes_props)
+        for name in bytes_props:
+            prop_str = str(getattr(cls, name))
+            print(f'{name}: {prop_str}')
+
+        return bytes_props
 
 
     def __init__(self, *args, **kwargs):
         bytearray.__init__(self, *args, **kwargs)
         self.validate_data(self)
-
-        self.do_bytesprop_bookkeeping()
 
 
     @classmethod
@@ -135,7 +180,18 @@ class BinaryData(bytearray):
         Return the bytes in range(start_idx, start_idx+num_bytes) with
         mask applied.
 
-        Param mask must have contiguous bytes set
+        More precisely, this
+        1) Reads the bytes in range(start_idx, start_idx+num_bytes) as in
+           integer with the given byteorder.
+        2) Applies the mask to the integer.  In some sense this means the 
+           mask is big-endian.  The mask must have only consecutive bytes set.
+        3) Returns the masked bits as an integer.
+
+        Example (from the DB):
+        Location Exit	03	01FF	2	Destination Location
+          To get this range, you read bytes 3, 4 as a little-endian and then
+          apply the mask 0x1FF.  The actual bytes read are Bytes 3.FF and 4.01.
+          get_masked_range(self, 3, 2, 0x1FF, 'little')
         '''
         val = int.from_bytes(self[start_idx:start_idx+num_bytes], byteorder)
         val &= mask
@@ -146,9 +202,23 @@ class BinaryData(bytearray):
                          val: int, byteorder: str = 'little'):
         '''
         Set the bytes in range(start_idx, start_idx+num_bytes) corresponding
-        to bits set in mask to val.
+        to bits set in mask to val.  Dual to get_masked_range such that
+          set_masked_range(start, n, mask, val, byteorder)
+          new_val = get_masked_range(start, n, mask, byteorder)
+        will have new_val == val.
 
-        Param mask must have contiguous bytes set.
+        More precisely, this
+        1) Reads the bytes in range(start_idx, start_idx+num_bytes) as in
+           integer with the given byteorder.  Python treats this as big-endian.
+        2) Write val (as big-endian) into the bits ste by mask.
+        3) Write the bytes back into self.
+
+        Example (from the DB):
+        Location Exit	03	01FF	2	Destination Location
+          To set this range, you read bytes 3, 4 as a little-endian int, write
+          a big-endian value into the 0x1FF bits, and write the result as
+          little-endian bytes into bytes 3 and 4.
+          set_masked_range(self, 3, 2, 0x1FF, set_val, 'little')
         '''
         shift = self.get_minimal_shift(mask)
         max_val = mask >> shift  # assuming contiguous mask
@@ -199,10 +269,20 @@ class TestBin(BinaryData):
                              input_filter=lambda self, val: not val,
                              output_filter=lambda self, val: not val)
 
-    test3 = BytesProp(2, 1, 0x0F)
+    test3 = byte_prop(2, 0x0F)
+
+    @property
+    def not_byteprop(self):
+        return self[0]
+
+    @not_byteprop.setter
+    def not_byteprop(self, val):
+        self[0] = val
 
 
+# Use for classmethods that need to return their own type.
 T = typing.TypeVar('T', bound='PointedBinaryRecord')
+
 
 class PointedBinaryRecord(BinaryData):
     '''
@@ -230,20 +310,16 @@ class PointedBinaryRecord(BinaryData):
         return cls(data)
 
 
-class ControlHeader(PointedBinaryRecord):
-    pass
-    
-
-class PCTechControlHeader(ControlHeader):
-    SIZE = 0xB
-    DATA_PTR = 0x01CBA1
-
-
 def main():
+
+    # Note that not_byteprop gets left out of the output because it was not
+    # created with the BytesProp class.
+    TestBin.get_bytesprops()
 
     test = TestBin(b'\x00\x00')
     print(test.test3)
     test.test3 = 5
+    test.not_byteprop = 7
     print(test.test3)
     print(test)
 
