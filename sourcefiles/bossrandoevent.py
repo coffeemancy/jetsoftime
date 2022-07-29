@@ -400,12 +400,14 @@ def set_giga_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
 
     # mutant coords are weird.  The coordinates are the bottom of the mutant's
     # bottom part.  We need to shift up so non-mutants aren't on the party.
+    # Golems also float above their coordinate location.
     if boss.ids[0] not in [EnemyID.GIGA_MUTANT_HEAD,
                            EnemyID.GIGA_MUTANT_BOTTOM,
                            EnemyID.TERRA_MUTANT_HEAD,
                            EnemyID.TERRA_MUTANT_BOTTOM,
                            EnemyID.MEGA_MUTANT_HEAD,
-                           EnemyID.MEGA_MUTANT_BOTTOM]:
+                           EnemyID.MEGA_MUTANT_BOTTOM,
+                           EnemyID.GOLEM, EnemyID.GOLEM_BOSS]:
         first_y -= 0x20
 
     # overwrite as many boss objects as possible
@@ -472,12 +474,14 @@ def set_terra_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
 
     # mutant coords are weird.  The coordinates are the bottom of the mutant's
     # bottom part.  We need to shift up so non-mutants aren't on the party.
+    # Golems also float above their coordinate location.
     if boss.ids[0] not in [EnemyID.GIGA_MUTANT_HEAD,
                            EnemyID.GIGA_MUTANT_BOTTOM,
                            EnemyID.TERRA_MUTANT_HEAD,
                            EnemyID.TERRA_MUTANT_BOTTOM,
                            EnemyID.MEGA_MUTANT_HEAD,
-                           EnemyID.MEGA_MUTANT_BOTTOM]:
+                           EnemyID.MEGA_MUTANT_BOTTOM,
+                           EnemyID.GOLEM, EnemyID.GOLEM_BOSS]:
         first_y -= 0x20
 
     for i in range(num_used):
