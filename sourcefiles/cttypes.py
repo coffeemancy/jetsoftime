@@ -1,7 +1,7 @@
 '''
 Experimental module exploring better ways to represent binary data on ROM.
 '''
-
+import abc
 import inspect
 import typing
 
@@ -19,7 +19,7 @@ class BytesProp(property):
     allows for inspection of these types of properties.
     '''
     def __init__(self, start_idx: int, num_bytes: int = 1,
-                 mask: int = 0xFF,
+                 mask: int = None,
                  byteorder: str = 'little',
                  ret_type: IntBase = int,
                  input_filter: ValFilter = lambda self, val: val,
@@ -43,6 +43,9 @@ class BytesProp(property):
           input_filter.  Defaults to do nothing.
         '''
 
+        if mask is None:
+            mask = (1 << 8*num_bytes) - 1
+
         # Store some state for fun (and the __str__ method)
         # Private because changing them won't change the underlying get/setter.
         self._start_idx = start_idx
@@ -64,8 +67,8 @@ class BytesProp(property):
         Construct the getter function for a BytesProp.
         '''
         def getter(obj) -> ret_type:
-            val = obj.get_masked_range(start_idx, num_bytes, mask,
-                                       byteorder)
+            val = byteops.get_masked_range(obj, start_idx,
+                                           num_bytes, mask, byteorder)
             val = output_filter(obj, val)
             return ret_type(val)
 
@@ -81,8 +84,9 @@ class BytesProp(property):
         def setter(obj, val: ret_type):
             val = int(val)
             val = input_filter(obj, val)
-            obj.set_masked_range(start_idx, num_bytes, mask, val,
-                                 byteorder)
+            byteops.set_masked_range(obj, start_idx, num_bytes,
+                                     mask, val, byteorder)
+
         return setter
 
     def __str__(self):
@@ -99,7 +103,7 @@ class BytesProp(property):
 
 # These two functions exist so the properties can be used indepdendently of the
 # implementation of the byte properties.
-def bytes_prop(start_idx: int, num_bytes: int = 1, mask: int = 0xFF,
+def bytes_prop(start_idx: int, num_bytes: int = 1, mask: int = None,
                byteorder: str = 'little',
                ret_type: IntBase = int,
                input_filter: ValFilter = lambda self, val: val,
@@ -108,7 +112,7 @@ def bytes_prop(start_idx: int, num_bytes: int = 1, mask: int = 0xFF,
                      input_filter, output_filter)
 
 
-def byte_prop(index: int, mask: int = 0xFF, byteorder: str = 'little',
+def byte_prop(index: int, mask: int = None, byteorder: str = 'little',
               ret_type: IntBase = int,
               input_filter: ValFilter = lambda self, val: val,
               output_filter: ValFilter = lambda self, val: val):
@@ -119,6 +123,154 @@ def byte_prop(index: int, mask: int = 0xFF, byteorder: str = 'little',
                      input_filter, output_filter)
 
 
+class RomRW(abc.ABC):
+    '''
+    Class which describes how to read data from a ROM (ctrom.CTRom) and write
+    it back out.
+    '''
+    @abc.abstractmethod
+    def read_data_from_ctrom(self,
+                             ct_rom: ctrom.CTRom,
+                             num_bytes: int,
+                             record_num: int = 0) -> bytearray:
+        '''
+        Read num_bytes bytes from a ctrom.CTRom.  If the data is arranged in
+        records, read record number record_num.
+        '''
+        pass
+
+    @abc.abstractmethod
+    def write_data_to_ct_rom(self,
+                             ct_rom: ctrom.CTRom,
+                             data: bytes,
+                             record_num: int = 0):
+        '''
+        Write data to a ctrom.CTRom.  If the target data is arranged in 
+        records of length len(data), write to record number record_num.
+        '''
+        pass
+
+    @abc.abstractmethod
+    def free_data_on_ct_rom(self, ct_rom, num_bytes, record_num: int = 0):
+        '''
+        Mark the data on the ROM that would be read/written as free
+        '''
+        pass
+
+
+class AbsPointerRW(RomRW):
+    '''
+    Class to read BinaryData from a ROM when the data's location is given by
+    an absolute (3 byte) pointer on the ROM.
+    '''
+    def __init__(self, abs_file_ptr):
+        self.abs_file_ptr = abs_file_ptr
+
+    def get_data_start_from_ctrom(self, ct_rom: ctrom.CTRom) -> int:
+        rom = ct_rom.rom_data
+        rom.seek(self.abs_file_ptr)
+        rom_ptr = int.from_bytes(rom.read(3), 'little')
+        file_ptr = byteops.to_file_ptr(rom_ptr)
+        return file_ptr
+
+    def read_data_from_ctrom(self, ct_rom: ctrom.CTRom,
+                             num_bytes: int,
+                             record_num: int = 0) -> bytearray:
+        '''
+        Use the absolute pointer on the ROM to read data.
+        '''
+        start = self.get_data_start_from_ctrom(ct_rom)
+        ct_rom.rom_data.seek(start + num_bytes*record_num)
+        return ct_rom.rom_data.read(num_bytes)
+
+    def write_data_to_ct_rom(self, ct_rom: ctrom.CTRom,
+                             data: bytes,
+                             record_num: int = 0):
+        '''
+        Use the absolute pointer on the rom to write data.
+        '''
+        mark_used = ctrom.freespace.FSWriteType.MARK_USED
+        start = self.get_data_start_from_ctrom(ct_rom)
+        ct_rom.rom_data.seek(start + len(data)*record_num)
+        ct_rom.rom_data.write(data, mark_used)
+
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom, num_bytes,
+                            record_num: int = 0):
+        '''
+        Use the absolute pointer on the rom to free data.
+        '''
+        mark_free = ctrom.freespace.FSWriteType.MARK_FREE
+        start = self.get_data_start_from_ctrom(ct_rom) + num_bytes*record_num
+        ct_rom.rom_data.space_manager.mark_block(
+            (start, start+num_bytes), mark_free
+        )
+
+
+class LocalPointerRW(RomRW):
+    '''
+    Class that extends RomRW by reading a bank and offset from a rom to
+    read and write data.
+
+    Sometimes there is no pointer directly to the data we want because it's
+    part of a larger write.  In this case, parameter shift can be used.
+    Example:
+    $C2/9583 A2 00 00    LDX #$0000
+    ...
+    $C2/958C 54 7E CC    MVN CC 7E
+    This indirectly holds the pointer for tech levels.  The tech level bytes
+    only begin after 0x230 bytes.  So to grab the tech levels, we would call
+    LocalPointerRW(0x029584, 0x02958E, 0x230)
+    '''
+    def __init__(self, bank_ptr: int, offset_ptr: int, shift: int = 0):
+        self.bank_ptr = bank_ptr
+        self.offset_ptr = offset_ptr
+        self.shift = shift
+
+    def get_data_start_from_ctrom(self, ct_rom: ctrom.CTRom) -> int:
+        rom = ct_rom.rom_data
+        rom.seek(self.offset_ptr)
+        offset = int.from_bytes(rom.read(2), 'little')
+
+        rom.seek(self.bank_ptr)
+        bank = int(rom.read(1)[0]) * 0x10000
+
+        rom_ptr = bank + offset + self.shift
+        return byteops.to_file_ptr(rom_ptr)
+
+    def read_data_from_ctrom(self, ct_rom: ctrom.CTRom,
+                             num_bytes: int,
+                             record_num: int = 0) -> bytearray:
+        '''
+        Use the bank and offset pointers on the rom to read the data.
+        '''
+        start = self.get_data_start_from_ctrom(ct_rom)
+        ct_rom.rom_data.seek(start + num_bytes*record_num)
+        return ct_rom.rom_data.read(num_bytes)
+
+    def write_data_to_ct_rom(self, ct_rom: ctrom.CTRom,
+                             data: bytes,
+                             record_num: int = 0):
+        '''
+        Use the bank and offset pointers on the rom to write data.
+        '''
+        mark_used = ctrom.freespace.FSWriteType.MARK_USED
+        start = self.get_data_start_from_ctrom(ct_rom)
+        ct_rom.rom_data.seek(start + len(data)*record_num)
+        ct_rom.rom_data.write(data, mark_used)
+
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom, num_bytes,
+                            record_num: int = 0):
+        mark_free = ctrom.freespace.FSWriteType.MARK_FREE
+        start = self.get_data_start_from_ctrom(ct_rom)
+        start += num_bytes*record_num
+        ct_rom.rom_data.space_manager.mark_block(
+            (start, start+num_bytes), mark_free
+        )
+
+
+T = typing.TypeVar('T', bound='BinaryData')
+
+
 class BinaryData(bytearray):
     '''
     Class for representing binary data on a ROM.
@@ -127,6 +279,7 @@ class BinaryData(bytearray):
     used by BytesProp for generating properties.
     '''
     SIZE = None
+    ROM_RW: RomRW = None
 
     @classmethod
     def get_bytesprops(cls):
@@ -148,11 +301,23 @@ class BinaryData(bytearray):
 
         return bytes_props
 
+    @classmethod
+    def read_from_ctrom(cls: typing.Type[T],
+                        ct_rom: ctrom.CTRom,
+                        record_num: int = 0) -> T:
+        return cls(
+            cls.ROM_RW.read_data_from_ctrom(ct_rom, cls.SIZE, record_num)
+        )
+
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom, record_num: int = 0):
+        self.ROM_RW.write_data_to_ct_rom(ct_rom, self, record_num)
+
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom, record_num: int=0):
+        self.ROM_RW.free_data_on_ct_rom(ct_rom, len(self), record_num)
 
     def __init__(self, *args, **kwargs):
         bytearray.__init__(self, *args, **kwargs)
         self.validate_data(self)
-
 
     @classmethod
     def validate_data(cls, data: bytes):
@@ -160,82 +325,6 @@ class BinaryData(bytearray):
             raise ValueError(
                 f'Given data has length {len(data)} (Needs {cls.SIZE}).'
             )
-
-    @staticmethod
-    def get_minimal_shift(mask: int):
-        '''
-        Find the minimal N such that (mask/2^N % 1) != 0.
-        '''
-
-        # Put the binary string in reverse, and chop off the '0b' from the
-        # start.
-        try:
-            return bin(mask)[:1:-1].index('1')
-        except ValueError as orig:  # Give a more reasonable ValueError
-            raise ValueError('Mask must be nonzero.') from orig
-
-    def get_masked_range(self, start_idx: int, num_bytes: int, mask: int,
-                         byteorder: str = 'little') -> int:
-        '''
-        Return the bytes in range(start_idx, start_idx+num_bytes) with
-        mask applied.
-
-        More precisely, this
-        1) Reads the bytes in range(start_idx, start_idx+num_bytes) as in
-           integer with the given byteorder.
-        2) Applies the mask to the integer.  In some sense this means the 
-           mask is big-endian.  The mask must have only consecutive bytes set.
-        3) Returns the masked bits as an integer.
-
-        Example (from the DB):
-        Location Exit	03	01FF	2	Destination Location
-          To get this range, you read bytes 3, 4 as a little-endian and then
-          apply the mask 0x1FF.  The actual bytes read are Bytes 3.FF and 4.01.
-          get_masked_range(self, 3, 2, 0x1FF, 'little')
-        '''
-        val = int.from_bytes(self[start_idx:start_idx+num_bytes], byteorder)
-        val &= mask
-        val >>= self.get_minimal_shift(mask)
-        return val
-
-    def set_masked_range(self, start_idx: int, num_bytes: int, mask: int,
-                         val: int, byteorder: str = 'little'):
-        '''
-        Set the bytes in range(start_idx, start_idx+num_bytes) corresponding
-        to bits set in mask to val.  Dual to get_masked_range such that
-          set_masked_range(start, n, mask, val, byteorder)
-          new_val = get_masked_range(start, n, mask, byteorder)
-        will have new_val == val.
-
-        More precisely, this
-        1) Reads the bytes in range(start_idx, start_idx+num_bytes) as in
-           integer with the given byteorder.  Python treats this as big-endian.
-        2) Write val (as big-endian) into the bits ste by mask.
-        3) Write the bytes back into self.
-
-        Example (from the DB):
-        Location Exit	03	01FF	2	Destination Location
-          To set this range, you read bytes 3, 4 as a little-endian int, write
-          a big-endian value into the 0x1FF bits, and write the result as
-          little-endian bytes into bytes 3 and 4.
-          set_masked_range(self, 3, 2, 0x1FF, set_val, 'little')
-        '''
-        shift = self.get_minimal_shift(mask)
-        max_val = mask >> shift  # assuming contiguous mask
-
-        if not 0 <= val <= max_val:
-            raise ValueError(
-                f'Value must be in range({max_val+1:0{2*num_bytes}X})'
-            )
-
-        inv_mask = (1 << (num_bytes*8)) - mask - 1
-        cur_val = int.from_bytes(self[start_idx: start_idx+num_bytes],
-                                 byteorder)
-        cur_val &= inv_mask
-        cur_val |= (val << shift)
-
-        self[start_idx:start_idx+num_bytes] = \
-            cur_val.to_bytes(num_bytes, byteorder)
 
     def __str__(self):
         ret_str = f'{self.__class__.__name__}: '
@@ -260,6 +349,7 @@ class TestBin(BinaryData):
                            ret_type=ctenums.ItemID)
 
     # mimicking Rythrix's battle speed property
+    # could be lambda obj, val: sorted([0, val, 7])[1]
     test2 = byte_prop(0, 0xE0, input_filter=test_filter)
 
     # mimicking Rythyrix's stereo audio property
@@ -278,36 +368,6 @@ class TestBin(BinaryData):
     @not_byteprop.setter
     def not_byteprop(self, val):
         self[0] = val
-
-
-# Use for classmethods that need to return their own type.
-T = typing.TypeVar('T', bound='PointedBinaryRecord')
-
-
-class PointedBinaryRecord(BinaryData):
-    '''
-    A class for binary data that exists as fixed-length records in a block on
-    the rom which also has a pointer on the rom.
-    '''
-    DATA_PTR = None  # Address on the ROM where the pointer to the data is
-
-    @classmethod
-    def get_data_start_from_ctrom(cls, ct_rom: ctrom.CTRom):
-        rom = ct_rom.rom_data
-        rom.seek(cls.DATA_PTR)
-        rom_ptr = int.from_bytes(rom.read(3), 'little')
-        file_ptr = byteops.to_file_ptr(rom_ptr)
-
-        return file_ptr
-
-    @classmethod
-    def get_record_from_ctrom(cls: typing.Type[T], ct_rom: ctrom.CTRom,
-                              record_id: int) -> T:
-        data_st = cls.get_data_start_from_ctrom(ct_rom)
-        record_st = data_st + record_id*cls.SIZE
-        ct_rom.rom_data.seek(record_st)
-        data = ct_rom.rom_data.read(cls.SIZE)
-        return cls(data)
 
 
 def main():
