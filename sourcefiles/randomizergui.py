@@ -73,10 +73,14 @@ class CreateToolTip(object):
         # Leaves only the label and removes the app window
         self.tw.wm_overrideredirect(True)
         self.tw.wm_geometry("+%d+%d" % (x, y))
-        label = tk.Label(self.tw, text=self.text, justify='left',
+        displaytext = self.text
+        if type(self.text) == tk.StringVar:
+            displaytext = self.text.get()
+        label = tk.Label(self.tw, text=displaytext, justify='left',
                          background="#ffffff", relief='solid', borderwidth=1,
                          wraplength=self.wraplength)
         label.pack(ipadx=1)
+
 
     def hidetip(self):
         tw = self.tw
@@ -142,8 +146,6 @@ class RandoGUI:
         self.bucket_frag_extra_scale = None
         self.bucket_frag_extra = tk.IntVar(value=10)
 
-        #GREPME ctoptions vars
-       
         self.ctopts = {
             'battle_speed': tk.IntVar(value = 5),
             'stereo_audio': tk.BooleanVar(value = True),
@@ -158,7 +160,7 @@ class RandoGUI:
             'battle_gauge_style': tk.IntVar(value = 1),
             'consistent_paging': tk.BooleanVar(value = False)
         }
-       
+
         self.controller_binds = {
             ActionMap.CONFIRM: tk.StringVar(value = InputMap.A_BUTTON),
             ActionMap.CANCEL: tk.StringVar(value = InputMap.B_BUTTON),
@@ -169,7 +171,7 @@ class RandoGUI:
             ActionMap.PG_UP: tk.StringVar(value = InputMap.R_SHOULDER),
             ActionMap.PG_DN: tk.StringVar(value = InputMap.L_SHOULDER)
         }
-        
+
         # Mystery Settings.
         # We have to make tk variable copies of the data structure.
         # There must be a better way.
@@ -373,26 +375,30 @@ class RandoGUI:
         # Cosmetic flags
         cosmetic_flags = [x for x in list(CosmeticFlags)
                           if self.cosmetic_flag_dict[x].get() == 1]
+
         
+        # In-game options
         self.settings.ctoptions = ctoptions.CTOpts()
 
-        #controller bindings should not be updated directly in a loop, due to _replace_overlap() 
-        binds = bytearray(8)
-        
-        for idx, button in enumerate(self.controller_binds.values()):
-            value = InputMap[button.get().upper().replace(' ','_')]
-            binds[idx] = value
+        decrement_vars = [
+            'menu_background',
+            'battle_speed',
+            'battle_msg_speed'
+        ]
 
-        self.settings.ctoptions.controller_binds.update_from_bytes(binds)
-        
         for attr, value in self.ctopts.items():
-
-            if attr != 'battle_gauge_style' and type(value.get()) != bool:
+            if attr in decrement_vars:
                 setattr(self.settings.ctoptions, attr, value.get()-1)
                 continue
-            
+
             setattr(self.settings.ctoptions, attr, value.get())
         
+        for action, button in self.controller_binds.items():
+            attr = str(action).lower().replace(' ','_')
+            value = InputMap[button.get().upper().replace(' ','_')]
+            setattr(self.settings.ctoptions.controller_binds, attr, value)
+
+
         self.settings.char_names[0] = self.char_names['Crono'].get()
         self.settings.char_names[1] = self.char_names['Marle'].get()
         self.settings.char_names[2] = self.char_names['Lucca'].get()
@@ -512,10 +518,14 @@ class RandoGUI:
         self.char_names['Magus'].set(self.settings.char_names[6])
         self.char_names['Epoch'].set(self.settings.char_names[7])
 
-        #GREPME ctopts update gui vars
+        increment_vars = [
+            'menu_background',
+            'battle_speed',
+            'battle_msg_speed'
+        ]
+
         for key, item in self.settings.ctoptions:
-            #We only worry about ints that aren't battle_gauge_style
-            if key != 'battle_gauge_style' and type(item) != bool:
+            if key in increment_vars:
                 self.ctopts[key].set(item + 1)
             else:
                 self.ctopts[key].set(item)
@@ -1399,6 +1409,29 @@ class RandoGUI:
                     'Enable dc flag and adjust the settings.'
                 )
                 return
+
+        # Check for bad input in controller binds
+        testbinds = {}
+        for action, button in self.controller_binds.items():
+            try:
+                value = InputMap[button.get().upper().replace(' ','_')]
+            except:
+                messagebox.showerror(
+                    'Options Controller Error',
+                    'All button binds must be set.'
+                )
+                self.notebook.select(self.options_page)
+                return
+            testbinds[action] = value
+            
+        if not ctoptions.ControllerBinds.is_valid_mappings(testbinds):
+            messagebox.showerror(
+                'Options Controller Error',
+                'Invalid input in button binds.'
+            )
+            self.notebook.select(self.options_page)
+            return
+        
 
         # Check for bad input from RO page
 
@@ -2340,7 +2373,7 @@ class RandoGUI:
             tempframe.pack(anchor=tk.W)
 
         return frame
-        
+
     def get_options_page(self):
         frame = ttk.Frame(self.notebook)
 
@@ -2353,263 +2386,352 @@ class RandoGUI:
             parent
         )
         
-        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure([0,2], weight=1)
         
         label = tk.Label(frame, text='In-Game Options')
-        label.grid(row=0, column=0, columnspan=2, sticky = 'we')
+        label.grid(row=0, column=1, sticky = 'we')
         CreateToolTip(
             label,
             'New games will start with these settings. Saved games with differing settings are not affected.'
             )
 
-        self.get_ctoptions_config_frame(frame).grid(row = 1, column = 0, sticky='we')
-        self.get_ctoptions_button_frame(frame).grid(row = 1, column = 1, sticky='nesw')
-
+        self.get_ctoptions_config_frame(frame).grid(row=1, column=1, sticky='wen')
+        self.get_ctoptions_assignment_frame(frame).grid(row=2, column=1, sticky='we')
 
         return frame
-        
+
     def get_ctoptions_config_frame(self, parent):
         frame = tk.Frame(
             parent, borderwidth=1, highlightbackground='black',
             highlightthickness=1
         )
-        
-        frame.columnconfigure(0, weight=1)
-        
-        label = tk.Label(frame, text='Stereo Audio')
-        label.grid(row=0, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'Audio output is dual channel, rather than '
-            'single channel.'
-        )
-        
-        tk.Checkbutton(
-                    frame,
-                    variable=self.ctopts['stereo_audio']
-                    ).grid(row=0, column=1, sticky=tk.E)
 
-                    
+        frame.columnconfigure(1, weight=1)
 
-        label = tk.Label(frame, text='Save Menu Cursor')
-        label.grid(row=1, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'The menu saves the last page displayed, and '
-            'starts on it every time the menu opens. Additionally, '
-            'in menu, inventory cursor position is saved.'
-        )
-        
-        tk.Checkbutton(
-                    frame,
-                    variable=self.ctopts['save_menu_cursor']
-                    ).grid(row=1, column=1, sticky=tk.E)
+        #dicts instead of tuples?
+        checkboxes = {
+            'Stereo Audio': ('stereo_audio', 'Audio output is dual channel, rather than single channel.'),
+            'Save Menu Cursor': ('save_menu_cursor', 'The menu saves the last page displayed, and starts on it every time the menu opens. Additionally, in menu, inventory cursor position is saved.'),
+            'Save Battle Cursor': ('save_battle_cursor', 'Battle cursor position is saved for each character. When changing which character to command, the cursor moves to that character\'s previously-used option.'),
+            'Save Skill/Item Cursor': ('save_tech_cursor', 'Cursor positions for in-battle Tech and Inventory menus are saved, and returned to when the action is chosen.'),
+            'Skill/Item Info': ('skill_item_info', 'In battle, Tech and item descriptions are displayed when using them.'),
+            'Consistent Paging': ('consistent_paging', 'Make paging up and down consistent across different menus. Not able to be changed during game.') #yet
+        }
 
-        label = tk.Label(frame, text='Save Battle Cursor')
-        label.grid(row=2, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'Battle cursor position is saved for each character. '
-            'When changing which character to command, the cursor '
-            'moves to that character\'s previously-used option.'
-        )
-        
-        tk.Checkbutton(
-                    frame,
-                    variable=self.ctopts['save_battle_cursor']
-                    ).grid(row=2, column=1, sticky=tk.E)
+        dropdowns = {
+            'Menu Background': ('menu_background', 8, True, 'Controls the default menu background option. Corrosponds to the in-game options menu, i.e. 1 = default gray, 3 = Final Fantasy blue, etc'),
+            'Battle Speed': ('battle_speed', 8, True, 'In battle, controls how quickly ATB ticks occur. Lower numbers are faster.'),
+            'Battle Message Speed': ('battle_msg_speed', 8, True, 'In battle, controls how quickly messages about enemy status and loot drops disappear. Lower numbers are faster.'),
+            'Battle Gauge Style': ('battle_gauge_style', 3, False, 'In battle, controls position of ATB bars, character names, and HP/MP values.')
+        }
 
-        label = tk.Label(frame, text='Save Skill/Item Cursor')
-        label.grid(row=3, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'Cursor positions for in-battle Tech and Inventory menus '
-            'are saved, and returned to when the action is chosen.'
-        )
-        
-        tk.Checkbutton(
-                    frame,
-                    variable=self.ctopts['save_tech_cursor']
-                    ).grid(row=3, column=1, sticky=tk.E)
+        row = 0
+        col = 0
 
-        label = tk.Label(frame, text='Skill/Item Info')
-        label.grid(row=4, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'In battle, Tech and item descriptions are displayed '
-            'when using them.'
-        )
-        
-        tk.Checkbutton(
-                    frame,
-                    variable=self.ctopts['skill_item_info']
-                    ).grid(row=4, column=1, sticky=tk.E)
-                    
+        for x, y in checkboxes.items():
+            label = tk.Label(frame, text=x)
+            label.grid(row=row-((row // 5)*5), column=col+((row // 5)*2), sticky=tk.W)
+            CreateToolTip(
+                label,
+                y[1]
+            )
 
-        label = tk.Label(frame, text='Menu Background')
-        label.grid(row=5, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'Controls the default menu background option. '
-            'Corrosponds to the in-game options menu, i.e. '
-            '1 = default gray, 3 = Final Fantasy blue, etc'
-        )
+            tk.Checkbutton(
+                        frame,
+                        variable=self.ctopts[y[0]]
+                        ).grid(row=row-((row // 5)*5), column=col+((row // 5)*2)+1, sticky=tk.E)
 
-        dropdown = tk.OptionMenu(
-                                frame,
-                                self.ctopts['menu_background'],
-                                *[i for i in range(1,9)],
-                                )
-        dropdown.grid(row=5, column=1, sticky=tk.E)
+            row += 1
 
+        row = 1
+        col += 2
 
-        label = tk.Label(frame, text='Battle Speed')
-        label.grid(row=6, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'In battle, controls how quickly ATB ticks occur. '
-            'Lower numbers are faster.'
-        )
+        for x, y in dropdowns.items():
+            label = tk.Label(frame, text=x)
+            label.grid(row=row, column=col, sticky=tk.W)
+            CreateToolTip(
+                label,
+                y[3]
+            )
 
-        dropdown = tk.OptionMenu(
-                                frame,
-                                self.ctopts['battle_speed'],
-                                *[i for i in range(1,9)],
-                                )
-        dropdown.grid(row=6, column=1, sticky=tk.E)
-        
-        label = tk.Label(frame, text='Battle Message Speed')
-        label.grid(row=7, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'In battle, controls how quickly messages about enemy '
-            'status and loot drops disappear. '
-            'Lower numbers are faster.'
-        )
+            dropdown = tk.OptionMenu(
+                                    frame,
+                                    self.ctopts[y[0]],
+                                    *[i for i in range(0+y[2],y[1]+y[2])],
+                                    )
+            dropdown.grid(row=row, column=col+1, sticky=tk.E)
 
-        dropdown = tk.OptionMenu(
-                                frame,
-                                self.ctopts['battle_msg_speed'],
-                                *[i for i in range(1,9)],
-                                )
-        dropdown.grid(row=7, column=1, sticky=tk.E)
-        
-        
-        label = tk.Label(frame, text='Battle Gauge Style')
-        label.grid(row=8, column=0, sticky=tk.W)
-        CreateToolTip(
-            label,
-            'In battle, controls position of ATB bar, character '
-            'names, and HP/MP values.'
-        )
+            row += 1
 
-        dropdown = tk.OptionMenu(
-                                frame,
-                                self.ctopts['battle_gauge_style'],
-                                *[i for i in range(0,3)],
-                                )
-        dropdown.grid(row=8, column=1, sticky=tk.E)
 
         return frame
-        
-    def get_ctoptions_button_frame(self, parent):
+
+    def get_ctoptions_assignment_frame(self, parent):
         frame = tk.Frame(
             parent, borderwidth=1, highlightbackground='black',
             highlightthickness=1
         )
-        
+
         frame.columnconfigure(0, weight=1)
 
-        def reset_to_vanilla(cache):
-            binds = self.controller_binds
-            vanilla = ctoptions.ControllerBinds().get_vanilla()
-            for action, input in vanilla.items():
-                binds[action].set(input)
+        frame.listbox_values = tk.StringVar(frame) # updates listbox on write
+        frame.ipc = tk.StringVar(frame, value='idle') #used for interframe comms, for gui niceness
+
+        buttons_dropdowns = self.get_ctoptions_button_frame(frame)
+        buttons_dropdowns.grid(row=0, column=0, sticky='we')
+
+        buttons_listbox = self.get_ctoptions_button_listbox(frame)
+        buttons_listbox.grid(row=0, column=1, sticky='ne')
+
+        return frame
+
+    def get_ctoptions_button_listbox(self, parent):
+
+        frame = ttk.Frame(parent)
+
+
+        #lbframe = ttk.Frame(frame)
+
+        row=0
+        col=0
+
+        #unsets all binds, writes ipc
+        def _unset_all(self, listbox):
+            for action in [x for x in self.controller_binds.keys() if x not in (ActionMap.PG_DN, ActionMap.PG_UP)]:
+                self.controller_binds[action].set('Unset')
+            parent.ipc.set('unset_all')
+        
+        
+        #resets to vanilla, writes ipc
+        def _reset_to_vanilla(self, listbox):
+            vanilla = ctoptions.ControllerBinds.get_vanilla().items()
+
+            for x, y in vanilla:
+                self.controller_binds[x].set(y)
                 
-            _set_cache(binds, cache)
-        
-        #cache stores the string value of the StrIntEnum for comparisons
-        def _set_cache(binds, cache):
-            for key, value in binds.items():
-                cache[key] = str(value.get())
+            parent.ipc.set('vanilla')
 
-        def _replace_overlap(button: InputMap, cmd: ActionMap, cache):
-            #called after tk.OptionsMenu updates the value in controller_binds[]
-            #thus original button to which the action was assigned is unavailable directly
-            #reference a preprepared cache
-            
-            binds = self.controller_binds
-            button = str(button)
-            
-            orig_button = cache[cmd]
-
-            for action, value in binds.items():
-                if value.get() == button:
-                    binds[action].set(orig_button)
-                    
-            binds[cmd].set(button)
-            
-            _set_cache(binds, cache)
-        
-        binds = self.controller_binds
-        cache = {}
-        row = 0
-        
-        _set_cache(binds, cache)
-        
-        actions = {
-            ActionMap.CONFIRM: 'Chooses selections, activates NPCs and objects.',
-            ActionMap.CANCEL: 'Backs out of menus, deselects targets of techs and items.',
-            ActionMap.MENU: 'Opens the equipment, inventory, tech, etc menu.\nIf Save Battle Cursor is on, also selects and performs basic attacks.',
-            ActionMap.DASH: 'If held, causes characters to run faster.',
-            ActionMap.MAP: 'On the overworld, shows a zoomed-out world map of the current time period.',
-            ActionMap.WARP: 'Opens the character exchange or the Epoch time gauge. Also swaps text boxes and battle menus from top to bottom of screen, and vice versa.'
-        }
-
-
-        label = tk.Label(frame, text='Consistent Paging')
-        label.grid(row=row, column=0, columnspan=2, sticky=tk.W)
+        label = tk.Label(
+            frame,
+            text='Buttons Remaining (?)',
+            anchor=tk.CENTER
+        )
+        label.grid(row=row, column=0)
         CreateToolTip(
             label,
-            'Make paging up and down consistent across different scrollable menus.'
+            'All buttons must be bound. '
+            'Confirm and Cancel must not be on the same button. '
+            'No more than two actions may share the same button. '
         )
-        
-        tk.Checkbutton(
-                    frame,
-                    variable=self.ctopts['consistent_paging']
-                    ).grid(row=row, column=1, sticky=tk.E)
-                    
+
         row += 1
-        
-        for action, desc in actions.items():
-        
-            label = tk.Label(frame, text=action)
-            label.grid(row=row, column=0, sticky=tk.W)
-            CreateToolTip(
-                label,
-                desc
-            )
-            
-            dropdown = tk.OptionMenu(
-                                    frame,
-                                    binds[action],
-                                    *[i for i in InputMap if i not in (InputMap.L_SHOULDER, InputMap.R_SHOULDER)],
-                                    command=lambda x, y=action: _replace_overlap(x, y, cache)
-                                    )
-            dropdown.grid(row=row, column=1, sticky=tk.E)
 
-            row += 1
-            
-
-
-        button = tk.Button(
-            frame, text="Reset to Vanilla", command=lambda : reset_to_vanilla(cache)
+        listbox = tk.Listbox(
+            frame,
+            selectmode=tk.SINGLE,
+            exportselection=0,
+            height=len(InputMap),
+            listvariable=parent.listbox_values
         )
-        button.grid(row=8, column=0, sticky='s', columnspan=2)
+
+        listbox.grid(row=row, column=col)
+        
+        #row += 1
+        
+        button = tk.Button(
+            frame, text="Unset All", command=lambda: _unset_all(self, listbox)
+        )
+        button.grid(row=row+1, column=0, columnspan=2, sticky='s')
+        CreateToolTip(
+            button,
+            'Unset all binds, except Page Up and Page Down.'
+        )
+        
+        button = tk.Button(
+            frame, text="Reset to Vanilla", command=lambda: _reset_to_vanilla(self, listbox)
+        )
+        button.grid(row=row+2, column=0, columnspan=2, sticky='n')
         CreateToolTip(
             button,
             'Reset button bindings to their vanilla values.'
         )
+
+        return frame
+
+    def get_ctoptions_button_frame(self, parent):
+        frame = tk.Frame(
+            parent#, borderwidth=1, highlightbackground='black',
+            #highlightthickness=1
+        )
+
+        frame.columnconfigure(0, weight=1)
+        
+        def _read_ipc():
+            command = parent.ipc.get()
+            if command not in ['unset_all','vanilla']:
+                return
+            #parent.ipc.set('idle')
+            _update_gui()
+        
+        def _build_input_list():
+            '''
+            Builds the InputMap list for populating Remaining Buttons listbox and assignment dropdowns.
+            '''
+
+            binds = self.controller_binds
+            
+            #Initially populate the list.
+            ret = [str(x) for x in InputMap]
+            
+            #Get the assigned buttons.
+            assigned = [y.get() for x, y in binds.items() if y.get() != 'Unset']
+
+            #Get which buttons are assigned twice. One set of buttons is allowable, two or more sets are not.
+            qty2 = [x for x in assigned if assigned.count(x) > 1]
+            
+            # Failure cases (remove from ret):
+            # Confirm and Cancel must not be on the same button. Handled during _update_gui()
+            # Qty 3 actions assigned to the same button.
+            # More than qty (1) set of qty (2) buttons assigned to one action
+            # Final assignments must not have any unassigned buttons. Outside of this function's scope.
+
+            #Remove items from ret list IAW above specifications.
+            for x in InputMap:
+                # Force strings to enable comparisons; StringVars only output str, not StrIntEnum
+                x = str(x)
+                try:
+                    if len(qty2) > 0:
+                        if assigned.count(x) >= 1:
+                            ret.remove(x)
+
+                except:
+                    pass
+                    
+            return ret
+
+        def _update_display_pg(pg_strs):
+            '''
+            Modifies GUI page up/down display text to account for consistent paging.
+            '''
+
+            data = [
+                (ActionMap.PG_UP, 'Pages upward in scrollable menus, affected by Consistent Paging.'),
+                (ActionMap.PG_DN, 'Pages downward in scrollable menus, affected by Consistent Paging.')
+                ]
+
+            if self.ctopts['consistent_paging'].get():
+               data.reverse()
+
+            pg_strs['pg_up_label'].set(data[0][0])
+            pg_strs['pg_dn_label'].set(data[1][0])
+            pg_strs['pg_up_desc'].set(data[0][1])
+            pg_strs['pg_dn_desc'].set(data[1][1])
+            
+        def _update_dropdown(dropdown, write_list, targetvar):
+            '''
+            Clear the dropdown's entry list.
+            Add entries into the OptionMenu widget, callback included as if command=... was passed during init.
+            Reference Python/Lib/tkinter/__init__.py definition of class OptionMenu(Menubutton)
+            '''
+            dropdown['menu'].delete(0,'end')
+
+            for idx, x in enumerate([x for x in ['Unset'] if x != targetvar.get()] + write_list):
+                dropdown['menu'].add_command(label=x, command=tk._setit(targetvar, x, _update_gui))
+                
+        def _update_gui(dummy = None):
+            binds = self.controller_binds
+
+            options = _build_input_list()
+            
+            #Never allow Confirm and Cancel to be assigned to the same button.
+            discriminate = {
+                ActionMap.CONFIRM: [x for x in options if str(x) != binds[ActionMap.CANCEL].get() or binds[ActionMap.CANCEL].get() == 'Unset'],
+                ActionMap.CANCEL: [x for x in options if str(x) != binds[ActionMap.CONFIRM].get() or binds[ActionMap.CONFIRM].get() == 'Unset' ]
+            }
+            
+            #update dropdowns
+            for key, data in actions.items():
+                dropdown = data[-1]
+                
+                write_list = options
+                
+                if key in discriminate.keys():
+                    write_list = discriminate[key]
+                    
+                _update_dropdown(dropdown, write_list, binds[key])
+            
+            #update listbox in another frame
+            parent.listbox_values.set(options)
+
+        binds = self.controller_binds
+        row = 0
+
+        pg_strs = {
+            'pg_up_label': tk.StringVar(),
+            'pg_dn_label': tk.StringVar(),
+            'pg_up_desc': tk.StringVar(),
+            'pg_dn_desc': tk.StringVar()
+        }
+
+        self.ctopts['consistent_paging'].trace_add('write', lambda x,y,z, pg_strs=pg_strs: _update_display_pg(pg_strs)) #swap the labels and tooltips of Pg Up/Dn depending on state of Consistent Paging
+        parent.ipc.trace_add('write', lambda x,y,z: _read_ipc())
+
+        actions = {
+            ActionMap.CONFIRM: ['Chooses selections, activates NPCs and objects.'],
+            ActionMap.CANCEL: ['Backs out of menus, deselects targets of techs and items.'],
+            ActionMap.MENU: ['Opens the equipment, inventory, tech, etc menu.\nIf Save Battle Cursor is on, also selects and performs basic attacks.'],
+            ActionMap.DASH: ['If held, causes characters to run faster.'],
+            ActionMap.MAP: ['On the overworld, shows a zoomed-out world map of the current time period.'],
+            ActionMap.WARP: ['Opens the character exchange or the Epoch time gauge. Also swaps text boxes and battle menus from top to bottom of screen, and vice versa.']
+        }
+
+        for action, data in actions.items():
+
+            label = tk.Label(frame, text=action)
+            label.grid(row=row, column=0, sticky=tk.W)
+            CreateToolTip(
+                label,
+                data[0]
+            )
+
+            #Create an empty dropdown widget for action. _update_gui() will populate with entries and callbacks.
+            dropdown = tk.OptionMenu(
+                                    frame,
+                                    binds[action],
+                                    [] #dummy, filled in by _update_gui
+                                    )
+            dropdown.grid(row=row, column=1, sticky=tk.E)
+            
+            data.append(dropdown) # save a reference for _update_gui
+
+            row += 1
+            
+        _update_gui()
+
+        label = tk.Label(frame, textvariable=pg_strs['pg_dn_label'])
+        label.grid(row=row, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            pg_strs['pg_dn_desc']
+        )
+
+        view = tk.Label(frame, textvariable=binds[ActionMap.PG_DN], borderwidth=2, relief='ridge')
+        view.grid(row=row, column=1, sticky='we')
+
+        row += 1
+
+        label = tk.Label(frame, textvariable=pg_strs['pg_up_label'])
+        label.grid(row=row, column=0, sticky=tk.W)
+        CreateToolTip(
+            label,
+            pg_strs['pg_up_desc']
+        )
+
+        view = tk.Label(frame, textvariable=binds[ActionMap.PG_UP], borderwidth=2, relief='ridge')
+        view.grid(row=row, column=1, sticky='we')
+
+
+        frame.grid_rowconfigure(row+1, weight=1)
         
         return frame
 
@@ -2783,3 +2905,4 @@ if __name__ == '__main__':
         randomizer.generate_from_command_line()
     else:
         main()
+
