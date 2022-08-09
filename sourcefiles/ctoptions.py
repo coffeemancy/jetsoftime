@@ -3,50 +3,9 @@ Module for preconfiguring in-game options at compile time
 '''
 
 import byteops
-from ctenums import ActionMap, InputMap, LocID
+from ctenums import ActionMap, InputMap
 from ctrom import CTRom
-import ctevent
-
-def button_prop(action: ActionMap):
-    def getter(self):
-        return self._mappings[action]
-
-    def setter(self, val: InputMap):
-        self._mappings[action] = val
- 
-    return property(getter, setter)
-
-class ControllerException(Exception):
-    '''
-    Class for holding exception data regarding controller binds.
-    '''
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(args)
-        self.rejectiondata = {
-            'confirm_cancel_collision': [],
-            'overcount': [],
-            'qty2': [],
-            'invalid_actions': [],
-            'unassigned_buttons': []
-        }
-        
-        
-    #whether errors exist
-    def __bool__(self) -> bool:
-        for x in self.rejectiondata.values():
-            if bool(x) == True:
-                return False
-        
-        return True
-
-    #number of errors
-    def __len__(self) -> int:
-        return len([x for x in self.rejectiondata.values() if x != None])
-
-    #read out the error data
-    def __iter__(self):
-        return iter(self.rejectiondata.items())
+from ctevent import FSWriteType
 
 class ControllerBinds:
     '''
@@ -75,6 +34,17 @@ class ControllerBinds:
         
         User proposed copy, edited when user is rebinding and checked against the cached copy
         to prevent undesired lack of actions being bound to a button. ; 0x7E0f00
+        
+    Strategy:
+        Save a copy of vanilla binds in freespace
+        Repoint function to copy vanilla or custom binds to new vanilla binds location
+        Overwrite vanilla binds storage offset with custom binds
+        
+    Produces effects:
+        Vanilla binds accessible at runtime via disabling Custom Control Pad.
+        Load screen respects user binds.
+        Runtime user binds are editable and saved to SRAM when game is saved.
+        Runtime user binds can be reset to generation time user binds.
     '''
 
     BUTTONS_OFFSET = 0x02FCA9
@@ -82,7 +52,7 @@ class ControllerBinds:
 
     def __init__(self, data: bytearray = None):
 
-        self._mappings = self.get_vanilla()
+        self.mappings = self.get_vanilla()
         
         if data is None:
             return
@@ -106,54 +76,41 @@ class ControllerBinds:
         return ret
     
     @staticmethod
-    def is_valid_mappings(binds: dict):
+    def is_valid_mappings(binds: dict) -> bool:
         '''
         Checks provided dictionary for invalid settings.
         Rationale: Avoid unrecoverable states in game (trapped in a menu, unable to separate binds)
-        All states except Confirm/Cancel collision are recoverable with some effort menuing.
-        
-        Specific failure cases checked:
-            Confirm and Cancel collision.
-            Qty (3) buttons assigned to one action.
-            More than qty (1) set of qty (2) of the same button assigned to the same action.
-            Any actions having an invalid (bitmask with not exactly one bit set, and not 0x01 Start Button) assigned.
-            Any unassigned buttons existing.
+
+        Criteria:
+            Cancel and Dash are mirrored, as vanilla.
+            All buttons are assigned to at least one action.
 
         Params:
             binds: Dict. See get_vanilla() for expected structure.
                 Unexpected keys are filtered out and therefore ignored.
                 
-        Return: ControllerException object, with rejection data.
+        Return: False if criteria are not met. True otherwise.
         '''
 
-        check = {x: binds[x] for x in ControllerBinds.get_vanilla().keys()}
-        ret = ControllerException()
+        try:
+            check = {x: binds[x] for x in ActionMap}
+        except:
+            return False
 
         assigned = [y for x, y in check.items()]
-        qty2 = set([x for x in assigned if assigned.count(x) > 1])
-
-        # Confirm and Cancel collision. Menu program is unexitable, due to input collation byte 0x7E0D1D being checked for Confirm first, and never executing Cancel if found.
-        if check[ActionMap.CONFIRM] == check[ActionMap.CANCEL]:
-            ret.rejectiondata['confirm_cancel_collision'].append(check[ActionMap.CONFIRM])
-            
-        # Qty (3) buttons assigned to one action. Unable to separate binds in game back to vanilla distribution 6/2/0 single/dual/unassigned.
+           
+        # All buttons are assigned to at least one action.
         for x in InputMap:
-            if assigned.count(x) > 2:
-                ret.rejectiondata['overcount'].append(x)
-            # Any unassigned buttons existing. Avoids assigning buttons to garbage data.
-            if assigned.count(x) < 1:
-                ret.rejectiondata['unassigned_buttons'].append(x)
-        
-        # More than qty (1) set of qty (2) of the same button assigned to the same action. Avoids inability to separate binds in game.
-        if len(qty2) > 2:
-            ret.rejectiondata['qty2'] = qty2
+            if ( 1 <= assigned.count(x) <= 2 ):
+                continue
 
-        # Any actions having an invalid (bitmask with not exactly one bit set, and not 0x01 Start Button) assigned.
-        for x, y in check.items():
-            if y not in iter(InputMap):
-                ret.rejectiondata['invalid_actions'].append((x, y))
+            return False
+            
+        # Cancel and Dash are not the same.
+        if check[ActionMap.CANCEL] != check[ActionMap.DASH]:
+            return False
         
-        return ret
+        return True
         
     @classmethod
     def from_rom(cls, ctrom: CTRom, offset: int = BUTTONS_OFFSET):
@@ -173,7 +130,7 @@ class ControllerBinds:
         ret = bytearray(8)
 
         if data is None:
-            data = bytearray(self._mappings.values())
+            data = [self.mappings[x] for x in ActionMap]
         
         for idx, button in enumerate(data):
             ret[idx] = button
@@ -182,7 +139,8 @@ class ControllerBinds:
 
     def update_from_bytes(self, bytes: bytearray):
         '''
-        Updates button bindings given bytearray; bytearray assumed to be ordered in the same way as out
+        Updates button bindings in place given bytearray; bytearray assumed to be ordered in the same way as out
+        
         '''
         if not (8 <= len(bytes) <= 11):
             return
@@ -192,54 +150,28 @@ class ControllerBinds:
         for idx, byte in zip(ActionMap, bytes):
             for input in InputMap:
                 if byte == input:
-                    self._mappings[idx] = input
+                    self.mappings[idx] = input
                     break
     
     def reset_to_vanilla(self):
         '''
-        Restore vanilla settings, in place
+        Restore vanilla settings, in place.
         '''
-        self._mappings = self.get_vanilla()
-
-    '''
-    CT uses bitmasks stored in a known order to implement button mapping.
-    The action is controlled by the index in the array.
-    The button to which the action is bound is controlled by the value of the indexed byte
-    
-    During vblank (and inside an NMI), the functions at 0x0284EC (rearranger) and 0x028545 (translator)
-    rearrange the raw data from the SNES's joypad registers such that all buttons are on the low byte and all
-    d-pad input is on the high byte, and additional addresses are written according to the user's bindings.
-    These addresses are referenced depending on what the game needs to check for, actions or specific buttons,
-    and whether the game needs to check for a held button, a pressed button that requires releasing before
-    accepting more input, or how long the user has pressed the button.
-    
-    The Start button is never allowed to be rebound. All eight actions will still need to be mapped, thus
-    one button will always trigger two actions (or conversely, two actions will always have the same button bound to them)
-    
-    CT uses four copies of the button mapping in RAM at any one time:
-        The in-use copy, used by 0x028585 and therefore everywhere that respects user binds; 0x7E2993
-        
-        The persistent user copy, saved from RAM to SRAM when the user saves the game; 0x7E0408
-        
-        A cache of the persistent user copy, exists when user is editing binds ; 0x7E9890
-        
-        User proposed copy, edited when user is rebinding and checked against the cached copy
-        to prevent undesired lack of actions being bound to a button. ; 0x7E0f00
-    '''
-
-
-    confirm = button_prop(ActionMap.CONFIRM)
-    cancel = button_prop(ActionMap.CANCEL)
-    menu = button_prop(ActionMap.MENU)
-    dash = button_prop(ActionMap.DASH)
-    map = button_prop(ActionMap.MAP)
-    warp = button_prop(ActionMap.WARP)
-    pg_dn = button_prop(ActionMap.PG_DN)
-    pg_up = button_prop(ActionMap.PG_UP)
+        self.mappings = self.get_vanilla()
 
     def write_routine_offsets(self, ctrom: CTRom):
         '''
         Repoint routine to control default/custom user binds to point to saved copy of vanilla binds
+        
+        Strategy:
+            Save a copy of vanilla binds in freespace
+            Repoint function to copy vanilla or custom binds to 0x7E2993 to read vanilla binds from freespace offset
+            Overwrite vanilla binds storage offset with custom binds
+            
+        Combined with forcing Custom Control Pad to True if binds are different, produces the effect:
+            New games start with custom binds. Loaded save games with previous runtime modifications are not affected.
+            Load screen respects custom binds.
+            User is capable of rebinding controls in game, resetting to generation time binds, or swapping back to vanilla.
         '''
         
         rom = ctrom.rom_data
@@ -262,24 +194,24 @@ class ControllerBinds:
         rom.write(rom_start_bank)
 
         rom.seek(start)
-        rom.write(binds, ctevent.FSWriteType.MARK_USED)
+        rom.write(binds, FSWriteType.MARK_USED)
 
     def __str__(self):
         ret = ''
             
-        ret += f'Confirm: {self.confirm}' + '\n'
-        ret += f'Cancel: {self.cancel}' + '\n'
-        ret += f'Menu: {self.menu}' + '\n'
-        ret += f'Dash: {self.dash}' + '\n'
-        ret += f'Map: {self.map}' + '\n'
-        ret += f'Warp: {self.warp}' + '\n'
-        ret += f'Pg Dn: {self.pg_dn}' + '\n'
-        ret += f'Pg Up: {self.pg_up}'
+        ret += f'Confirm: {self.mappings[ActionMap.CONFIRM]}' + '\n'
+        ret += f'Cancel: {self.mappings[ActionMap.CANCEL]}' + '\n'
+        ret += f'Menu: {self.mappings[ActionMap.MENU]}' + '\n'
+        ret += f'Dash: {self.mappings[ActionMap.DASH]}' + '\n'
+        ret += f'Map: {self.mappings[ActionMap.MAP]}' + '\n'
+        ret += f'Warp: {self.mappings[ActionMap.WARP]}' + '\n'
+        ret += f'Pg Dn: {self.mappings[ActionMap.PG_DN]}' + '\n'
+        ret += f'Pg Up: {self.mappings[ActionMap.PG_UP]}'
         
         return ret
 
     def __iter__(self):
-        return iter(self._mappings.items())
+        return iter(self.mappings.items())
 
 
 #default clamp to 0-1 (boolean)
@@ -292,7 +224,6 @@ def bit_prop(index, mask, clamp: int = 1):
 
     return property(getter, setter)
 
-
 class CTOpts:
 
     CONFIG_OFFSET = 0x02FCA6
@@ -301,16 +232,13 @@ class CTOpts:
     def __init__(self,  data: bytearray = None):
                 
         self._data = self.get_vanilla()
-
         self.controller_binds = ControllerBinds()
-        
         self.consistent_paging = False
         
         if data is None:
             return
         
         self.update_from_bytes(data)
-        
         self.controller_binds.update_from_bytes(data)
 
         
@@ -363,28 +291,18 @@ class CTOpts:
     def to_bytearray(self):
         return bytearray(self._data)
 
-    @staticmethod
-    def _get_shift(mask: int) -> int:
-        '''
-        Get the number of bits to shift so that the LSB of mask is in the 
-        0x01 place.
-        '''
-        # Put the binary string in reverse, and chop off the '0b' from the
-        # start.
-        return bin(mask)[:1:-1].index('1')
-
     def get_byte(self, index, mask: int = 0xFF) -> int:
         '''
         Get the bits specified by mask of the given byte.
         The set bits of mask must be contiguous, else unpredictable behavior.
         '''
         val = self._data[index] & mask
-        return val >> self._get_shift(mask)
+        return val >> byteops.get_minimal_shift(mask)
 
     def set_byte(self, val: int, index, clamp, mask: int = 0xFF):
         inv_mask = 0xFF - mask
         self._data[index] &= inv_mask
-        self._data[index] |= sorted((0, val, clamp))[1] << self._get_shift(mask)
+        self._data[index] |= sorted((0, val, clamp))[1] << byteops.get_minimal_shift(mask)
     
     #definitions of properties
 
@@ -444,9 +362,7 @@ class CTOpts:
 
         '''
         Add hook to include empty save slots in default menu background.
-        '''
-        
-        '''
+
         The subroutine to clear memory for entering the menu zeroes out the memory region used to store the menu background index of each save slot.
         
         The subroutine to render the save slots on the boot menu and save menus only reads SRAM for save data if the checksum passes.
@@ -502,10 +418,9 @@ class CTOpts:
         
         rom.seek(0x02D2A6)
         rom.write(jsl + nop)
-        
-        mark_used = ctevent.FSWriteType.MARK_USED
+
         rom.seek(start[0])
-        rom.write(bg, mark_used)
+        rom.write(bg, FSWriteType.MARK_USED)
         
     def __str__(self):
         

@@ -1,5 +1,5 @@
 # python standard libraries
-from functools import reduce
+from functools import partial, reduce
 import os
 import pathlib
 import pickle
@@ -394,9 +394,8 @@ class RandoGUI:
             setattr(self.settings.ctoptions, attr, value.get())
         
         for action, button in self.controller_binds.items():
-            attr = str(action).lower().replace(' ','_')
             value = InputMap[button.get().upper().replace(' ','_')]
-            setattr(self.settings.ctoptions.controller_binds, attr, value)
+            self.settings.ctoptions.controller_binds.mappings[action] = value
 
 
         self.settings.char_names[0] = self.char_names['Crono'].get()
@@ -2475,7 +2474,7 @@ class RandoGUI:
         frame.columnconfigure(0, weight=1)
 
         frame.listbox_values = tk.StringVar(frame) # updates listbox on write
-        frame.ipc = tk.StringVar(frame, value='idle') #used for interframe comms, for gui niceness
+        frame.ipc = tk.StringVar(frame, value='idle') #used for interframe comms, for gui design
 
         buttons_dropdowns = self.get_ctoptions_button_frame(frame)
         buttons_dropdowns.grid(row=0, column=0, sticky='we')
@@ -2520,8 +2519,7 @@ class RandoGUI:
         CreateToolTip(
             label,
             'All buttons must be bound. '
-            'Confirm and Cancel must not be on the same button. '
-            'No more than two actions may share the same button. '
+            'Cancel and Dash will be automatically mirrored.'
         )
 
         row += 1
@@ -2573,12 +2571,10 @@ class RandoGUI:
             #parent.ipc.set('idle')
             _update_gui()
         
-        def _build_input_list():
+        def _build_input_list(action):
             '''
             Builds the InputMap list for populating Remaining Buttons listbox and assignment dropdowns.
             '''
-
-            binds = self.controller_binds
             
             #Initially populate the list.
             ret = [str(x) for x in InputMap]
@@ -2586,24 +2582,12 @@ class RandoGUI:
             #Get the assigned buttons.
             assigned = [y.get() for x, y in binds.items() if y.get() != 'Unset']
 
-            #Get which buttons are assigned twice. One set of buttons is allowable, two or more sets are not.
-            qty2 = [x for x in assigned if assigned.count(x) > 1]
-            
-            # Failure cases (remove from ret):
-            # Confirm and Cancel must not be on the same button. Handled during _update_gui()
-            # Qty 3 actions assigned to the same button.
-            # More than qty (1) set of qty (2) buttons assigned to one action
-            # Final assignments must not have any unassigned buttons. Outside of this function's scope.
-
-            #Remove items from ret list IAW above specifications.
             for x in InputMap:
                 # Force strings to enable comparisons; StringVars only output str, not StrIntEnum
                 x = str(x)
                 try:
-                    if len(qty2) > 0:
-                        if assigned.count(x) >= 1:
-                            ret.remove(x)
-
+                    if x in assigned:
+                        ret.remove(x)
                 except:
                     pass
                     
@@ -2627,41 +2611,49 @@ class RandoGUI:
             pg_strs['pg_up_desc'].set(data[0][1])
             pg_strs['pg_dn_desc'].set(data[1][1])
             
-        def _update_dropdown(dropdown, write_list, targetvar):
+        def _update_dropdown(dropdown, write_list, action):
             '''
             Clear the dropdown's entry list.
             Add entries into the OptionMenu widget, callback included as if command=... was passed during init.
             Reference Python/Lib/tkinter/__init__.py definition of class OptionMenu(Menubutton)
             '''
+            callback = actions[action]['callback']
             dropdown['menu'].delete(0,'end')
-
-            for idx, x in enumerate([x for x in ['Unset'] if x != targetvar.get()] + write_list):
-                dropdown['menu'].add_command(label=x, command=tk._setit(targetvar, x, _update_gui))
-                
-        def _update_gui(dummy = None):
-            binds = self.controller_binds
-
-            options = _build_input_list()
             
-            #Never allow Confirm and Cancel to be assigned to the same button.
-            discriminate = {
-                ActionMap.CONFIRM: [x for x in options if str(x) != binds[ActionMap.CANCEL].get() or binds[ActionMap.CANCEL].get() == 'Unset'],
-                ActionMap.CANCEL: [x for x in options if str(x) != binds[ActionMap.CONFIRM].get() or binds[ActionMap.CONFIRM].get() == 'Unset' ]
-            }
+            targetvar = binds[action]
+            
+            #Ensure 'Unset' is available if the action is set to a button.
+            for idx, x in enumerate([x for x in ['Unset'] if x != targetvar.get()] + write_list):
+                dropdown['menu'].add_command(label=x, command=tk._setit(targetvar, x, callback))
+
+        def _update_gui(button = None, action = None):
+
+            #Update the mirrored actions (Cancel, Dash) whenever one of them is 
+            if action in [ActionMap.CANCEL, ActionMap.DASH]:
+                other_action = [x for x in [ActionMap.CANCEL, ActionMap.DASH] if x != action][0]
+                binds[other_action].set(binds[action].get())
+
+            options = _build_input_list(action)
             
             #update dropdowns
             for key, data in actions.items():
-                dropdown = data[-1]
+                dropdown = data['dropdown']
                 
                 write_list = options
                 
-                if key in discriminate.keys():
-                    write_list = discriminate[key]
-                    
-                _update_dropdown(dropdown, write_list, binds[key])
+                _update_dropdown(dropdown, write_list, key)
             
             #update listbox in another frame
             parent.listbox_values.set(options)
+            
+        def _construct_callback(action: ActionMap = None):
+            '''
+            Constructs callback function for gui usage.
+            '''
+            def _callback(button):
+                _update_gui(button, action)
+                
+            return _callback
 
         binds = self.controller_binds
         row = 0
@@ -2677,12 +2669,12 @@ class RandoGUI:
         parent.ipc.trace_add('write', lambda x,y,z: _read_ipc())
 
         actions = {
-            ActionMap.CONFIRM: ['Chooses selections, activates NPCs and objects.'],
-            ActionMap.CANCEL: ['Backs out of menus, deselects targets of techs and items.'],
-            ActionMap.MENU: ['Opens the equipment, inventory, tech, etc menu.\nIf Save Battle Cursor is on, also selects and performs basic attacks.'],
-            ActionMap.DASH: ['If held, causes characters to run faster.'],
-            ActionMap.MAP: ['On the overworld, shows a zoomed-out world map of the current time period.'],
-            ActionMap.WARP: ['Opens the character exchange or the Epoch time gauge. Also swaps text boxes and battle menus from top to bottom of screen, and vice versa.']
+            ActionMap.CONFIRM: {'desc': 'Chooses selections, activates NPCs and objects.', 'callback': _construct_callback(), 'dropdown': None},
+            ActionMap.CANCEL: {'desc': 'Backs out of menus, deselects targets of techs and items.', 'callback': _construct_callback(ActionMap.CANCEL), 'dropdown': None},
+            ActionMap.MENU: {'desc': 'Opens the equipment, inventory, tech, etc menu.\nIf Save Battle Cursor is on, also selects and performs basic attacks.', 'callback': _construct_callback(), 'dropdown': None},
+            ActionMap.DASH: {'desc': 'If held, causes characters to run faster.', 'callback': _construct_callback(ActionMap.DASH), 'dropdown': None},
+            ActionMap.MAP: {'desc': 'On the overworld, shows a zoomed-out world map of the current time period.', 'callback': _construct_callback(), 'dropdown': None},
+            ActionMap.WARP: {'desc': 'Opens the character exchange or the Epoch time gauge. Also swaps text boxes and battle menus from top to bottom of screen, and vice versa.', 'callback': _construct_callback(), 'dropdown': None}
         }
 
         for action, data in actions.items():
@@ -2691,7 +2683,7 @@ class RandoGUI:
             label.grid(row=row, column=0, sticky=tk.W)
             CreateToolTip(
                 label,
-                data[0]
+                data['desc']
             )
 
             #Create an empty dropdown widget for action. _update_gui() will populate with entries and callbacks.
@@ -2702,7 +2694,7 @@ class RandoGUI:
                                     )
             dropdown.grid(row=row, column=1, sticky=tk.E)
             
-            data.append(dropdown) # save a reference for _update_gui
+            data['dropdown'] = dropdown # save a reference for _update_gui
 
             row += 1
             
