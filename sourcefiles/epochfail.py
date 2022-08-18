@@ -88,14 +88,22 @@ def ground_epoch(ct_rom: ctrom.CTRom):
     script.delete_commands(pos, 1)
     script.insert_commands(new_loc_cmd.to_bytearray(), pos)
 
+    song_slow = bytearray.fromhex(
+        'AD20'  # Pause
+        'EC854080'  # Slow to half speed
+        'BCBC'  # Pause Pause
+        'ECF00000' # Fade out song
+        'EC850000' # Reset speed
+    )
+
     # Remove Epoch sfx
     st = script.get_function_start(0x0E, 4)
 
     pos, _ = script.find_command([0xEA], st)
-    script.delete_commands(pos, 1)
+    # script.delete_commands(pos, 1)
     pos, cmd = script.find_command([0xEC], pos)
-
     script.delete_commands(pos, 5)
+    script.insert_commands(song_slow, pos)
 
 
 def update_keepers_dome(ct_rom: ctrom.CTRom):
