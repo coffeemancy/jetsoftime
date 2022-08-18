@@ -1404,3 +1404,26 @@ class StatusEffect(StrIntEnum):
     SLOW = 0x20
     POISON = 0x40
     STOP = 0x80
+
+#structure of button bytes at 7e00{f6,f8,fa}, respects player rebound controls
+#order is the order of the array in which the button mappings are stored
+class ActionMap(StrIntEnum):
+    CONFIRM = 0x80
+    CANCEL = 0x08
+    MENU = 0x40
+    DASH = 0x02
+    MAP = 0x04
+    WARP = 0x01
+    PG_UP = 0x10
+    PG_DN = 0x20
+
+#structure of button bytes at 7e00{f0,f2,f4}, does not respect player rebound controls
+class InputMap(StrIntEnum):
+    A_BUTTON = 0x80
+    X_BUTTON = 0x40
+    L_SHOULDER = 0x20
+    R_SHOULDER = 0x10
+    B_BUTTON = 0x08
+    Y_BUTTON = 0x04
+    SELECT_BUTTON = 0x02
+    #START_BUTTON = 0x01 # Not allowed for rebinding controls

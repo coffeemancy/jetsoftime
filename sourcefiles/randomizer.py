@@ -1358,7 +1358,7 @@ class Randomizer:
         if rset.CosmeticFlags.REDUCE_FLASH in cos_flags:
             flashreduce.apply_all_flash_hacks(ctrom)
 
-        cosmetichacks.set_default_background_menu(ctrom, settings)
+        settings.ctoptions.write_to_ctrom(ctrom)
 
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
