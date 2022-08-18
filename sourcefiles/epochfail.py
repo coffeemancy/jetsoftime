@@ -5,7 +5,7 @@ import ctevent
 import ctrom
 
 import randoconfig as cfg
-
+import randosettings as rset
 
 # I think vanilla coords are 0x0270, 0x258
 def ground_epoch(ct_rom: ctrom.CTRom):
@@ -248,3 +248,19 @@ def update_config(config: cfg.RandoConfig):
 
     jot = config.itemdb[ctenums.ItemID.JETSOFTIME]
     jot.set_name_from_str(' JetsOfTime')
+
+
+def apply_epoch_fail(ct_rom: ctrom.CTRom, settings: rset.Settings):
+    '''
+    Apply Epoch Fail if the settings allow it.
+    '''
+
+    # Sanity check should be in randomizer.py, but keep redundant check here.
+    if settings.game_mode != rset.GameMode.LOST_WORLDS and \
+       rset.GameFlags.EPOCH_FAIL in settings.gameflags:
+
+        ground_epoch(ct_rom)
+        update_keepers_dome(ct_rom)
+        undo_epoch_relocation(ct_rom)
+        restore_dactyls(ct_rom)
+        add_dalton_to_snail_stop(ct_rom)

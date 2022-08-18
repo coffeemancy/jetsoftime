@@ -797,14 +797,7 @@ class Randomizer:
         # rolled into patch.ips.
 
         if epoch_fail:
-            epochfail.ground_epoch(self.out_rom)
-            epochfail.update_keepers_dome(self.out_rom)
-            epochfail.undo_epoch_relocation(self.out_rom)
-            epochfail.restore_dactyls(self.out_rom)
-            epochfail.add_dalton_to_snail_stop(self.out_rom)
-
-            self.out_rom.rom_data.seek(0x1FFFF)  # debug stuff
-            self.out_rom.rom_data.write(b'\x01')
+            epochfail.apply_epoch_fail(self.out_rom, self.settings)
 
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
