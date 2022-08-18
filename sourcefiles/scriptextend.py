@@ -1530,7 +1530,7 @@ def get_m_reraise_scr(rom, bank_st, scr_ptrs_st):
     reraise_scr.obj_scripts[0] = bytearray.fromhex(
         '720D' +
         '0224' +
-        '2078' +
+        '2020' +
         # '061D' +
         '2014' +
         '7889' +
@@ -1538,12 +1538,12 @@ def get_m_reraise_scr(rom, bank_st, scr_ptrs_st):
         '3D03' +
         # '341B' +
         '36' +
-        '20B0' +
+        '20A0' +
         '36' +
         '2402' +
         # '341A' +
-        # '0603' +
-        '2024' +
+        '0603' +
+        '2014' +
         '36' +
         '2E' +
         '01' +
