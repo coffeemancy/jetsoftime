@@ -27,6 +27,7 @@ import mystery
 import vanillarando
 import epochfail
 import flashreduce
+import seedhash
 
 import byteops
 import ctenums
@@ -691,8 +692,8 @@ class Randomizer:
         # TODO:  Consider working some of the always-applied script changes
         #        Into patch.ips to improve generation speed.
         self.__apply_basic_patches(self.out_rom, self.settings)
+
         self.__apply_settings_patches(self.out_rom, self.settings)
-        self.__apply_cosmetic_patches(self.out_rom, self.settings)
 
         # This makes copies of heckran cave passagesways, king's trial,
         # and now Zenan Bridge so that all bosses can go there.
@@ -851,6 +852,16 @@ class Randomizer:
         elif mode == rset.GameMode.VANILLA_RANDO:
             vanillarando.restore_sos(self.out_rom, self.config)
 
+        # Write and remove all scripts
+        self.out_rom.write_all_scripts_to_rom(clear_scripts=True)
+
+        # Put the seed hash on the active/wait screen
+        seedhash.write_hash_string(self.out_rom)
+
+        # Apply post-randomization changes
+        self.__apply_cosmetic_patches(self.out_rom, self.settings)
+
+        # Rewrite any scripts changed by post-randomization
         self.out_rom.write_all_scripts_to_rom()
         self.out_rom.fix_snes_checksum()
         self.has_generated = True
