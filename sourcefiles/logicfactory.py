@@ -190,7 +190,7 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.ARRIS_DOME_RATS))
             .addLocation(Location(TID.ARRIS_DOME_FOOD_STORE))
             # KeyItems
-            .addLocation(Location(TID.ARRIS_DOME_KEY))
+            .addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
             .addLocation(Location(TID.SUN_PALACE_KEY))
         )
 
@@ -742,7 +742,7 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
             .addLocation(Location(TID.ARRIS_DOME_RATS))
             .addLocation(Location(TID.ARRIS_DOME_FOOD_STORE))
             # KeyItems
-            .addLocation(Location(TID.ARRIS_DOME_KEY))
+            .addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
             .addLocation(Location(TID.SUN_PALACE_KEY))
         )
 
@@ -1080,7 +1080,8 @@ class NormalGameConfig(GameConfig):
         )
         (
             futureKeys
-            .addLocation(BaselineLocation(TID.ARRIS_DOME_KEY, high_dist))
+            .addLocation(BaselineLocation(TID.ARRIS_DOME_DOAN_KEY,
+                                          high_dist))
             .addLocation(BaselineLocation(TID.SUN_PALACE_KEY, high_dist))
             .addLocation(BaselineLocation(TID.GENO_DOME_KEY, awesome_dist))
         )
@@ -1142,7 +1143,7 @@ class LostWorldsGameConfig(GameConfig):
         )
         (
             futureKeys
-            .addLocation(Location(TID.ARRIS_DOME_KEY))
+            .addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
             .addLocation(Location(TID.SUN_PALACE_KEY))
             .addLocation(Location(TID.GENO_DOME_KEY))
         )
@@ -1433,9 +1434,15 @@ def _canAccessCyrusGraveVR(game: Game):
         game.canAccessMtWoe()
     )
 
+def _canAccessDoanKeyVR(game: Game):
+    return game.canAccessFuture and game.hasKeyItem(ItemID.SEED)
 
 _awesome_gear_dist = td.TreasureDist(
     (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
+)
+
+_high_gear_dist = td.TreasureDist(
+    (1, td.get_item_list(td.ItemTier.HIGH_GEAR))
 )
 
 
@@ -1445,6 +1452,7 @@ class VanillaRandoGameConfig(NormalGameConfig):
         NormalGameConfig.initKeyItems(self)
 
         self.keyItemList.append(ItemID.TOOLS)
+        self.keyItemList.append(ItemID.SEED)
         self.keyItemList.remove(ItemID.ROBORIBBON)
 
     def initLocations(self):
@@ -1477,6 +1485,19 @@ class VanillaRandoGameConfig(NormalGameConfig):
         )
         self.locationGroups.append(cyrusKey)
 
+        # Get the split Arris Dome Keys right.
+        # Remove Doan from future, add food storage to future
+        # Add Doan to his own group
+        future = self.getLocationGroup("FutureOpen")
+        future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
+        future.addLocation(BaselineLocation(TID.ARRIS_DOME_FOOD_LOCKER_KEY,
+                                            _high_gear_dist))
+
+        doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
+        doanKey.addLocation(BaselineLocation(TID.ARRIS_DOME_DOAN_KEY,
+                                             _high_gear_dist))
+        self.locationGroups.append(doanKey)
+
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
@@ -1485,6 +1506,7 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
         for i in range(5):
             self.keyItemList.append(ItemID.TOOLS)
+            self.keyItemList.append(ItemID.SEED)
 
         while ItemID.ROBORIBBON in self.keyItemList:
             self.keyItemList.remove(ItemID.ROBORIBBON)
@@ -1515,6 +1537,17 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
         northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
         northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
+
+        # Get the split Arris Dome Keys right.
+        # Remove Doan from future, add food storage to future
+        # Add Doan to his own group
+        future = self.getLocationGroup("FutureOpen")
+        future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
+        future.addLocation(Location(TID.ARRIS_DOME_FOOD_LOCKER_KEY))
+
+        doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
+        doanKey.addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
+        self.locationGroups.append(doanKey)
 
 
 #

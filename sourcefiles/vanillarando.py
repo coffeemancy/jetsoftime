@@ -55,6 +55,18 @@ def add_arris_food_locker_check(ct_rom: ctrom.CTRom):
     script.insert_commands(func.get_bytearray(), hook_loc)
 
 
+def add_arris_food_locker_check_to_config(config: cfg.RandoConfig):
+    td = treasuredata
+    assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
+
+    food_locker_check = cfg.ScriptTreasure(
+        ctenums.LocID.ARRIS_DOME_FOOD_LOCKER, 0x8, 0x1, assigned_item, 0
+    )
+
+    config.treasure_assign_dict[ctenums.TreasureID.ARRIS_DOME_FOOD_LOCKER_KEY]\
+        = food_locker_check
+
+
 def add_arris_dome_seed_turn_in(ct_rom: ctrom.CTRom):
 
     script = ct_rom.script_manager.get_script(
@@ -161,6 +173,7 @@ def restore_scripts(ct_rom: ctrom.CTRom):
     add_vanilla_clone_check_scripts(ct_rom)
     restore_cyrus_grave_script(ct_rom)
     restore_tools_to_carpenter_script(ct_rom)
+    split_arris_dome(ct_rom)
     use_easy_lavos(ct_rom)
 
 
@@ -564,6 +577,7 @@ def fix_config(config: cfg.RandoConfig):
     restore_magus_castle_decedents(config)
     add_vanilla_clone_check_to_config(config)
     restore_cyrus_grave_check_to_config(config)
+    add_arris_food_locker_check_to_config(config)
     fix_twin_boss(config)
     rebalance_nizbel(config)
     rescale_bosses(config)

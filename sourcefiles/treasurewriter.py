@@ -72,7 +72,7 @@ def add_lw_key_item_gear(settings: rset.Settings,
     ]
 
     lw_key_tids = [
-        TID.REPTITE_LAIR_KEY, TID.MT_WOE_KEY, TID.ARRIS_DOME_KEY,
+        TID.REPTITE_LAIR_KEY, TID.MT_WOE_KEY, TID.ARRIS_DOME_DOAN_KEY,
         TID.SUN_PALACE_KEY, TID.GENO_DOME_KEY
     ]
 
@@ -142,7 +142,7 @@ def write_treasures_to_config(settings: rset.Settings,
 
     high_gear = gil(ITier.HIGH_GEAR)
     for treasure_id in (TID.REPTITE_LAIR_KEY, TID.GIANTS_CLAW_KEY,
-                        TID.ARRIS_DOME_KEY, TID.SUN_PALACE_KEY,
+                        TID.ARRIS_DOME_DOAN_KEY, TID.SUN_PALACE_KEY,
                         TID.KINGS_TRIAL_KEY, TID.FIONA_KEY):
         assign[treasure_id].held_item = rand.choice(high_gear)
 

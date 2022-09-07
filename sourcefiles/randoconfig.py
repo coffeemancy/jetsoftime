@@ -946,9 +946,10 @@ class RandoConfig:
             TID.FIONA_KEY: ScriptTreasure(location=LocID.FIONAS_SHRINE,
                                           object_id=0x08,
                                           function_id=0x04),
-            TID.ARRIS_DOME_KEY: ScriptTreasure(location=LocID.ARRIS_DOME,
-                                               object_id=0x0F,
-                                               function_id=0x2),
+            TID.ARRIS_DOME_DOAN_KEY: ScriptTreasure(
+                location=LocID.ARRIS_DOME,
+                object_id=0x0F,
+                function_id=0x2),
             TID.SUN_PALACE_KEY: ScriptTreasure(location=LocID.SUN_PALACE,
                                                object_id=0x11,
                                                function_id=0x01),

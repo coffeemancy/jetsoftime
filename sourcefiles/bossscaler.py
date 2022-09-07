@@ -149,8 +149,8 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
         important_keys = list()
 
         for tid in important_tids:
-            if tid in [TID.SUN_PALACE_KEY, TID.ARRIS_DOME_KEY,
-                       TID.GENO_DOME_KEY]:
+            if tid in [TID.SUN_PALACE_KEY, TID.ARRIS_DOME_FOOD_LOCKER_KEY,
+                       TID.GENO_DOME_KEY, TID.ARRIS_DOME_DOAN_KEY]:
                 # If you found an important item in the future:
                 #   1) Set prison boss (dtank) to rank-1 if not already ranked
                 #   2) Set all future bosses to rank
