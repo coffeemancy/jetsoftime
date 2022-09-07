@@ -11,6 +11,149 @@ import treasuredata
 import randoconfig as cfg
 
 
+def add_arris_food_locker_check(ct_rom: ctrom.CTRom):
+    # Maybe these should be parameters if we want to be dynamic about it?
+    flag_addr = 0x7F00A4
+    flag_bit = 0x02
+
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.ARRIS_DOME_FOOD_LOCKER
+    )
+
+    EF = ctrom.ctevent.EF
+    EC = ctrom.ctevent.EC
+    OP = eventcommand.Operation
+
+    new_str = '{line break}            Got 1 {item}!{null}'
+    new_ctstr = ctstrings.CTString.from_str(new_str)
+    new_ctstr.compress()
+
+    new_index = script.add_string(new_ctstr)
+
+    item_id = int(ctenums.ItemID.SEED)
+    func = EF()
+    (
+        func
+        .add_if_else(
+            EC.if_mem_op_value(flag_addr, OP.BITWISE_AND_NONZERO,
+                               flag_bit, 1, 0),
+            EF(),
+            (
+                EF()
+                .add(EC.add_item(item_id))
+                .add(EC.set_bit(flag_addr, flag_bit))
+                .add(EC.assign_val_to_mem(item_id, 0x7F0200, 1))
+                .add(EC.text_box(new_index, False))
+            )
+        )
+    )
+
+    hook_cmd = EC.set_bit(0x7F00EC, 0x10)
+    hook_loc = script.find_exact_command(hook_cmd)
+    hook_loc += len(hook_cmd)
+
+    script.insert_commands(func.get_bytearray(), hook_loc)
+
+
+def add_arris_dome_seed_turn_in(ct_rom: ctrom.CTRom):
+
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.ARRIS_DOME
+    )
+
+    EF = ctrom.ctevent.EF
+    EC = ctrom.ctevent.EC
+    OP = eventcommand.Operation
+    FS = eventcommand.FuncSync
+
+    # The normal item reward is given by an invisible trigger on the ladder.
+    # This is object 0xF, touch
+    obj_id = 0xF
+    func_id = 2
+    start = script.get_function_start(obj_id, func_id)
+    end = script.get_function_end(obj_id, func_id)
+
+    hook_cmd = EC.if_mem_op_value(0x7F00A4, OP.BITWISE_AND_NONZERO,
+                                  0x01, 1, 0)
+    hook_pos = script.find_exact_command(hook_cmd, start, end)
+
+    func = EF()
+
+    # If has seed, do nothing, else return
+    (
+        func
+        .add_if_else(
+            EC.if_has_item(ctenums.ItemID.SEED, 0),
+            EF(),
+            EF().add(EC.return_cmd())
+        )
+    )
+
+    script.insert_commands(func.get_bytearray(), hook_pos)
+
+    # Update Doan's dialog and allow turn-in by talking to Doan.
+    new_str = 'DOAN: Are you sure there was no food?{line break}'\
+        'Not even a Seed?{null}'
+    new_ctstr = ctstrings.CTString.from_str(new_str)
+    new_ctstr.compress()
+    new_index = script.add_string(new_ctstr)
+
+    obj_id = 0x0E
+    func_id = 0x01
+    start = script.get_function_start(obj_id, func_id)
+    end = script.get_function_end(obj_id, func_id)
+
+    hook_cmd = EC.if_mem_op_value(0x7F0105, OP.BITWISE_AND_NONZERO, 0x04,
+                                  1, 0)
+    hook_pos = script.find_exact_command(hook_cmd, start, end)
+    hook_pos += len(hook_cmd)
+
+    func = EF()
+    (
+        func
+        .add_if_else(
+            # If Doan item given
+            EC.if_mem_op_value(0x7F00A4, OP.BITWISE_AND_NONZERO, 0x01,
+                               1, 0),
+            EF(),  # do nothing... will fall through to the normal text
+            (
+                EF()
+                .add_if(
+                    # elif has seed
+                    EC.if_has_item(ctenums.ItemID.SEED, 0),
+                    (
+                        # Call the previous trigger touch function
+                        EF()
+                        # The moveparty in the other touch function doesn't
+                        # quite work.  PCs get stuck in DOAN.
+                        .add(EC.move_party(0x2F, 0xD, 0x2E, 0xE, 0x30, 0xE))
+                        .add(EC.call_obj_function(0xF, 2, 4, FS.SYNC))
+                        .add(EC.return_cmd())
+                    )
+                )
+                .add(EC.text_box(new_index, False))
+                .add(EC.return_cmd())
+            )
+        )
+    )
+
+    script.insert_commands(func.get_bytearray(),  hook_pos)
+
+
+def split_arris_dome(ct_rom: ctrom.CTRom):
+    '''
+    Updates Arris Dome scripts to have two KI spots.
+      (1) The Corpse in the food storage room gives a KI (vanilla Seed)
+      (2) Doan gives a KI for checking computer and bringing Seed
+    '''
+
+    # (1) The Corpse in the food storage room gives a KI (vanilla Seed)
+    add_arris_food_locker_check(ct_rom)
+
+    # (2) Add the seed turn-in to Doan/ladder trigger
+    add_arris_dome_seed_turn_in(ct_rom)
+
+
 def restore_scripts(ct_rom: ctrom.CTRom):
     restore_ribbon_boost(ct_rom)
     restore_geno_dome_conveyor(ct_rom)

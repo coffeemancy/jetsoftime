@@ -329,6 +329,9 @@ class EventCommand:
     def end_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
 
+    def add_item(item_id: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0xCA, item_id)
+
     def if_has_item(item_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xC9, int(item_id), jump_bytes)
 
@@ -417,7 +420,7 @@ class EventCommand:
         elif is_script_mem(from_addr) and is_local_mem(to_addr):
             # arg 1: offset of from_addr
             # arg 2: to_addr - 0x7F0000
-            cmd_args [get_offset(from_addr), to_addr - 0x7F0000]
+            cmd_args[get_offset(from_addr), to_addr - 0x7F0000]
             if num_bytes == 1:
                 cmd_id = 0x58
             else:
@@ -430,7 +433,7 @@ class EventCommand:
                 cmd_id = 0x48
             else:
                 cmd_id = 0x49
-        elif  is_script_mem(from_addr) and is_bank_7E(to_addr):
+        elif is_script_mem(from_addr) and is_bank_7E(to_addr):
             # arg 1: to_addr (3 bytes)
             # arg 2: (from_addr - 0x7F000) / 2
             cmd_args = [to_addr, get_offset(from_addr)]
