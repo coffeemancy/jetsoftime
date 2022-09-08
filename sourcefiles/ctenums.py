@@ -260,6 +260,7 @@ class LocID(StrIntEnum):
     DEATH_PEAK_CAVE = 0x108
     DEATH_PEAK_SUMMIT = 0x109
     ARRIS_DOME_FOOD_LOCKER = 0x158
+    ZEAL_PALACE = 0x191
 
     # Other Important Locations
     ENDING_SELECTOR = 0x52

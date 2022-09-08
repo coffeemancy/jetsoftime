@@ -11,6 +11,83 @@ import treasuredata
 import randoconfig as cfg
 
 
+def apply_vanilla_keys_scripts(ct_rom: ctrom.CTRom):
+    '''
+    Apply only the parts of VanillaRando that have to do with Key items.
+    '''
+    restore_ribbon_boost(ct_rom)
+    add_vanilla_clone_check_scripts(ct_rom)
+    restore_cyrus_grave_script(ct_rom)
+    restore_tools_to_carpenter_script(ct_rom)
+    split_arris_dome(ct_rom)
+    revert_sunken_desert_lock(ct_rom)
+
+def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
+    '''
+    Only update the config with vanilla KI data.
+    '''
+    add_vanilla_clone_check_to_config(config)
+    restore_cyrus_grave_check_to_config(config)
+    add_arris_food_locker_check_to_config
+    
+
+def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
+    '''
+    Restore vanilla behavior of locking Sunken Desert behind talking with the
+    NPC in Zeal Palace.
+    '''
+
+    # Note that in VanillaRando games, this does not even need a logic change.
+    # Desert is a high-level area that is locked logically behind EoT access.
+
+    # The Sunken Desert is available exactly when 0x7F00F7 & 0x02 is set.
+    # This is done in the Telepod Exhibit Script
+    EC = ctrom.ctevent.EC
+    EF = ctrom.ctevent.EF
+
+    desert_set_cmd = EC.assign_val_to_mem(0x02, 0x7F00F7, 1)
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.TELEPOD_EXHIBIT)
+    pos = script.find_exact_command(desert_set_cmd)
+    script.delete_commands(pos, 1)
+
+    # The plant lady is in Zeal Palace (0x191), Object C.
+    script = ct_rom.script_manager.get_script(ctenums.LocID.ZEAL_PALACE)
+
+    start = script.get_function_start(0xC, 1)
+    del_st, _ = script.find_command([0xC0], start)
+    del_cmd = EC.generic_one_arg(0x75, 0x18//2)
+
+    del_end = script.find_exact_command(
+        del_cmd, start
+    )
+
+    script.delete_commands_range(del_st, del_end)
+
+    new_str = "You're right! Even if it IS the Queen's " \
+        "command, the Guru of Life gave it to " \
+        "me. I can't burn it...{full break}" \
+        "I'm going to grow it with love. "\
+        "Someday it may save the environment.{null}"
+    new_ctstr = ctstrings.CTString.from_str(new_str)
+    new_ctstr.compress()
+    new_index = script.add_string(new_ctstr)
+
+    # ctevent functionality can be weird when inserting around jumps and/or
+    # ends of functions.  Here we're sort of doing both, so I'm using
+    # eventfunctions.
+    old_func = script.get_function(0x0C, 1)
+    ins_func = EF()
+    (
+        ins_func
+        .add(EC.set_bit(0x7F00F7, 0x02))
+        .add(EC.auto_text_box(new_index))
+    )
+
+    old_func.insert(ins_func, len(old_func) - len(del_cmd))
+    script.set_function(0x0C, 1, old_func)
+
+
 def add_arris_food_locker_check(ct_rom: ctrom.CTRom):
     # Maybe these should be parameters if we want to be dynamic about it?
     flag_addr = 0x7F00A4
@@ -167,13 +244,10 @@ def split_arris_dome(ct_rom: ctrom.CTRom):
 
 
 def restore_scripts(ct_rom: ctrom.CTRom):
-    restore_ribbon_boost(ct_rom)
+    apply_vanilla_keys_scripts(ct_rom)
+
     restore_geno_dome_conveyor(ct_rom)
     restore_r_series(ct_rom)
-    add_vanilla_clone_check_scripts(ct_rom)
-    restore_cyrus_grave_script(ct_rom)
-    restore_tools_to_carpenter_script(ct_rom)
-    split_arris_dome(ct_rom)
     use_easy_lavos(ct_rom)
 
 
@@ -569,15 +643,14 @@ def use_easy_lavos(ct_rom: ctrom.CTRom):
 
 
 def fix_config(config: cfg.RandoConfig):
+    apply_vanilla_keys_to_config(config)
+
     fix_item_data(config)
     fix_required_tp(config)  # Do before scaling.
     scale_enemy_xp_tp(config, 2, 2)
     fix_magic_learning(config)
     restore_son_of_sun_flame(config)
     restore_magus_castle_decedents(config)
-    add_vanilla_clone_check_to_config(config)
-    restore_cyrus_grave_check_to_config(config)
-    add_arris_food_locker_check_to_config(config)
     fix_twin_boss(config)
     rebalance_nizbel(config)
     rescale_bosses(config)
