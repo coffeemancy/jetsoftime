@@ -585,6 +585,10 @@ class EventCommand:
     def replace_characters() -> EventCommand:
         return EventCommand.special_dialog(0x00)
 
+    # TODO: merge these two textbox commands
+    def auto_text_box(string_id: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0xBB, string_id)
+
     def text_box(string_id: int, top: bool = True) -> EventCommand:
         if top:
             return EventCommand.generic_one_arg(0xC1, string_id)
