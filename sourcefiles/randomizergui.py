@@ -2238,6 +2238,19 @@ class RandoGUI:
             'to Dalton in the Snail Stop to upgrade the Epoch.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Use Extended Key Items',
+            variable=self.flag_dict[GameFlags.USE_EXTENDED_KEYS]
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Use VanillaRando Key Item changes.'
+        )
+
+
         self.bucket_fragment_checkbox = tk.Checkbutton(
             frame,
             text='Bucket Fragments (k)',

@@ -803,6 +803,10 @@ class Randomizer:
         if vanilla:
             vanillarando.restore_scripts(self.out_rom)
 
+        if mode == rset.GameMode.STANDARD and \
+           rset.GameFlags.USE_EXTENDED_KEYS in self.settings.gameflags:
+            vanillarando.apply_vanilla_keys_scripts(self.out_rom)
+
         if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
             fastmagic.add_tracker_hook(self.out_rom)
 
@@ -1415,6 +1419,9 @@ class Randomizer:
             config = cfg.RandoConfig.get_config_from_rom(
                 bytearray(ctrom.rom_data.getvalue())
             )
+
+            if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
+                vanillarando.apply_vanilla_keys_to_config(config)
 
             # Get hard versions of config items if needed.
             # We're done with the rom at this point, so it's OK to patch
