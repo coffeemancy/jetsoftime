@@ -21,6 +21,8 @@ def apply_vanilla_keys_scripts(ct_rom: ctrom.CTRom):
     restore_tools_to_carpenter_script(ct_rom)
     split_arris_dome(ct_rom)
     revert_sunken_desert_lock(ct_rom)
+    unlock_skyways(ct_rom)
+
 
 def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
     '''
@@ -28,8 +30,30 @@ def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
     '''
     add_vanilla_clone_check_to_config(config)
     restore_cyrus_grave_check_to_config(config)
-    add_arris_food_locker_check_to_config
-    
+    add_arris_food_locker_check_to_config(config)
+
+
+def unlock_skyways(ct_rom: ctrom.CTRom):
+    '''
+    Undo the skyway locks to allow Access to Zeal as soon as the player
+    lands in the Dark Ages.
+    '''
+
+    # This is vanilla functionality used when the players return to Zeal
+    # after obtaining the Epoch.  0x7F0057 & 80 being set locks the Skyways.
+    # In Jets, this flag is set in the telepod script.
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.TELEPOD_EXHIBIT)
+    del_cmd = eventcommand.EventCommand.set_bit(0x7F0057, 0x80)
+    st = script.get_function_start(0xE, 4)
+    end = script.get_function_end(0xE, 4)
+
+    pos = script.find_exact_command(del_cmd, st, end)
+    if pos is not None:
+        script.delete_commands(pos, 1)
+    else:
+        raise ValueError('Command not found')
+
 
 def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
     '''
@@ -64,10 +88,10 @@ def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
 
     script.delete_commands_range(del_st, del_end)
 
-    new_str = "You're right! Even if it IS the Queen's " \
-        "command, the Guru of Life gave it to " \
+    new_str = "You're right! Even if it IS the Queen's{linebreak+0}" \
+        "command, the Guru of Life gave it to{linebreak+0}" \
         "me. I can't burn it...{full break}" \
-        "I'm going to grow it with love. "\
+        "I'm going to grow it with love.{linebreak+0}"\
         "Someday it may save the environment.{null}"
     new_ctstr = ctstrings.CTString.from_str(new_str)
     new_ctstr.compress()
