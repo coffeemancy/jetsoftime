@@ -225,6 +225,39 @@ class Randomizer:
         bossrando.scale_bosses_given_assignment(self.settings, self.config)
         bossscaler.set_boss_power(self.settings, self.config)
 
+
+    @classmethod
+    def __set_fast_zeal_teleporters(cls, ct_rom: CTRom):
+        '''
+        Warp straight from the bottom of the mountain to the top.
+        '''
+
+        EC = ctevent.EC
+
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.ZEAL_TELEPORTERS
+        )
+        bot_loc_cmd = EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
+                                         0x1F, 0x0E,
+                                         3, 1, False)
+        new_bot_loc_cmd = EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
+                                             0x35, 0x0E,
+                                             3, 1, False)
+
+        pos = script.find_exact_command(bot_loc_cmd)
+        script.data[pos:pos+len(bot_loc_cmd)] = new_bot_loc_cmd.to_bytearray()
+
+        top_loc_cmd = EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
+                                         0x0A, 0x26,
+                                         3, 1, False)
+        new_top_loc_cmd =EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
+                                            0x0A, 0xE,
+                                            3, 1, False)
+
+        pos = script.find_exact_command(top_loc_cmd)
+        script.data[pos:pos+len(bot_loc_cmd)] = new_top_loc_cmd.to_bytearray()
+
+
     @classmethod
     def __set_fast_magus_castle(cls, ct_rom: CTRom):
         '''
@@ -329,7 +362,8 @@ class Randomizer:
         medal_desc += ' (Frog\'s Chest)'
         item_db[IID.HERO_MEDAL].set_desc_from_str(medal_desc)
 
-        if self.settings.game_mode == rset.GameMode.VANILLA_RANDO:
+        if self.settings.game_mode == rset.GameMode.VANILLA_RANDO or \
+           rset.GameFlags.USE_EXTENDED_KEYS in self.settings.gameflags:
             item_db[IID.C_TRIGGER].set_desc_from_str(
                 'Go DthPeak (KeeperDome), Bekkler'
             )
@@ -338,6 +372,9 @@ class Randomizer:
             )
             item_db[IID.JETSOFTIME].set_desc_from_str(
                 'Upgrade Epoch (Snail Stop)'
+            )
+            item_db[IID.SEED].set_desc_from_str(
+                'Give to Doan after CPU (Arris)'
             )
         else:
             grandleon_desc = item_db[IID.MASAMUNE_2].get_desc_as_str()
@@ -814,6 +851,8 @@ class Randomizer:
         if self.settings.game_mode != rset.GameMode.LOST_WORLDS:
             # The Telepod script is different in LW.  Just ignore.
             self.__set_fast_magus_castle(self.out_rom)
+
+        self.__set_fast_zeal_teleporters(self.out_rom)
 
         # Use 0x7F01A6 for the cat counter.
         self.__add_cat_pet_flag(self.out_rom, 0x7F01A6, 0x08)
