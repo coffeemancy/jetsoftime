@@ -138,8 +138,8 @@ class EventCommand:
         ret_cmd = event_commands[cmd].copy()
         ret_cmd.args = [0, 0, 0]
 
-        ret_cmd.args[0] = (facing & 0x03) << 9
-        ret_cmd.args[0] |= (unk & 0x03) << 0xB
+        ret_cmd.args[0] = (facing & 0x03) << 0xB
+        ret_cmd.args[0] |= (unk & 0x03) << 0x9
         ret_cmd.args[0] |= location
 
         ret_cmd.args[1] = x_coord
