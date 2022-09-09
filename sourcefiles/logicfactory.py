@@ -1581,7 +1581,10 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
         elif vanilla:
             CfgType = ChronosanityVanillaRandoGameConfig
         elif standard:
-            CfgType = ChronosanityGameConfig
+            if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
+                CfgType = ChronosanityVanillaRandoGameConfig
+            else:
+                CfgType = ChronosanityGameConfig
         else:
             raise ValueError('Invalid Game Mode')
     else:
@@ -1594,7 +1597,10 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
         elif vanilla:
             CfgType = VanillaRandoGameConfig
         elif standard:
-            CfgType = NormalGameConfig
+            if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
+                CfgType = VanillaRandoGameConfig
+            else:
+                CfgType = NormalGameConfig
         else:
             raise ValueError('Invalid Game Mode')
 
