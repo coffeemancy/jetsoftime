@@ -338,6 +338,12 @@ class Event:
             print(' '.join(f"{self.get_function_start(i,j):04X}"
                            for j in range(8, 16)))
 
+    def add_py_string(self, new_string: str) -> int:
+        ct_str = ctstrings.CTString.from_str(new_string)
+        ct_str.compress()
+
+        return self.add_string(ct_str)
+
     def add_string(self, new_string: bytearray) -> int:
         self.strings.append(new_string)
         self.modified_strings = True
@@ -607,6 +613,42 @@ class Event:
 
         self.num_objects -= 1
 
+
+    def __shift_object_calls(self, obj_id: int, is_deletion: bool):
+        # Remove all calls to object 0xC's functions
+        calls = [2, 3, 4]
+        draw_status = [0x7C, 0x7D]
+        processing = [0x0A, 0x0B, 0x0C]
+
+        obj_cmds = calls + draw_status + processing
+
+        pos = self.get_function_start(0, 0)
+        end = len(self.data)
+        while True:
+            (pos, cmd) = self.find_command(obj_cmds,
+                                           pos, end)
+            if pos is None:
+                break
+            # It just so happens that the draw status commands and the object
+            # call commands use 2*obj_id and have the object in arg0
+            elif cmd.command in obj_cmds:
+                if cmd.args[0] == 2*obj_id and is_deletion:
+                    # print(f"deleted [{pos:04X}] " + str(cmd))
+                    # input()
+                    self.delete_commands(pos, 1)
+                    end = len(self.data)
+                else:
+                    if cmd.args[0] >= 2*obj_id:
+                        # print('shifting')
+                        # print(f"[{pos:04X}] " + str(cmd))
+                        # input()
+                        if is_deletion:
+                            self.data[pos+1] -= 2
+                        else:
+                            self.data[pos+1] += 2
+                    pos += len(cmd)
+
+
     def __remove_shift_object_calls(self, obj_id):
         # Remove all calls to object 0xC's functions
         calls = [2, 3, 4]
@@ -759,10 +801,50 @@ class Event:
 
         return self.num_objects-1
 
+    def insert_copy_object(self, copy_id: int, ins_id: int):
+        '''
+        Insert a copy of object copy_id into spot ins_id.
+        Will break if the object calls other object functions.
+        '''
+
+        orig_obj_st = self.get_function_start(copy_id, 0)
+        orig_obj_ptrs = [
+            int.from_bytes(self.data[32*copy_id+2*ind: 32*copy_id+2*ind+2],
+                           'little') - orig_obj_st
+            for ind in range(0x10)
+        ]
+
+        if copy_id == self.num_objects - 1:
+            orig_obj_end = len(self.data)
+        else:
+            orig_obj_end = self.get_function_start(copy_id+1, 0)
+
+        object_data = self.data[orig_obj_st: orig_obj_end]
+
+        insert_pos = self.get_function_start(ins_id, 0)
+        ins_obj_ptrs = [ptr+insert_pos for ptr in orig_obj_ptrs]
+        ins_obj_ptrs_b = b''.join(
+            int.to_bytes(ptr, 2, 'little')
+            for ptr in ins_obj_ptrs
+        )
+
+
+        # Shift jumps for insertion of new pointers and data.
+        self.__shift_jumps(insert_pos, insert_pos, len(object_data))
+        self.__shift_jumps(0, 0, 32)
+
+        self.__shift_starts(insert_pos-1, len(object_data))
+        self.__shift_object_calls(ins_id, is_deletion=False)
+
+        self.data[insert_pos:insert_pos] = object_data
+        self.data[32*ins_id:32*ins_id] = ins_obj_ptrs_b
+        self.num_objects += 1
+        self.__shift_starts(-1, 32)
+
     def set_function(self, obj_id: int, func_id: int,
                      ev_func: EF):
         '''Sets the given EventFunction in the script.'''
-        
+
         # The main difficulty is figuring out where the function should
         # actually begin.  The default behavior of CT scripts is that
         # unused functions are given the starting point of the last used
@@ -1036,6 +1118,43 @@ class Event:
                     self.data[pos+1] -= 2
 
                 pos += len(cmd)
+
+    def __shift_calls_forward(self, inserted_obj: int):
+        pos = self.get_function_start(0, 0)
+        end = len(self.data)
+        while True:
+            (pos, cmd) = self.find_command([2, 3, 4],
+                                           pos, end)
+            if pos is None:
+                break
+            else:
+                if cmd.args[0] > 2*inserted_obj:
+                    # print(f"shifted [{pos:04X}] " + str(cmd))
+                    # input()
+                    self.data[pos+1] += 2
+
+                pos += len(cmd)
+
+
+    def replace_command(self, from_cmd: EC, to_cmd: EC,
+                        start: int = None, end: int=None):
+        if start is None:
+            start = self.get_object_start(0)
+
+        if end is None:
+            end = len(self.data)
+
+        pos = start
+        while True:
+            pos = self.find_exact_command(from_cmd)
+
+            if pos is None:
+                break
+
+            self.insert_commands(to_cmd.to_bytearray(), pos)
+            pos += len(to_cmd)
+
+            self.delete_commands(pos, 1)
 
     # This is for short removals
     def delete_commands(self, del_pos: int, num_commands: int = 1):
