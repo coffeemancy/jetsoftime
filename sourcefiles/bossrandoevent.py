@@ -26,6 +26,16 @@ import randosettings as rset
 import randoconfig as cfg
 
 
+def set_epoch_boss(ct_rom: CTRom, boss: BossScheme):
+
+    loc_id = LocID.REBORN_EPOCH
+    boss_obj = 0xA
+    first_x, first_y = 0x80, 0x1A8
+
+    set_generic_one_spot_boss(ct_rom, boss, loc_id, boss_obj,
+                              None, first_x, first_y, True)
+
+
 def set_manoria_boss(ctrom: CTRom, boss: BossScheme):
     # 0xC6 is Yakra's map - Manoria Command
     loc_id = 0xC6
@@ -2330,7 +2340,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
         LocID.OCEAN_PALACE_TWIN_GOLEM: set_twin_golem_spot,
         LocID.GENO_DOME_MAINFRAME: set_geno_dome_boss,
         LocID.MT_WOE_SUMMIT: set_mt_woe_boss,
-        LocID.ARRIS_DOME_GUARDIAN_CHAMBER: set_arris_dome_boss
+        LocID.ARRIS_DOME_GUARDIAN_CHAMBER: set_arris_dome_boss,
+        LocID.REBORN_EPOCH: set_epoch_boss
     }
 
     # Now do the writing. Only to locations in the above dict.  Only if the

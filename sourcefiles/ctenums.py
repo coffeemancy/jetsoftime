@@ -247,6 +247,9 @@ class LocID(StrIntEnum):
     ARRIS_DOME_FOOD_LOCKER = 0x158
     ZEAL_PALACE = 0x191
     ZEAL_TELEPORTERS = 0x185
+    BLACKBIRD_SCAFFOLDING = 0x16A
+    REBORN_EPOCH = 0x179
+    BLACKBIRD_LEFT_WING = 0x16B
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT
@@ -292,7 +295,8 @@ class LocID(StrIntEnum):
             cls.DEATH_PEAK_GUARDIAN_SPAWN,
             cls.ARRIS_DOME_GUARDIAN_CHAMBER,
             cls.GENO_DOME_MAINFRAME,
-            cls.MT_WOE_SUMMIT
+            cls.MT_WOE_SUMMIT,
+            cls.REBORN_EPOCH
         ]
 
     @classmethod
