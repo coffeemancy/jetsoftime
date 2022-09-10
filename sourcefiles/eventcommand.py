@@ -153,6 +153,27 @@ class EventCommand:
     def darken(duration) -> EventCommand:
         return EventCommand.generic_one_arg(0xF0, duration)
 
+    def load_pc_in_party(pc_id: int) -> EventCommand:
+        if pc_id == 0:
+            cmd_id = 0x57
+        elif pc_id == 1:
+            cmd_id = 0x5C
+        elif pc_id == 2:
+            cmd_id = 0x62
+        elif pc_id == 3:
+            cmd_id = 0x6A
+        elif pc_id == 4:
+            cmd_id = 0x68
+        elif pc_id == 5:
+            cmd_id = 0x6C
+        elif pc_id == 6:
+            cmd_id = 0x6D
+
+        return EventCommand.generic_zero_arg(cmd_id)
+
+    def load_npc(npc_id: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0x82, npc_id)
+
     def load_enemy(enemy_id: int, slot_number: int,
                    is_static: bool = False) -> EventCommand:
         # maybe validate?
@@ -160,6 +181,23 @@ class EventCommand:
         slot_arg = slot_number | 0x80*(is_static)
         x = EventCommand.generic_two_arg(0x83, enemy_id, slot_arg)
         return x
+
+    def set_reset_bits(address: int, bitmask: int,
+                       set_bits: bool = True) -> EventCommand:
+        if not is_script_mem(address):
+            raise ValueError('set_bits must opertate on script memory.')
+
+        if not address % 2 == 0:
+            raise ValueError('set_bits must operate on even addresses.')
+
+        if not 0 <= bitmask < 0x100:
+            raise ValueError('bitmask must be in [0, 0x100)')
+
+        offset  = (address - 0x7F0200)//2
+        if set_bits:
+            return EventCommand.generic_two_arg(0x69, bitmask, offset)
+        else:
+            return EventCommand.generic_two_arg(0x67, bitmask, offset)
 
     def set_reset_bit(address: int, bit: int, set_bit: bool) -> EventCommand:
 
@@ -2275,7 +2313,7 @@ event_commands[0xFF] = \
                  'Mode 7 Scene.')
 
 
-def get_command(buf: bytearray, offset: int) -> EventCommand:
+def get_command(buf: bytearray, offset: int = 0) -> EventCommand:
 
     command_id = buf[offset]
     command = event_commands[command_id].copy()
