@@ -111,7 +111,7 @@ class EventCommand:
 
         return x
 
-    def set_explore_mode(is_on: bool):
+    def set_explore_mode(is_on: bool) -> EventCommand:
         ret_cmd = event_commands[0xE3].copy()
         ret_cmd.args = [0]
         if is_on:
@@ -120,6 +120,9 @@ class EventCommand:
             ret_cmd.args[0] = 0
 
         return ret_cmd
+
+    def party_follow() -> EventCommand:
+        return EventCommand.generic_zero_arg(0xDA)
 
     def move_party(pc1_x, pc1_y, pc2_x, pc2_y, pc3_x, pc3_y):
         ret_cmd = event_commands[0xD9].copy()
