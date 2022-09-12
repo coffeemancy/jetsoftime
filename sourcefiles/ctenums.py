@@ -251,6 +251,7 @@ class LocID(StrIntEnum):
     REBORN_EPOCH = 0x179
     BLACKBIRD_LEFT_WING = 0x16B
 
+
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT
     BLACK_OMEN_DEFENSE_CORRIDOR = 0x136
@@ -656,6 +657,7 @@ class TreasureID(StrIntEnum):
     OZZIES_FORT_GUILLOTINES_4 = auto()
     OZZIES_FORT_FINAL_1 = auto()
     OZZIES_FORT_FINAL_2 = auto()
+    OZZIES_FORT_KEY = auto()
     TRUCE_MAYOR_1F = auto()
     TRUCE_MAYOR_2F = auto()
     FOREST_RUINS = auto()

@@ -22,6 +22,7 @@ def apply_vanilla_keys_scripts(ct_rom: ctrom.CTRom):
     split_arris_dome(ct_rom)
     revert_sunken_desert_lock(ct_rom)
     unlock_skyways(ct_rom)
+    add_check_to_ozzies_fort_script(ct_rom)
 
 
 def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
@@ -31,6 +32,53 @@ def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
     add_vanilla_clone_check_to_config(config)
     restore_cyrus_grave_check_to_config(config)
     add_arris_food_locker_check_to_config(config)
+    add_check_to_ozzies_fort_in_config(config)
+
+
+def add_check_to_ozzies_fort_in_config(config: cfg.RandoConfig):
+    '''
+    Add an entry in the config for the Ozzie's Fort KI.
+    '''
+    td = treasuredata
+    assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
+
+    ozzies_fort_check = cfg.ScriptTreasure(
+        ctenums.LocID.OZZIES_FORT_THRONE_INCOMPETENCE,
+        0x8, 0x2, assigned_item, 0
+    )
+
+    config.treasure_assign_dict[ctenums.TreasureID.OZZIES_FORT_KEY]\
+        = ozzies_fort_check
+
+
+def add_check_to_ozzies_fort_script(ct_rom: ctrom.CTRom):
+    '''
+    Modify the script for Ozzie's Fort to give the player a KI after the cat
+    drops Ozzie.
+    '''
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.OZZIES_FORT_THRONE_INCOMPETENCE
+    )
+
+    new_ind = script.add_py_string(
+        '{line break}            Got 1 {item}!{null}'
+    )
+
+    EC = eventcommand.EventCommand
+    EF = ctrom.ctevent.EF
+
+    start = script.get_function_start(8, 2)
+    hook_loc = script.find_exact_command(EC.party_follow(), start)
+
+    item_id = int(ctenums.ItemID.MOP)
+    get_item_func = (
+        EF()
+        .add(EC.assign_val_to_mem(item_id, 0x7F0200, 1))
+        .add(EC.auto_text_box(new_ind))
+        .add(EC.add_item(item_id))
+    )
+
+    script.insert_commands(get_item_func.get_bytearray(), hook_loc)
 
 
 def unlock_skyways(ct_rom: ctrom.CTRom):
