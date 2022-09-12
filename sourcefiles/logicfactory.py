@@ -892,6 +892,7 @@ def apply_epoch_fail(game_config: GameConfig):
         TID.OZZIES_FORT_FINAL_1, TID.OZZIES_FORT_FINAL_2,
         TID.OZZIES_FORT_GUILLOTINES_1, TID.OZZIES_FORT_GUILLOTINES_2,
         TID.OZZIES_FORT_GUILLOTINES_3, TID.OZZIES_FORT_GUILLOTINES_4,
+        TID.OZZIES_FORT_KEY,
         # OpenKeys
         TID.LAZY_CARPENTER,
         # MelchiorRefinements
@@ -959,8 +960,12 @@ def apply_epoch_fail(game_config: GameConfig):
             rset.GameFlags.LOCKED_CHARS in settings.gameflags
         )
 
-        if settings.game_mode == rset.GameMode.STANDARD or \
-           loc_remove_jerky:
+        std_remove_jerky = (
+            settings.game_mode == rset.GameMode.STANDARD and
+            rset.GameFlags.USE_EXTENDED_KEYS not in settings.gameflags
+        )
+
+        if loc_remove_jerky or std_remove_jerky:
             game_config.keyItemList.remove(ItemID.JERKY)
 
         game_config.keyItemList.append(ItemID.JETSOFTIME)
@@ -1437,6 +1442,7 @@ def _canAccessCyrusGraveVR(game: Game):
 def _canAccessDoanKeyVR(game: Game):
     return game.canAccessFuture and game.hasKeyItem(ItemID.SEED)
 
+
 _awesome_gear_dist = td.TreasureDist(
     (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
 )
@@ -1498,6 +1504,12 @@ class VanillaRandoGameConfig(NormalGameConfig):
                                              _high_gear_dist))
         self.locationGroups.append(doanKey)
 
+        ozzieKey = LocationGroup("Ozzie's Fort", 1,
+                                 lambda game: game.canAccessMtWoe())
+        ozzieKey.addLocation(BaselineLocation(TID.OZZIES_FORT_KEY,
+                                              _high_gear_dist))
+        self.locationGroups.append(ozzieKey)
+
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
@@ -1548,6 +1560,12 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
         doanKey.addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
         self.locationGroups.append(doanKey)
+
+        ozziesFort = self.getLocationGroup("Ozzie's Fort")
+        ozziesFort.locations.append(Location(TID.OZZIES_FORT_KEY))
+        self.locationGroups.append(ozziesFort)
+
+        # Increase Ozzie's Fort weight?
 
 
 #
