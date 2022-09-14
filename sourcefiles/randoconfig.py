@@ -507,7 +507,7 @@ class RandoConfig:
 
         LocID = ctenums.LocID
         TID = ctenums.TreasureID
-        self.treasure_assign_dict = {
+        self.treasure_assign_dict: dict[TID, Treasure] = {
             TID.TRUCE_MAYOR_1F: ChestTreasure(0x02),
             TID.TRUCE_MAYOR_2F: ChestTreasure(0x03),
             TID.KINGS_ROOM_1000: ChestTreasure(0x04),

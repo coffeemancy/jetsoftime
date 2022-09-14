@@ -250,7 +250,8 @@ class LocID(StrIntEnum):
     BLACKBIRD_SCAFFOLDING = 0x16A
     REBORN_EPOCH = 0x179
     BLACKBIRD_LEFT_WING = 0x16B
-
+    LAB_32_WEST = 0xDF
+    LAB_32_EAST = 0xE1
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT

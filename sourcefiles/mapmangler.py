@@ -180,6 +180,18 @@ class LocExits:
             print("Invalid exit id")
             exit()
 
+    def delete_exit(self, loc_id: int, exit_index: int):
+        st = self.ptrs[loc_id] + 7*exit_index
+        end = self.ptrs[loc_id+1]
+
+        if st + 7 > end:
+            raise IndexError('Invalid exit_index.')
+
+        del self.data[st:st+7]
+
+        for i in range(loc_id+1, len(self.ptrs)):
+            self.ptrs[i] -= 7
+
     def delete_exits(self, loc_id: int):
         st = self.ptrs[loc_id]
         end = self.ptrs[loc_id+1]

@@ -371,7 +371,7 @@ class Randomizer:
                 'Repair Ruins (Choras Cafe)'
             )
             item_db[IID.JETSOFTIME].set_desc_from_str(
-                'Upgrade Epoch (Snail Stop)'
+                'Upgrade Epoch (Blackbird)'
             )
             item_db[IID.SEED].set_desc_from_str(
                 'Give to Doan after CPU (Arris)'

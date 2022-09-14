@@ -6,6 +6,7 @@ import ctrom
 import ctstrings
 import eventcommand
 import itemdata
+import mapmangler
 import treasuredata
 
 import randoconfig as cfg
@@ -23,6 +24,7 @@ def apply_vanilla_keys_scripts(ct_rom: ctrom.CTRom):
     revert_sunken_desert_lock(ct_rom)
     unlock_skyways(ct_rom)
     add_check_to_ozzies_fort_script(ct_rom)
+    restore_johnny_race(ct_rom)
 
 
 def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
@@ -33,7 +35,31 @@ def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
     restore_cyrus_grave_check_to_config(config)
     add_arris_food_locker_check_to_config(config)
     add_check_to_ozzies_fort_in_config(config)
+    add_racelog_chest_to_config(config)
 
+
+def add_racelog_chest_to_config(config: cfg.RandoConfig):
+    td = treasuredata
+    assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
+    config.treasure_assign_dict[ctenums.TreasureID.LAB_32_RACE_LOG]\
+          .held_item = assigned_item
+
+
+def restore_johnny_race(ct_rom: ctrom.CTRom):
+    '''
+    Adds the Johhny race to Lab 32.  The Bike Key + Crono is required to race
+    Johnny.  Just the Bike Key is needed to traverse Lab32 on foot.
+    '''
+    script = ctrom.ctevent.Event.from_flux('./flux/VR_0DF_Lab32_West.Flux')
+    ct_rom.script_manager.set_script(script, ctenums.LocID.LAB_32_WEST)
+
+    # delete the normal exit to Lab32.  It will be in-script.
+    exits = mapmangler.LocExits.from_rom(ct_rom.rom_data)
+    exits.delete_exit(ctenums.LocID.LAB_32_EAST, 1)
+    exits.write_to_fsrom(ct_rom.rom_data)
+
+    script = ctrom.ctevent.Event.from_flux('./flux/VR_0E1_Lab32_East.Flux')
+    ct_rom.script_manager.set_script(script, ctenums.LocID.LAB_32_EAST)
 
 def add_check_to_ozzies_fort_in_config(config: cfg.RandoConfig):
     '''
@@ -102,6 +128,44 @@ def unlock_skyways(ct_rom: ctrom.CTRom):
     else:
         raise ValueError('Command not found')
 
+    update_zeal_throne_door(ct_rom)
+
+
+def update_zeal_throne_door(ct_rom: ctrom.CTRom):
+    '''
+    Since Zeal opens earlier, make sure the door is locked properly.
+    '''
+
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.ZEAL_PALACE_REGAL_ANTECHAMBER
+    )
+
+    func = script.get_function(0xC, 2)
+    EF = ctrom.ctevent.EF
+    EC = ctrom.ctevent.EC
+    OP = eventcommand.Operation
+
+    new_ind = script.add_py_string(
+        "The Ocean Palace is guarded by magic.{full break}"
+        "Defeat the Black Tyrano and bring a{linebreak+0}"
+        "Ruby Knife or defeat Magus to break{linebreak+0}"
+        "the seal.{null}"
+    )
+
+    tyrano_check = (
+        EF()
+        .add_if_else(
+            EC.if_mem_op_value(0x7F01F1, OP.BITWISE_AND_NONZERO, 0x20, 1, 0),
+            func,
+            (
+                EF()
+                .add(EC.auto_text_box(new_ind))
+                .add(EC.return_cmd())
+            )
+        )
+    )
+
+    script.set_function(0xC, 2, tyrano_check)
 
 def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
     '''
