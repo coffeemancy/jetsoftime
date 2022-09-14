@@ -30,8 +30,15 @@ class Game:
         self.legacyofcyrus = \
             rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
 
-        # In case we need to look something else up
+        self.epoch_fail = rset.GameFlags.EPOCH_FAIL in settings.gameflags
+        self.extended_keys = (
+            settings.game_mode == rset.GameMode.VANILLA_RANDO or
+            rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags
+        )
+
+    # In case we need to look something else up
         self.settings = settings
+
 
     #
     # Get the number of key items that have been acquired by the player.
@@ -185,7 +192,7 @@ class Game:
         self.addCharacter(self.charLocations[RecruitID.CASTLE].held_char)
 
         # The remaining three characters are progression gated.
-        if self.canAccessFuture():
+        if self.canAccessProtoDome():
             self.addCharacter(
                 self.charLocations[RecruitID.PROTO_DOME].held_char
             )
@@ -215,6 +222,21 @@ class Game:
         return not self.legacyofcyrus and \
             (self.hasKeyItem(ItemID.PENDANT) or self.lostWorlds)
 
+    def canAccessEndOfTime(self):
+        return (
+            not self.lostWorlds and
+            (self.canAccessProtoDome() or self.canAccessPrehistory())
+        )
+
+    def canAccessProtoDome(self):
+        # This is the only place that self.epoch_fail is used because it's
+        # part of a character check.  For TID access rules, I rely on
+        # apply_epoch_fail to add flight requirements to Locations.
+        if self.extended_keys and self.epoch_fail:
+            return self.canAccessFuture() and self.hasKeyItem(ItemID.BIKE_KEY)
+        else:
+            return self.canAccessFuture()
+
     def canAccessPrehistory(self):
         return self.hasKeyItem(ItemID.GATE_KEY) or self.lostWorlds
 
@@ -231,9 +253,7 @@ class Game:
                 self.hasCharacter(CharID.FROG))
 
     def canAccessMtWoe(self):
-        return (self.lostWorlds or
-                self.canAccessPrehistory() or
-                self.canAccessFuture())
+        return (self.lostWorlds or self.canAccessEndOfTime())
 
     def canAccessOceanPalace(self):
         return (
@@ -245,6 +265,9 @@ class Game:
         )
 
     def canAccessBlackOmen(self):
+        # TODO: There's an issue here with EF needing Jets to access.
+        #       It's not game-breaking because seeds are 100%able, but spheres
+        #       will be wrong.
         return (self.canAccessFuture() and
                 self.hasKeyItem(ItemID.CLONE) and
                 self.hasKeyItem(ItemID.C_TRIGGER))
@@ -271,18 +294,28 @@ class Game:
     def canAccessSealedChests(self):
         # With 3.1.1. logic change, canAccessDarkAges isn't correct for
         # checking sealed chest access.  Instead check for actual go modes.
+
         return (
-            self.hasKeyItem(ItemID.PENDANT) and
-             (self.earlyPendant or
-              self.canAccessTyranoLair() or
-              self.canAccessMagusCastle())
+            (self.extended_keys and self.canAccessEndOfTime) or
+            (
+                self.hasKeyItem(ItemID.PENDANT) and
+                (
+                    self.earlyPendant or
+                    self.canAccessTyranoLair() or
+                    self.canAccessMagusCastle()
+                )
+            )
         )
 
     def canAccessBurrowItem(self):
         return self.hasKeyItem(ItemID.HERO_MEDAL)
 
     def canAccessFionasShrine(self):
-        return self.hasCharacter(CharID.ROBO)
+        if self.usingExtendedKeys():
+            return (self.hasCharacter(CharID.ROBO) and
+                    self.canAccessEndOfTime())
+        else:
+            return self.hasCharacter(CharID.ROBO)
     # End Game class
 
 #

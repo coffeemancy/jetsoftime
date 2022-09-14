@@ -900,7 +900,15 @@ def apply_epoch_fail(game_config: GameConfig):
     )
 
     def add_flight(func):
-        return lambda game: func(game) and game.hasKeyItem(ItemID.JETSOFTIME)
+
+        def ret_func(game: Game):
+            if game.extended_keys:
+                return (func(game) and game.hasKeyItem(ItemID.JETSOFTIME) and
+                        game.canAccessEndOfTime())
+            else:
+                return func(game) and game.hasKeyItem(ItemID.JETSOFTIME)
+
+        return ret_func
 
     new_groups = []
     for group in game_config.locationGroups:
@@ -1459,6 +1467,7 @@ class VanillaRandoGameConfig(NormalGameConfig):
 
         self.keyItemList.append(ItemID.TOOLS)
         self.keyItemList.append(ItemID.SEED)
+        self.keyItemList.append(ItemID.BIKE_KEY)
         self.keyItemList.remove(ItemID.ROBORIBBON)
 
     def initLocations(self):
@@ -1509,6 +1518,17 @@ class VanillaRandoGameConfig(NormalGameConfig):
         ozzieKey.addLocation(BaselineLocation(TID.OZZIES_FORT_KEY,
                                               _high_gear_dist))
         self.locationGroups.append(ozzieKey)
+
+        lab32Key = LocationGroup(
+            "RaceLog Chest", 1,
+            lambda game: (
+                game.hasKeyItem(ItemID.PENDANT) and
+                game.hasKeyItem(ItemID.BIKE_KEY)
+            )
+        )
+        lab32Key.addLocation(BaselineLocation(TID.LAB_32_RACE_LOG,
+                                              _high_gear_dist))
+        self.locationGroups.append(lab32Key)
 
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
@@ -1566,6 +1586,17 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         self.locationGroups.append(ozziesFort)
 
         # Increase Ozzie's Fort weight?
+
+        lab32Key = LocationGroup(
+            "RaceLog Chest", 2,
+            lambda game: (
+                game.hasKeyItem(ItemID.PENDANT) and
+                game.hasKeyItem(ItemID.BIKE_KEY)
+            )
+        )
+        lab32Key.addLocation(Location(TID.LAB_32_RACE_LOG))
+        self.locationGroups.append(lab32Key)
+
 
 
 #

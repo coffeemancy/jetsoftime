@@ -710,6 +710,14 @@ def get_proof_string(
             game.hasKeyItem(IID.BENT_SWORD)
         )
 
+    def can_unlock_flight(game: logictypes.Game):
+        IID = ctenums.ItemID
+        if game.extended_keys:
+            return (game.hasKeyItem(IID.JETSOFTIME) and
+                    game.canAccessEndOfTime)
+        else:
+            return game.hasKeyItem(IID.JETSOFTIME)
+
     settings = game_config.settings
     config = game_config.config
     char_dict = {
@@ -737,6 +745,7 @@ def get_proof_string(
     found_tyrano_go = False
     found_omen_go = False
     found_magus_go = False
+    unlocked_flight = False
 
     while True:
         new_locs = []
@@ -769,6 +778,10 @@ def get_proof_string(
                 item = loc.getKeyItem()
                 spot = loc.getName()
                 ret_str += f'{sphere}: Obtain {item} from {spot}\n'
+
+            if not unlocked_flight and can_unlock_flight(cur_game):
+                ret_str += f'Unlock Flight\n'
+                unlocked_flight = True
 
             if not found_tyrano_go and has_tyrano_go(cur_game):
                 ret_str += 'GO: Tyrano Lair\n'
