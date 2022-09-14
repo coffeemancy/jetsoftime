@@ -233,7 +233,16 @@ class Game:
         # part of a character check.  For TID access rules, I rely on
         # apply_epoch_fail to add flight requirements to Locations.
         if self.extended_keys and self.epoch_fail:
-            return self.canAccessFuture() and self.hasKeyItem(ItemID.BIKE_KEY)
+            return (
+                (
+                    self.canAccessFuture() and
+                    self.hasKeyItem(ItemID.BIKE_KEY)
+                ) or
+                (
+                    self.hasKeyItem(ItemID.JETSOFTIME) and
+                    self.hasKeyItem(ItemID.GATE_KEY)
+                )
+            )
         else:
             return self.canAccessFuture()
 
@@ -294,16 +303,13 @@ class Game:
     def canAccessSealedChests(self):
         # With 3.1.1. logic change, canAccessDarkAges isn't correct for
         # checking sealed chest access.  Instead check for actual go modes.
-
+        
         return (
-            (self.extended_keys and self.canAccessEndOfTime) or
-            (
-                self.hasKeyItem(ItemID.PENDANT) and
-                (
-                    self.earlyPendant or
-                    self.canAccessTyranoLair() or
-                    self.canAccessMagusCastle()
-                )
+            self.hasKeyItem(ItemID.PENDANT) and (
+                (self.extended_keys and self.canAccessEndOfTime()) or
+                self.earlyPendant or
+                self.canAccessTyranoLair() or
+                self.canAccessMagusCastle()
             )
         )
 
