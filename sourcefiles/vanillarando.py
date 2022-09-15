@@ -106,6 +106,28 @@ def split_sunstone_quest(ct_rom: ctrom.CTRom):
 
     script.delete_commands_range(del_st, del_end)
 
+    # Also need to change the Melchior check to check for sunstone instead
+    # of the charged item received flag.
+
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.GUARDIA_REAR_STORAGE
+    )
+
+    start = script.get_function_start(0x17, 1)
+    hook_pos = script.find_exact_command(
+        EC.if_mem_op_value(0x7F013A,
+                           eventcommand.Operation.BITWISE_AND_NONZERO,
+                           0x40, 1, 0)
+    )
+
+    cmd = eventcommand.get_command(script.data, hook_pos)
+    bytes_jumped = cmd.args[-1]
+
+    script.delete_commands(hook_pos, 1)
+    script.insert_commands(EC.if_has_item(ctenums.ItemID.SUN_STONE,
+                                          bytes_jumped).to_bytearray(),
+                           hook_pos)
+
 
 def add_racelog_chest_to_config(config: cfg.RandoConfig):
     td = treasuredata
