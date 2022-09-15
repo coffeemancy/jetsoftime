@@ -233,11 +233,8 @@ class Game:
         # part of a character check.  For TID access rules, I rely on
         # apply_epoch_fail to add flight requirements to Locations.
         if self.extended_keys and self.epoch_fail:
-            return (
-                (
-                    self.canAccessFuture() and
-                    self.hasKeyItem(ItemID.BIKE_KEY)
-                ) or
+            return self.canAccessFuture() and (
+                self.hasKeyItem(ItemID.BIKE_KEY) or
                 (
                     self.hasKeyItem(ItemID.JETSOFTIME) and
                     self.hasKeyItem(ItemID.GATE_KEY)
