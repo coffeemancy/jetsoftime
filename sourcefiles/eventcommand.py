@@ -260,6 +260,9 @@ class EventCommand:
         x = event_commands[cmd_id].copy()
         return x
 
+    def remove_object(object_id: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0xA, 2*object_id)
+
     def vector_move(angle: int, magnitude: int,
                     keep_facing: bool) -> EventCommand:
         hex_angle = (0x100 * angle)//360

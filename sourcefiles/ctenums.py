@@ -252,6 +252,7 @@ class LocID(StrIntEnum):
     BLACKBIRD_LEFT_WING = 0x16B
     LAB_32_WEST = 0xDF
     LAB_32_EAST = 0xE1
+    SUN_KEEP_2300 = 0xFF
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT
@@ -901,6 +902,7 @@ class TreasureID(StrIntEnum):
     # Vanilla Rando checks
     BEKKLER_KEY = auto()
     CYRUS_GRAVE_KEY = auto()
+    SUN_KEEP_2300 = auto()
 
     @classmethod
     def get_open_treasures(cls):

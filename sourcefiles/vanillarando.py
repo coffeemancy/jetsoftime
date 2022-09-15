@@ -25,6 +25,7 @@ def apply_vanilla_keys_scripts(ct_rom: ctrom.CTRom):
     unlock_skyways(ct_rom)
     add_check_to_ozzies_fort_script(ct_rom)
     restore_johnny_race(ct_rom)
+    split_sunstone_quest(ct_rom)
 
 
 def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
@@ -36,6 +37,74 @@ def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
     add_arris_food_locker_check_to_config(config)
     add_check_to_ozzies_fort_in_config(config)
     add_racelog_chest_to_config(config)
+    add_sunstone_spot_to_config(config)
+
+
+def add_sunstone_spot_to_config(config: cfg.RandoConfig):
+    '''
+    Add a treasure entry for the sunstone pickup in Sun Keep 2300.
+    '''
+    td = treasuredata
+    assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
+
+    sunstone_spot = cfg.ScriptTreasure(
+        ctenums.LocID.SUN_KEEP_2300, 8, 1, assigned_item
+    )
+
+    config.treasure_assign_dict[ctenums.TreasureID.SUN_KEEP_2300] = \
+        sunstone_spot
+
+
+def split_sunstone_quest(ct_rom: ctrom.CTRom):
+    '''
+    Have the Moonstone charge into a random item.
+    '''
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.SUN_KEEP_2300)
+
+    EC = ctrom.ctevent.EC
+    EF = ctrom.ctevent.EF
+
+    start = script.get_function_start(8, 1)
+    explore_off_pos = script.find_exact_command(EC.set_explore_mode(False),
+                                                start,
+                                                script.get_function_end(8, 1))
+
+    script.delete_commands(explore_off_pos, 1)
+
+    song_cmd = eventcommand.get_command(b'\xEA\x3D')
+    hook_pos = script.find_exact_command(song_cmd,
+                                         explore_off_pos,
+                                         script.get_function_end(8, 1))
+    hook_pos += len(song_cmd)
+
+    new_ind = script.add_py_string(
+        "Moon Stone powered up!{linebreak+0}"
+        "{item} acquired!{null}"
+    )
+
+    item_id = int(ctenums.ItemID.SUN_STONE)
+
+    new_item_func = EF()
+    (
+        new_item_func
+        .add(EC.set_bit(0x7F013A, 0x40))
+        .add(EC.assign_val_to_mem(item_id, 0x7F0200, 1))
+        .add(EC.add_item(item_id))
+        .add(EC.auto_text_box(new_ind))
+        .add(EC.generic_zero_arg(0xEE))  # Song End
+        .add(eventcommand.get_command(b'\xEA\x10'))  # Manoria Song
+        .add(EC.remove_object(8))
+        .add(EC.return_cmd())
+    )
+
+    new_item_func_b = new_item_func.get_bytearray()
+    script.insert_commands(new_item_func_b, hook_pos)
+
+    del_st = hook_pos + len(new_item_func_b)
+    del_end = script.get_function_end(8, 1)
+
+    script.delete_commands_range(del_st, del_end)
 
 
 def add_racelog_chest_to_config(config: cfg.RandoConfig):

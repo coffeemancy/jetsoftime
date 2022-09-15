@@ -291,8 +291,12 @@ class Game:
                 self.hasKeyItem(ItemID.PRISMSHARD))
 
     def canAccessMelchiorsRefinements(self):
-        return (self.canAccessKingsTrial() and
-                self.canGetSunstone())
+        if self.extended_keys:
+            return (self.canAccessKingsTrial() and
+                    self.hasKeyItem(ItemID.SUN_STONE))
+        else:
+            return (self.canAccessKingsTrial() and
+                    self.canGetSunstone())
 
     def canAccessGiantsClaw(self):
         return self.hasKeyItem(ItemID.TOMAS_POP)

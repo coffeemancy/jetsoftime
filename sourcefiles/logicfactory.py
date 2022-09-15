@@ -862,7 +862,7 @@ def apply_epoch_fail(game_config: GameConfig):
     if rset.GameFlags.EPOCH_FAIL not in settings.gameflags:
         return
 
-    flight_tids = (
+    flight_tids = [
         # Sun Palace
         TID.SUN_PALACE_KEY,
         # Geno Dome
@@ -897,7 +897,14 @@ def apply_epoch_fail(game_config: GameConfig):
         TID.LAZY_CARPENTER,
         # MelchiorRefinements
         TID.MELCHIOR_KEY
-    )
+    ]
+
+    # In extended keys, Melchior just needs a sunstone, but the sunstone
+    # check needs flight.
+    if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags or \
+       rset.GameMode.VANILLA_RANDO == settings.game_mode:
+        flight_tids.remove(TID.MELCHIOR_KEY)
+        flight_tids.append(TID.SUN_KEEP_2300)
 
     def add_flight(func):
 
@@ -1448,7 +1455,7 @@ def _canAccessCyrusGraveVR(game: Game):
     )
 
 def _canAccessDoanKeyVR(game: Game):
-    return game.canAccessFuture and game.hasKeyItem(ItemID.SEED)
+    return game.canAccessFuture() and game.hasKeyItem(ItemID.SEED)
 
 
 _awesome_gear_dist = td.TreasureDist(
@@ -1468,6 +1475,8 @@ class VanillaRandoGameConfig(NormalGameConfig):
         self.keyItemList.append(ItemID.TOOLS)
         self.keyItemList.append(ItemID.SEED)
         self.keyItemList.append(ItemID.BIKE_KEY)
+        self.keyItemList.append(ItemID.SUN_STONE)
+
         self.keyItemList.remove(ItemID.ROBORIBBON)
 
     def initLocations(self):
@@ -1530,6 +1539,19 @@ class VanillaRandoGameConfig(NormalGameConfig):
                                               _high_gear_dist))
         self.locationGroups.append(lab32Key)
 
+        sunstoneKey = LocationGroup(
+            "Sun Keep 2300", 1,
+            lambda game: (
+                game.hasKeyItem(ItemID.GATE_KEY) and
+                game.hasKeyItem(ItemID.PENDANT) and
+                game.hasKeyItem(ItemID.MOON_STONE)
+            )
+        )
+
+        sunstoneKey.addLocation(BaselineLocation(TID.SUN_KEEP_2300,
+                                                 _high_gear_dist))
+        self.locationGroups.append(sunstoneKey)
+
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
 
@@ -1539,6 +1561,8 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         for i in range(5):
             self.keyItemList.append(ItemID.TOOLS)
             self.keyItemList.append(ItemID.SEED)
+            self.keyItemList.append(ItemID.BIKE_KEY)
+            self.keyItemList.append(ItemID.SUN_STONE)
 
         while ItemID.ROBORIBBON in self.keyItemList:
             self.keyItemList.remove(ItemID.ROBORIBBON)
@@ -1597,6 +1621,17 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         lab32Key.addLocation(Location(TID.LAB_32_RACE_LOG))
         self.locationGroups.append(lab32Key)
 
+        sunstoneKey = LocationGroup(
+            "Sun Keep 2300", 1,
+            lambda game: (
+                game.hasKeyItem(ItemID.GATE_KEY) and
+                game.hasKeyItem(ItemID.PENDANT) and
+                game.hasKeyItem(ItemID.MOON_STONE)
+            )
+        )
+
+        sunstoneKey.addLocation(Location(TID.SUN_KEEP_2300))
+        self.locationGroups.append(sunstoneKey)
 
 
 #
