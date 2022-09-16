@@ -376,17 +376,52 @@ class Randomizer:
             item_db[IID.SEED].set_desc_from_str(
                 'Give to Doan after CPU (Arris)'
             )
+            item_db[IID.BIKE_KEY].set_desc_from_str(
+                'Walk Lab32 + RaceLog Box'
+            )
+            item_db[IID.SUN_STONE].set_desc_from_str(
+                'Give to Melchior after King\'s Trial'
+            )
         else:
             grandleon_desc = item_db[IID.MASAMUNE_2].get_desc_as_str()
             grandleon_desc += ' (Tools)'
             item_db[IID.MASAMUNE_2].set_desc_from_str(grandleon_desc)
 
+    def __accelerate_carpenter_quest(self, ct_rom: CTRom):
+        '''
+        Just repair the whole ruins on the first visit.
+        '''
+
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.CHORAS_CARPENTER_600
+        )
+
+        EC = ctevent.EC
+        EF = ctevent.EF
+
+        hook_cmd = EC.set_bit(0x7F019F, 0x2)
+
+        hook_pos = script.find_exact_command(
+            hook_cmd,
+            script.get_function_start(8, 1)
+        ) + len(hook_cmd)
+
+        func = (
+            EF()
+            .add(EC.set_bit(0x7F019F, 0x04))
+            .add(EC.set_bit(0x7F019F, 0x08))
+        )
+
+
+        script.insert_commands(func.get_bytearray(), hook_pos)
+
+
     def __fix_northern_ruins_sealed(self, ct_rom: CTRom):
         # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
         #            0x7F01A3 & 0x08 is set for 1000AD ruins
 
-        # In Jets 0x7F01A3 & 0x20 is set for 600AD ruins
-        #         0x7F01A3 & 0x10 is set for 1000AD ruins
+        # In Jets 0x7F01A3 & 0x20 is set for 1000AD ruins
+        #         0x7F01A3 & 0x10 is set for 600AD ruins
 
         # In 0x44 Northern Ruins Antechamber, Object 0x10
         #   Past obtained - 0x7F01A6 & 0x01
@@ -857,8 +892,9 @@ class Randomizer:
         # Use 0x7F01A6 for the cat counter.
         self.__add_cat_pet_flag(self.out_rom, 0x7F01A6, 0x08)
 
-        # Split the NR "sealed" chests
+        # Split the NR "sealed" chests and make the quest a little faster.
         self.__fix_northern_ruins_sealed(self.out_rom)
+        self.__accelerate_carpenter_quest(self.out_rom)
 
         # Update the trading post descriptions
         self.__update_trading_post_string(self.out_rom, self.config)
