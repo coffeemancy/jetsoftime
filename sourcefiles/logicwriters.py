@@ -714,7 +714,7 @@ def get_proof_string(
         IID = ctenums.ItemID
         if game.extended_keys:
             return (game.hasKeyItem(IID.JETSOFTIME) and
-                    game.canAccessEndOfTime)
+                    game.canAccessEndOfTime())
         else:
             return game.hasKeyItem(IID.JETSOFTIME)
 
