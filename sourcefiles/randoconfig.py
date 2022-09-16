@@ -832,7 +832,7 @@ class RandoConfig:
                 item_num=0
             ),
             TID.NORTHERN_RUINS_BACK_LEFT_SEALED_600: ScriptTreasure(
-                location=LocID.NORTHERN_RUINS_ANTECHAMBER,
+                location=LocID.NORTHERN_RUINS_BACK_ROOM,
                 object_id=0x10,
                 function_id=0x01,
                 item_num=1
