@@ -42,7 +42,7 @@ def get_offset(script_addr):
     if script_addr % 2 != 0:
         raise ValueError('Script address must be even.')
     else:
-        return (script_addr - 0x7F0000) // 2
+        return (script_addr - 0x7F0200) // 2
 
 
 class EventCommand:

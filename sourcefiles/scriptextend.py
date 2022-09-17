@@ -329,7 +329,7 @@ class TechScript:
         obj_start = pos + 2*self.num_objs
 
         for i in range(self.num_objs):
-            ptr_b = to_little_endian(obj_start, 2)
+            ptr_b = to_little_endian(obj_start % 0x10000, 2)
             rom[pos:pos+2] = ptr_b
 
             pos += 2

@@ -732,7 +732,7 @@ class TechDB:
             # If desc_ptr is not set, just add the desc to the end and set the
             # pointer to the new text.
 
-            new_ptr = self.desc_start+len(self.descs)
+            new_ptr = (self.desc_start+len(self.descs)) % 0x10000
             new_ptr_b = to_little_endian(new_ptr, 2)
 
             set_record(self.desc_ptrs, new_ptr_b, tid,

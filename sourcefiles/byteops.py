@@ -22,35 +22,21 @@ def print_bytes(data, row_size):
 
 
 def to_little_endian(value, num_bytes):
-    ret = bytearray()
-    while(num_bytes > 0):
-        x = value % 0x100
-        ret.append(x)
-        value = value//0x100
-        num_bytes -= 1
-    return ret
+    # I'd delete this, but to avoid breaking code, just call the python
+    # function that I didn't know about way back then.
+    return int.to_bytes(value, num_bytes, 'little')
 
 
 def get_value_from_bytes(byte_arr):
-    ret = 0
-    mult = 1
-
-    for x in byte_arr:
-        ret = ret+x*mult
-        mult = mult*0x100
-
-    return ret
+    # I'd delete this, but to avoid breaking code, just call the python
+    # function that I didn't know about way back then.
+    return int.from_bytes(byte_arr, 'little')
 
 
 def get_value_from_bytes_be(byte_arr):
-    ret = 0
-    mult = 1
-
-    for i in range(len(byte_arr)-1, -1, -1):
-        ret = ret + byte_arr[i]*mult
-        mult = mult << 8
-
-    return ret
+    # I'd delete this, but to avoid breaking code, just call the python
+    # function that I didn't know about way back then.
+    return int.from_bytes(byte_arr, 'big')
 
 
 # Pointers/addresses in the game code to the rom are not the same as file
