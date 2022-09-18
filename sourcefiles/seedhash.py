@@ -62,9 +62,9 @@ def write_hash_string(ct_rom: ctrom.CTRom):
         'AC'  # grey square
         '02 3E 00'  # Top right
         'AC'  # grey square
-        '02 BE 06'  # Bot right
+        '02 3E 07'  # Bot right
         'AC'  # grey square
-        '02 80 06'  # Bot left
+        '02 00 07'  # Bot left
         'AC'  # grey square
         '00'  # end
     )
