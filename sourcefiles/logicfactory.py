@@ -240,8 +240,10 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.GENO_DOME_KEY))
         )
 
+        # Changing this from access future to access proto because of Vanilla
+        # mode/extended keys.
         factoryLocations = \
-            LocationGroup("Factory", 30, lambda game: game.canAccessFuture())
+            LocationGroup("Factory", 30, lambda game: game.canAccessProtoDome())
         (
             factoryLocations
             .addLocation(Location(TID.FACTORY_LEFT_AUX_CONSOLE))
