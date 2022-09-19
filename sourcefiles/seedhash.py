@@ -62,9 +62,9 @@ def write_hash_string(ct_rom: ctrom.CTRom):
         'AC'  # grey square
         '02 3E 00'  # Top right
         'AC'  # grey square
-        '02 BE 06'  # Bot right
+        '02 3E 07'  # Bot right
         'AC'  # grey square
-        '02 80 06'  # Bot left
+        '02 00 07'  # Bot left
         'AC'  # grey square
         '00'  # end
     )
@@ -78,9 +78,19 @@ def write_hash_string(ct_rom: ctrom.CTRom):
 
     rom.seek(0x3FC49F)
     rom.write(int.to_bytes(new_loc & 0xFFFF, 2, 'little'))
-    
+
     rom.seek(new_loc)
     rom.write(new_menu_script)
+
+    new_hdma = bytes.fromhex('50 FF FF 30 03 00 30 07 00 00')
+    new_hdma = bytes([len(new_hdma)]) + new_hdma
+    new_hdma_loc = new_loc - len(new_hdma)
+
+    rom.seek(0x3FC442)
+    rom.write(int.to_bytes(new_hdma_loc % 0x10000, 2, 'little'))
+
+    rom.seek(new_hdma_loc)
+    rom.write(new_hdma)
 
 
 def main():
