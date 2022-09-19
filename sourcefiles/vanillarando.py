@@ -246,7 +246,7 @@ def update_zeal_throne_door(ct_rom: ctrom.CTRom):
     tyrano_check = (
         EF()
         .add_if_else(
-            EC.if_mem_op_value(0x7F01F1, OP.BITWISE_AND_NONZERO, 0x20, 1, 0),
+            EC.if_mem_op_value(0x7F00EC, OP.BITWISE_AND_NONZERO, 0x80, 1, 0),
             func,
             (
                 EF()
