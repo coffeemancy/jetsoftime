@@ -776,9 +776,9 @@ class RandoGUI:
         ).grid(row=row, column=1)
 
         tk.Button(
-            frame, text="New Player",
+            frame, text="Tourney",
             command=lambda: self.set_settings(
-                Settings.get_new_player_presets()
+                Settings.get_tourney_early_preset()
             )
         ).grid(row=row, column=2)
 
