@@ -254,6 +254,8 @@ class LocID(StrIntEnum):
     LAB_32_EAST = 0xE1
     SUN_KEEP_2300 = 0xFF
     CHORAS_CARPENTER_600 = 0xBA
+    GUARDIA_BASEMENT = 0x1A
+    KINGS_CHAMBER_600 = 0x79
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT

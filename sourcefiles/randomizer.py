@@ -28,6 +28,7 @@ import vanillarando
 import epochfail
 import flashreduce
 import seedhash
+import prismshard
 
 import byteops
 import ctenums
@@ -868,6 +869,8 @@ class Randomizer:
 
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into patch.ips.
+
+        prismshard.update_prismshard_quest(self.out_rom)
 
         if epoch_fail:
             epochfail.apply_epoch_fail(self.out_rom, self.settings)
