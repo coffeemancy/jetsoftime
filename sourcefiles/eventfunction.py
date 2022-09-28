@@ -190,6 +190,10 @@ class EventFunction:
 
         self.pos -= cmd_len
 
+    def insert_at_index(self, event_function: EventFunction, ind: int):
+        pos = self.offsets[ind]
+        self.insert(event_function, pos)
+
     def insert(self, event_function: EventFunction, pos: int):
 
         # print('inserting:')
@@ -284,6 +288,8 @@ class EventFunction:
 
         self.labels[label] = pos
 
+        return self
+
     def __set_pos_label(self, pos: int = None):
         if pos is None:
             pos = self.pos
@@ -304,14 +310,14 @@ class EventFunction:
             self.__set_label(label, pos)
             return label
 
-    def set_label(self, label: str, pos: int = None):
+    def set_label(self, label: str, pos: int = None) -> EventFunction:
 
         if not label[0].isalpha:
             raise SystemExit(
                 'Error: User generated labels must begin with a letter.'
             )
 
-        self.__set_label(label, pos)
+        return self.__set_label(label, pos)
 
     def jump_to_label(self, event_command: EventCommand, label: str):
         jump_cmds = (
