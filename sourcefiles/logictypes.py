@@ -318,7 +318,7 @@ class Game:
         return self.hasKeyItem(ItemID.HERO_MEDAL)
 
     def canAccessFionasShrine(self):
-        if self.usingExtendedKeys():
+        if self.extended_keys:
             return (self.hasCharacter(CharID.ROBO) and
                     self.canAccessEndOfTime())
         else:
