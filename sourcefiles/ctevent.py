@@ -841,8 +841,160 @@ class Event:
         self.num_objects += 1
         self.__shift_starts(-1, 32)
 
+    def _function_is_linked(self, obj_id, func_id) -> bool:
+        '''
+        Determine whether a function links to another object's function.
+        '''
+        this_obj_st = self.get_object_start(obj_id)
+        if obj_id == self.num_objects - 1:
+            next_obj_st = len(self.data)
+        else:
+            next_obj_st = self.get_object_start(obj_id+1)
+
+        this_fn_st = self.get_function_start(obj_id, func_id)
+        return not (this_obj_st <= this_fn_st < next_obj_st)
+
+    def _function_is_empty(self, obj_id, func_id) -> bool:
+        '''
+        Determine whether a function is empty (links to previous function)
+        '''
+
+        if func_id == 0:
+            return False
+
+        given_start = self.get_function_start(obj_id, func_id)
+        for ind in range(func_id - 1, -1, -1):
+            prev_start = self.get_function_start(obj_id, ind)
+            if prev_start == given_start:
+                return True
+
+        return False
+
+    def _function_is_real(self, obj_id, func_id) -> bool:
+        return not (self._function_is_empty(obj_id, func_id) or
+                    self._function_is_linked(obj_id, func_id))
+
+    def _get_next_true_start(self, obj_id: int, func_id: int) -> int:
+        '''
+        Find the start of the next real function (non-empty, non-linked)
+        '''
+        # print(f'Finding true start after {obj_id:2X}, {func_id:02X}')
+        true_end = None
+
+        for ind in range(func_id+1, 0x10):
+            if self._function_is_real(obj_id, ind):
+                true_end = self.get_function_start(obj_id, ind)
+                break
+
+        if true_end is None:
+            if obj_id == self.num_objects - 1:
+                true_end = len(self.data)
+            else:
+                true_end = self.get_object_start(obj_id+1)
+
+        return true_end
+
+    def _set_function_start(self, obj_id, func_id, new_start):
+        ptr_st = obj_id*32 + func_id*2
+        self.data[ptr_st:ptr_st+2] = int.to_bytes(new_start, 2, 'little')
+
+
     def set_function(self, obj_id: int, func_id: int,
                      ev_func: EF):
+        self.set_function_new(obj_id, func_id, ev_func)
+
+    def set_function_new(self, obj_id: int, func_id: int,
+                         ev_func: EF):
+        '''
+        Version of set_function that tries to handle linked functions.
+        '''
+
+        for i in range(0x10):
+            is_linked = self._function_is_linked(obj_id, i)
+            is_empty = self._function_is_empty(obj_id, i)
+            start = self.get_function_start(obj_id, i)
+
+            print(f'Function {i:02X}: {start+1:04X}, empty={is_empty}, '
+                  f'linked={is_linked}')
+
+        # Find the first real function before this one.
+        # The true start is the end (next true start) from that point.
+        true_start = None
+        for ind in range(func_id-1, -1, -1):
+            if self._function_is_real(obj_id, ind):
+                true_start = self._get_next_true_start(obj_id, ind)
+                break
+
+        if true_start is None:
+            true_start = self.get_object_start(obj_id)
+
+        print(f'True start: {true_start+1:04X}')
+
+        if true_start is None:
+            raise ValueError('Unable to find real function')
+
+        true_end = self._get_next_true_start(obj_id, func_id)
+        print(f'True end: {true_end+1:04X}')
+
+        if len(ev_func) == 0:
+            # This is annoying because we're making a function empty
+            # TODO: check on this case
+            pass
+
+        # self.insert_commands(ev_func.get_bytearray(), true_start)
+        # self.delete_commands_range(true_start+len(ev_func),
+        #                            true_end+len(ev_func))
+        # print(ev_func, len(ev_func))
+
+        shift = len(ev_func) - (true_end-true_start)
+
+        empty_end = 0x10
+        for ind in range(func_id+1, 0x10):
+            if self._function_is_real(obj_id, ind):
+                empty_end = ind
+                break
+            print(f'{ind:02x} is not real')
+            if self._function_is_empty(obj_id, ind):
+                print('  is empty')
+
+        print(empty_end)
+        # Set the empty functions immediately following the changed function
+        for ind in range(func_id+1, empty_end):
+            if self._function_is_empty(obj_id, ind) and \
+               not self._function_is_linked(obj_id, ind):
+                print(f'Marking empty {ind:02X}')
+                self._set_function_start(obj_id, ind, true_start)
+
+        for ind in range(empty_end, 0x10):
+            start = self.get_function_start(obj_id, ind)
+            if start >= true_start:
+                self._set_function_start(obj_id, ind,
+                                         start+shift)
+
+        self._set_function_start(obj_id, func_id, true_start)
+        for obj_ind in range(self.num_objects):
+            if obj_ind == obj_id:
+                continue
+
+            for func_ind in range(0x10):
+                func_st = self.get_function_start(obj_ind, func_ind)
+                if func_st >= true_start:
+                    self._set_function_start(obj_ind, func_ind,
+                                             func_st + shift)
+
+        self.data[true_start:true_end] = ev_func.get_bytearray()
+
+        for i in range(0x10):
+            is_linked = self._function_is_linked(obj_id, i)
+            is_empty = self._function_is_empty(obj_id, i)
+            start = self.get_function_start(obj_id, i)
+
+            print(f'Function {i:02X}: {start+1:04X}, empty={is_empty}, '
+                  f'linked={is_linked}')
+
+
+    def set_function_old(self, obj_id: int, func_id: int,
+                         ev_func: EF):
         '''Sets the given EventFunction in the script.'''
 
         # The main difficulty is figuring out where the function should
@@ -1165,7 +1317,7 @@ class Event:
         for i in range(num_commands):
             if pos >= len(self.data):
                 print("Error: Deleting out of script's range.")
-                exit()
+                raise ValueError
 
             cmd = get_command(self.data, pos)
             cmd_len += len(cmd)
@@ -1228,69 +1380,7 @@ class Event:
         self.__shift_jumps(ins_position, ins_position, len(new_commands))
         self.__shift_starts(ins_position, len(new_commands))
 
-        '''
-        pos = self.get_object_start(0)
-        while pos < ins_position:
-            cmd = get_command(self.data, pos)
-
-            # print(f"[{pos:04X}] {cmd}")
-            # Check for jumps that go over the insertion point
-            # bytes to jump is always in last argument
-            if cmd.command in EC.fwd_jump_commands:
-
-                jump_target = pos + len(cmd) + cmd.args[-1] - 1
-                if jump_target > ins_position:
-
-                    arg_offset = len(cmd) - cmd.arg_lens[-1]
-                    self.data[pos + arg_offset] += len(new_commands)
-
-                    # Test:
-                    # new_cmd = get_command(self.data, pos)
-                    # print(f"New: [{pos:04X}] {new_cmd}")
-
-            pos += len(cmd)
-
-        # print("done forward jumps")
-        # Now check for backwards jump commands after the insertion point that
-        # jump before the insertion point
-
-        pos = ins_position
-        while pos < len(self.data):
-            cmd = get_command(self.data, pos)
-            # print(f"[{pos:04X}] {cmd}")
-
-            if cmd.command in EC.back_jump_commands:
-                jump_target = pos - cmd.args[-1] + len(cmd) - 1
-                # print(f"{jump_target:04X}")
-
-                # We assume our inserted commands are not supposed to be
-                # the jump target.  So we use <.
-                if jump_target < ins_position:
-                    arg_offset = len(cmd) - cmd.arg_lens[-1]
-                    self.data[pos+arg_offset] += len(new_commands)
-
-                    # Test:
-                    # new_cmd = get_command(self.data, pos)
-                    # print(f"[{pos:04X}] {new_cmd}")
-
-            pos += len(cmd)
-
-        # print("done backward jumps")
-        '''
         self.data[ins_position:ins_position] = new_commands
-
-        '''
-        # Every function start pointer whose value exceeds the insertion
-        # point should be shifted
-
-        # print(f"Ins Pos: {ins_position: 04X}")
-        for ptr in range(32*self.num_objects-2, -2, -2):
-            ptr_loc = get_value_from_bytes(self.data[ptr:ptr+2])
-
-            if ptr_loc > ins_position:
-                self.data[ptr:ptr+2] = \
-                    to_little_endian(ptr_loc+len(new_commands), 2)
-        '''
 
 
 # Find the length of a location's event script
