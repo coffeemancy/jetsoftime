@@ -121,6 +121,14 @@ class EventCommand:
 
         return ret_cmd
 
+    @staticmethod
+    def set_controllable_once() -> EventCommand:
+        return EventCommand.generic_zero_arg(0xAF)
+
+    @staticmethod
+    def set_controllable_infinite() -> EventCommand:
+        return EventCommand.generic_zero_arg(0xB0)
+
     def party_follow() -> EventCommand:
         return EventCommand.generic_zero_arg(0xDA)
 
@@ -156,6 +164,9 @@ class EventCommand:
     def darken(duration) -> EventCommand:
         return EventCommand.generic_one_arg(0xF0, duration)
 
+    def load_pc_always(pc_id: int) -> EventCommand:
+        return EventCommand.generic_one_arg(0x81, pc_id)
+
     def load_pc_in_party(pc_id: int) -> EventCommand:
         if pc_id == 0:
             cmd_id = 0x57
@@ -182,7 +193,7 @@ class EventCommand:
         # maybe validate?
         # enemy id in [0, 0xFF], slot id in [0, A]
         slot_arg = slot_number | 0x80*(is_static)
-        x = EventCommand.generic_two_arg(0x83, enemy_id, slot_arg)
+        x = EventCommand.generic_two_arg(0x83, int(enemy_id), slot_arg)
         return x
 
     def set_reset_bits(address: int, bitmask: int,
@@ -273,6 +284,21 @@ class EventCommand:
         else:
             return EventCommand.generic_two_arg(0x92, hex_angle, cmd_mag)
 
+    @staticmethod
+    def call_pc_function(
+            pc_id: int, fn_id: int, priority: int, sync: FuncSync
+    ) -> EventCommand:
+        if sync == FuncSync.HALT:
+            cmd_id = 7
+        elif sync == FuncSync.SYNC:
+            cmd_id = 6
+        elif sync == FuncSync.CONT:
+            cmd_id = 5
+
+        return EventCommand.generic_command(
+            cmd_id, pc_id*2, (priority << 4) | fn_id
+        )
+
     def call_obj_function(obj_id: int,
                           fn_id: int,
                           priority: int,
@@ -349,6 +375,12 @@ class EventCommand:
         ret_cmd.args = [0 for i in range(ret_cmd.num_args)]
         return ret_cmd
 
+    def generic_command(*args) -> EventCommand:
+        ret_cmd = event_commands[args[0]].copy()
+        ret_cmd.args = list(args[1:])
+
+        return ret_cmd
+
     def generic_zero_arg(cmd_id: int) -> EventCommand:
         ret = event_commands[cmd_id].copy()
         return ret
@@ -369,6 +401,10 @@ class EventCommand:
 
     def return_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0)
+
+    @staticmethod
+    def break_cmd() -> EventCommand:
+        return EventCommand.generic_zero_arg(0xB1)
 
     def end_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
@@ -586,11 +622,43 @@ class EventCommand:
     def jump_forward(jump_bytes: int) -> EventCommand:
         return EventCommand.generic_one_arg(0x10, jump_bytes)
 
+    @staticmethod
+    def name_pc(char_id: int) -> EventCommand:
+        return EventCommand.generic_command(0xC8, 0xC0 | char_id)
+
+    @staticmethod
+    def switch_pcs() -> EventCommand:
+        return EventCommand.generic_command(0xC8, 0x00)
+
     def check_active_pc(char_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xD2, char_id, jump_bytes)
 
     def check_recruited_pc(char_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xCF, char_id, jump_bytes)
+
+    @staticmethod
+    def add_pc_to_active(char_id: int) -> EventCommand:
+        return EventCommand.generic_command(0xD3, char_id)
+
+    @staticmethod
+    def add_pc_to_reserve(char_id: int) -> EventCommand:
+        return EventCommand.generic_command(0xD0, char_id)
+
+    @staticmethod
+    def get_object_coordinates(obj_id: int,
+                               x_addr: int,
+                               y_addr: int) -> EventCommand:
+        return EventCommand.generic_command(
+            0x21, obj_id*2,
+            get_offset(x_addr),
+            get_offset(y_addr)
+        )
+
+    @staticmethod
+    def set_own_coordinates_from_mem(x_addr, y_addr) -> EventCommand:
+        return EventCommand.generic_command(0x8C,
+                                            get_offset(x_addr),
+                                            get_offset(y_addr))
 
     #  Here x and y are assumed to be pixel coordinates
     def set_object_coordinates(x: int, y: int,
@@ -639,6 +707,11 @@ class EventCommand:
         else:
             return EventCommand.generic_one_arg(0xC2, string_id)
 
+    @staticmethod
+    def script_speed(speed: int) -> EventCommand:
+        speed = min(speed, 0x80)
+        return EventCommand.generic_one_arg(0x87, speed)
+
     def pause(duration_secs: float):
         if duration_secs == 0.25:
             return EventCommand.generic_zero_arg(0xB9)
@@ -669,7 +742,6 @@ class EventCommand:
         return 1 + sum(self.arg_lens)
 
     def __str__(self):
-
         if self.command == 0x4E:
             ret_str = f"{self.command:02X} " + self.name + ' ' + \
                 ' '.join(f"{self.args[i]:0{2*self.arg_lens[i]}X}"
