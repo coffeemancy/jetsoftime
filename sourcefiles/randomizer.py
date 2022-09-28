@@ -5,6 +5,7 @@ import pickle
 import sys
 import json
 
+import charassign
 import itemrando
 import treasurewriter
 import shopwriter
@@ -738,6 +739,8 @@ class Randomizer:
         # Recruitment spots
         for character in config.char_assign_dict.values():
             character.write_to_ctrom(ctrom)
+
+        charassign.fix_cursed_recruit_spots(config, ctrom)
 
         # Stats
         config.char_manager.write_stats_to_ctrom(ctrom)
@@ -1556,6 +1559,9 @@ class Randomizer:
 
             marle = config.char_manager.pcs[ctenums.CharID.MARLE]
             marle.stats.cur_stats[2] = 9  # Speed to 9
+
+            frog = config.char_manager.pcs[ctenums.CharID.FROG]
+            frog.stats.tp_thresh[3] = 100
 
             # Reduce Robo tackle to 24 power (follow +15% rule)
             tackle_id = int(ctenums.TechID.ROBO_TACKLE)
