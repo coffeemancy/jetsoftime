@@ -399,6 +399,7 @@ class EventCommand:
         ret.args = [arg0, arg1]
         return ret
 
+    @staticmethod
     def return_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0)
 
@@ -408,6 +409,9 @@ class EventCommand:
 
     def end_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
+
+    def add_gold(gold_amt: int) -> EventCommand:
+        return EventCommand.generic_command(0xCD, gold_amt)
 
     def add_item(item_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xCA, item_id)
