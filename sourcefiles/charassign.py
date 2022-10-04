@@ -302,5 +302,5 @@ def fix_cursed_recruit_spots(
     proto_char = config.char_assign_dict[ctenums.RecruitID.PROTO_DOME]\
         .held_char
 
-    assign_pc_to_manoria(manoria_char)
-    assign_pc_to_proto_dome(proto_char)
+    assign_pc_to_manoria(ct_rom, manoria_char)
+    assign_pc_to_proto_dome(ct_rom, proto_char)
