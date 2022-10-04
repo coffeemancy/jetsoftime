@@ -8,7 +8,7 @@ from ctenums import ItemID, EnemyID
 import randoconfig as cfg
 import randosettings as rset
 
-import treasuredata as td
+from treasures import treasuredata as td
 
 # We do not want to be reconstructing these lists every time that
 # get_distributions is called.  They are _named to avoid importing with

@@ -909,13 +909,13 @@ class Event:
         Version of set_function that tries to handle linked functions.
         '''
 
-        for i in range(0x10):
-            is_linked = self._function_is_linked(obj_id, i)
-            is_empty = self._function_is_empty(obj_id, i)
-            start = self.get_function_start(obj_id, i)
+        # for i in range(0x10):
+        #     is_linked = self._function_is_linked(obj_id, i)
+        #     is_empty = self._function_is_empty(obj_id, i)
+        #     start = self.get_function_start(obj_id, i)
 
-            print(f'Function {i:02X}: {start+1:04X}, empty={is_empty}, '
-                  f'linked={is_linked}')
+        #     print(f'Function {i:02X}: {start+1:04X}, empty={is_empty}, '
+        #           f'linked={is_linked}')
 
         # Find the first real function before this one.
         # The true start is the end (next true start) from that point.
@@ -953,16 +953,12 @@ class Event:
             if self._function_is_real(obj_id, ind):
                 empty_end = ind
                 break
-            print(f'{ind:02x} is not real')
-            if self._function_is_empty(obj_id, ind):
-                print('  is empty')
 
         print(empty_end)
         # Set the empty functions immediately following the changed function
         for ind in range(func_id+1, empty_end):
             if self._function_is_empty(obj_id, ind) and \
                not self._function_is_linked(obj_id, ind):
-                print(f'Marking empty {ind:02X}')
                 self._set_function_start(obj_id, ind, true_start)
 
         for ind in range(empty_end, 0x10):
@@ -984,13 +980,13 @@ class Event:
 
         self.data[true_start:true_end] = ev_func.get_bytearray()
 
-        for i in range(0x10):
-            is_linked = self._function_is_linked(obj_id, i)
-            is_empty = self._function_is_empty(obj_id, i)
-            start = self.get_function_start(obj_id, i)
+        # for i in range(0x10):
+        #     is_linked = self._function_is_linked(obj_id, i)
+        #     is_empty = self._function_is_empty(obj_id, i)
+        #     start = self.get_function_start(obj_id, i)
 
-            print(f'Function {i:02X}: {start+1:04X}, empty={is_empty}, '
-                  f'linked={is_linked}')
+        #     print(f'Function {i:02X}: {start+1:04X}, empty={is_empty}, '
+        #           f'linked={is_linked}')
 
 
     def set_function_old(self, obj_id: int, func_id: int,

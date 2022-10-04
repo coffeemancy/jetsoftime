@@ -4,7 +4,7 @@ import math
 import random as rand
 
 from ctenums import ItemID, ShopID
-import treasuredata as td
+from treasures import treasuredata as td
 
 import randoconfig as cfg
 import randosettings as rset

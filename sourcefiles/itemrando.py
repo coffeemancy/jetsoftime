@@ -7,7 +7,7 @@ import itemdata
 import ctenums
 import ctstrings
 
-import treasuredata
+from treasures import treasuredata
 
 import randoconfig as cfg
 import randosettings as rset

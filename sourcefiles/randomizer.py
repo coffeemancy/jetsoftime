@@ -7,7 +7,7 @@ import json
 
 import charassign
 import itemrando
-import treasurewriter
+from treasures import treasurewriter
 import shopwriter
 import logicwriters as logicwriter
 import random as rand
@@ -25,7 +25,7 @@ import bucketfragment
 import iceage
 import legacyofcyrus
 import mystery
-import vanillarando
+from vanillarando import vanillarando
 import epochfail
 import flashreduce
 import seedhash
@@ -484,7 +484,7 @@ class Randomizer:
         item_db = config.itemdb
         CTName = ctstrings.CTNameString
         for treasure_id in tp_spots:
-            item_id = config.treasure_assign_dict[treasure_id].held_item
+            item_id = config.treasure_assign_dict[treasure_id].reward
             name_b = CTName(item_db[item_id].name[1:])
             name = str(name_b)
             tp_name_dict[treasure_id] = name
@@ -1139,8 +1139,11 @@ class Randomizer:
         file_object.write("-------------------\n")
         treasure_dict = self.config.treasure_assign_dict
         for treasure in treasure_dict.keys():
-            item_id = treasure_dict[treasure].held_item
-            name = self.config.itemdb[item_id].get_name_as_str(True)
+            reward = treasure_dict[treasure].reward
+            if isinstance(reward, ctenums.ItemID):
+                name = self.config.itemdb[reward].get_name_as_str(True)
+            else:
+                name = f'{reward}G'
 
             file_object.write(str.ljust(str(treasure), width+8) +
                               name + '\n')

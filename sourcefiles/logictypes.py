@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 
 from ctenums import ItemID, CharID, RecruitID, TreasureID
-import treasuredata as td
+from treasures import treasuredata as td
 import randosettings as rset
 import randoconfig as cfg
 #
@@ -382,7 +382,7 @@ class Location:
     #                 treasure assignment dictionary
     #
     def writeKeyItem(self, config: cfg.RandoConfig):
-        config.treasure_assign_dict[self.treasure_id].held_item = self.keyItem
+        config.treasure_assign_dict[self.treasure_id].reward = self.keyItem
 
     #
     # Use the given config to see what is currently assigned to this location.
@@ -391,7 +391,7 @@ class Location:
     #                 treasure assignment dictionary
     #
     def lookupKeyItem(self, config: cfg.RandoConfig) -> ItemID:
-        return config.treasure_assign_dict[self.treasure_id].held_item
+        return config.treasure_assign_dict[self.treasure_id].reward
 
 # End Location class
 
@@ -444,7 +444,7 @@ class BaselineLocation(Location):
     # param: config - The cfg.RandoConfig to write the ItemID to
     #
     def writeTreasure(self, treasure: ItemID, config: cfg.RandoConfig):
-        config.treasure_assign_dict[self.treasure_id].held_item = treasure
+        config.treasure_assign_dict[self.treasure_id].reward = treasure
         self.setKeyItem(treasure)
 # End BaselineLocation class
 

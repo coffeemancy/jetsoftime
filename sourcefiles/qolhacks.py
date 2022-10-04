@@ -3,12 +3,14 @@
 import ctevent
 import ctenums
 
+from treasures import treasuretypes as ttypes
+
 from ctrom import CTRom
 import randoconfig as cfg
 import randosettings as rset
 
 
-class ScriptTabTreasure(cfg.ScriptTreasure):
+class ScriptTabTreasure(ttypes.ScriptTreasure):
     '''ScriptTreasure with extra method for removing exploremode offs.'''
 
     def remove_pause(self, ctrom: CTRom):
@@ -132,91 +134,91 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
             object_id=0x3F,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.GUARDIA_FOREST_POWER_TAB_1000: ScriptTabTreasure(
             location=LocID.GUARDIA_FOREST_1000,
             object_id=0x26,
             function_id=0x01,
             item_num=1,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.PORRE_MARKET_600_POWER_TAB: ScriptTabTreasure(
             location=LocID.PORRE_MARKET_600,
             object_id=0x0C,
             function_id=0x01,
             item_num=1,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.MANORIA_CONFINEMENT_POWER_TAB: ScriptTabTreasure(
             location=LocID.MANORIA_CONFINEMENT,
             object_id=0x0A,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.TOMAS_GRAVE_SPEED_TAB: TomasGraveTreasure(
             location=LocID.WEST_CAPE,
             object_id=0x08,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.SPEED_TAB
+            reward=ItemID.SPEED_TAB
         ),
         TID.DENADORO_MTS_SPEED_TAB: ScriptTabTreasure(
             location=LocID.DENADORO_WEST_FACE,
             object_id=0x09,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.SPEED_TAB
+            reward=ItemID.SPEED_TAB
         ),
         TID.GIANTS_CLAW_CAVERNS_POWER_TAB: ScriptTabTreasure(
             location=LocID.GIANTS_CLAW_CAVERNS,
             object_id=0x0D,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.GIANTS_CLAW_ENTRANCE_POWER_TAB: ScriptTabTreasure(
             location=LocID.GIANTS_CLAW_ENTRANCE,
             object_id=0x0B,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.GIANTS_CLAW_TRAPS_POWER_TAB: ScriptTabTreasure(
             location=LocID.ANCIENT_TYRANO_LAIR_TRAPS,
             object_id=0x15,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.POWER_TAB
+            reward=ItemID.POWER_TAB
         ),
         TID.MAGUS_CASTLE_DUNGEONS_MAGIC_TAB: ScriptTabTreasure(
             location=LocID.MAGUS_CASTLE_DUNGEONS,
             object_id=0x08,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.MAGIC_TAB
+            reward=ItemID.MAGIC_TAB
         ),
         TID.MAGUS_CASTLE_FLEA_MAGIC_TAB: ScriptTabTreasure(
             location=LocID.MAGUS_CASTLE_FLEA,
             object_id=0x0D,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.SPEED_TAB
+            reward=ItemID.SPEED_TAB
         ),
         TID.ARRIS_DOME_SEALED_POWER_TAB: ScriptTabTreasure(
             location=LocID.ARRIS_DOME_SEALED_ROOM,
             object_id=0x08,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.SPEED_TAB
+            reward=ItemID.SPEED_TAB
         ),
         TID.TRANN_DOME_SEALED_MAGIC_TAB: ScriptTabTreasure(
             location=LocID.TRANN_DOME_SEALED_ROOM,
             object_id=0x08,
             function_id=0x01,
             item_num=0,
-            held_item=ItemID.SPEED_TAB
+            reward=ItemID.SPEED_TAB
         )
     }
 
@@ -226,7 +228,6 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
 
 
 def enable_boss_sightscope(config: cfg.RandoConfig):
-    
     for boss in list(ctenums.BossID):
         boss_data = config.boss_data_dict[boss]
         for part in set(boss_data.scheme.ids):

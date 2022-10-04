@@ -4,9 +4,11 @@ import random as rand
 
 import ctenums
 import logictypes
-import treasuredata as td
+from treasures import treasuredata as td
 import randoconfig as cfg
 import randosettings as rset
+import vanillarando.vrtreasure as vrtreasure
+
 
 TID = ctenums.TreasureID
 ItemID = ctenums.ItemID
@@ -112,6 +114,21 @@ def add_lw_key_item_gear(settings: rset.Settings,
         config.key_item_locations.append(loc)
 
 
+def get_treasure_tier_dict(settings: rset.Settings):
+
+    if settings.game_mode == rset.GameMode.VANILLA_RANDO:
+        treasure_tier_dict = vrtreasure.get_vanilla_treasure_tiers()
+    else:
+        treasure_tier_dict = {
+            tier: td.get_treasures_in_tier(tier)
+            for tier in td.TreasureLocTier
+        }
+
+    # TODO: Instead of implementing complicated easy/normal/hard difficulty,
+    #       Let's just handle difficulty by moving boxes up/down in tier
+    return treasure_tier_dict
+
+
 def write_treasures_to_config(settings: rset.Settings,
                               config: cfg.RandoConfig):
 
@@ -120,36 +137,38 @@ def write_treasures_to_config(settings: rset.Settings,
 
     assign = config.treasure_assign_dict
 
+    treasure_tier_dict = get_treasure_tier_dict(settings)
+
     # Do standard treasure chests
     for tier in td.TreasureLocTier:
-        treasures = td.get_treasures_in_tier(tier)
+        treasures = treasure_tier_dict[tier]
         dist = td.get_treasure_distribution(settings, tier)
 
         for treasure in treasures:
-            assign[treasure].held_item = dist.get_random_item()
+            assign[treasure].reward = dist.get_random_item()
 
     # Now, put treasures in key item spots.  These may get overwritten by
     # the logic.
     mid_gear = gil(ITier.MID_GEAR)
     for treasure_id in (TID.SNAIL_STOP_KEY, TID.LAZY_CARPENTER,
                         TID.FROGS_BURROW_LEFT):
-        assign[treasure_id].held_item = rand.choice(mid_gear)
+        assign[treasure_id].reward = rand.choice(mid_gear)
 
     good_gear = gil(ITier.GOOD_GEAR)
     for treasure_id in (TID.TABAN_KEY, TID.ZENAN_BRIDGE_KEY,
                         TID.DENADORO_MTS_KEY):
-        assign[treasure_id].held_item = rand.choice(good_gear)
+        assign[treasure_id].reward = rand.choice(good_gear)
 
     high_gear = gil(ITier.HIGH_GEAR)
     for treasure_id in (TID.REPTITE_LAIR_KEY, TID.GIANTS_CLAW_KEY,
                         TID.ARRIS_DOME_DOAN_KEY, TID.SUN_PALACE_KEY,
                         TID.KINGS_TRIAL_KEY, TID.FIONA_KEY):
-        assign[treasure_id].held_item = rand.choice(high_gear)
+        assign[treasure_id].reward = rand.choice(high_gear)
 
     awesome_gear = gil(ITier.AWESOME_GEAR)
     for treasure_id in (TID.GENO_DOME_KEY, TID.MT_WOE_KEY,
                         TID.MELCHIOR_KEY):
-        assign[treasure_id].held_item = rand.choice(awesome_gear)
+        assign[treasure_id].reward = rand.choice(awesome_gear)
 
     # Now do special treasures.  These don't have complicated distributions.
     # The distribution is just a random choice from the items associated with

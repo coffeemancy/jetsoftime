@@ -3,7 +3,7 @@ from math import ceil
 
 from logictypes import BaselineLocation, Location, LocationGroup,\
     LinkedLocation, Game
-import treasuredata as td
+from treasures import treasuredata as td
 
 from ctenums import TreasureID as TID, CharID as Characters, ItemID, \
     RecruitID

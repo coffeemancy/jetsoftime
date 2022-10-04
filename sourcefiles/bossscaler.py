@@ -98,9 +98,9 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
 
     # To match the original implementation, make a dict with
     # ItemID --> TreasureID  for key items
-    key_item_dict = {config.treasure_assign_dict[loc].held_item: loc
+    key_item_dict = {config.treasure_assign_dict[loc].reward: loc
                      for loc in config.treasure_assign_dict.keys()
-                     if config.treasure_assign_dict[loc].held_item
+                     if config.treasure_assign_dict[loc].reward
                      in key_item_list}
 
     boss_rank = dict()
