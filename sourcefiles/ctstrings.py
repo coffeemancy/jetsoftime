@@ -276,7 +276,7 @@ class CTString(bytearray):
     def ct_bytes_to_ascii(cls, array: bytes):
         return CTString(array).to_ascii()
 
-    def to_ascii(self, techname=False):
+    def to_ascii(self, techname=False) -> str:
         '''Turns this CTString into a python string'''
 
         ret_str = ''

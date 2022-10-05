@@ -928,13 +928,10 @@ class Event:
         if true_start is None:
             true_start = self.get_object_start(obj_id)
 
-        print(f'True start: {true_start+1:04X}')
-
         if true_start is None:
             raise ValueError('Unable to find real function')
 
         true_end = self._get_next_true_start(obj_id, func_id)
-        print(f'True end: {true_end+1:04X}')
 
         if len(ev_func) == 0:
             # This is annoying because we're making a function empty
@@ -954,7 +951,6 @@ class Event:
                 empty_end = ind
                 break
 
-        print(empty_end)
         # Set the empty functions immediately following the changed function
         for ind in range(func_id+1, empty_end):
             if self._function_is_empty(obj_id, ind) and \
