@@ -3,6 +3,7 @@ from techdb import TechDB
 import copy
 import random
 
+import ctenums
 import randosettings as rset
 import randoconfig as cfg
 
@@ -25,22 +26,24 @@ def write_tech_order_to_config(settings: rset.Settings,
 
     global freqs
 
-    char_man = config.char_manager
+    pcstats = config.pcstats
     tech_order = settings.techorder
+
     for char_id in range(7):
         if tech_order == rset.TechOrder.FULL_RANDOM:
             perm = generate_permutation_freq([1 for i in range(8)])
         elif tech_order == rset.TechOrder.BALANCED_RANDOM:
-            assigned_id = char_man.pcs[char_id].assigned_char
-            perm = generate_permutation_freq(freqs[assigned_id])
+            pc_id = ctenums.CharID(char_id)
+            assigned_id = pcstats.get_character_assignment(pc_id)
+            perm = generate_permutation_freq(freqs[int(assigned_id)])
         else:
             perm = [i for i in range(8)]
 
-        char_man.pcs[char_id].tech_permutation = perm[:]
+        # char_man.pcs[char_id].tech_permutation = perm[:]
         # TODO: Make sure it's safe to randomize techs now.  It should be,
         #       but I always did it at the very end before.  For now, let's
         #       give it a shot and remember this if things break.
-        randomize_pc_techs(config.techdb, char_id, perm)
+        randomize_pc_techs(config.tech_db, char_id, perm)
 
 
 # generate a random permutation where each object has a different probability

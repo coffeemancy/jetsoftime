@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import os
+import random
 import pickle
 import sys
 import json
 
+import bossdata
 import charassign
+import enemystats
+import itemdata
 import itemrando
-from treasures import treasurewriter
+from characters import pcrecruit, ctpcstats
+from treasures import treasurewriter, treasuretypes
 import shopwriter
 import logicwriters as logicwriter
-import random as rand
 import bossrandoevent as bossrando
 import bossscaler
 import tabchange as tabwriter
@@ -101,7 +105,7 @@ class Randomizer:
         if self.settings is None:
             raise NoSettingsException
 
-        rand.seed(self.settings.seed)
+        random.seed(self.settings.seed)
 
         if rset.GameFlags.MYSTERY in self.settings.gameflags:
             self.settings = mystery.generate_mystery_settings(self.settings)
@@ -163,7 +167,7 @@ class Randomizer:
         itemrando.randomize_healing(self.settings, self.config)
         itemrando.randomize_accessories(self.settings, self.config)
         itemrando.randomize_weapon_armor_stats(self.settings, self.config)
-        self.config.itemdb.update_all_descriptions()
+        self.config.item_db.update_all_descriptions()
 
         # Boss Rando
         bossrando.write_assignment_to_config(self.settings, self.config)
@@ -315,7 +319,7 @@ class Randomizer:
         config = self.config
         IID = ctenums.ItemID
 
-        item_db = config.itemdb
+        item_db = config.item_db
         item_db[IID.GATE_KEY].set_desc_from_str(
             'Unlocks 65m BC (Medina imp closet)'
         )
@@ -481,7 +485,7 @@ class Randomizer:
 
         tp_name_dict = dict()
 
-        item_db = config.itemdb
+        item_db = config.item_db
         CTName = ctstrings.CTNameString
         for treasure_id in tp_spots:
             item_id = config.treasure_assign_dict[treasure_id].reward
@@ -542,9 +546,9 @@ class Randomizer:
         fight_thresh_up = [0xA0, 0x60, 0x80]
         fight_thresh_down = [0x80, 0x60, 0xA0]
         fights_up = [ind for ind, thresh in enumerate(fight_thresh_up)
-                     if rand.randrange(0, 0x100) < thresh]
+                     if random.randrange(0, 0x100) < thresh]
         fights_down = [ind for ind, thresh in enumerate(fight_thresh_down)
-                       if rand.randrange(0, 0x100) < thresh]
+                       if random.randrange(0, 0x100) < thresh]
 
         self.config.omen_elevator_fights_up = fights_up
         self.config.omen_elevator_fights_down = fights_down
@@ -716,8 +720,8 @@ class Randomizer:
         # it needs to reallocate.  To do this, it reads enemy data.  If the
         # new enemy data is written first, it will read the wrong number of
         # attacks and free too much.  So the ai/atks are written first.
-        config.enemy_aidb.write_to_ctrom(ctrom)
-        config.enemy_atkdb.write_to_ctrom(ctrom)
+        config.enemy_ai_db.write_to_ctrom(ctrom)
+        config.enemy_atk_db.write_to_ctrom(ctrom)
 
         # Write enemies out
         for enemy_id, stats in config.enemy_dict.items():
@@ -733,7 +737,7 @@ class Randomizer:
         config.shop_manager.write_to_ctrom(ctrom)
 
         # Write items out
-        config.itemdb.write_to_ctrom(ctrom)
+        config.item_db.write_to_ctrom(ctrom)
 
         # Write characters out
         # Recruitment spots
@@ -743,7 +747,7 @@ class Randomizer:
         charassign.fix_cursed_recruit_spots(config, ctrom)
 
         # Stats
-        config.char_manager.write_stats_to_ctrom(ctrom)
+        config.pcstats.write_to_ctrom(ctrom)
 
         # Write out the rest of the character data (incl. techs)
         charrando.reassign_characters_on_ctrom(ctrom, config)
@@ -1040,7 +1044,7 @@ class Randomizer:
         )
 
         for item_id in consumables:
-            item = self.config.itemdb[item_id]
+            item = self.config.item_db[item_id]
             name = ctstrings.CTNameString(item.name)
             name_str = str(name).ljust(15, ' ')
             desc = ctstrings.CTString(item.desc[:-1])  # Remove {null}
@@ -1081,7 +1085,7 @@ class Randomizer:
 
         for location in self.config.key_item_locations:
             item_id = location.lookupKeyItem(self.config)
-            item_name = self.config.itemdb[item_id].get_name_as_str(True)
+            item_name = self.config.item_db[item_id].get_name_as_str(True)
             file_object.write(str.ljust(f"{location.getName()}", width+8) +
                               item_name + '\n')
         file_object.write('\n')
@@ -1092,7 +1096,7 @@ class Randomizer:
         file_object.write(spheres + '\n')
 
     def write_character_spoilers(self, file_object):
-        char_man = self.config.char_manager
+        pcstats = self.config.pcstats
         char_assign = self.config.char_assign_dict
 
         file_object.write("Character Locations\n")
@@ -1100,7 +1104,7 @@ class Randomizer:
         for recruit_spot in char_assign.keys():
             held_char = char_assign[recruit_spot].held_char
             reassign_char = \
-                self.config.char_manager.pcs[held_char].assigned_char
+                pcstats.get_character_assignment(held_char)
             file_object.write(str.ljust(f"{recruit_spot}", 20) +
                               f"{char_assign[recruit_spot].held_char}"
                               f" reassigned {reassign_char}\n")
@@ -1111,21 +1115,22 @@ class Randomizer:
 
         CharID = ctenums.CharID
         dup_chars = rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags
-        techdb = self.config.techdb
+        tech_db = self.config.tech_db
 
         for char_id in range(7):
+            pc_id = CharID(char_id)
             file_object.write(f"{CharID(char_id)}:")
             if dup_chars:
                 file_object.write(
-                    f" assigned to {char_man.pcs[char_id].assigned_char}"
+                    f" assigned to {pcstats.get_character_assignment(pc_id)}"
                 )
             file_object.write('\n')
-            file_object.write(char_man.pcs[char_id].stats.get_stat_string())
+            file_object.write(pcstats.pc_stat_dict[pc_id].__str__(self.config.item_db))
 
             file_object.write('Tech Order:\n')
             for tech_num in range(8):
                 tech_id = 1 + 8*char_id + tech_num
-                tech = techdb.get_tech(tech_id)
+                tech = tech_db.get_tech(tech_id)
                 name = ctstrings.CTString.ct_bytes_to_techname(tech['name'])
                 file_object.write(f"\t{name}\n")
             file_object.write('\n')
@@ -1141,7 +1146,7 @@ class Randomizer:
         for treasure in treasure_dict.keys():
             reward = treasure_dict[treasure].reward
             if isinstance(reward, ctenums.ItemID):
-                name = self.config.itemdb[reward].get_name_as_str(True)
+                name = self.config.item_db[reward].get_name_as_str(True)
             else:
                 name = f'{reward}G'
 
@@ -1153,7 +1158,7 @@ class Randomizer:
         file_object.write("Shop Assigmment\n")
         file_object.write("---------------\n")
         file_object.write(
-            self.config.shop_manager.__str__(self.config.itemdb)
+            self.config.shop_manager.__str__(self.config.item_db)
         )
         file_object.write('\n')
 
@@ -1167,7 +1172,7 @@ class Randomizer:
                     if x in range(1, ctenums.ItemID(0xD0))]
 
         for item_id in item_ids:
-            item = self.config.itemdb[item_id]
+            item = self.config.item_db[item_id]
             name = str(ctstrings.CTNameString(item.name[1:])).ljust(15, ' ')
             desc = ctstrings.CTString(item.desc[:-1]).to_ascii()
             price = str(item.price).rjust(5, ' ') + 'G'
@@ -1201,7 +1206,7 @@ class Randomizer:
 
     def write_boss_stat_spoilers(self, file_object):
 
-        scale_dict = self.config.boss_rank
+        scale_dict = self.config.boss_rank_dict
         BossID = ctenums.BossID
 
         file_object.write("Boss Stats\n")
@@ -1245,14 +1250,14 @@ class Randomizer:
             elif boss_id == BossID.MEGA_MUTANT:
                 part = ctenums.EnemyID.MEGA_MUTANT_BOTTOM
                 obstacle_id = bossrando.get_obstacle_id(part, self.config)
-                obstacle = self.config.enemy_atkdb.get_tech(obstacle_id)
+                obstacle = self.config.enemy_atk_db.get_tech(obstacle_id)
                 obstacle_status = obstacle.effect.status_effect
                 status_string = ', '.join(str(x) for x in obstacle_status)
                 file_object.write(f' Obstacle is {status_string}')
             elif boss_id == BossID.TERRA_MUTANT:
                 part = ctenums.EnemyID.TERRA_MUTANT_HEAD
                 obstacle_id = bossrando.get_obstacle_id(part, self.config)
-                obstacle = self.config.enemy_atkdb.get_tech(obstacle_id)
+                obstacle = self.config.enemy_atk_db.get_tech(obstacle_id)
                 obstacle_status = obstacle.effect.status_effect
                 status_string = ', '.join(str(x) for x in obstacle_status)
                 file_object.write(f' Obstacle is {status_string}')
@@ -1265,14 +1270,14 @@ class Randomizer:
                 if len(part_ids) > 1:
                     file_object.write(f"Part: {part_id}\n")
                 part_str = self.config.enemy_dict[part_id].__str__(
-                    self.config.itemdb
+                    self.config.item_db
                 )
                 # put the string one tab out
                 part_str = '\t' + str.replace(part_str, '\n', '\n\t')
                 file_object.write(part_str+'\n')
             file_object.write('\n')
 
-        obstacle = self.config.enemy_atkdb.get_tech(0x58)
+        obstacle = self.config.enemy_atk_db.get_tech(0x58)
         obstacle_status = obstacle.effect.status_effect
         status_string = ', '.join(str(x) for x in obstacle_status)
         file_object.write(f"Endgame obstacle is {status_string}\n\n")
@@ -1304,7 +1309,7 @@ class Randomizer:
         ids = [x for tier in tiers for x in tier]
         width = max(len(str(x)) for x in ids) + 8
 
-        item_db = self.config.itemdb
+        item_db = self.config.item_db
 
         for ind, tier in enumerate(tiers):
             file_object.write(labels[ind] + '\n')
@@ -1456,14 +1461,24 @@ class Randomizer:
     def dump_default_config(cls, ct_vanilla: bytearray):
         '''Turn vanilla ct rom into default objects for a config.
         Should run whenever a big patch (patch.ips, hard.ips) changes.'''
-        ctrom = CTRom(ct_vanilla, ignore_checksum=False)
-        cls.__apply_basic_patches(ctrom)
+        ct_rom = CTRom(ct_vanilla, ignore_checksum=False)
+        cls.__apply_basic_patches(ct_rom)
 
         RC = cfg.RandoConfig
-        config = RC.get_config_from_rom(ctrom.rom_data.getbuffer())
+        config = RC()
+        cls.fill_default_config_entries(config)
+        config.update_from_ct_rom(ct_rom)
 
         with open('./pickles/default_randoconfig.pickle', 'wb') as outfile:
             pickle.dump(config, outfile)
+
+
+    @classmethod
+    def fill_default_config_entries(cls, config: cfg.RandoConfig):
+        config.boss_assign_dict = bossdata.get_default_boss_assignment()
+        config.treasure_assign_dict = treasuretypes.get_base_treasure_dict()
+        config.char_assign_dict = pcrecruit.get_base_recruit_dict()
+        config.boss_rank_dict = {}
 
     @classmethod
     def get_base_config_from_settings(cls,
@@ -1480,9 +1495,9 @@ class Randomizer:
                            the difficulty patch could too.
           - char_manager: patch.ips changes character stat growths and base
                           stats.
-          - techdb: patch.ips changes the basic techs (i.e. Antilife)
-          - enemy_atkdb: Various enemy techs are changed by patch.ips.
-          - enemy_aidb: Various enemy attack scripts are changed by patch.ips.
+          - tech_db: patch.ips changes the basic techs (i.e. Antilife)
+          - enemy_atk_db: Various enemy techs are changed by patch.ips.
+          - enemy_ai_db: Various enemy attack scripts are changed by patch.ips.
         '''
 
         # It's a little wasteful copying the rom data to partially patch it
@@ -1491,18 +1506,18 @@ class Randomizer:
         # I do have a pickle with a default config and normal/hard enemy dicts
         # which can be used instead if this is an issue.  The problem with
         # using those is the need to update them with every patch.
-        ctrom = CTRom(ct_vanilla, True)
-        Randomizer.__apply_basic_patches(ctrom)
+        ct_rom = CTRom(ct_vanilla, True)
+        Randomizer.__apply_basic_patches(ct_rom)
+        config = cfg.RandoConfig()
+        cls.fill_default_config_entries(config)
+        config.boss_data_dict = bossdata.get_boss_data_dict(settings)
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
-            config = cfg.RandoConfig.get_config_from_rom(
-                ct_vanilla, settings)
+            config.update_from_ct_rom(ct_vanilla)
             vanillarando.fix_config(config)
 
         else:
-            config = cfg.RandoConfig.get_config_from_rom(
-                bytearray(ctrom.rom_data.getvalue())
-            )
+            config.update_from_ct_rom(ct_rom)
 
             if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
                 vanillarando.apply_vanilla_keys_to_config(config)
@@ -1510,15 +1525,14 @@ class Randomizer:
             # Get hard versions of config items if needed.
             # We're done with the rom at this point, so it's OK to patch
             # regardless.
-            ctrom.rom_data.patch_ips_file('./patches/hard.ips')
+            ct_rom.rom_data.patch_ips_file('./patches/hard.ips')
             if settings.enemy_difficulty == rset.Difficulty.HARD:
-                config.enemy_dict = cfg.enemystats.get_stat_dict(
-                    ctrom.rom_data.getvalue()
-                )
+                config.enemy_dict = \
+                    enemystats.get_stat_dict_from_ctrom(ct_rom)
 
             if settings.item_difficulty == rset.Difficulty.HARD:
-                config.itemdb = cfg.itemdata.ItemDB.from_rom(
-                    ctrom.rom_data.getvalue()
+                config.item_db = itemdata.ItemDB.from_rom(
+                    ct_rom.rom_data.getvalue()
                 )
 
             # Why is Dalton worth so few TP?
@@ -1536,14 +1550,14 @@ class Randomizer:
             rt_stats.level = int(rt_stats.level * 0.6)
 
             # Fix Falcon Hit to use Spincut as a prerequisite
-            techdb = config.techdb
-            falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
+            tech_db = config.tech_db
+            falcon_hit = tech_db.get_tech(ctenums.TechID.FALCON_HIT)
             falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
-            techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
+            tech_db.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
 
             # Change Cure to ReRaise, Speed to 9 for Marle
-            cure = techdb.get_tech(ctenums.TechID.CURE)
-            reraise = techdb.get_tech(ctenums.TechID.LIFE_2_M)
+            cure = tech_db.get_tech(ctenums.TechID.CURE)
+            reraise = tech_db.get_tech(ctenums.TechID.LIFE_2_M)
             reraise['gfx'][0] = 0x87
             reraise['gfx'][6] = 0xFF
             reraise['control'][5] = 0x3E
@@ -1556,26 +1570,28 @@ class Randomizer:
             )
             reraise['desc'] = new_desc
             reraise['target'] = bytearray(cure['target'])
-            techdb.mps[ctenums.TechID.CURE] = 15
-            techdb.set_tech(reraise, ctenums.TechID.CURE)
-            techdb.menu_usable_ids[ctenums.TechID.CURE] = False
+            tech_db.mps[ctenums.TechID.CURE] = 15
+            tech_db.set_tech(reraise, ctenums.TechID.CURE)
+            tech_db.menu_usable_ids[ctenums.TechID.CURE] = False
 
-            marle = config.char_manager.pcs[ctenums.CharID.MARLE]
-            marle.stats.cur_stats[2] = 9  # Speed to 9
+            pcstats = config.pcstats
+            pcstats.set_current_stat(ctenums.CharID.MARLE,
+                                     ctpcstats.PCStat.SPEED,
+                                     9)
 
-            frog = config.char_manager.pcs[ctenums.CharID.FROG]
-            frog.stats.tp_thresh[3] = 100
+            pcstats.pc_stat_dict[ctenums.CharID.FROG]\
+                   .tp_threshholds[3] = 100
 
             # Reduce Robo tackle to 24 power (follow +15% rule)
             tackle_id = int(ctenums.TechID.ROBO_TACKLE)
-            power_byte = tackle_id*techdb.effect_size + 9
-            techdb.effects[power_byte] = 24
+            power_byte = tackle_id*tech_db.effect_size + 9
+            tech_db.effects[power_byte] = 24
 
             # Now, the flag keeps tackle effects on (do nothing vs patch.ips)
             # If the flag is not present, reset the on-hit byte.
             if rset.GameFlags.TACKLE_EFFECTS_ON not in settings.gameflags:
-                on_hit_byte = tackle_id*techdb.effect_size + 8
-                techdb.effects[on_hit_byte] = 0
+                on_hit_byte = tackle_id*tech_db.effect_size + 8
+                tech_db.effects[on_hit_byte] = 0
 
             # Revert antilife to black hole
             if rset.GameFlags.USE_ANTILIFE not in settings.gameflags:
@@ -1583,7 +1599,7 @@ class Randomizer:
                 vanilla_db = TechDB.get_default_db(ct_vanilla)
                 black_hole = vanilla_db.get_tech(ctenums.TechID.ANTI_LIFE)
 
-                anti_life = techdb.get_tech(ctenums.TechID.ANTI_LIFE)
+                anti_life = tech_db.get_tech(ctenums.TechID.ANTI_LIFE)
                 anti_life['control'][8] = 0x16  # +Atk for down allies
                 anti_life['effects'][0][9] = 0x20  # Megabomb power
                 al_eff_id = anti_life['control'][5]
@@ -1593,18 +1609,18 @@ class Randomizer:
                 # TODO: get_tech needs to be fixed to supply mp values so that
                 #   set_tech can work as it ought.  Really fix the whole
                 #   techdb.
-                byteops.set_record(techdb.effects, anti_life['effects'][0],
+                byteops.set_record(tech_db.effects, anti_life['effects'][0],
                                    al_eff_id,
-                                   techdb.effect_size)
+                                   tech_db.effect_size)
 
                 black_hole['control'] = anti_life['control']
-                techdb.set_tech(black_hole, ctenums.TechID.ANTI_LIFE)
+                tech_db.set_tech(black_hole, ctenums.TechID.ANTI_LIFE)
 
-                techdb.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
+                tech_db.pc_target[int(ctenums.TechID.ANTI_LIFE)] = 6
 
             # Make X-Strike use Spincut+Leapslash
             # Also buff 3d-attack and triple raid
-            x_strike = techdb.get_tech(ctenums.TechID.X_STRIKE)
+            x_strike = tech_db.get_tech(ctenums.TechID.X_STRIKE)
             x_strike['control'][5] = int(ctenums.TechID.SPINCUT)
             x_strike['control'][6] = int(ctenums.TechID.LEAP_SLASH)
 
@@ -1614,10 +1630,10 @@ class Randomizer:
 
             x_strike['mmp'][0] = int(ctenums.TechID.SPINCUT)
             x_strike['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
-            techdb.set_tech(x_strike, ctenums.TechID.X_STRIKE)
+            tech_db.set_tech(x_strike, ctenums.TechID.X_STRIKE)
 
             # 3d-atk
-            three_d_atk = techdb.get_tech(ctenums.TechID.THREE_D_ATTACK)
+            three_d_atk = tech_db.get_tech(ctenums.TechID.THREE_D_ATTACK)
             three_d_atk['control'][6] = int(ctenums.TechID.SPINCUT)
             three_d_atk['control'][7] = int(ctenums.TechID.LEAP_SLASH)
 
@@ -1625,10 +1641,10 @@ class Randomizer:
             three_d_atk['mmp'][1] = int(ctenums.TechID.LEAP_SLASH)
 
             three_d_atk['lrn_req'] = [4, 5, 8]
-            techdb.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
+            tech_db.set_tech(three_d_atk, ctenums.TechID.THREE_D_ATTACK)
 
             # Triple Raid
-            triple_raid = techdb.get_tech(ctenums.TechID.TRIPLE_RAID)
+            triple_raid = tech_db.get_tech(ctenums.TechID.TRIPLE_RAID)
             triple_raid['control'][5] = int(ctenums.TechID.SPINCUT)
             triple_raid['control'][7] = int(ctenums.TechID.LEAP_SLASH)
 
@@ -1636,23 +1652,23 @@ class Randomizer:
             triple_raid['mmp'][2] = int(ctenums.TechID.LEAP_SLASH)
 
             triple_raid['lrn_req'] = [4, 4, 5]
-            techdb.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
+            tech_db.set_tech(triple_raid, ctenums.TechID.TRIPLE_RAID)
 
             # Ayla changes
             combo_tripkick_effect_id = 0x3D
             rock_tech_effect_id = int(ctenums.TechID.ROCK_THROW)
 
-            effects = techdb.effects
+            effects = tech_db.effects
             power_byte = 9
             # Triple Kick combo power set to 0x2B=43 to match single
             # tech power
-            trip_pwr = combo_tripkick_effect_id*techdb.effect_size + \
+            trip_pwr = combo_tripkick_effect_id*tech_db.effect_size + \
                 power_byte
             effects[trip_pwr] = 0x2B
 
             # Rock throw getting the 15% boost that tripkick got
             # From 0x1E=30 to 0x23=35
-            rock_pwr = rock_tech_effect_id*techdb.effect_size + power_byte
+            rock_pwr = rock_tech_effect_id*tech_db.effect_size + power_byte
             effects[rock_pwr] = 0x23
 
         # The following changes can happen regardless of mode.
@@ -1661,7 +1677,7 @@ class Randomizer:
 
         # Add grandleon lowering magus's mdef
         # Editing AI is ugly right now, so just use raw binary
-        magus_ai = config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS]
+        magus_ai = config.enemy_ai_db.scripts[ctenums.EnemyID.MAGUS]
         magus_ai_b = magus_ai.get_as_bytearray()
         masa_hit = bytearray.fromhex(
             '18 3D 04 29 FE'
@@ -1673,13 +1689,13 @@ class Randomizer:
         magus_ai_b[masa_hit_loc:masa_hit_loc] = masa_hit
         new_magus_ai = cfg.enemyai.AIScript(magus_ai_b)
 
-        config.enemy_aidb.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
+        config.enemy_ai_db.scripts[ctenums.EnemyID.MAGUS] = new_magus_ai
 
         # Allow combo tech confuse to use on-hit effects
-        techdb = config.techdb
+        tech_db = config.tech_db
         combo_confuse_id = 0x3C
-        on_hit_byte = combo_confuse_id*techdb.effect_size + 8
-        techdb.effects[on_hit_byte] = 0x80
+        on_hit_byte = combo_confuse_id*tech_db.effect_size + 8
+        tech_db.effects[on_hit_byte] = 0x80
 
         if rset.GameFlags.BOSS_SIGHTSCOPE in settings.gameflags:
             qolhacks.enable_boss_sightscope(config)
@@ -1797,7 +1813,7 @@ def get_settings_from_command_line() -> rset.Settings:
     )
     if seed is None or seed == "":
         names = read_names()
-        seed = "".join(rand.choice(names) for i in range(2))
+        seed = "".join(random.choice(names) for i in range(2))
 
     settings.seed = seed
 

@@ -50,7 +50,7 @@ def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
         return
 
     ItemID = ctenums.ItemID
-    item_db = config.itemdb
+    item_db = config.item_db
 
     base_hp_healing = random.choice(range(30, 51, 1))
     revive_mult = random.choice((1, 2, 3))
@@ -500,7 +500,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     Tier = treasuredata.ItemTier
     WE = itemdata.WeaponEffects
 
-    item_db = config.itemdb
+    item_db = config.item_db
 
     gear_tiers = (Tier.LOW_GEAR, Tier.PASSABLE_GEAR, Tier.MID_GEAR,
                   Tier.GOOD_GEAR, Tier.HIGH_GEAR, Tier.AWESOME_GEAR)
@@ -655,9 +655,9 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
 
     mode = random.choice(modes)
     for ind, fist_id in enumerate(ayla_fists):
-        fist = config.itemdb[fist_id]
+        fist = config.item_db[fist_id]
         boost_id = mode[ind]
-        boost = config.itemdb.stat_boosts[boost_id]
+        boost = config.item_db.stat_boosts[boost_id]
         boost_str = boost.stat_string()
         if boost_str == '':
             boost_str = 'Fist'
@@ -697,7 +697,7 @@ def randomize_accessories(settings: rset.Settings,
     counter_accs = (IID.RAGE_BAND, IID.FRENZYBAND)
 
     for item_id in counter_accs:
-        item = config.itemdb[item_id]
+        item = config.item_db[item_id]
         normal_counter = (random.random() < 0.75)
         item.stats.has_normal_counter_mode = normal_counter
         if not item.stats.has_normal_counter_mode:
@@ -730,7 +730,7 @@ def randomize_accessories(settings: rset.Settings,
                    _BID.MAGIC_6, _BID.MAG_MDEF_5, _BID.POWER_STAMINA_10)
 
     for rock_id in rocks:
-        rock = config.itemdb[rock_id]
+        rock = config.item_db[rock_id]
 
         rock_bonus = random.random()
         if rock_bonus < 0.4:
@@ -756,7 +756,7 @@ def randomize_accessories(settings: rset.Settings,
     item_id = IID.PRISMSPECS
     x = random.random()
     if x < 0.25:
-        item = config.itemdb[item_id]
+        item = config.item_db[item_id]
         item.stats.battle_buffs = [T8.HASTE]
         item.name = ctstrings.CTNameString.from_string(
             '{acc}HasteSpecs'
@@ -780,7 +780,7 @@ def randomize_accessories(settings: rset.Settings,
         medal_boosts = (_BID.SPEED_3, _BID.SPEED_2, _BID.POWER_STAMINA_10,
                         _BID.MDEF_15)
 
-        medal = config.itemdb[IID.HERO_MEDAL]
+        medal = config.item_db[IID.HERO_MEDAL]
         medal_bonus = random.random()
         if medal_bonus < 0.45:
             medal.stats.has_stat_boost = True

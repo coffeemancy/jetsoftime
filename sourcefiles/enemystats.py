@@ -157,7 +157,7 @@ class EnemyStats:
 
         res_str = ' '.join(str.rjust(str(x), 4) for x in resists)
 
-        ret += 'Elemental Resistances:\n'
+        ret += 'Elemental Damage Taken:\n'
         ret += (' Lit  Shd  Ice  Fir\n' + res_str + '\n')
         ret += (f'Hide name: {self.hide_name}')
 
@@ -448,14 +448,22 @@ class EnemyStats:
         self._stat_data[0x16] = val
 
 
-def get_stat_dict(rom: bytearray) -> dict[ctenums.EnemyID, EnemyStats]:
-    stat_dict = dict()
-    ct_rom = ctrom.CTRom(rom, True)
-
-    for enemy_id in list(ctenums.EnemyID):
-        stat_dict[enemy_id] = EnemyStats.from_ctrom(ct_rom, enemy_id)
+def get_stat_dict_from_ctrom(ct_rom: ctrom.CTRom) -> dict[ctenums.EnemyID,
+                                                          EnemyStats]:
+    stat_dict = {
+        enemy_id: EnemyStats.from_ctrom(ct_rom, enemy_id)
+        for enemy_id in ctenums.EnemyID
+    }
 
     return stat_dict
+
+
+def get_stat_dict_from_rom(
+        rom: bytearray
+) -> dict[ctenums.EnemyID, EnemyStats]:
+    ct_rom = ctrom.CTRom(rom, True)
+
+    return get_stat_dict_from_ctrom(ct_rom)
 
 
 if __name__ == '__main__':

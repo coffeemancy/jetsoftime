@@ -16,7 +16,7 @@ def set_robo_ribbon_in_config(config: cfg.RandoConfig):
     ItemID = cfg.ctenums.ItemID
     StatBit = cfg.itemdata.StatBit
 
-    item_db = config.itemdb
+    item_db = config.item_db
     robo_ribbon = item_db[ItemID.ROBORIBBON]
     robo_ribbon.secondary_stats.ngplus_carryover = False
     robo_ribbon.stats.has_stat_boost = True

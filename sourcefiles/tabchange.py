@@ -42,7 +42,7 @@ def write_tabs_to_config(settings: rset.Settings,
     config.speed_tab_amt = speed_amt
 
     IID = cfg.ctenums.ItemID
-    item_db = config.itemdb
+    item_db = config.item_db
     item_db[IID.POWER_TAB].desc = \
         ctstrings.CTString.from_str(f'\"1Power\"2 + {power_amt}{{null}}')
     item_db[IID.MAGIC_TAB].desc = \

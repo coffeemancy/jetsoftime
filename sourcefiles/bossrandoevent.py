@@ -1594,8 +1594,8 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         twin_boss.scheme.slots = [base_slot, alt_slot]
 
         # Give the twin boss the base boss's ai
-        config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
-        config.enemy_atkdb.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
+        config.enemy_ai_db.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
+        config.enemy_atk_db.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
 
         twin_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
 
@@ -1615,8 +1615,8 @@ def set_twin_boss_in_config(one_spot_boss: BossID,
         scaled_stats = twin_boss.scale_to_power(
             orig_twin_power,
             config.enemy_dict,
-            config.enemy_atkdb,
-            config.enemy_aidb
+            config.enemy_atk_db,
+            config.enemy_ai_db
         )[EnemyID.TWIN_BOSS]
 
         if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
@@ -1840,7 +1840,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 
     # Get the new obstacle (if needed) before tech scaling.  If further
     # obstacle duplicates are made, they will inherit the right status.
-    enemy_aidb = config.enemy_aidb
+    enemy_aidb = config.enemy_ai_db
     early_obstacle_bosses = []
     obstacle_bosses = [BossID.MEGA_MUTANT, BossID.TERRA_MUTANT]
     for loc in current_assignment:
@@ -1852,7 +1852,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 
     if early_obstacle_bosses:
         # Make a new obstacle
-        atk_db = config.enemy_atkdb
+        atk_db = config.enemy_atk_db
         new_obstacle = atk_db.get_tech(0x58)
         # Choose a status that doesn't incapacitate the team.
         # But also no point choosing poison because mega has shadow slay
@@ -1895,8 +1895,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         new_boss = orig_data[current_assignment[location]]
         scaled_stats = new_boss.scale_relative_to(orig_boss,
                                                   config.enemy_dict,
-                                                  config.enemy_atkdb,
-                                                  config.enemy_aidb)
+                                                  config.enemy_atk_db,
+                                                  config.enemy_ai_db)
 
         # Update rewards to match original boss
         # TODO: This got too big.  Break into own function?
@@ -1999,7 +1999,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 def get_obstacle_id(enemy_id: EnemyID, config: cfg.RandoConfig) -> int:
     obstacle_msg_ids = (0xBA, 0x92)  # Only covers Terra, Mega
 
-    ai_script = config.enemy_aidb.scripts[enemy_id]
+    ai_script = config.enemy_ai_db.scripts[enemy_id]
     ai_script_b = ai_script.get_as_bytearray()
     tech_offsets = ai_script.find_command(ai_script_b, 0x02)
 
@@ -2035,7 +2035,7 @@ def get_magus_nuke_id(config: cfg.RandoConfig):
     '''
     Get the tech id of Magus's big spell based on message id on cast.
     '''
-    magus_ai = config.enemy_aidb.scripts[EnemyID.MAGUS]
+    magus_ai = config.enemy_ai_db.scripts[EnemyID.MAGUS]
     magus_ai_b = magus_ai.get_as_bytearray()
 
     AI = cfg.enemyai.AIScript
@@ -2076,24 +2076,24 @@ def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
     }
 
     orig_nuke_id = get_magus_nuke_id(config)
-    orig_nuke = config.enemy_atkdb.get_tech(orig_nuke_id)
+    orig_nuke = config.enemy_atk_db.get_tech(orig_nuke_id)
 
     new_nuke_id = magus_nukes[new_char]
-    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
+    new_nuke = config.enemy_atk_db.get_tech(new_nuke_id)
 
     if new_nuke.effect != orig_nuke.effect:
         new_nuke.effect = orig_nuke.effect
-        new_nuke_id = config.enemy_aidb.unused_techs[-1]
-        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
+        new_nuke_id = config.enemy_ai_db.unused_techs[-1]
+        config.enemy_atk_db.set_tech(new_nuke, new_nuke_id)
 
-    config.enemy_aidb.change_tech_in_ai(
+    config.enemy_ai_db.change_tech_in_ai(
         EnemyID.MAGUS, orig_nuke_id, new_nuke_id
     )
 
     magus_stats.sprite_data.set_sprite_to_pc(new_char)
     magus_stats.name = str(new_char)
 
-    battle_msgs = config.enemy_aidb.battle_msgs
+    battle_msgs = config.enemy_ai_db.battle_msgs
     battle_msgs.set_msg_from_str(0x23, nuke_strs[new_char])
 
 
@@ -2102,27 +2102,27 @@ def set_rust_tyrano_element(tyrano_id: EnemyID,
                             config: cfg.RandoConfig):
 
     nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
-    nuke = config.enemy_atkdb.get_tech(nuke_id)
+    nuke = config.enemy_atk_db.get_tech(nuke_id)
 
     new_nuke_id = _tyrano_nukes[tyrano_element]
-    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
+    new_nuke = config.enemy_atk_db.get_tech(new_nuke_id)
 
     if nuke.effect != new_nuke.effect:
         new_nuke.effect = nuke.effect
-        new_nuke_id = config.enemy_aidb.unused_techs[-1]
-        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
+        new_nuke_id = config.enemy_ai_db.unused_techs[-1]
+        config.enemy_atk_db.set_tech(new_nuke, new_nuke_id)
 
     if tyrano_element != Element.FIRE:
         power_string = 'Magic Pwr Up!'
         # String goes in 6D
-        config.enemy_aidb.battle_msgs.set_msg_from_str(0x6D, power_string)
+        config.enemy_ai_db.battle_msgs.set_msg_from_str(0x6D, power_string)
 
-    config.enemy_aidb.change_tech_in_ai(tyrano_id, nuke_id, new_nuke_id)
+    config.enemy_ai_db.change_tech_in_ai(tyrano_id, nuke_id, new_nuke_id)
 
 
 def get_rust_tyrano_nuke_id(tyrano_id: EnemyID,
                             config: cfg.RandoConfig) -> int:
-    tyrano_ai_b = config.enemy_aidb.scripts[tyrano_id].get_as_bytearray()
+    tyrano_ai_b = config.enemy_ai_db.scripts[tyrano_id].get_as_bytearray()
     AI = cfg.enemyai.AIScript
 
     tech_cmd_locs = AI.find_command(tyrano_ai_b, 0x02)
@@ -2140,7 +2140,7 @@ def get_rust_tyrano_nuke_id(tyrano_id: EnemyID,
 def get_rust_tyrano_element(tyrano_id: EnemyID,
                             config: cfg.RandoConfig) -> Element:
     nuke_id = get_rust_tyrano_nuke_id(tyrano_id, config)
-    nuke = config.enemy_atkdb.get_tech(nuke_id)
+    nuke = config.enemy_atk_db.get_tech(nuke_id)
     return nuke.control.element
 
 
@@ -2151,7 +2151,7 @@ def set_yakra_xiii_offense_boost(
     '''
     Update Yakra XIII AI script to boost atk by 1.5x instead of to 0xFD.
     '''
-    yakra_ai = config.enemy_aidb.scripts[yakra_id]
+    yakra_ai = config.enemy_ai_db.scripts[yakra_id]
     yakra_ai_b = yakra_ai.get_as_bytearray()
 
     AI = cfg.enemyai.AIScript
@@ -2171,7 +2171,7 @@ def set_yakra_xiii_offense_boost(
         ai_ind = loc + cmd_ind + 1
         yakra_ai_b[ai_ind] = boosted_offense
 
-        config.enemy_aidb.scripts[yakra_id] = AI(yakra_ai_b)
+        config.enemy_ai_db.scripts[yakra_id] = AI(yakra_ai_b)
 
 
 # Rust Tyrano magic stat scales
@@ -2179,7 +2179,7 @@ def set_yakra_xiii_offense_boost(
 # cumulative factors: 13/6, 10/3, 35/6, 253/30
 def set_rust_tyrano_script_mag(tyrano_id: EnemyID,
                                config: cfg.RandoConfig):
-    tyrano_ai = config.enemy_aidb.scripts[tyrano_id]
+    tyrano_ai = config.enemy_ai_db.scripts[tyrano_id]
     tyrano_ai_b = tyrano_ai.get_as_bytearray()
 
     base_mag = config.enemy_dict[tyrano_id].magic
@@ -2202,7 +2202,7 @@ def set_rust_tyrano_script_mag(tyrano_id: EnemyID,
         else:
             print('Warning: Found other stat mod')
 
-    config.enemy_aidb.scripts[tyrano_id] = AI(tyrano_ai_b)
+    config.enemy_ai_db.scripts[tyrano_id] = AI(tyrano_ai_b)
 
 
 # This needs some explaining.
@@ -2222,37 +2222,37 @@ def set_rust_tyrano_script_mag(tyrano_id: EnemyID,
 #    and make the switch.
 def set_black_tyrano_element(element: Element, config: cfg.RandoConfig):
     nuke_id = get_black_tyrano_nuke_id(config)
-    nuke = config.enemy_atkdb.get_tech(nuke_id)
+    nuke = config.enemy_atk_db.get_tech(nuke_id)
 
     orig_elem = nuke.control.element
     minor_tech_id = _tyrano_minor_techs[orig_elem]
     new_minor_tech_id = _tyrano_minor_techs[element]
 
     new_nuke_id = _tyrano_nukes[element]
-    new_nuke = config.enemy_atkdb.get_tech(new_nuke_id)
+    new_nuke = config.enemy_atk_db.get_tech(new_nuke_id)
 
     if nuke.effect != new_nuke.effect:
         new_nuke.effect = nuke.effect
-        new_nuke_id = config.enemy_aidb.unused_techs[-1]
-        config.enemy_atkdb.set_tech(new_nuke, new_nuke_id)
+        new_nuke_id = config.enemy_ai_db.unused_techs[-1]
+        config.enemy_atk_db.set_tech(new_nuke, new_nuke_id)
 
-    config.enemy_aidb.change_tech_in_ai(
+    config.enemy_ai_db.change_tech_in_ai(
         EnemyID.BLACKTYRANO, nuke_id, new_nuke_id
     )
-    config.enemy_aidb.change_tech_in_ai(
+    config.enemy_ai_db.change_tech_in_ai(
         EnemyID.BLACKTYRANO, minor_tech_id, new_minor_tech_id
     )
 
 
 def get_black_tyrano_element(config: cfg.RandoConfig) -> Element:
     nuke_id = get_black_tyrano_nuke_id(config)
-    nuke = config.enemy_atkdb.get_tech(nuke_id)
+    nuke = config.enemy_atk_db.get_tech(nuke_id)
     return nuke.control.element
 
 
 def get_black_tyrano_nuke_id(config: cfg.RandoConfig) -> int:
     # Find tyrano nuke by looking for the tech that has the "0" msg.
-    tyrano_ai = config.enemy_aidb.scripts[EnemyID.BLACKTYRANO]
+    tyrano_ai = config.enemy_ai_db.scripts[EnemyID.BLACKTYRANO]
     tyrano_ai_b = tyrano_ai.get_as_bytearray()
 
     AI = cfg.enemyai.AIScript
@@ -2305,9 +2305,9 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
     else:
         status_effect = random.choice([SE.CHAOS, SE.STOP])     # Chaos, Stop
 
-    obstacle = config.enemy_atkdb.get_tech(0x58)
+    obstacle = config.enemy_atk_db.get_tech(0x58)
     obstacle.effect.status_effect = status_effect
-    config.enemy_atkdb.set_tech(obstacle, 0x58)
+    config.enemy_atk_db.set_tech(obstacle, 0x58)
 
 
 def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
