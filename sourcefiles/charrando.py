@@ -10,7 +10,6 @@ import ctevent
 from ctrom import CTRom
 import freespace
 import legacyofcyrus
-from statcompute import PCStats as PC
 import scriptextend as scripts
 
 import randoconfig as cfg
@@ -479,35 +478,6 @@ def change_items_bad(from_ind, to_ind, rom,
             rom[to_use_byte] |= (0x80 >> to_ind)
         else:
             rom[to_use_byte] &= ~(0x80 >> to_ind)
-
-
-# One warning here.  TechDB sometimes has to move the whole stat block to make
-# room for the techs learned block.  The stat changing should happen before
-# the TechDB is written to the rom so that the changes get moved.
-# TODO: Change this function to read the stats fom a different location.  This
-#   Functionality is in the PCStats class, but it's just cumbersome.
-def reassign_stats(rom, reassign):
-
-    # All of the heavy lifting is done by PCStats class
-    orig_pcs = [PC.stats_from_rom_default(rom, i) for i in range(7)]
-    new_pcs = [copy.deepcopy(orig_pcs[reassign[i]]) for i in range(7)]
-
-    # Now each new_pc needs to be releveled/tech leveled
-    for i in range(7):
-        # correct pc index
-        new_pcs[i].stat_block[0] = i
-
-        orig_lvl = orig_pcs[i].level
-        new_pcs[i].set_level(orig_lvl)
-
-        orig_tech_lvl = orig_pcs[i].tech_level
-        new_pcs[i].set_tech_level(orig_tech_lvl)
-
-        new_pcs[i].write_to_rom_default(rom, i)
-
-    # This can probably be removed.  But to avoid potential issues with TechDB
-    # putting the stat block in bank 4F, copy the stat block to the new bank.
-    rom[0x4F0000:0x4F0000+0x230+2*7] = rom[0x0C0000:0x0C0000+0x230+2*7]
 
 
 # Each control header has indices to the associated effect headers.  The order

@@ -9,7 +9,7 @@ try:
 except ImportError:
     # print('C compression module not found.  Falling back to python.')
     def compress(source):
-        return compress_py(source)
+        return compress_py_2(source)
 
 
 def decompress(rom, start):
@@ -284,6 +284,190 @@ def CTCopyBytes(rom, WorkingBuffer, nBytePos, nWorkPos,  bSmallerBitWidth):
 
     return nBytePos, nWorkPos
 
+
+def find_match_len(data: bytes, pos_1: int, pos_2: int,
+                   max_match: int):
+
+    match_len = 0
+    while data[pos_1+match_len] == data[pos_2+match_len]:
+        match_len += 1
+
+        if match_len == max_match:
+            break
+
+        if (pos_1 + match_len == len(data)) or \
+           (pos_2 + match_len == len(data)):
+            break
+
+    return match_len
+
+
+# Modification of compress_py which precomputes starting indices of every byte.
+# This was suggested by Atmatek on
+# https://www.ff6hacking.com/forums/thread-4085.html.
+def compress_py_2(source: bytes):
+    # We have to try compressing in two configurations and then return the
+    # better of the two.
+    compressed_data = [bytearray([0 for i in range(0x10000)])
+                       for j in range(2)]
+
+    best_size = 0x10000
+
+    byte_starts = [[] for ind in range(0x100)]
+    for ind, byte in enumerate(source):
+        byte_starts[byte].append(ind)
+
+    byte_ptrs = [0 for ind in range(0x100)]
+
+    # We're only going to use the i=0 version because it's almost always a
+    # smaller file.
+    for i in range(1):
+        # i=0: use 0x07FF for the range, 0xF800 for the max copy length
+        # i=1: use 0x0FFF for the range, 0xF000 for the max copy length
+        lookback_range = 0x07FF | (i << 11)
+
+        # max_copy_length = 0xFFFF ^ lookback_range (bits used)
+        max_copy_length = (0xFFFF ^ lookback_range) >> (16-(5-i))
+        max_copy_length += 3
+        src_pos = 0
+
+        # First two bytes are main body length
+        # Next byte will be the first packet's header
+        out_pos = 2
+
+        done = False
+        while not done:
+            # Fill up a compressed packet
+            header_pos = out_pos
+            out_pos += 1
+
+            for bit in range(8):
+                # While filling a packet we ran out of source.
+                if src_pos == len(source):
+                    if bit == 0:
+                        # If bit == 0, then we ran out after filling a packet.
+                        # This means no addendum.
+                        compressed_data[i][header_pos] = 0xC0*(1-i)
+
+                        # Truncate to used size
+                        compressed_data[i] = compressed_data[i][0:header_pos+1]
+                    else:
+                        # Otherwise, we're mid-packet.  The packet becomes
+                        # the addendum.
+                        # print("Addendum.")
+
+                        # set unused bits of header for addendum header
+                        mask = (0xFF << bit) & 0xFF
+                        compressed_data[i][header_pos] |= mask
+
+                        # shift the addendum packet down three bytes
+                        compressed_data[i][header_pos+3:out_pos+3] = \
+                            compressed_data[i][header_pos:out_pos]
+
+                        # copy range + addendum length
+                        compressed_data[i][header_pos] = \
+                            0xC0*(1-i) | bit
+
+                        # total compressed length (remember shift by 3)
+                        compressed_data[i][header_pos+1:header_pos+3] = \
+                            int.to_bytes(out_pos+3, 2, 'little')
+
+                        # Truncate to used size
+                        compressed_data[i][out_pos+3] = 0xC0*(1-i)
+                        compressed_data[i] = compressed_data[i][0:out_pos+4]
+
+                    # print(f"Main body len: {header_pos-2:04X}")
+                    compressed_data[i][0:2] =\
+                        int.to_bytes(header_pos-2, 2, 'little')
+
+                    done = True
+                    break
+
+                lookback_st = max(0, src_pos - lookback_range)
+                lookback_end = src_pos
+
+                best_len = 0
+                best_len_st = 0
+
+                src_val = source[src_pos]
+                while byte_starts[src_val][byte_ptrs[src_val]] < lookback_st:
+                    byte_ptrs[src_val] += 1
+
+                ptr = byte_ptrs[src_val]
+                while byte_starts[src_val][ptr] < src_pos:
+                    match_len = find_match_len(
+                        source,
+                        byte_starts[src_val][ptr],
+                        src_pos,
+                        max_copy_length
+                    )
+
+                    if match_len > best_len:
+                        best_len = match_len
+                        best_len_st = byte_starts[src_val][ptr]
+
+                    ptr += 1
+
+                if best_len > 2:
+                    # print(f'Best len: {best_len:02X}')
+                    # We matched at least 3 bytes, so we'll use compression
+
+                    # Mark the header to use compression for this bit
+                    compressed_data[i][header_pos] |= (1 << bit)
+
+                    lookback = src_pos - best_len_st
+                    # print(f"\tlookback: {lookback:04X}")
+
+                    # length is encoded with a -3 because there are always at
+                    # least 3 bytes to copy.  The length is shifted to the most
+                    # significant bits.  The shift depends on i.
+                    length = ((best_len-3) << (16-(5-i)))
+
+                    compr_stream = lookback | length
+
+                    compressed_data[i][out_pos:out_pos+2] = \
+                        int.to_bytes(compr_stream, 2, 'little')
+
+                    out_pos += 2
+                    src_pos += best_len
+                else:
+                    # We failed to match 3 or more bytes, so just copy a byte
+                    compressed_data[i][out_pos] = source[src_pos]
+                    out_pos += 1
+                    src_pos += 1
+            # End of for loop to fill packet
+            # print(f'Header: {compressed_data[i][header_pos]:02X}')
+        # End of while not done loop
+
+        if len(compressed_data[i]) < best_size:
+            best_size = len(compressed_data[i])
+            best_ind = i
+        else:
+            best_ind = 0
+
+    # Test code for comparing performance of the two window schemes
+    # if len(compressed_data[0]) < len(compressed_data[1]):
+    #     min_len = len(compressed_data[0])
+    #     max_len = len(compressed_data[1])
+    #     best = "0"
+    # elif len(compressed_data[1]) < len(compressed_data[0]):
+    #     min_len = len(compressed_data[1])
+    #     max_len = len(compressed_data[0])
+    #     best = "1"
+    # else:
+    #     min_len = 1
+    #     max_len = 1
+    #     best = "Tie"
+
+    # print(max_len/min_len, 'Best:', best)
+
+    # if len(compressed_data[0]) <= len(compressed_data[1]):
+    #     return compressed_data[0]
+    # else:
+    #     return compressed_data[1]
+
+    return compressed_data[0]
+    
 
 # Modification of Michael Springer's code to fit my applications
 # This is a greedy algorithm. On occassion it will be a byte (or two?) larger

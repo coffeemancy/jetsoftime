@@ -5,12 +5,11 @@
 from __future__ import annotations
 import dataclasses
 import typing
-import json
 
 from treasures import treasuretypes
 from characters import ctpcstats, pcrecruit
+from shops import shoptypes
 
-import byteops
 import bossdata
 import bossrandoevent as bossrando
 import enemyai
@@ -21,126 +20,9 @@ import logictypes
 import ctenums
 import ctrom
 import ctstrings
-import statcompute
 import techdb
 
 import randosettings as rset
-
-
-class ShopManager:
-
-    shop_ptr = 0x02DAFD
-    shop_data_bank_ptr = 0x02DB09
-
-    def __init__(self, rom: bytearray):
-
-        shop_data_bank, shop_ptr_start = ShopManager.__get_shop_pointers(rom)
-
-        # print(f"Shop data bank = {self.shop_data_bank:06X}")
-        # print(f"Shop ptr start = {self.shop_ptr_start:06X}")
-
-        # We're using some properties of ShopID here.
-        #  1) ShopID starts from 0x00, and
-        #  2) ShopID contains all values from 0x00 to N-1 where N is
-        #     the number of shops.
-
-        self.shop_dict = dict()
-
-        # The sort shouldn't be necessary, but be explicit.
-        for shop in sorted(list(ctenums.ShopID)):
-            index = int(shop)
-            ptr_start = shop_ptr_start + 2*index
-            shop_ptr_local = byteops.get_value_from_bytes(
-                rom[ptr_start:ptr_start+2]
-            )
-            shop_ptr = shop_ptr_local + shop_data_bank
-            shop_ptr = shop_ptr
-
-            pos = shop_ptr
-            self.shop_dict[shop] = []
-
-            # Items in the shop are a 0-terminated list
-            while rom[pos] != 0:
-                # print(ctenums.ItemID(rom[pos]))
-                self.shop_dict[shop].append(ctenums.ItemID(rom[pos]))
-                pos += 1
-
-    # Returns start of shop pointers, start of bank of shop data
-    @classmethod
-    def __get_shop_pointers(cls, rom: bytearray):
-        shop_data_bank = byteops.to_file_ptr(rom[cls.shop_data_bank_ptr] << 16)
-        shop_ptr_start = \
-            byteops.to_file_ptr(
-                byteops.get_value_from_bytes(rom[cls.shop_ptr:cls.shop_ptr+3])
-            )
-        return shop_data_bank, shop_ptr_start
-
-    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
-        # The space used/freed by TF isn't available to me.  I just have to
-        # assume that the space currently allotted is enough.
-
-        shop_data_bank, shop_ptr_start = \
-            ShopManager.__get_shop_pointers(ct_rom.rom_data.getbuffer())
-
-        rom = ct_rom.rom_data
-
-        ptr_loc = shop_ptr_start
-        rom.seek(ptr_loc)
-        data_loc = byteops.get_value_from_bytes(rom.read(2)) + shop_data_bank
-
-        max_index = max(self.shop_dict.keys())
-
-        for shop_id in range(max_index+1):
-            shop = ctenums.ShopID(shop_id)
-
-            rom.seek(ptr_loc)
-            ptr = data_loc % 0x010000
-            ptr_loc += rom.write(byteops.to_little_endian(ptr, 2))
-
-            if shop in self.shop_dict.keys():
-                items = bytearray(self.shop_dict[shop]) + b'\x00'
-            else:
-                items = bytearray([ctenums.ItemID.MOP]) + b'\x00'
-
-            rom.seek(data_loc)
-            data_loc += rom.write(items)
-
-    def set_shop_items(self, shop: ctenums.ShopID,
-                       items: list[ctenums.ItemID]):
-        self.shop_dict[shop] = items[:]
-
-    def print_with_prices(self,
-                          item_db: itemdata.ItemDB):
-        print(self.__str__(item_db))
-
-    def _jot_json(self):
-        shops_ignored = [
-            ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14,
-            ctenums.ShopID.LAST_VILLAGE_UPDATED
-        ]
-        return {str(k): [str(i) for i in v]
-                for (k,v) in self.shop_dict.items()
-                if k not in shops_ignored }
-
-    def __str__(self, item_db: itemdata.ItemDB):
-        ret = ''
-        for shop in sorted(self.shop_dict.keys()):
-            if shop in [ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14,
-                        ctenums.ShopID.LAST_VILLAGE_UPDATED]:
-                continue
-
-            ret += str(shop)
-            ret += ':\n'
-            for item in self.shop_dict[shop]:
-                ret += ('    ' + str(item))
-
-                if item_db is not None:
-                    price = item_db.item_dict[item].secondary_stats.price
-                    ret += f": {price}"
-
-                ret += '\n'
-
-        return ret
 
 
 @dataclasses.dataclass
@@ -163,6 +45,7 @@ class RandoConfig:
                                    pcrecruit.RecruitSpot] = None,
             pcstats: ctpcstats.PCStatsManager = None,
             tech_db: techdb.TechDB = None,
+            item_db: itemdata.ItemDB = None,
             enemy_dict: dict[ctenums.EnemyID,
                              enemystats.EnemyStats] = None,
             enemy_atk_db: enemytechdb.EnemyAttackDB = None,
@@ -174,7 +57,7 @@ class RandoConfig:
             omen_elevator_fights_up: typing.Container[int] = None,  # 0,1,2
             omen_elevator_fights_down: typing.Container[int] = None,
             # stuff that's getting replaced
-            shop_manager: ShopManager = None,
+            shop_manager: shoptypes.ShopManager = None,
             boss_rank_dict: dict[ctenums.BossID, int] = None,
             key_item_locations: typing.Container[logictypes.Location] = None,
     ):
@@ -217,6 +100,7 @@ class RandoConfig:
         self.char_assign_dict = char_assign_dict
         self.pcstats = pcstats
         self.tech_db = tech_db
+        self.item_db = item_db
         self.enemy_dict = enemy_dict
         self.enemy_atk_db = enemy_atk_db
         self.enemy_ai_db = enemy_ai_db
@@ -323,7 +207,7 @@ class RandoConfig:
         self.enemy_atk_db = enemytechdb.EnemyAttackDB.from_rom(
             rom_data.getbuffer()
         )
-        self.shop_manager = ShopManager(rom_data.getbuffer())
+        self.shop_manager = shoptypes.ShopManager(rom_data.getbuffer())
 
 
 def main():

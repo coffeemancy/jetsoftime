@@ -13,7 +13,7 @@ import itemdata
 import itemrando
 from characters import pcrecruit, ctpcstats
 from treasures import treasurewriter, treasuretypes
-import shopwriter
+from shops import shopwriter
 import logicwriters as logicwriter
 import bossrandoevent as bossrando
 import bossscaler
@@ -92,12 +92,6 @@ class Randomizer:
     def config(self, new_config: cfg.RandoConfig):
         self._config = new_config
         self.has_generated = False
-
-    # This would be used by a plando to set a non-random config.
-    # Should this exist now that config is a property?
-    def set_config(self, config: cfg.RandoConfig):
-        self.config = config
-        # TODO: Are there any sanity checks to apply to the config?
 
     # Given the settings passed to the randomizer, give the randomizer a
     # random RandoConfig object.

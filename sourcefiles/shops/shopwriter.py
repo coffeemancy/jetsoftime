@@ -3,8 +3,11 @@ from __future__ import annotations
 import math
 import random as rand
 
+import byteops
 from ctenums import ItemID, ShopID
+import ctrom
 from treasures import treasuredata as td
+import itemdata
 
 import randoconfig as cfg
 import randosettings as rset
@@ -122,30 +125,6 @@ def write_shops_to_config(settings: rset.Settings,
 
     # With the whole shop list in hand, you can do some global guarantees
     # here if desired.  For example, guarantee ethers/midtonics in LW.
-
-
-def write_item_prices_to_config(settings: rset.Settings,
-                                config: cfg.RandoConfig):
-    items_to_modify = list(ItemID)
-
-    # Set up the list of items to randomize
-    if settings.shopprices == rset.ShopPrices.MOSTLY_RANDOM:
-        excluded_items = [ItemID.MID_TONIC, ItemID.ETHER, ItemID.HEAL,
-                          ItemID.REVIVE, ItemID.SHELTER]
-        items_to_modify = [item for item in items_to_modify
-                           if item not in excluded_items]
-    elif settings.shopprices == rset.ShopPrices.NORMAL:
-        items_to_modify = []
-
-    # Actually modify the prices
-    for item in items_to_modify:
-        if settings.shopprices in (rset.ShopPrices.FULLY_RANDOM,
-                                   rset.ShopPrices.MOSTLY_RANDOM):
-            price = getRandomPrice()
-        elif settings.shopprices == rset.ShopPrices.FREE:
-            price = 0
-
-        config.price_manager.set_price(item, price)
 
 
 def get_melchior_shop_items():

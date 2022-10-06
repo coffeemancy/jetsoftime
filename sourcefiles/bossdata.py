@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 import math
 from typing import Tuple, Type, TypeVar
 
+from characters import ctpcstats
+
 import enemyai
 import enemytechdb
 from enemystats import EnemyStats
 
 from ctenums import EnemyID, BossID, LocID
-
 import piecewiselinear
-import statcompute
 
 import randosettings as rset
 
@@ -500,8 +500,9 @@ def get_hp(level: int):
     # copying Frog as a middle of the road hp
     base_hp = 80
     # hp_growth = bytearray.fromhex('0A 0D 15 0F 30 15 63 0A')
-    hp_growth = bytearray.fromhex('0A 0C 15 0E 1D 13 63 14')
-    return statcompute.compute_hpmp_growth(hp_growth, level) + base_hp
+    hp_growth_b = bytearray.fromhex('0A 0C 15 0E 1D 13 63 14')
+    hp_growth = ctpcstats.HPGrowth(hp_growth_b)
+    return hp_growth.cumulative_growth_at_level(level) + base_hp
 
 
 def get_mdef(level: int):
