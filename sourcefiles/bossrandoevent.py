@@ -124,6 +124,27 @@ def set_magus_castle_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
 
         return pos
 
+    # Slash has animations that most bosses can not do.
+    # It's probably better to use good_anim_ids because there are so few that
+    # actually look good.  Ideally a dict EnemyID -> replacement anim ids.
+    bad_anim_ids = (
+        EnemyID.LAVOS_SPAWN_HEAD, EnemyID.ELDER_SPAWN_HEAD,
+        EnemyID.RETINITE_EYE, EnemyID.SON_OF_SUN_EYE,
+    )
+    if boss.ids[0] in bad_anim_ids:
+        pos = script.get_function_start(0xB, 1)
+        end = script.get_function_end(0xB, 1)
+
+        while True:
+            # Find animation commands and make them use animation 0 (nothing)
+            pos, cmd = script.find_command([0xAC], pos, end)
+
+            if pos is None:
+                break
+
+            script.data[pos+1] = 0
+            pos += len(cmd)
+
     set_generic_one_spot_boss_script(script, boss, boss_obj,
                                      show_pos_fn, first_x, first_y)
 # End set_magus_castle_slash_spot_boss
