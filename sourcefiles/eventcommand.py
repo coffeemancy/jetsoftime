@@ -86,15 +86,14 @@ class EventCommand:
         return self.command == other.command and self.args == other.args
 
     # Returns coordinates in pixels
-    def get_coordinates(self):
+    def get_pixel_coordinates(self):
         if self.command == 0x8B:
-            return (self.args[0]*0x10, self.args[1]*0x10)
+            return (self.args[0]*0x10+0x80, self.args[1]*0x10+0x100)
         elif self.command == 0x8D:
             return ((self.args[0]-0x80) >> 4,
                     (self.args[1]-0x100) >> 4)
         else:
-            print("Error: command does not set coordinates.")
-            exit()
+            raise AttributeError('This command does not set coordinates.')
 
     def to_bytearray(self) -> bytearray:
 
@@ -303,6 +302,13 @@ class EventCommand:
     def get_blank_command(cmd_id: int) -> EventCommand:
         ret_cmd = event_commands[cmd_id].copy()
         ret_cmd.args = [0 for i in range(ret_cmd.num_args)]
+        return ret_cmd
+
+    @staticmethod
+    def generic_command(*args) -> EventCommand:
+        ret_cmd = event_commands[args[0]].copy()
+        ret_cmd.args = list(args[1:])
+
         return ret_cmd
 
     def generic_zero_arg(cmd_id: int) -> EventCommand:
@@ -544,6 +550,21 @@ class EventCommand:
 
     def check_recruited_pc(char_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xCF, char_id, jump_bytes)
+
+    @staticmethod
+    def set_object_coordinates_pixels(x_coord: int,
+                                      y_coord: int) -> EventCommand:
+        return EventCommand.generic_command(0x8D, x_coord, y_coord)
+
+    @staticmethod
+    def set_object_coordinates_tile(x_coord: int,
+                                    y_coord: int) -> EventCommand:
+        '''
+        Sets an object's coordinates to be on the given tile coordinates.
+        '''
+
+        #
+        return EventCommand.generic_command(0x8B, x_coord, y_coord)
 
     #  Here x and y are assumed to be pixel coordinates
     def set_object_coordinates(x: int, y: int,
