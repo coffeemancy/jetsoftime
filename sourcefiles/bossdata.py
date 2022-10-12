@@ -256,14 +256,15 @@ class Boss:
             100
         )
 
-    # TODO: Check on this.  It should be the displacement is -8, 0 but that
-    #       doesn't work...sometimes?  It's weird.
     @classmethod
     def LAVOS_SPAWN(cls: Type[T]) -> T:
         ids = [EnemyID.LAVOS_SPAWN_SHELL,
                EnemyID.LAVOS_SPAWN_HEAD]
         slots = [3, 9]
-        disps = [(0, 0), (-0x8, 1)]
+        # The "True" displacement matches ELDER_SPAWN with [(0,0), (-8, 1)]
+        # For whatever reason the lavos spawn head drops down a pixel at the
+        # start of a battle.
+        disps = [(0, 0), (-0x8, 0)]
         power = 18
         return cls.generic_multi_spot(ids, disps, slots, power)
 

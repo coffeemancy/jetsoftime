@@ -369,6 +369,28 @@ class Settings:
         ret.seed = ''
         return ret
 
+    @staticmethod
+    def get_tourney_early_preset() -> Settings:
+        '''
+        Settings for tourney up to Ro8.
+        '''
+        ret = Settings()
+
+        ret.item_difficulty = Difficulty.NORMAL
+        ret.enemy_difficulty = Difficulty.NORMAL
+        ret.shopprices = ShopPrices.NORMAL
+        ret.techorder = TechOrder.FULL_RANDOM
+
+        GF = GameFlags
+
+        ret.gameflags = (
+            GF.FIX_GLITCH | GF.ZEAL_END | GF.FAST_PENDANT | GF.BOSS_RANDO |
+            GF.BOSS_SPOT_HP | GF.FAST_TABS | GF.FREE_MENU_GLITCH |
+            GF.GEAR_RANDO | GF.HEALING_ITEM_RANDO
+        )
+
+        return ret
+
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode
 

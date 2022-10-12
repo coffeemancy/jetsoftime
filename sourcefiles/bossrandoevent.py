@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from typing import Callable, Tuple
+import functools
 import random
 
 from byteops import to_little_endian
@@ -26,6 +27,7 @@ import randosettings as rset
 import randoconfig as cfg
 
 
+
 def set_epoch_boss(ct_rom: CTRom, boss: BossScheme):
 
     loc_id = LocID.REBORN_EPOCH
@@ -36,16 +38,93 @@ def set_epoch_boss(ct_rom: CTRom, boss: BossScheme):
                               None, first_x, first_y, True)
 
 
+def default_last_coord_fn(script: Event, obj_id: int, fn_id: int) -> int:
+    return script.find_command([0x8B, 0x8D],
+                               script.get_function_start(obj_id, fn_id),
+                               script.get_function_end(obj_id, fn_id))[0]
+
+def get_last_coord_cmd_pos(script: Event, obj_id: int, fn_id: int) -> int:
+
+    pos = script.get_function_start(obj_id, fn_id)
+    end = script.get_function_end(obj_id, fn_id)
+    prev_pos = None
+
+    while True:
+        pos, cmd = script.find_command([0x8B, 0x8D], pos, end)
+
+        if pos is None:
+            break
+
+        prev_pos = pos
+        pos += len(cmd)
+
+    if prev_pos is None:
+        raise ValueError('No coordinate commands found')
+
+    return prev_pos
+
+def fix_bad_animations(
+        script: Event,
+        obj_id: int = None,
+        fn_id: int = None,
+        start: int = None,
+        end: int = None,
+        static_removals: list[int] = None
+        ):
+    if start is None:
+        if obj_id is None:
+            raise ValueError(
+                'If start is None then obj_id must be present'
+            )
+        if fn_id is None:
+            start = script.get_function_start(obj_id, 0)
+        else:
+            start = script.get_function_start(obj_id, fn_id)
+
+    if end is None:
+        if obj_id is None:
+            raise ValueError(
+                'If end is None then obj_id must be present'
+            )
+
+        if fn_id is None:
+            end = script.get_object_end(obj_id)
+        else:
+            end = script.get_function_end(obj_id, fn_id)
+
+    pos = start
+    while True:
+        pos, cmd = script.find_command([0xAC], pos, end)
+
+        if pos is None:
+            break
+
+        # Note: Doing something less intrusive like using Animaion 0 does not
+        #       work with some enemies (mutants, maybe others?)
+        if static_removals is None or cmd.args[0] in static_removals:
+            script.delete_commands(pos, 1)
+        else:
+            pos += len(cmd)
+
+
 def set_manoria_boss(ctrom: CTRom, boss: BossScheme):
     # 0xC6 is Yakra's map - Manoria Command
     loc_id = 0xC6
 
     boss_obj = 0xA
-    first_x, first_y = 0x80, 0xA0
+    # first_x, first_y = 0x80, 0xA0
 
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda s: s.get_function_end(0xA, 3) - 1,
-                              first_x, first_y)
+    script = ctrom.script_manager.get_script(loc_id)
+
+    good_ids = (EnemyID.YAKRA, EnemyID.YAKRA_XIII)
+    if boss.ids[0] not in good_ids:
+        fix_bad_animations(script, obj_id=boss_obj)
+
+    set_generic_one_spot_boss_script(
+        script, boss, boss_obj,
+        lambda s: s.get_function_end(0xA, 3) - 1,
+        lambda s: default_last_coord_fn(s, boss_obj, 0)
+    )
 
 
 def set_denadoro_boss(ctrom: CTRom, boss: BossScheme):
@@ -53,11 +132,11 @@ def set_denadoro_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0x97
     boss_obj = 0x14
 
-    first_x, first_y = 0x80, 0xE0
+    # first_x, first_y = 0x80, 0xE0
 
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
                               lambda s: s.get_function_end(0x14, 4) - 1,
-                              first_x, first_y)
+                              lambda s: default_last_coord_fn(s, boss_obj, 0))
 
 
 def set_reptite_lair_boss(ctrom: CTRom, boss: BossScheme):
@@ -65,20 +144,38 @@ def set_reptite_lair_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0x121
     boss_obj = 0x9
 
-    first_x, first_y = 0x370, 0xC0
+    # first_x, first_y = 0x370, 0xC0
 
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
                               lambda s: s.get_function_end(0x9, 4) - 1,
-                              first_x, first_y)
+                              lambda s: default_last_coord_fn(s, boss_obj, 4))
 
 
+
+# Note: Lavos/Elder Spawn appears oddly.  I think it's asking the shell to do
+#       a nonexistant animation which makes it not appear until the battle
+#       when the animations reset.
 def set_magus_castle_flea_spot_boss(ctrom: CTRom, boss: BossScheme):
     # 0xAD is Flea's map - Castle Magus Throne of Magic
     loc_id = 0xAD
 
     boss_obj = 0xC
 
-    first_x, first_y = 0x70, 0x150
+    # first_x, first_y = 0x70, 0x150
+
+    def last_coord_fn(script: Event) -> int:
+        '''
+        Flea's spot has an extra bit for attract mode.  So we have to skip
+        over that instead of use the default last coord function.
+        '''
+        pos = script.get_function_start(boss_obj, 0)
+        end = script.get_function_end(boss_obj, 0)
+        for i in range(2):
+            pos, cmd = script.find_command([0x8B, 0x8D], pos, end)
+            if i == 0:
+                pos += len(cmd)
+
+        return pos
 
     def show_pos_fn(script: Event) -> int:
         # The location to insert is a bit before the second battle in this
@@ -95,10 +192,14 @@ def set_magus_castle_flea_spot_boss(ctrom: CTRom, boss: BossScheme):
     # end show_pos_fn
 
     set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj, show_pos_fn,
-                              first_x, first_y)
+                              last_coord_fn)
 # End set_magus_castle_flea_spot_boss
 
 
+# Note:  Zombor parts can still have some issues, but damage is mostly visible.
+#        Is this a vanilla issue?  Sprite priority?
+# Note:  Mud Imp crashes this spot.  How?  Are the beast graphics that big?
+#        Uses: Middle Ages person, skeletons, boss stuff.
 def set_magus_castle_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
     # 0xA9 is Slash's map - Castle Magus Throne of Strength
     loc_id = 0xA9
@@ -122,7 +223,13 @@ def set_magus_castle_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
     # The real, used Slash is in object 0xB.
     boss_obj = 0xB
 
-    first_x, first_y = 0x80, 0x240
+    # Read coords from the last_coord_fn command
+    # first_x, first_y = 0x80, 0x240
+
+    def last_coord_fn(script: Event) -> int:
+        return script.find_command([0x8B, 0x8D],
+                                   script.get_function_start(0xB, 1),
+                                   script.get_function_end(0xB, 1))[0]
 
     def show_pos_fn(script: Event) -> int:
         pos = script.find_exact_command(EC.generic_one_arg(0xE8, 0x8D),
@@ -134,8 +241,37 @@ def set_magus_castle_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
 
         return pos
 
+    # Slash has animations that most bosses can not do.
+    # It's probably better to use good_anim_ids because there are so few that
+    # actually look good.  Ideally a dict EnemyID -> replacement anim ids.
+    good_anim_ids = (EnemyID.SLASH_SWORD, EnemyID.SUPER_SLASH,
+                     EnemyID.ATROPOS_XR)
+
+    if False and boss.ids[0] not in good_anim_ids:
+        pos = script.get_function_start(0xB, 1)
+        end = script.get_function_end(0xB, 1)
+
+        while True:
+            # Find animation commands and destroy them
+            pos, cmd = script.find_command([0xAC], pos, end)
+
+            if pos is None:
+                break
+
+            script.delete_commands(pos, 1)
+            # pos += len(cmd)
+
+        # pos, _ = script.find_command([0xAC],
+        #                              script.get_function_start(0xC, 0))
+        # script.data[pos+1] = 0
+
+        # if boss.ids[0] in (EnemyID.GIGA_MUTANT_HEAD, EnemyID.TERRA_MUTANT_HEAD,
+        #                    EnemyID.MEGA_MUTANT_HEAD):
+        #     sprite_prio = EC.generic_command(0x8E, 0x00)
+        #     script.insert_commands(sprite_prio.to_bytearray(), pos)
+
     set_generic_one_spot_boss_script(script, boss, boss_obj,
-                                     show_pos_fn, first_x, first_y)
+                                     show_pos_fn, last_coord_fn)
 # End set_magus_castle_slash_spot_boss
 
 
@@ -172,12 +308,14 @@ def set_giants_claw_boss(ctrom: CTRom, boss: BossScheme):
 
     # First part is in object 0x9, function 0 (init)
     boss_obj = 0x9
-    first_x, first_y = 0x80, 0x27F
+    # first_x, first_y = 0x80, 0x27F
 
     # Objects can start out shown, no real need for show_pos_fn
-    set_generic_one_spot_boss_script(script, boss, boss_obj,
-                                     lambda s: s.get_function_start(0, 0) + 1,
-                                     first_x, first_y, True)
+    set_generic_one_spot_boss_script(
+        script, boss, boss_obj,
+        lambda s: s.get_function_start(0, 0) + 1,
+        lambda s: default_last_coord_fn(s, boss_obj, 0)
+    )
 # end set giant's claw boss
 
 
@@ -185,12 +323,13 @@ def set_tyrano_lair_midboss(ctrom: CTRom, boss: BossScheme):
     # 0x130 is the Nizbel II's map - Tyrano Lair Nizbel's Room
     loc_id = 0x130
     boss_obj = 0x8
-    first_x = 0x70
-    first_y = 0xD0
-
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda s: s.get_function_end(8, 3) - 1,
-                              first_x, first_y)
+    # first_x = 0x70
+    # first_y = 0xD0
+    
+    set_generic_one_spot_boss(
+        ctrom, boss, loc_id, boss_obj,
+        lambda s: s.get_function_end(8, 3) - 1,
+        lambda s: get_last_coord_cmd_pos(s, boss_obj, 3))
 # end set_tyrano_lair_midboss
 
 
@@ -234,9 +373,11 @@ def set_zeal_palace_boss(ctrom: CTRom, boss: BossScheme):
 
         return pos
 
-    set_generic_one_spot_boss_script(script, boss, boss_obj,
-                                     show_pos_fn,
-                                     first_x, first_y)
+    set_generic_one_spot_boss_script(
+        script, boss, boss_obj,
+        show_pos_fn,
+        lambda s: default_last_coord_fn(s, boss_obj, 3)
+    )
 
 
 # Two spot locations follow the same general procedure:
@@ -266,6 +407,8 @@ def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
         found_boss = False
         found_coord = False
 
+        # Note: These are tile coordinates, not suitable for anything but the
+        #       one spot assignment.
         first_x, first_y = 0xE0, 0x80
         first_id, first_slot = boss.ids[0], boss.slots[0]
 
@@ -299,12 +442,20 @@ def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
         # OK to leave it in, set it to the one-spot boss, and delete all
         # references as we do below.
         script.remove_object(0xC)
-
     # end 1 part
 
-    if num_parts > 1:
+    # multi-part assignment
 
-        first_x, first_y = 0xE0, 0x60
+    # Determine whether coordinates will need to be set by pixels or not.
+    # Maybe just always force pixels for multi-spot
+    pos = get_last_coord_cmd_pos(script, 0xB, 0)
+    coord_cmd = get_command(script.data, pos)
+    first_x, first_y = coord_cmd.get_pixel_coordinates()
+    print(f'({first_x:03X}, {first_y:03X})')
+
+    force_pixel_coords = are_pixel_coords_forced(first_x, first_y, boss)
+
+    if num_parts > 1:
 
         if (
                 EnemyID.GUARDIAN_BIT in boss.ids or
@@ -325,12 +476,15 @@ def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
             new_slot = boss.slots[i]
 
             set_object_boss(script, reused_objs[i], new_id, new_slot)
-            set_object_coordinates(script, reused_objs[i], new_x, new_y)
+            set_object_coordinates(script, reused_objs[i], new_x, new_y,
+                                   force_pixel_coords=force_pixel_coords)
 
         show_cmds = bytearray()
         for i in range(2, len(boss.ids)):
-            new_obj = append_boss_object(script, boss, i,
-                                         first_x, first_y, False)
+            new_obj = append_boss_object(
+                script, boss, i, first_x, first_y,
+                force_pixel_coords=force_pixel_coords
+            )
             show = EC.set_object_drawing_status(new_obj, True)
             show_cmds.extend(show.to_bytearray())
 
@@ -340,7 +494,8 @@ def set_zenan_bridge_boss(ctrom: CTRom, boss: BossScheme):
         script.insert_commands(show_cmds, ins_pos)
     # end multi-part
 
-
+# TODO: Does this need the new coordinate mangling?  The coordinates all get
+#       changed by the vector_move commands.
 def set_death_peak_boss(ctrom: CTRom, boss: BossScheme):
     # 0x1EF is the Lavos Spawn's map - Death Peak Guardian Spawn
     loc_id = 0x1EF
@@ -361,7 +516,8 @@ def set_death_peak_boss(ctrom: CTRom, boss: BossScheme):
         new_x = first_x + boss.disps[i][0]
         new_y = first_y + boss.disps[i][1]
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[i], new_x, new_y)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y,
+                               force_pixel_coords=False)
 
     # Remove unused boss objects from the original script.
     # Will do nothing unless there are fewer boss ids provided than there
@@ -387,13 +543,12 @@ def set_death_peak_boss(ctrom: CTRom, boss: BossScheme):
         calls.extend(call.to_bytearray())
 
     # Insertion point is right before the first Move Party command (0xD9)
-    pos, cmd = script.find_command([0xD9],
-                                   script.get_function_start(8, 1),
-                                   script.get_function_end(8, 1))
+    pos, _ = script.find_command([0xD9],
+                                 script.get_function_start(8, 1),
+                                 script.get_function_end(8, 1))
 
     if pos is None:
-        print('Error finding insertion point.')
-        exit()
+        raise ValueError('Could not find insertion point.')
 
     script.insert_commands(calls, pos)
 
@@ -429,7 +584,8 @@ def set_giga_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
         new_y = first_y + boss.disps[i][1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[i], new_x, new_y)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y,
+                               force_pixel_coords=True)
 
     # Remove unused boss objects.
     for i in range(len(boss.ids), len(boss_objs)):
@@ -444,7 +600,8 @@ def set_giga_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
         new_y = first_y + boss.disps[i][1]
 
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
-        set_object_coordinates(script, obj_id, new_x, new_y)
+        set_object_coordinates(script, obj_id, new_x, new_y,
+                               force_pixel_coords=True)
 
         # mimic call of other objects
         call = EC.call_obj_function(obj_id, 3, 3, FuncSync.CONT)
@@ -480,7 +637,10 @@ def set_terra_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
     boss_objs = [0xF, 0x10]
 
     num_used = min(len(boss.ids), 2)
-    first_x, first_y = 0x70, 0x80
+    # first_x, first_y = 0x70, 0x80
+    first_x, first_y = 0x78, 0x90  # pixel version
+    force_pixel_coords = are_pixel_coords_forced(first_x, first_y,
+                                                 boss)
 
     # mutant coords are weird.  The coordinates are the bottom of the mutant's
     # bottom part.  We need to shift up so non-mutants aren't on the party.
@@ -502,7 +662,8 @@ def set_terra_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
         new_y = first_y + boss.disps[i][1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[i], new_x, new_y)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y,
+                               force_pixel_coords=force_pixel_coords)
 
     # Remove unused boss objects.
     for i in range(len(boss.ids), len(boss_objs)):
@@ -517,7 +678,8 @@ def set_terra_mutant_spot_boss(ctrom: CTRom, boss: BossScheme):
         new_y = first_y + boss.disps[i][1]
 
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
-        set_object_coordinates(script, obj_id, new_x, new_y)
+        set_object_coordinates(script, obj_id, new_x, new_y,
+                               force_pixel_coords=force_pixel_coords)
 
         # mimic call of other objects
         call = EC.call_obj_function(obj_id, 3, 1, FuncSync.SYNC)
@@ -557,7 +719,8 @@ def set_elder_spawn_spot_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in activate for whatever reason.
-        set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 1)
+        set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 1,
+                               force_pixel_coords=True)
 
     # Remove unused boss objects.
     for i in range(len(boss.ids), len(boss_objs)):
@@ -574,7 +737,7 @@ def set_elder_spawn_spot_boss(ctrom: CTRom, boss: BossScheme):
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
         # The coordinate setting is in activate for whatever reason.
         set_object_coordinates(script, obj_id, new_x, new_y, True,
-                               fn_id=1)
+                               fn_id=1, force_pixel_coords=True)
 
         # mimic call of other objects
         call = EC.call_obj_function(obj_id, 2, 6, FuncSync.CONT)
@@ -599,13 +762,25 @@ def set_heckrans_cave_boss(ctrom: CTRom, boss: BossScheme):
 
     # Heckran is in 0xC0 now.
     loc_id = 0xC0
+    script = ctrom.script_manager.get_script(loc_id)
 
     boss_obj = 0xA
-    first_x, first_y = 0x340, 0x190
+    # first_x, first_y = 0x340, 0x190
 
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda scr: scr.get_function_end(0xA, 1)-1,
-                              first_x, first_y)
+    good_anim_ids = (
+        EnemyID.HECKRAN, EnemyID.DALTON_PLUS, EnemyID.ATROPOS_XR,
+        EnemyID.SLASH_SWORD, EnemyID.SUPER_SLASH, EnemyID.NIZBEL,
+        EnemyID.NIZBEL_II, EnemyID.YAKRA, EnemyID.YAKRA_XIII,
+        EnemyID.MASA_MUNE, EnemyID.MUD_IMP
+    )
+    if boss.ids[0] not in good_anim_ids:
+        fix_bad_animations(script, obj_id=boss_obj)
+
+    set_generic_one_spot_boss_script(
+        script, boss, boss_obj,
+        lambda scr: scr.get_function_end(0xA, 1)-1,
+        lambda scr: default_last_coord_fn(scr, boss_obj, 1)
+    )
 
 
 def set_kings_trial_boss(ctrom: CTRom, boss: BossScheme):
@@ -621,36 +796,42 @@ def set_kings_trial_boss(ctrom: CTRom, boss: BossScheme):
         boss.reorder_horiz(left=True)
 
     # show spot is right at the end of obj 0xB, arb 0
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda scr: scr.get_function_end(0xB, 3)-1,
-                              first_x, first_y)
+    set_generic_one_spot_boss(
+        ctrom, boss, loc_id, boss_obj,
+        lambda scr: scr.get_function_end(0xB, 3)-1,
+        lambda scr: default_last_coord_fn(scr, boss_obj, 0)
+    )
 
 
 def set_ozzies_fort_flea_plus_spot_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0xB7
     boss_obj = 0x9
-    first_x, first_y = 0x270, 0x250
+    # first_x, first_y = 0x270, 0x250
 
     # show spot is right at the end of obj 0xB, arb 0
     # This one is different since we're adding at the start of a function.
     # Need to double check that the routines are setting start/end correctly
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda scr: scr.get_function_start(0x9, 1),
-                              first_x, first_y)
+    set_generic_one_spot_boss(
+        ctrom, boss, loc_id, boss_obj,
+        lambda scr: scr.get_function_start(0x9, 1),
+        lambda scr: default_last_coord_fn(scr, boss_obj, 0)
+    )
 
 
 def set_ozzies_fort_super_slash_spot_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = 0xB8
 
     boss_obj = 0x9
-    first_x, first_y = 0x270, 0x250
+    # first_x, first_y = 0x270, 0x250
 
     # show spot is right at the end of obj 0xB, arb 0
     # This one is different since we're adding at the start of a function.
     # Need to double check that the routines are setting start/end correctly
-    set_generic_one_spot_boss(ctrom, boss, loc_id, boss_obj,
-                              lambda scr: scr.get_function_start(0x9, 1),
-                              first_x, first_y)
+    set_generic_one_spot_boss(
+        ctrom, boss, loc_id, boss_obj,
+        lambda scr: scr.get_function_start(0x9, 1),
+        lambda scr: default_last_coord_fn(scr, boss_obj, 0)
+    )
 
 
 def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
@@ -675,7 +856,10 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
     num_used = min(len(boss.ids), len(boss_objs))
 
     # After the ambush
-    first_x, first_y = 0x100, 0x1B0
+    # first_x, first_y = 0x100, 0x1B0
+    first_x, first_y = 0x108, 0x1C0  # pixel versions
+    force_pixel_coords = are_pixel_coords_forced(first_x, first_y,
+                                                 boss)
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
@@ -687,7 +871,7 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[i], new_x, new_y, True,
-                               shift=False)
+                               force_pixel_coords=force_pixel_coords)
 
         if i == 0:
             # SoS is weird about the first part moving before the rest are
@@ -711,7 +895,7 @@ def set_sun_palace_boss(ctrom: CTRom, boss: BossScheme):
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
         # The coordinate setting is in init
         set_object_coordinates(script, obj_id, new_x, new_y, True,
-                               shift=False)
+                               force_pixel_coords=force_pixel_coords)
 
         # mimic call of other objects
         call = EF()
@@ -755,7 +939,6 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
 
     num_used = min(len(boss.ids), 3)
     first_x, first_y = 0x120, 0xC9
-    shift = False
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
@@ -768,7 +951,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in arb0 for whatever reason.
         set_object_coordinates(script, boss_objs[i], new_x, new_y, True, 3,
-                               shift=shift)
+                               force_pixel_coords=True)
 
     # Remove unused boss objects.  In reverse order of course.
     for i in range(len(boss_objs), len(boss.ids), -1):
@@ -786,7 +969,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
         set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
         # The coordinate setting is in arb0
         set_object_coordinates(script, obj_id, new_x, new_y, True,
-                               fn_id=4, shift=shift)
+                               fn_id=4, force_pixel_coords=True)
 
         # mimic call of other objects
         call = EC.call_obj_function(obj_id, 4, 0, FuncSync.SYNC)
@@ -808,7 +991,7 @@ def set_desert_boss(ctrom: CTRom, boss: BossScheme):
 
     script.insert_commands(calls, pos)
 
-
+# TODO: Check on this again if we ever allow multi-part bosses here.
 def set_twin_golem_spot(ctrom: CTRom, boss: BossScheme):
     # This one is unique because it actually depends on the size of the boss.
     # One spot bosses will be duplicated and others will just appear as-is.
@@ -904,8 +1087,7 @@ def set_mt_woe_boss(ctrom: CTRom, boss: BossScheme):
 
     boss_objs = [0x0A, 0x0B, 0x0C]
 
-    first_x, first_y = 0x80, 0x158
-    shift = False  # The original coords are pixel coords, don't correct
+    first_x, first_y = 0x80, 0x158  # will force pixel coords
 
     if len(boss_objs) > len(boss.ids):
         # Remove unused objects
@@ -927,7 +1109,7 @@ def set_mt_woe_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[ind],
-                               new_x, new_y, shift=shift)
+                               new_x, new_y, force_pixel_coords=True)
 
     # Mt. Woe starts with everything visible so there's no need for anything
     # extra inserted.
@@ -959,8 +1141,7 @@ def set_geno_dome_boss(ctrom: CTRom, boss: BossScheme):
 
     boss_objs = [0x1F, 0x20, 0x21, 0x22]
 
-    first_x, first_y = 0xA0, 0x6F
-    shift = False
+    first_x, first_y = 0xA0, 0x6F  # pixel coords, force pixels
 
     ins_cmds = EF()
     if len(boss_objs) > len(boss.ids):
@@ -979,6 +1160,13 @@ def set_geno_dome_boss(ctrom: CTRom, boss: BossScheme):
             # new object.  Just call its activate function in this case.
             ins_cmds.add(EC.call_obj_function(obj_id, 1, 1, FuncSync.CONT))
 
+    boss_arb0 = (
+        EF()
+        .add(EC.set_own_drawing_status(True))
+        .add(EC.vector_move(0xC0, 30, False))
+        .add(EC.return_cmd())
+    )
+            
     for ind, obj in enumerate(boss_objs):
         new_x = first_x + boss.disps[ind][0]
         new_y = first_y + boss.disps[ind][1]
@@ -988,7 +1176,9 @@ def set_geno_dome_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[ind],
-                               new_x, new_y, shift=shift)
+                               new_x, new_y, force_pixel_coords=True)
+
+        script.set_function(obj, 3, boss_arb0)
 
     start = script.get_function_start(0x1E, 0)
     end = script.get_function_end(0x1E, 0)
@@ -1007,6 +1197,7 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
     loc_id = LocID.ARRIS_DOME_GUARDIAN_CHAMBER
     script = ctrom.script_manager.get_script(loc_id)
 
+    # Remove the guardian's body because Guardian is not here.
     copy_tiles = EC.copy_tiles(3, 0x11, 0xC, 0x1C,
                                3, 2,
                                copy_l1=True,
@@ -1031,10 +1222,10 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
 
     pos = script.get_function_start(0, 0)
     script.insert_commands(copy_tiles_vblank.to_bytearray(), pos)
-
+    # End guardian body removal
+    
     first_x, first_y = 0x80, 0xB8
     # first_x, first_y = 0x80, 0xC8
-    shift = False
 
     boss_objs = [0xB, 0xC, 0xD]
 
@@ -1076,7 +1267,8 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
 
         set_object_boss(script, obj, boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[ind],
-                               new_x, new_y, shift=shift)
+                               new_x, new_y,
+                               force_pixel_coords=True)
 
     # add calls to arb0s for all but first object.  This makes them visible
     # and sets collisions correctly.
@@ -1096,9 +1288,103 @@ def set_arris_dome_boss(ctrom: CTRom, boss: BossScheme):
     pos, _ = script.find_command([0xD8], start, end)  # Battle
 
     if pos is None:
-        raise SystemExit('Couldn\'t find insertion point (Arris)')
+        raise ValueError('Could not find insertion point.')
 
     script.insert_commands(new_calls.get_bytearray(), pos)
+
+
+def are_pixel_coords_forced(
+        first_x_px: int,
+        first_y_px: int,
+        boss: BossScheme
+        ) -> bool:
+    '''
+    Determine whether a boss placed at (first_x_px, first_y_px) requires
+    pixel coordinates or can use tile coordinates.
+    '''
+    x_coords = [first_x_px + disp[0] for disp in boss.disps]
+    y_coords = [first_y_px + disp[1] for disp in boss.disps]
+
+    x_tileable = functools.reduce(
+        lambda val, item: val and ((item-8) & 0xF == 0), x_coords, True
+    )
+
+    y_tileable = functools.reduce(
+        lambda val, item: val and (item & 0xF == 0), y_coords, True
+    )
+
+    return not(x_tileable and y_tileable)
+
+def set_generic_one_spot_boss_script(
+        script: Event,
+        boss: BossScheme,
+        boss_obj: int,
+        show_pos_fn: Callable[[Event], int],
+        last_coord_fn: Callable[[Event, int]],
+        first_x: int = None,
+        first_y: int = None,
+        pixel_coords: bool = False,
+        is_shown: bool = False):
+    '''
+    Sets the boss in a one-spot location.
+    - script: the Event data for the location to set the boss in.
+    - boss: the BossScheme (coords, slots, displacements) set in the Event
+    - boss_obj: the object in the event which contains the boss
+    - show_pos_fn: An Event -> int function which finds the position in the
+        event where extra boss parts should appear.
+    - last_coord_fn:  An Event -> int function which finds the position in the
+        event where the boss's final position before the battle is set.
+    - first_x, first_y: The boss's position before the battle is set.  These
+        can be read from the script using last_coord_fn, but some bosses
+        require special casing.
+    - pixel_coords:  Designate whether first_x, first_y are pixel coordinates.
+    - is_shown:  Designate whether the boss starts shown.  This is used to
+        determine whether extra parts need to begin drawn or not.
+    '''
+
+    # Write the new load into the boss object
+    set_object_boss(script, boss_obj, boss.ids[0], boss.slots[0])
+
+    pos = None
+    if first_x is None or first_y is None:
+        pos = last_coord_fn(script)
+        cmd = get_command(script.data, pos)
+
+        first_x, first_y = cmd.get_pixel_coordinates()
+        pixel_coords = True
+        # print(f'({first_x:03X}, {first_y:03X})')
+
+    # Determine whether it's necessary to use pixel coordinates
+    if not pixel_coords:
+        pixel_x = (first_x >> 4) + 8
+        pixel_y = (first_y >> 4) + 0x10
+    else:
+        pixel_x = first_x
+        pixel_y = first_y
+
+    use_pixel_coords = are_pixel_coords_forced(pixel_x, pixel_y, boss)
+
+    # rewrite the last coordinate command if needed
+    if use_pixel_coords and pos is not None:
+        # pos is still valid from last_coord_fn
+        new_cmd = EC.set_object_coordinates_pixels(pixel_x, pixel_y)
+
+        script.insert_commands(new_cmd.to_bytearray(), pos)
+        script.delete_commands(pos+len(new_cmd), 1)
+
+    show = EF()
+
+    # Add new objects for the additional boss parts if needed.
+    # Simultaneously build up the list of commands to show the extra parts.
+    for i in range(1, len(boss.ids)):
+        new_obj = append_boss_object(script, boss, i, pixel_x, pixel_y,
+                                     use_pixel_coords, is_shown)
+        show.add(EC.set_object_drawing_status(new_obj, True))
+
+    # Add the show commands if needed
+    if not is_shown:
+        show_pos = show_pos_fn(script)
+        script.insert_commands(show.get_bytearray(), show_pos)
 
 
 # set_generic_one_spot_boss should be able to set any one spot location's boss
@@ -1118,6 +1404,7 @@ def set_generic_one_spot_boss(ctrom: CTRom,
                               loc_id: int,
                               boss_obj: int,
                               show_pos_fn: Callable[[Event], int],
+                              last_coord_fn: Callable[[Event], int],
                               first_x: int = None,
                               first_y: int = None,
                               is_shown: bool = False):
@@ -1126,19 +1413,20 @@ def set_generic_one_spot_boss(ctrom: CTRom,
     script = script_manager.get_script(loc_id)
 
     set_generic_one_spot_boss_script(script, boss, boss_obj,
-                                     show_pos_fn, first_x, first_y, is_shown)
+                                     show_pos_fn, last_coord_fn,
+                                     first_x, first_y, is_shown)
 
 
 # This is exactly like the above except that the user provides the script.
 # This is needed in some cases when there is preprocessing required before
 # Following the general procedure.
-def set_generic_one_spot_boss_script(script: Event,
-                                     boss: BossScheme,
-                                     boss_obj: int,
-                                     show_pos_fn: Callable[[Event], int],
-                                     first_x: int = None,
-                                     first_y: int = None,
-                                     is_shown: bool = False):
+def set_generic_one_spot_boss_script_old(script: Event,
+                                         boss: BossScheme,
+                                         boss_obj: int,
+                                         show_pos_fn: Callable[[Event], int],
+                                         first_x: int = None,
+                                         first_y: int = None,
+                                         is_shown: bool = False):
 
     first_id = boss.ids[0]
     first_slot = boss.slots[0]
@@ -1186,7 +1474,12 @@ def set_object_boss(script: Event, obj_id: int, boss_id: int, boss_slot: int,
 
 def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
                            ignore_jumps: bool = True, fn_id: int = 0,
-                           shift: bool = True):
+                           force_pixel_coords: bool = False):
+
+    if force_pixel_coords:
+        cmd_fn = EC.set_object_coordinates_pixels
+    else:
+        cmd_fn = EC.set_object_coordinates_auto
 
     start = script.get_function_start(obj_id, fn_id)
     end = script.get_function_end(obj_id, fn_id)
@@ -1199,7 +1492,7 @@ def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
         if cmd.command in EC.fwd_jump_commands and ignore_jumps:
             pos += (cmd.args[-1] - 1)
         elif cmd.command in [0x8B, 0x8D]:
-            new_coord_cmd = EC.set_object_coordinates(x, y, shift)
+            new_coord_cmd = cmd_fn(x, y)
             # print(f"x={x:04X}, y={y:04X}")
             # print(new_coord_cmd)
             # input()
@@ -1212,8 +1505,8 @@ def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
                     new_coord_cmd.to_bytearray()
             else:
                 script.insert_commands(new_coord_cmd.to_bytearray(),
-                                       pos+len(cmd))
-                script.delete_commands(pos, 1)
+                                       pos)
+                script.delete_commands(pos+len(new_coord_cmd), 1)
 
             break
 
@@ -1222,30 +1515,21 @@ def set_object_coordinates(script: Event, obj_id: int, x: int, y: int,
 
 # Make a barebones object to make a boss part and hide it.
 def append_boss_object(script: Event, boss: BossScheme, part_index: int,
-                       first_x: int, first_y: int,
+                       first_x_px: int, first_y_px: int,
+                       force_pixel_coords: bool = False,
                        is_shown: bool = False) -> int:
 
     new_id = boss.ids[part_index]
     new_slot = boss.slots[part_index]
 
     # Pray these don't come up negative.  They shouldn't?
-    new_x = first_x + boss.disps[part_index][0]
-    new_y = first_y + boss.disps[part_index][1]
+    new_x = first_x_px + boss.disps[part_index][0]
+    new_y = first_y_px + boss.disps[part_index][1]
 
-    # There's a problem because of the inconsistencies between the tile
-    # coords and pixel coords.  For now, we're going to check if the initial
-    # coords are tile based (%16 == 0).  If not, shift them so that the
-    # set_coords will shift them back to the right place.
-    # TODO: Fix by using the set_coord command in the script to determine
-    #       Whether pixels or tiles are specified for first_x, first_y
-    shift = True
-    if first_x % 16 != 0 or first_y % 16 != 0:
-        # shift pixel coordinates to match their tile counterparts
-        shift = False
-
-    # print(f"({first_x:04X}, {first_y:04X})")
-    # print(f"({new_x:04X}, {new_y:04X})")
-    # input()
+    if force_pixel_coords:
+        coord_cmd = EC.set_object_coordinates_pixels(new_x, new_y)
+    else:
+        coord_cmd = EC.set_object_coordinates_auto(new_x, new_y)
 
     # print(EC.set_object_coordinates(new_x, new_y))
     # print(' '.join(f"{x:02X}"
@@ -1254,12 +1538,14 @@ def append_boss_object(script: Event, boss: BossScheme, part_index: int,
     # input()
 
     # Make the new object
-    init = EF()
-    init.add(EC.load_enemy(new_id, new_slot)) \
-        .add(EC.set_object_coordinates(new_x, new_y, shift)) \
-        .add(EC.set_own_drawing_status(is_shown)) \
-        .add(EC.return_cmd()) \
+    init = (
+        EF()
+        .add(EC.load_enemy(new_id, new_slot))
+        .add(coord_cmd)
+        .add(EC.set_own_drawing_status(is_shown))
+        .add(EC.return_cmd())
         .add(EC.end_cmd())
+    )
 
     act = EF()
     act.add(EC.return_cmd())
