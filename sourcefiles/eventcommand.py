@@ -88,11 +88,12 @@ class EventCommand:
     # Returns coordinates in pixels
     def get_pixel_coordinates(self):
         if self.command == 0x8B:
-            return (self.args[0]*0x10+0x80, self.args[1]*0x10+0x100)
+            return (self.args[0]*0x10+8, self.args[1]*0x10+0x10)
         elif self.command == 0x8D:
             return ((self.args[0]-0x80) >> 4,
                     (self.args[1]-0x100) >> 4)
         else:
+            print(self)
             raise AttributeError('This command does not set coordinates.')
 
     def to_bytearray(self) -> bytearray:
@@ -423,7 +424,7 @@ class EventCommand:
         elif is_script_mem(from_addr) and is_local_mem(to_addr):
             # arg 1: offset of from_addr
             # arg 2: to_addr - 0x7F0000
-            cmd_args [get_offset(from_addr), to_addr - 0x7F0000]
+            cmd_args[get_offset(from_addr), to_addr - 0x7F0000]
             if num_bytes == 1:
                 cmd_id = 0x58
             else:
@@ -436,7 +437,7 @@ class EventCommand:
                 cmd_id = 0x48
             else:
                 cmd_id = 0x49
-        elif  is_script_mem(from_addr) and is_bank_7E(to_addr):
+        elif is_script_mem(from_addr) and is_bank_7E(to_addr):
             # arg 1: to_addr (3 bytes)
             # arg 2: (from_addr - 0x7F000) / 2
             cmd_args = [to_addr, get_offset(from_addr)]
@@ -554,7 +555,7 @@ class EventCommand:
     @staticmethod
     def set_object_coordinates_pixels(x_coord: int,
                                       y_coord: int) -> EventCommand:
-        return EventCommand.generic_command(0x8D, x_coord, y_coord)
+        return EventCommand.generic_command(0x8D, x_coord << 4, y_coord << 4)
 
     @staticmethod
     def set_object_coordinates_tile(x_coord: int,
@@ -565,6 +566,21 @@ class EventCommand:
 
         #
         return EventCommand.generic_command(0x8B, x_coord, y_coord)
+
+    @staticmethod
+    def set_object_coordinates_auto(px_x_coord: int,
+                                    px_y_coord: int) -> EventCommand:
+        tile_x = px_x_coord - 0x8
+        tile_y = px_y_coord - 0x10
+
+        if (tile_x & 0xF) == 0 and (tile_y & 0xF) == 0:
+            tile_x >>= 4
+            tile_y >>= 4
+            return EventCommand.set_object_coordinates_tile(tile_x, tile_y)
+
+        return EventCommand.set_object_coordinates_pixels(
+            px_x_coord, px_y_coord
+        )
 
     #  Here x and y are assumed to be pixel coordinates
     def set_object_coordinates(x: int, y: int,
