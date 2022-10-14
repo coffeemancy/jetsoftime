@@ -9,7 +9,7 @@ import ctrom
 # import ctevent
 import eventcommand
 # import eventfunction
-import mapmangler
+from maps import locationtypes
 
 # These are just abbreviations that make writing event code less painful.
 # Importing this way instead of a global EC = eventcommand.EventCommand is
@@ -102,7 +102,7 @@ def fix_basement_music(ct_rom: ctrom.CTRom):
     locs = (ctenums.LocID.GUARDIA_BASEMENT,
             ctenums.LocID.GUARDIA_REAR_STORAGE)
 
-    LD = mapmangler.LocationData
+    LD = locationtypes.LocationData
     for loc_id in locs:
         data = LD.from_rom(ct_rom.rom_data.getbuffer(), loc_id)
         data.music = 0xFF

@@ -6,7 +6,7 @@ import ctrom
 import ctstrings
 import eventcommand
 import itemdata
-import mapmangler
+from maps import locationtypes
 from treasures import treasuredata, treasuretypes
 
 import randoconfig as cfg
@@ -145,7 +145,7 @@ def restore_johnny_race(ct_rom: ctrom.CTRom):
     ct_rom.script_manager.set_script(script, ctenums.LocID.LAB_32_WEST)
 
     # delete the normal exit to Lab32.  It will be in-script.
-    exits = mapmangler.LocExits.from_rom(ct_rom.rom_data)
+    exits = locationtypes.LocExits.from_rom(ct_rom.rom_data)
     exits.delete_exit(ctenums.LocID.LAB_32_EAST, 1)
     exits.write_to_fsrom(ct_rom.rom_data)
 

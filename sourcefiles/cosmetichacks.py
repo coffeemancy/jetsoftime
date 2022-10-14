@@ -9,7 +9,7 @@ from ctrom import CTRom
 import byteops
 import ctevent
 import ctstrings
-import mapmangler
+from maps import locationtypes
 import randosettings as rset
 
 
@@ -118,7 +118,7 @@ def death_peak_singing_mountain_music(ctrom: CTRom,
         LocID.DEATH_PEAK_UPPER_NORTH_FACE
     ]
 
-    LocData = mapmangler.LocationData
+    LocData = locationtypes.LocationData
     rom = ctrom.rom_data.getbuffer()
 
     for loc in death_peak_maps:

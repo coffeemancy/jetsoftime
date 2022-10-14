@@ -12,6 +12,7 @@ import enemystats
 import itemdata
 import itemrando
 from characters import pcrecruit, ctpcstats
+from maps import mapmangler
 from treasures import treasurewriter, treasuretypes
 from shops import shopwriter
 import logicwriters as logicwriter
@@ -773,9 +774,9 @@ class Randomizer:
         # and now Zenan Bridge so that all bosses can go there.
         # There's no reason not do just do this regardless of whether
         # boss rando is on.
-        bossrando.duplicate_maps_on_ctrom(self.out_rom)
-        bossrando.duplicate_zenan_bridge(self.out_rom,
-                                         ctenums.LocID.ZENAN_BRIDGE_BOSS)
+        mapmangler.duplicate_maps_on_ctrom(self.out_rom)
+        mapmangler.duplicate_zenan_bridge(self.out_rom,
+                                          ctenums.LocID.ZENAN_BRIDGE_BOSS)
 
         # Script changes which can always be made
         Event = ctevent.Event
