@@ -182,8 +182,8 @@ class ChestTreasureData(ctt.BinaryData):
     def reward(self, val: RewardType):
         if isinstance(val, ctenums.ItemID):
             self.held_item = val
-
-        self.gold = val
+        else:
+            self.gold = val
 
     @property
     def copy_location(self) -> ctenums.LocID:
