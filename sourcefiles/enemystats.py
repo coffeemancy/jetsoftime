@@ -18,6 +18,15 @@ class EnemySpriteData:
     def get_copy(self) -> EnemySpriteData:
         return EnemySpriteData(self._data)
 
+
+    @property
+    def palette(self) -> int:
+        return self._data[2]
+
+    @palette.setter
+    def palette(self, val: int):
+        self._data[2] = val
+
     def set_affect_layer_1(self, affects_layer_1: bool):
         if affects_layer_1:
             self._data[4] |= 0x04
@@ -71,13 +80,13 @@ class EnemyStats:
                  stat_data: bytes = None,
                  name_bytes: bytes = None,
                  reward_bytes: bytes = None,
-                 sprite_bytes: bytes = None,
+                 # sprite_bytes: bytes = None,
                  hide_name: bool = False):
         # Just to list the actual class members in one place
         self._stat_data = None
         self._name_bytes = None
         self._reward_data = None
-        self._sprite_data = None
+        # self._sprite_data = None
         self.hide_name = hide_name
 
         if stat_data is None:
@@ -91,13 +100,13 @@ class EnemyStats:
         if reward_bytes is None:
             reward_bytes = bytes([0 for i in range(7)])
 
-        if sprite_bytes is None:
-            sprite_bytes = bytes([0 for i in range(10)])
+        # if sprite_bytes is None:
+        #     sprite_bytes = bytes([0 for i in range(10)])
 
         self._set_stats(stat_data)
         self._set_name(name_bytes)
         self._set_rewards(reward_bytes)
-        self.sprite_data = EnemySpriteData(sprite_bytes)
+        # self.sprite_data = EnemySpriteData(sprite_bytes)
 
     def _jot_json(self):
         return {
@@ -168,7 +177,7 @@ class EnemyStats:
     def get_copy(self) -> EnemyStats:
         return EnemyStats(self._stat_data, self._name_bytes,
                           self._reward_data,
-                          self.sprite_data.get_as_bytearray(),
+                          # self.sprite_data.get_as_bytearray(),
                           self.hide_name)
 
     @classmethod
@@ -185,10 +194,12 @@ class EnemyStats:
         hide_name_st = 0x21DE80+enemy_id
         hide_name = bool(rom[hide_name_st])
 
-        sprite_data = EnemySpriteData.from_rom(rom, enemy_id)
-        sprite_bytes = sprite_data.get_as_bytearray()
+        # sprite_data = EnemySpriteData.from_rom(rom, enemy_id)
+        # sprite_bytes = sprite_data.get_as_bytearray()
 
-        return EnemyStats(data, name, rewards, sprite_bytes, hide_name)
+        return EnemyStats(data, name, rewards,
+                          #sprite_bytes,
+                          hide_name)
 
     @classmethod
     def from_ctrom(cls, ct_rom: ctrom.CTRom, enemy_id: ctenums.EnemyID):
@@ -204,7 +215,7 @@ class EnemyStats:
         ct_rom.rom_data.seek(0x0C5E00 + 7*enemy_id)
         ct_rom.rom_data.write(self._reward_data)
 
-        self.sprite_data.write_to_ctrom(ct_rom, enemy_id)
+        # self.sprite_data.write_to_ctrom(ct_rom, enemy_id)
 
         ct_rom.rom_data.seek(0x21DE80+enemy_id)
         ct_rom.rom_data.write(self.hide_name.to_bytes(1, 'little'))
@@ -446,6 +457,18 @@ class EnemyStats:
     @secondary_attack_id.setter
     def secondary_attack_id(self, val):
         self._stat_data[0x16] = val
+
+
+def get_sprite_dict_from_ctrom(
+        ct_rom: ctrom.CTRom
+        ) -> dict[ctenums.EnemyID, EnemySpriteData]:
+    sprite_dict = {
+        enemy_id: EnemySpriteData.from_rom(ct_rom.rom_data.getbuffer(),
+                                           enemy_id)
+        for enemy_id in ctenums.EnemyID
+    }
+
+    return sprite_dict
 
 
 def get_stat_dict_from_ctrom(ct_rom: ctrom.CTRom) -> dict[ctenums.EnemyID,

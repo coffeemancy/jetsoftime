@@ -1,5 +1,6 @@
 import random
 
+import bossrandotypes as rotypes
 import bossrandoevent
 import ctenums
 import ctrom
@@ -787,16 +788,19 @@ def fix_magic_learning(config: cfg.RandoConfig):
 
 
 def restore_son_of_sun_flame(config: cfg.RandoConfig):
+    '''
+    Add fifth flame and restore vanilla flame displacements.
+    '''
     EID = ctenums.EnemyID
-    sos_scheme = cfg.bossdata.BossScheme(
-        [EID.SON_OF_SUN_EYE, EID.SON_OF_SUN_FLAME, EID.SON_OF_SUN_FLAME,
-         EID.SON_OF_SUN_FLAME, EID.SON_OF_SUN_FLAME, EID.SON_OF_SUN_FLAME],
-        [(0, 0), (0x18, -0x8), (0xC, 0x17), (-0xC, 0x17), (-0x18, -0x8),
-         (0, -0x16)],
-        [3, 4, 5, 6, 7, 8]
+    sos_scheme = rotypes.BossScheme(
+        rotypes.BossPart(EID.SON_OF_SUN_EYE, 3, (0, 0)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 4, (0x18, -0x8)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 5, (0xC, 0x17)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 6, (-0xC, 0x17)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 7, (-0x18, 0x8)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 7, (0, 0x16)),
     )
-
-    config.boss_data_dict[ctenums.BossID.SON_OF_SUN].scheme = sos_scheme
+    config.boss_data_dict[rotypes.BossID.SON_OF_SUN] = sos_scheme
 
 
 def fix_twin_boss(config: cfg.RandoConfig):

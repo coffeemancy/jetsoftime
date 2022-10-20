@@ -1,8 +1,9 @@
 from __future__ import annotations
 import copy
 
+from bossrandotypes import BossID
 from ctenums import EnemyID, TreasureID as TID, LocID, ItemID, \
-    RecruitID, CharID, BossID
+    RecruitID, CharID
 
 from enemystats import EnemyStats
 # import logicfactory

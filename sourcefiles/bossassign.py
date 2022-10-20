@@ -1,7 +1,7 @@
 import functools
 import typing
 
-import bossdata
+import bossrandotypes as rotypes
 import ctenums
 import ctrom
 import ctevent
@@ -130,7 +130,7 @@ def set_object_coordinates(script: ctevent.Event, obj_id: int,
 def are_pixel_coords_forced(
         first_x_px: int,
         first_y_px: int,
-        boss: bossdata.BossScheme
+        boss: rotypes.BossScheme
         ) -> bool:
     '''
     Determine whether a boss placed at (first_x_px, first_y_px) requires
@@ -268,7 +268,7 @@ def set_object_coordinates(script: ctevent.Event,
 # General Scheme for setting one-part boss spots
 def set_generic_one_spot_boss_script(
         script: ctevent.Event,
-        boss: bossdata.BossScheme,
+        boss: rotypes.BossScheme,
         boss_obj: int,
         show_pos_fn: typing.Callable[[ctevent.Event], int],
         last_coord_fn: typing.Callable[[ctevent.Event], int],
@@ -352,7 +352,7 @@ def set_generic_one_spot_boss_script(
 #    is_shown: Should the boss be shown by default.  Usually this is False.
 def set_generic_one_spot_boss(
         ct_rom: ctrom.CTRom,
-        boss: bossdata.BossScheme,
+        boss: rotypes.BossScheme,
         loc_id: int,
         boss_obj: int,
         show_pos_fn: typing.Callable[[ctevent.Event], int],
@@ -371,7 +371,7 @@ def set_generic_one_spot_boss(
 
 # Make a barebones object to make a boss part and hide it.
 def append_boss_object(script: ctevent.Event,
-                       boss: bossdata.BossScheme, part_index: int,
+                       boss: rotypes.BossScheme, part_index: int,
                        first_x_px: int, first_y_px: int,
                        force_pixel_coords: bool = False,
                        is_shown: bool = False) -> int:
@@ -419,7 +419,7 @@ def append_boss_object(script: ctevent.Event,
 # Following the general procedure.
 def set_generic_one_spot_boss_script_old(
         script: ctevent.Event,
-        boss: bossdata.BossScheme,
+        boss: rotypes.BossScheme,
         boss_obj: int,
         show_pos_fn: typing.Callable[[ctevent.Event], int],
         first_x: int = None,
@@ -452,7 +452,7 @@ def set_generic_one_spot_boss_script_old(
 # Begin list of assignment functions.  They have a loc_id parameter in case
 # we end up needing to duplicate a map for some reason.
 def set_manoria_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MANORIA_COMMAND):
     # 0xC6 is Yakra's map - Manoria Command
     boss_obj = 0xA
@@ -472,7 +472,7 @@ def set_manoria_boss(
 
 
 def set_heckrans_cave_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.HECKRAN_CAVE_NEW):
     # Heckran is in 0xC0 now.  Used to be 0x2F - HECKRAN_CAVE_PASSAGEWAYS
     script = ct_rom.script_manager.get_script(loc_id)
@@ -497,7 +497,7 @@ def set_heckrans_cave_boss(
 
 
 def set_denadoro_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.CAVE_OF_MASAMUNE
 ):
     # 0x97 is M&M's map - Cave of the Masamune
@@ -513,7 +513,7 @@ def set_denadoro_boss(
 
 
 def set_reptite_lair_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.REPTITE_LAIR_AZALA_ROOM):
     # 0x121 is Nizbel's map - Reptite Lair Azala's Room
     # loc_id = 0x121
@@ -529,7 +529,7 @@ def set_reptite_lair_boss(
 
 
 def set_magus_castle_flea_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID =  ctenums.LocID.MAGUS_CASTLE_FLEA):
     # 0xAD is Flea's map - Castle Magus Throne of Magic
     #loc_id = 0xAD
@@ -574,7 +574,7 @@ def set_magus_castle_flea_spot_boss(
 # Note:  Mud Imp crashes this spot.  How?  Are the beast graphics that big?
 #        Uses: Middle Ages person, skeletons, boss stuff.
 def set_magus_castle_slash_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MAGUS_CASTLE_SLASH):
     # 0xA9 is Slash's map - Castle Magus Throne of Strength
     # loc_id = 0xA9
@@ -640,7 +640,7 @@ def set_magus_castle_slash_spot_boss(
 
 
 def set_ozzies_fort_flea_plus_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.OZZIES_FORT_FLEA_PLUS):
     # loc_id = 0xB7
     boss_obj = 0x9
@@ -655,7 +655,7 @@ def set_ozzies_fort_flea_plus_spot_boss(
 
 
 def set_ozzies_fort_super_slash_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.OZZIES_FORT_SUPER_SLASH):
     # loc_id = 0xB8
 
@@ -673,7 +673,7 @@ def set_ozzies_fort_super_slash_spot_boss(
 
 
 def set_kings_trial_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.KINGS_TRIAL_NEW):
     # Yakra XIII is in 0xC1 now.
     boss_obj = 0xB
@@ -695,7 +695,7 @@ def set_kings_trial_boss(
 
 
 def set_giants_claw_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.GIANTS_CLAW_TYRANO):
 
     if EnemyID.RUST_TYRANO in boss.ids:
@@ -741,7 +741,7 @@ def set_giants_claw_boss(
 
 
 def set_tyrano_lair_midboss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.TYRANO_LAIR_NIZBEL):
     # 0x130 is the Nizbel II's map - Tyrano Lair Nizbel's Room
     # loc_id = 0x130
@@ -758,7 +758,7 @@ def set_tyrano_lair_midboss(
 
 # TODO: See if Mud Imp works here with the extra objects
 def set_zeal_palace_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ZEAL_PALACE_THRONE_NIGHT):
     # 0x14E is the Golem's map - Zeal Palace's Throneroom (Night)
     # Note this is different from vanilla, where it's 0x14C
@@ -806,7 +806,7 @@ def set_zeal_palace_boss(
 
 
 def set_epoch_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.REBORN_EPOCH):
 
     # loc_id = LocID.REBORN_EPOCH
@@ -823,7 +823,7 @@ def set_epoch_boss(
 # Twin spot is unique.  Put it after the one spot assignments
 # TODO: Check on this again if we ever allow multi-part bosses here.
 def set_twin_golem_spot(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.OCEAN_PALACE_TWIN_GOLEM):
     # This one is unique because it actually depends on the size of the boss.
     # One spot bosses will be duplicated and others will just appear as-is.
@@ -896,7 +896,7 @@ def set_twin_golem_spot(
 # quirks which make generalization annoying.  Best to waste keystrokes and
 # duplicate code.
 def set_zenan_bridge_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ZENAN_BRIDGE_BOSS):
     # 0x87 is Zombor's map - Zenan Bridge (Middle Ages)
     # Except to avoid sprite bugs we changed it
@@ -1004,7 +1004,7 @@ def set_zenan_bridge_boss(
 # TODO: Does this need the new coordinate mangling?  The coordinates all get
 #       changed by the vector_move commands.
 def set_death_peak_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.DEATH_PEAK_GUARDIAN_SPAWN):
     # 0x1EF is the Lavos Spawn's map - Death Peak Guardian Spawn
     # loc_id = 0x1EF
@@ -1063,7 +1063,7 @@ def set_death_peak_boss(
 
 
 def set_giga_mutant_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.BLACK_OMEN_GIGA_MUTANT):
     # 0x143 is the Giga Mutant's map - Black Omen 63F Divine Guardian
     # loc_id = 0x143
@@ -1140,7 +1140,7 @@ def set_giga_mutant_spot_boss(
 
 
 def set_terra_mutant_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.BLACK_OMEN_TERRA_MUTANT):
     # 0x145 is the Terra Mutant's map - Black Omen 98F Astral Guardian
     # loc_id = 0x145
@@ -1211,7 +1211,7 @@ def set_terra_mutant_spot_boss(
 
 
 def set_elder_spawn_spot_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.BLACK_OMEN_ELDER_SPAWN):
     # 0x60 is the Elder Spawn's map - Black Omen 98F Astral Progeny
     # loc_id = 0x60
@@ -1271,7 +1271,7 @@ def set_elder_spawn_spot_boss(
 
 
 def set_sun_palace_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.SUN_PALACE):
     # 0xFB is Son of Sun's map - Sun Palace
     # loc_id = 0xFB
@@ -1361,7 +1361,7 @@ def set_sun_palace_boss(
 
 
 def set_desert_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.SUNKEN_DESERT_DEVOURER):
     # 0xA1 is Retinite's map - Sunken Desert Devourer
     # loc_id = 0xA1
@@ -1431,7 +1431,7 @@ def set_desert_boss(
 
 
 def set_mt_woe_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MT_WOE_SUMMIT):
 
     if EnemyID.GIGA_GAIA_HEAD in boss.ids:
@@ -1490,7 +1490,7 @@ def set_mt_woe_boss(
 # This is line-for-line almost identical to the woe one... may be time to
 # abstract some of this out.
 def set_geno_dome_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.GENO_DOME_MAINFRAME):
 
     if EnemyID.MOTHERBRAIN in boss.ids:
@@ -1564,7 +1564,7 @@ def set_geno_dome_boss(
 
 
 def set_arris_dome_boss(
-        ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+        ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ARRIS_DOME_GUARDIAN_CHAMBER):
 
     if EnemyID.GUARDIAN in boss.ids:
@@ -1673,7 +1673,7 @@ def set_arris_dome_boss(
 
 def set_prison_catwalks_boss(
         ct_rom: ctrom.CTRom,
-        boss: bossdata.BossScheme,
+        boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.PRISON_CATWALKS):
     # loc_id = ctenums.LocID.PRISON_CATWALKS
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1770,7 +1770,7 @@ def set_prison_catwalks_boss(
     script.insert_commands(call_cmds.get_bytearray(), pos)
 
 
-def set_factory_boss(ct_rom: ctrom.CTRom, boss: bossdata.BossScheme,
+def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
                      is_vanilla: bool = False):
     loc_id = 0xE6
     script = ct_rom.script_manager.get_script(loc_id)

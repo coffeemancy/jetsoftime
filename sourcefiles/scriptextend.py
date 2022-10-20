@@ -32,6 +32,7 @@ command_len[0x12] = 2
 
 # spiral cw to
 command_len[0x15] = 3
+command_len[0x16] = 3  # Zombor's move X then Y
 
 # move obj to coords
 command_len[0x19] = 3

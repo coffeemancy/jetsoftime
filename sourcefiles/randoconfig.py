@@ -10,7 +10,7 @@ from treasures import treasuretypes
 from characters import ctpcstats, pcrecruit
 from shops import shoptypes
 
-import bossdata
+import bossrandotypes as rotypes
 import bossrandoevent as bossrando
 import enemyai
 import enemytechdb
@@ -48,11 +48,13 @@ class RandoConfig:
             item_db: itemdata.ItemDB = None,
             enemy_dict: dict[ctenums.EnemyID,
                              enemystats.EnemyStats] = None,
+            enemy_sprite_dict: dict[ctenums.EnemyID,
+                                    enemystats.EnemySpriteData] = None,
             enemy_atk_db: enemytechdb.EnemyAttackDB = None,
             enemy_ai_db: enemyai.EnemyAIDB = None,
             boss_assign_dict: dict[ctenums.LocID, ctenums.BossID] = None,
             boss_data_dict: dict[ctenums.BossID,
-                                 bossdata.Boss] = None,
+                                 rotypes.BossScheme] = None,
             tab_stats: TabStats = TabStats(1, 1, 1),
             omen_elevator_fights_up: typing.Container[int] = None,  # 0,1,2
             omen_elevator_fights_down: typing.Container[int] = None,
@@ -68,6 +70,7 @@ class RandoConfig:
         - pcstats: Stat data for all player characters (incl. DC)
         - tech_db: Tech data for all player characters
         - enemy_dict: Stat data for all enemies
+        - enemy_sprite_dict: Sprite data for all enemies
         - enemy_atk_db: Attack/Tech data for all enemies
         - boss_assign_dict: Mapping of BossSpot (LocID?) to BossID
         - boss_data_dict: Mapping of BossID to the parts/layout of each boss.
@@ -102,6 +105,7 @@ class RandoConfig:
         self.tech_db = tech_db
         self.item_db = item_db
         self.enemy_dict = enemy_dict
+        self.enemy_sprite_dict = enemy_sprite_dict
         self.enemy_atk_db = enemy_atk_db
         self.enemy_ai_db = enemy_ai_db
         self.boss_assign_dict = boss_assign_dict
@@ -200,6 +204,7 @@ class RandoConfig:
         '''
         rom_data = ct_rom.rom_data  # Some types work on bytearrays
         self.enemy_dict = enemystats.get_stat_dict_from_ctrom(ct_rom)
+        self.enemy_sprite_dict = enemystats.get_sprite_dict_from_ctrom(ct_rom)
         self.item_db = itemdata.ItemDB.from_rom(rom_data.getbuffer())
         self.pcstats = ctpcstats.PCStatsManager.from_ctrom(ct_rom)
         self.tech_db = techdb.TechDB.get_default_db(rom_data.getbuffer())

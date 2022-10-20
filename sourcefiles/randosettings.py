@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Union
 
 import ctenums
+import bossrandotypes as rotypes
 import ctoptions
 
 
@@ -179,15 +180,68 @@ class TabSettings:
     speed_max: int = 1
 
 
+class ROFlags(Flag):
+    '''
+    Flags which can be passed to boss rando.
+    '''
+    PRESERVE_PARTS = auto()
+    BOSS_SPOT_HP = auto()
+
+
 @dataclass
 class ROSettings:
-    loc_list: list[ctenums.BossID] = field(default_factory=list)
-    boss_list: list[ctenums.BossID] = field(default_factory=list)
-    preserve_parts: bool = False
+    '''
+    Full Boss Rando settings allow specification of which bosses/spots are
+    in the pool as well as some additional flags.
+    '''
+    spots: list[rotypes.BossSpotID] = field(default_factory=list)
+    bosses: list[rotypes.BossID] = field(default_factory=list)
+    flags: ROFlags = ROFlags(0)
 
+    @classmethod
+    def from_game_mode(
+            cls,
+            mode: GameMode,
+            boss_list: list[ctenums.BossID] = None,
+            ro_flags: ROFlags = ROFlags(0)
+            ) -> ROSettings:
+        '''
+        Construct an ROSettings object with correct initial locations given
+        the game mode.
+        '''
+        spots = []
+        BS = rotypes.BossSpotID
+        if mode == GameMode.LOST_WORLDS:
+            spots = [
+                BS.ARRIS_DOME, BS.GENO_DOME, BS.SUN_PALACE, BS.MT_WOE,
+                BS.REPTITE_LAIR, BS.DEATH_PEAK, BS.ZEAL_PALACE,
+                BS.OCEAN_PALACE_TWIN_GOLEM, BS.BLACK_OMEN_GIGA_MUTANT,
+                BS.BLACK_OMEN_TERRA_MUTANT, BS.BLACK_OMEN_ELDER_SPAWN
+            ]
+        elif mode == GameMode.LEGACY_OF_CYRUS:
+            removed_spots = [
+                BS.ARRIS_DOME, BS.GENO_DOME, BS.SUN_PALACE,
+                BS.DEATH_PEAK, BS.BLACK_OMEN_ELDER_SPAWN,
+                BS.BLACK_OMEN_GIGA_MUTANT, BS.BLACK_OMEN_ELDER_SPAWN,
+                BS.PRISON_CATWALKS, BS.FACTORY_RUINS
+            ]
+            spots = [
+                spot for spot in list(BS)
+                if spot not in removed_spots
+            ]
+        else:  # Std, IA, Vanilla
+            spots = list(BS)
+
+        if boss_list is None:
+            boss_list = list(rotypes.BossID)
+
+        return ROSettings(spots, boss_list, ro_flags)
 
 @dataclass
 class BucketSettings:
+    '''
+    Class for settings passed to bucket flag.
+    '''
     num_fragments: int = 15
     needed_fragments: int = 10
 
@@ -263,17 +317,7 @@ class Settings:
         self.gameflags = GameFlags(0)
         self.char_choices = [[i for i in range(7)] for j in range(7)]
 
-        BossID = ctenums.BossID
-        boss_list = \
-            BossID.get_one_part_bosses() + BossID.get_two_part_bosses()
-
-        boss_list += [BossID.SON_OF_SUN, BossID.RETINITE,
-                      BossID.MOTHER_BRAIN, BossID.GIGA_GAIA,
-                      BossID.GUARDIAN]
-
-        loc_list = ctenums.LocID.get_boss_locations()
-
-        self.ro_settings = ROSettings(loc_list, boss_list, False)
+        self.ro_settings = ROSettings.from_game_mode(self.game_mode)
         self.bucket_settings = BucketSettings()
 
         self.tab_settings = TabSettings()
@@ -351,6 +395,7 @@ class Settings:
         ret.gameflags = (GameFlags.FIX_GLITCH | GameFlags.ZEAL_END)
 
         ret.seed = ''
+
         return ret
 
     def get_hard_presets():

@@ -15,11 +15,11 @@ from tkinter import messagebox
 
 # custom/local libraries
 import randomizer
-import bossdata
+import bossrandotypes as rotypes
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags, \
     BucketSettings, GameMode, MysterySettings
-from ctenums import LocID, BossID, ActionMap, InputMap
+from ctenums import LocID, ActionMap, InputMap
 import ctoptions
 import ctrom
 import ctstrings
@@ -242,6 +242,8 @@ class RandoGUI:
         # self.location_listbox and self.boss_listbox will report their
         # selections as indices into the following two lists
         self.boss_locations = LocID.get_boss_locations()
+
+        BossID = rotypes.BossID
         self.bosses = list(BossID)
 
         no_shuffle_bosses = [
@@ -1433,8 +1435,7 @@ class RandoGUI:
         
 
         # Check for bad input from RO page
-
-        boss_loc_dict = bossdata.get_default_boss_assignment()
+        boss_loc_dict = rotypes.get_default_boss_assignment()
 
         if self.flag_dict[GameFlags.BOSS_RANDO].get() == 1 or \
            self.flag_dict[GameFlags.MYSTERY].get() == 1:
@@ -1447,7 +1448,7 @@ class RandoGUI:
                 # goes away in favor of 'Safe Mode' flags.
 
                 # Check one spots
-                one_part_bosses = BossID.get_one_part_bosses()
+                one_part_bosses = rotypes.get_one_part_bosses()
                 one_part_boss_ind = [
                     i for i in boss_selection_ind
                     if self.bosses[i] in one_part_bosses
@@ -1470,7 +1471,7 @@ class RandoGUI:
                     return False
 
                 # Check two spots -- some code duplication here is ugly
-                two_part_bosses = BossID.get_two_part_bosses()
+                two_part_bosses = rotypes.get_two_part_bosses()
                 two_part_boss_ind = [
                     i for i in boss_selection_ind
                     if self.bosses[i] in two_part_bosses
@@ -2002,7 +2003,7 @@ class RandoGUI:
         # frame for three special buttons
         frame = ttk.Frame(outerframe)
 
-        boss_loc_dict = bossdata.get_default_boss_assignment()
+        boss_loc_dict = rotypes.get_default_boss_assignment()
 
         # Helper method for propogating locations to bosses
         def location_to_boss():

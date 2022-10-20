@@ -1,6 +1,5 @@
 import hashlib
 
-import ctenums
 import ctevent
 import freespace
 

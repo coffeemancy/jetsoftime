@@ -1,15 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import auto
-import json
-import math
-import typing
 
-import bossdata
+import bossrandotypes as rotypes
 import bossscaler
 import enemystats
 import ctenums
-import ctrom
 
 import randosettings as rset
 import randoconfig as cfg
@@ -39,13 +36,107 @@ class BossSpotID(ctenums.StrIntEnum):
     GENO_DOME = auto()
     MT_WOE = auto()
     ARRIS_DOME = auto()
+    FACTORY_RUINS = auto()
+    PRISON_CATWALKS = auto()
+    EPOCH_REBORN = auto()
 
+
+@dataclass
+class SpotReward:
+    xp: int = 0
+    tp: int = 0
+    gp: int = 0
+
+
+def get_spot_reward_dict(
+        settings: rset.Settings,
+        config: cfg.RandoConfig
+        ) -> dict[rotypes.BossSpotID, SpotReward]:
+    '''
+    Get the xp/tp/gp reward for each boss spot
+    '''
+    reward_dict = {}
+    stat_dict = config.enemy_dict
+
+    for boss_spot, boss_id in rotypes.get_default_boss_assignment().items():
+        scheme = config.boss_data_dict[boss_id]
+        xp = sum(stat_dict[part.enemy_id].xp for part in scheme.parts)
+        tp = sum(stat_dict[part.enemy_id].tp for part in scheme.parts)
+        gp = sum(stat_dict[part.enemy_id].gp for part in scheme.parts)
+
+        reward_dict[boss_spot] = SpotReward(xp, tp, gp)
+
+    return reward_dict
+
+
+def distribute_rewards(
+        spot_reward: SpotReward,
+        scheme: rotypes.BossScheme,
+        stat_dict: dict[ctenums.EnemyID, enemystats.EnemyStats]
+        ):
+    '''
+    Distribute spot_reward over the parts of scheme with the same distribution.
+    '''
+    # print(f'Distributing {spot_reward} to {scheme}')
+    total_xp = sum(stat_dict[part.enemy_id].xp for part in scheme.parts)
+    total_tp = sum(stat_dict[part.enemy_id].tp for part in scheme.parts)
+    total_gp = sum(stat_dict[part.enemy_id].gp for part in scheme.parts)
+
+    part_ids = [part.enemy_id for part in scheme.parts]
+    part_counts = {
+        part.enemy_id: part_ids.count(part.enemy_id)
+        for part in set(scheme.parts)
+    }
+
+    for part in set(scheme.parts):
+        part_id = part.enemy_id
+        count = part_counts[part_id]
+
+        if total_xp == 0:
+            xp_share = count / len(part_ids)
+        else:
+            xp_share = count*stat_dict[part_id].xp/total_xp
+
+        if total_tp == 0:
+            tp_share = count / len(part_ids)
+        else:
+            tp_share = count*stat_dict[part_id].tp/total_tp
+
+        if total_gp == 0:
+            gp_share = count / len(part_ids)
+        else:
+            gp_share = count*stat_dict[part_id].gp/total_gp
+
+        new_xp = round(xp_share*spot_reward.xp)
+        new_tp = round(tp_share*spot_reward.tp)
+        new_gp = round(gp_share*spot_reward.gp)
+        stat_dict[part_id].xp = new_xp
+        stat_dict[part_id].tp = new_tp
+        stat_dict[part_id].gp = new_gp
+
+        # print(f'\t{part_id}: xp={new_xp}, tp={new_tp}, gp=new{new_gp}')
+
+    # TODO:  Total may be off by 1.  Fix if so desired.
+
+
+def get_spot_hp_dict(settings: rset.Settings, config: cfg.RandoConfig):
+
+    hp_dict = get_initial_hp_dict(settings, config)
+    spot_hp_dict = {}
+    
+    default_assignment = rotypes.get_default_boss_assignment()
+    for spot in config.boss_assign_dict:
+        default_boss = default_assignment[spot]
+        scheme = config.boss_data_dict[default_boss]
+        spot_hp_dict[spot] = get_boss_total_hp(scheme, hp_dict)
+
+    return spot_hp_dict
 
 def get_initial_hp_dict(settings: rset.Settings, config: cfg.RandoConfig):
     hp_dict = {
-        part: config.enemy_dict[part].hp
-        for boss_id in list(ctenums.BossID)
-        for part in config.boss_data_dict[boss_id].scheme.ids
+        part.enemy_id: config.enemy_dict[part.enemy_id].hp
+        for boss_id in list(rotypes.BossID)
+        for part in config.boss_data_dict[boss_id].parts
     }
 
     if rset.GameFlags.BOSS_SCALE in settings.gameflags:
@@ -54,7 +145,7 @@ def get_initial_hp_dict(settings: rset.Settings, config: cfg.RandoConfig):
 
         # That is, if Reptite Lair's boss is rank 3, we want the boss
         # to have the HP of a rank 3 Nizbel.
-        default_assignment = bossdata.get_default_boss_assignment()
+        default_assignment = rotypes.get_default_boss_assignment()
         current_assignment = dict(config.boss_assign_dict)
 
         for loc_id in default_assignment:
@@ -75,43 +166,33 @@ def get_initial_hp_dict(settings: rset.Settings, config: cfg.RandoConfig):
 
     return hp_dict
 
+
 def get_scaled_hp_dict(
-        from_boss: bossdata.Boss,
-        to_boss: bossdata.Boss,
-        hp_dict: dict[ctenums.EnemyID, int],
-        additional_power_scaling: bool = False
+        from_boss: rotypes.BossScheme,
+        to_boss: rotypes.BossScheme,
+        hp_dict: dict[ctenums.EnemyID, int]
 ) -> dict[ctenums.EnemyID, int]:
-    boss_total_hp = get_boss_total_hp(from_boss.scheme, hp_dict)
-    scaled_hp_dict = get_part_new_hps(to_boss.scheme, hp_dict, boss_total_hp)
-
-    # I fear that many bosses become too easy in endgame spots with with
-    # spot-based hp values.  This does something do alleviate the problem.
-    if additional_power_scaling:
-        hp_mod = get_power_scale_factor(
-            from_boss.power, to_boss.power
-        )
-
-        for part in hp_dict:
-            scaled_hp_dict[part] = scaled_hp_dict[part] * hp_mod
+    boss_total_hp = get_boss_total_hp(from_boss, hp_dict)
+    scaled_hp_dict = get_part_new_hps(to_boss, hp_dict, boss_total_hp)
 
     return scaled_hp_dict
 
 
-def get_power_scale_factor(
-        from_power: int,
-        to_power: int
-) -> float:
-    '''
-    Determine additional hp scaling based on power differential.
-    '''
-    hp_mod = round(math.log2(to_power/from_power))
-    hp_mod = 1+0.1*hp_mod
+def distribute_hp(
+        from_scheme: rotypes.BossScheme,
+        to_scheme: rotypes.BossScheme,
+        hp_dict: dict[ctenums.EnemyID, int],
+        scaled_stats: dict[ctenums.EnemyID, enemystats.EnemyStats]
+        ):
+    total_hp = get_boss_total_hp(from_scheme, hp_dict)
+    scaled_hp_dict = get_part_new_hps(to_scheme, hp_dict, total_hp)
 
-    return hp_mod
+    for part in scaled_hp_dict:
+        scaled_stats[part].hp = scaled_hp_dict[part]
 
 
 def get_boss_total_hp(
-        boss_scheme: bossdata.BossScheme,
+        boss_scheme: rotypes.BossScheme,
         hp_dict: dict[ctenums.EnemyID, int]
 ) -> int:
 
@@ -145,7 +226,7 @@ def get_boss_total_hp(
 
 
 def get_part_new_hps(
-        boss_scheme: bossdata.BossScheme,
+        boss_scheme: rotypes.BossScheme,
         hp_dict: dict[ctenums.EnemyID, int],
         new_hp: int
 ) -> dict[ctenums.EnemyID, int]:
@@ -156,7 +237,7 @@ def get_part_new_hps(
                     EnID.ELDER_SPAWN_HEAD,
                     EnID.GUARDIAN,
                     EnID.GIGA_GAIA_HEAD])
-    
+
     if len(boss_scheme.ids) == 1:
         if boss_scheme.ids[0] == EnID.RUST_TYRANO:
             new_hp = round(new_hp * 1.75)

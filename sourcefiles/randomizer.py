@@ -6,7 +6,6 @@ import pickle
 import sys
 import json
 
-import bossdata
 import charassign
 import enemystats
 import itemdata
@@ -17,6 +16,7 @@ from treasures import treasurewriter, treasuretypes
 from shops import shopwriter
 import logicwriters as logicwriter
 import bossrandoevent as bossrando
+import bossrandotypes as rotypes
 import bossscaler
 import tabchange as tabwriter
 import fastmagic
@@ -195,36 +195,6 @@ class Randomizer:
 
         # Ice age GG buffs if IA flag is present in settings.
         iceage.write_config(self.settings, self.config)
-
-    def rescale_bosses(self):
-        '''Reset enemy stats and redo boss scaling.'''
-        if self.settings is None:
-            raise NoSettingsException
-
-        if self.config is None:
-            raise NoConfigException
-
-        config = self.get_base_config_from_settings(
-            self.base_ctrom.rom_data.getbuffer(),
-            self.settings
-        )
-
-        for loc in self.config.boss_assign_dict:
-            boss = self.config.boss_assign_dict[loc]
-            scheme = self.config.boss_data_dict[boss].scheme
-
-            for part in set(scheme.ids):
-                stats = self.config.enemy_dict[part]
-                charm = stats.charm_item
-                drop = stats.drop_item
-
-                config.enemy_dict[part].charm_item = charm
-                config.enemy_dict[part].drop_item = drop
-
-                self.config.enemy_dict[part] = config.enemy_dict[part]
-
-        bossrando.scale_bosses_given_assignment(self.settings, self.config)
-        bossscaler.set_boss_power(self.settings, self.config)
 
 
     @classmethod
@@ -1181,12 +1151,12 @@ class Randomizer:
 
         boss_dict = self.config.boss_assign_dict
         boss_data_dict = self.config.boss_data_dict
-        twin_type = boss_data_dict[ctenums.BossID.TWIN_BOSS].scheme.ids[0]
+        twin_type = boss_data_dict[rotypes.BossID.TWIN_BOSS].parts[0].enemy_id
         twin_name = self.config.enemy_dict[twin_type].name
         width = max(len(str(x)) for x in boss_dict.keys()) + 8
 
         for location in boss_dict.keys():
-            if boss_dict[location] == ctenums.BossID.TWIN_BOSS:
+            if boss_dict[location] == rotypes.BossID.TWIN_BOSS:
                 boss_name = 'Twin ' + str(twin_name)
             else:
                 boss_name = str(boss_dict[location])
@@ -1202,7 +1172,7 @@ class Randomizer:
     def write_boss_stat_spoilers(self, file_object):
 
         scale_dict = self.config.boss_rank_dict
-        BossID = ctenums.BossID
+        BossID = rotypes.BossID
 
         file_object.write("Boss Stats\n")
         file_object.write("----------\n")
@@ -1259,8 +1229,8 @@ class Randomizer:
 
             file_object.write('\n')
 
-            boss = self.config.boss_data_dict[boss_id]
-            part_ids = list(dict.fromkeys(boss.scheme.ids))
+            boss_scheme = self.config.boss_data_dict[boss_id]
+            part_ids = [part.enemy_id for part in boss_scheme]
             for part_id in part_ids:
                 if len(part_ids) > 1:
                     file_object.write(f"Part: {part_id}\n")
@@ -1470,7 +1440,7 @@ class Randomizer:
 
     @classmethod
     def fill_default_config_entries(cls, config: cfg.RandoConfig):
-        config.boss_assign_dict = bossdata.get_default_boss_assignment()
+        config.boss_assign_dict = rotypes.get_default_boss_assignment()
         config.treasure_assign_dict = treasuretypes.get_base_treasure_dict()
         config.char_assign_dict = pcrecruit.get_base_recruit_dict()
         config.boss_rank_dict = {}
@@ -1505,7 +1475,7 @@ class Randomizer:
         Randomizer.__apply_basic_patches(ct_rom)
         config = cfg.RandoConfig()
         cls.fill_default_config_entries(config)
-        config.boss_data_dict = bossdata.get_boss_data_dict(settings)
+        config.boss_data_dict = rotypes.get_boss_data_dict()
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
             config.update_from_ct_rom(ct_vanilla)

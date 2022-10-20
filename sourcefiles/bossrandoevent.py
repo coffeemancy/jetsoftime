@@ -2,30 +2,34 @@ from __future__ import annotations
 import random
 
 # from ctdecompress import compress, decompress, get_compressed_length
-from bossdata import get_default_boss_assignment
 import bossscaler
 import bossspot
 import bossassign
-from ctenums import LocID, BossID, EnemyID, CharID, Element, StatusEffect,\
+import bossrandoscaling as roscale
+import bossrandotypes as bt
+from ctenums import LocID, EnemyID, CharID, Element, StatusEffect,\
     RecruitID
 from ctrom import CTRom
 import enemyrewards
+import enemystats
 from eventcommand import EventCommand as EC
 
 import randosettings as rset
 import randoconfig as cfg
 
 
-# When Giga Gaia and Mother Brain get put into the pool, Zenan Bridge will
-# hit the sprite limit.  This function will copy Zenan Bridge to a new map
-# and adjust the scripts to link them together appropriately.
+class InsufficientSpotsException(Exception):
+    pass
 
 
 def get_alt_twin_slot(config: cfg.RandoConfig,
-                      one_spot_boss: BossID) -> int:
+                      one_spot_boss: bt.BossID) -> int:
+    '''
+    Determine what the second slot should be when making the twin boss.
+    '''
     base_boss = config.boss_data_dict[one_spot_boss]
-    base_slot = base_boss.scheme.slots[0]
-    base_id = base_boss.scheme.ids[0]
+    base_slot = base_boss.parts[0].slot
+    base_id = base_boss.parts[0].enemy_id
 
     # The enemy slot for the twin is finnicky.  There is a general rule
     # that works based on the base boss's slot.
@@ -50,257 +54,319 @@ def get_alt_twin_slot(config: cfg.RandoConfig,
     return alt_slot
 
 
+def update_twin_boss(settings: rset.Settings,
+                     config: cfg.RandoConfig):
+    '''
+    Use the assignment made in config.boss_assign_dict to update the twin
+    boss's data (ai, animations, graphics, stats)
+    '''
+    twin_type = config.boss_assign_dict[bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM]
+    set_twin_boss_data_in_config(twin_type, settings, config)
+
+
 # Write the new EnemyID and slots into the Twin Boss data.
 # This is also a convenient time to do the scaling, but it does make it weird
 # when doing the rest of the scaling.
-def set_twin_boss_in_config(one_spot_boss: BossID,
-                            settings: rset.Settings,
-                            config: cfg.RandoConfig):
-    # If the base boss is golem, then we don't have to do anything because
-    # patch.ips writes a super-golem in to the twin boss slot.
-
-    # print(f'Writing {one_spot_boss} to twin boss.')
-    if one_spot_boss != BossID.GOLEM:
-        twin_boss = config.boss_data_dict[BossID.TWIN_BOSS]
-        base_boss = config.boss_data_dict[one_spot_boss]
-        base_id = base_boss.scheme.ids[0]
-        base_slot = base_boss.scheme.slots[0]
-
-        config.twin_boss_type = base_id
-
-        alt_slot = get_alt_twin_slot(config, one_spot_boss)
-
-        # Set the twin boss scheme
-        # Note, we do not change the EnemyID from EnemyID.TWIN_BOSS.
-        # The stats, graphics, etc will all be copies from the original boss
-        # into the Twin spot.
-        twin_boss.scheme.slots = [base_slot, alt_slot]
-
-        # Give the twin boss the base boss's ai
-        config.enemy_ai_db.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
-        config.enemy_atk_db.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
-
-        twin_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
-
-        base_stats = config.enemy_dict[base_id].get_copy()
-
-        base_stats.xp = twin_stats.xp
-        base_stats.tp = twin_stats.tp
-        base_stats.gp = twin_stats.gp
-
-        config.enemy_dict[EnemyID.TWIN_BOSS] = base_stats
-        orig_twin_power = config.boss_data_dict[BossID.TWIN_BOSS].power
-        orig_power = config.boss_data_dict[one_spot_boss].power
-        twin_boss.power = orig_power
-
-        # Scale the stats and write them to the twin boss spot in the config
-        # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
-        scaled_stats = twin_boss.scale_to_power(
-            orig_twin_power,
-            config.enemy_dict,
-            config.enemy_atk_db,
-            config.enemy_ai_db
-        )[EnemyID.TWIN_BOSS]
-
-        if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
-            twin_hp = twin_stats.hp
-            new_hp = bossspot.get_part_new_hps(
-                base_boss.scheme,
-                config.enemy_dict,
-                twin_hp
-            )[base_id]
-
-            # This may be configurable in RO settings eventually
-            additional_power_scaling = False
-            if additional_power_scaling:
-                hp_mod = bossspot.get_power_scale_factor(
-                    base_boss.power, twin_boss.power
-                )
-                new_hp *= hp_mod
-
-            scaled_stats.hp = new_hp
-
-        # Just here for rusty.
-        scaled_stats.sprite_data.set_affect_layer_1(False)
-
-        twin_boss.power = orig_power
-        config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
-
-        # Special case scaling
-        if base_id == EnemyID.RUST_TYRANO:
-            elem = random.choice(list(Element))
-            set_rust_tyrano_element(EnemyID.TWIN_BOSS, elem,
-                                    config)
-            set_rust_tyrano_script_mag(EnemyID.TWIN_BOSS, config)
-
-        if base_id == EnemyID.YAKRA_XIII:
-            set_yakra_xiii_offense_boost(EnemyID.TWIN_BOSS, config)
-
-
-# This function needs to write the boss assignment to the config respecting
-# the provided settings.
-def write_assignment_to_config(settings: rset.Settings,
-                               config: cfg.RandoConfig):
-
-    if rset.GameFlags.BOSS_RANDO not in settings.gameflags:
-        config.boss_assign_dict = get_default_boss_assignment()
+def set_twin_boss_data_in_config(one_spot_boss: bt.BossID,
+                                 settings: rset.Settings,
+                                 config: cfg.RandoConfig):
+    # If the base boss is golem, then we don't have to do anything
+    if one_spot_boss == bt.BossID.GOLEM:
         return
 
-    boss_settings = settings.ro_settings
+    twin_boss = config.boss_data_dict[bt.BossID.TWIN_BOSS]
+    base_boss = config.boss_data_dict[one_spot_boss]
 
-    if boss_settings.preserve_parts:
-        # Do some checks to make sure that the lists are ok.
-        # TODO:  Make these sets to avoid repeat element errors.
+    base_id = base_boss.parts[0].enemy_id
+    base_slot = base_boss.parts[0].slot
 
-        for boss in [BossID.SON_OF_SUN, BossID.RETINITE]:
-            if boss in boss_settings.boss_list:
-                print(f"Legacy Boss Randomization: Removing {boss} from the "
-                      'boss pool')
-                boss_settings.boss_list.remove(boss)
+    alt_slot = get_alt_twin_slot(config, one_spot_boss)
 
-        for loc in [LocID.SUNKEN_DESERT_DEVOURER, LocID.SUN_PALACE]:
-            if loc in boss_settings.loc_list:
-                print(f"Legacy Boss Randomization: Removing {loc} from the "
-                      'location pool')
-                boss_settings.loc_list.remove(loc)
+    # Set the twin boss scheme
+    # Note, we do not change the EnemyID from EnemyID.TWIN_BOSS.
+    # The stats, graphics, etc will all be copies from the original boss
+    # into the Twin spot.
+    twin_boss.parts[0].slot = base_slot
+    twin_boss.parts[1].slot = alt_slot
 
-        # Make sure that there are enough one/two partbosses to distribute to
-        # the one/two part locations
-        one_part_bosses = [boss for boss in boss_settings.boss_list
-                           if boss in BossID.get_one_part_bosses()]
+    # Give the twin boss the base boss's ai
+    config.enemy_ai_db.change_enemy_ai(EnemyID.TWIN_BOSS, base_id)
+    config.enemy_atk_db.copy_atk_gfx(EnemyID.TWIN_BOSS, base_id)
 
-        one_part_locations = [loc for loc in boss_settings.loc_list
-                              if loc in LocID.get_one_spot_boss_locations()]
+    twin_stats = config.enemy_dict[EnemyID.TWIN_BOSS]
+    base_stats = config.enemy_dict[base_id].get_copy()
 
-        # Now, we're allowing a repeat assignment to ocean palace, so it does
-        # not require a unique boss to go there.
-        if LocID.OCEAN_PALACE_TWIN_GOLEM in one_part_locations:
-            has_twin_spot = True
-            num_one_part_locs = len(one_part_locations) - 1
-        else:
-            has_twin_spot = False
-            num_one_part_locs = len(one_part_locations)
+    base_stats.xp = twin_stats.xp
+    base_stats.tp = twin_stats.tp
+    base_stats.gp = twin_stats.gp
 
-        if len(one_part_bosses) < num_one_part_locs:
-            print("Legacy Boss Randomization Error: "
-                  f"{len(one_part_locations)} "
-                  "one part locations provided but "
-                  f"only {len(one_part_bosses)} one part bosses provided.")
-            exit()
+    config.enemy_dict[EnemyID.TWIN_BOSS] = base_stats
+    base_power = roscale.get_base_boss_power(one_spot_boss, settings)
+    twin_power = roscale.get_base_boss_power(bt.BossID.TWIN_BOSS, settings)
 
-        two_part_bosses = [boss for boss in boss_settings.boss_list
-                           if boss in BossID.get_two_part_bosses()]
+    # Scale the stats and write them to the twin boss spot in the config
+    # TODO: Golem has bespoke twin scaling.  Maybe everyone should?
+    scaled_stats = roscale.scale_boss_scheme_progessive(
+        twin_boss, base_power, twin_power, config.enemy_dict,
+        config.enemy_atk_db, config.enemy_ai_db,
+        settings.game_mode
+    )[EnemyID.TWIN_BOSS]
 
-        two_part_locations = [loc for loc in boss_settings.loc_list
-                              if loc in LocID.get_two_spot_boss_locations()]
+    if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
+        twin_hp = twin_stats.hp
+        new_hp = bossspot.get_part_new_hps(
+            base_boss.scheme, config.enemy_dict, twin_hp
+        )[base_id]
+        scaled_stats.hp = new_hp
 
-        if len(two_part_bosses) < len(two_part_locations):
-            print("Legacy Boss Randomization Error: "
-                  f"{len(two_part_locations)} "
-                  "two part locations provided but "
-                  f"only {len(two_part_locations)} two part bosses provided.")
-            exit()
+    config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
 
-        # Now do the assignment
+    orig_sprite_data = config.enemy_sprite_dict[base_id].get_copy()
+    orig_sprite_data.set_affect_layer_1(False)      # Just here for rusty.
+    config.enemy_sprite_dict[EnemyID.TWIN_BOSS] = orig_sprite_data
 
-        # First make an assignment to the twin spot and remove that location
-        # from the list.
-        if has_twin_spot:
-            twin_boss = random.choice(one_part_bosses)
-            set_twin_boss_in_config(twin_boss, settings, config)
-            config.boss_assign_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] = \
-                BossID.TWIN_BOSS
-            one_part_locations.remove(LocID.OCEAN_PALACE_TWIN_GOLEM)
+    # Special case scaling in ai scripts
+    if base_id == EnemyID.RUST_TYRANO:
+        elem = random.choice(list(Element))
+        set_rust_tyrano_element(EnemyID.TWIN_BOSS, elem,
+                                config)
+        set_rust_tyrano_script_mag(EnemyID.TWIN_BOSS, config)
+    elif base_id == EnemyID.YAKRA_XIII:
+        set_yakra_xiii_offense_boost(EnemyID.TWIN_BOSS, config)
 
-        # Shuffle the bosses and assign the head of the list to the remaining
-        # locations.
-        random.shuffle(one_part_bosses)
-        for i in range(len(one_part_locations)):
-            boss = one_part_bosses[i]
-            location = one_part_locations[i]
-            config.boss_assign_dict[location] = boss
 
-        random.shuffle(two_part_bosses)
+def get_random_assignment(
+        spots: list[bt.BossSpotID],
+        bosses: list[bt.BossID]
+        ) -> dict[bt.BossSpotID, bt.BossID]:
 
-        for i in range(len(two_part_locations)):
-            boss = two_part_bosses[i]
-            location = two_part_locations[i]
-            config.boss_assign_dict[location] = boss
-    else:  # Ignore part count, just randomize!
-        locations = boss_settings.loc_list
-        bosses = boss_settings.boss_list
+    if len(spots) > len(bosses):
+        raise InsufficientSpotsException
 
-        # Why sort before shuffling?
-        # Because the order in which the settings file specifies the bosses
-        # and locations should not change the randomized output.
-        # Boss/location enums IntEnums so it's fine to sort.
-        bosses = sorted(bosses)
-        locations = list(sorted(locations))  # Copy because we'll edit it
+    random.shuffle(bosses)
 
-        # Make a special assignment for Twin Golem Spot
-        if LocID.OCEAN_PALACE_TWIN_GOLEM in locations:
-            # Make a decision on how frequently to see a multi-part boss
-            # in the twin spot.  For now, always choose a one-parter if
-            # there is one.
-            one_part_bosses = [boss for boss in bosses if
-                               boss in BossID.get_one_part_bosses()]
+    # Zip only goes through the smaller of the two.
+    return {spot: boss for spot, boss in zip(spots, bosses)}
 
-            if one_part_bosses:
-                twin_boss = random.choice(one_part_bosses)
-                set_twin_boss_in_config(twin_boss, settings, config)
-                config.boss_data_dict[LocID.OCEAN_PALACE_TWIN_GOLEM] = \
-                    BossID.TWIN_BOSS
 
-                # Remove twin spot from the list.
-                # Do not remove the boss.  It can be assigned elsewhere too.
-                locations.remove(LocID.OCEAN_PALACE_TWIN_GOLEM)
+def get_legacy_assignment(
+        available_spots: list[bt.BossSpotID],
+        available_bosses: list[bt.BossID]
+) -> dict[bt.BossSpotID, bt.BossID]:
+    '''
+    Produce a random assignment where one/two-part bosses are paired with
+    one/two-part spots.  No assignment is made in other spots.
+    '''
+    all_one_part_bosses = bt.get_one_part_bosses()
+    one_part_bosses = [
+        boss_id for boss_id in available_bosses
+        if boss_id in all_one_part_bosses
+    ]
 
-            # If no one part bosses have been provided, then make no special
-            # assignment.  Just proceed as usual.
+    all_one_part_spots = bt.get_one_part_boss_spots()
+    one_part_spots = [
+        boss_spot_id for boss_spot_id in available_spots
+        if boss_spot_id in all_one_part_spots
+    ]
 
-        if len(bosses) < len(locations):
-            print('RO Error: Fewer bosses than locations given.')
-            exit()
+    all_two_part_bosses = bt.get_two_part_bosses()
+    two_part_bosses = [
+        boss_id for boss_id in available_bosses
+        if boss_id in all_two_part_bosses
+    ]
 
-        random.shuffle(bosses)
-        for i in range(len(locations)):
-            config.boss_assign_dict[locations[i]] = bosses[i]
+    all_two_part_spots = bt.get_two_part_boss_spots()
+    two_part_spots = [
+        boss_spot_id for boss_spot_id in available_spots
+        if boss_spot_id in all_two_part_spots
+    ]
+    try:
+        boss_assignment = get_random_assignment(one_part_spots,
+                                                one_part_bosses)
+    except InsufficientSpotsException as e:
+        raise InsufficientSpotsException(
+            'Error in one spot legacy assignment.'
+        ) from e
 
-    # Force GG on Woe for Ice Age
+    try:
+        two_part_assignment = get_random_assignment(two_part_spots,
+                                                    two_part_bosses)
+    except InsufficientSpotsException as e:
+        raise InsufficientSpotsException(
+            'Error in two spot legacy assignment.'
+        ) from e
+
+    boss_assignment.update(two_part_assignment)
+    return boss_assignment
+
+
+def write_assignment_to_config(settings: rset.Settings,
+                               config: cfg.RandoConfig):
+    '''
+    Write boss assignment to config.
+    '''
+    if rset.GameFlags.BOSS_RANDO not in settings.gameflags:
+        return
+
+    # Restrict default assignment to the provided spots.
+    boss_assignment = bt.get_default_boss_assignment()
+    boss_assignment = {
+        spot: boss for (spot, boss) in boss_assignment.items()
+        if spot in settings.ro_settings.spots
+    }
+
+    # Use fixed order.  Ordering in the ROSettings won't change assignment.
+    available_spots = [spot for spot in bt.BossSpotID
+                       if spot in settings.ro_settings.spots]
+    available_bosses = bt.get_assignable_bosses()
+    available_bosses = [boss for boss in available_bosses
+                        if boss in settings.ro_settings.bosses]
+
+    # Don't randomize Giga Gaia/Woe in Ice Age
     if settings.game_mode == rset.GameMode.ICE_AGE:
-        woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
-        if woe_boss != BossID.GIGA_GAIA:
-            if BossID.GIGA_GAIA in config.boss_assign_dict.values():
-                gg_loc = next(
-                    x for x in config.boss_assign_dict
-                    if config.boss_assign_dict[x] == BossID.GIGA_GAIA
-                )
-                config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
-                    BossID.GIGA_GAIA
-                config.boss_assign_dict[gg_loc] = woe_boss
-            else:
-                config.boss_assign_dict[LocID.MT_WOE_SUMMIT] = \
-                    BossID.GIGA_GAIA
+        if bt.BossID.GIGA_GAIA in available_bosses:
+            available_bosses.remove(bt.BossID.GIGA_GAIA)
 
-    # Sprite data changes
-    # Guardian is given Nu's appearance outside of Arris Dome
-    arris_boss = config.boss_assign_dict[LocID.ARRIS_DOME_GUARDIAN_CHAMBER]
-    if arris_boss != BossID.GUARDIAN:
-        nu_sprite = config.enemy_dict[EnemyID.NU].sprite_data.get_copy()
-        guardian_data = config.enemy_dict[EnemyID.GUARDIAN]
-        guardian_data.sprite_data = nu_sprite
+        if bt.BossSpotID.MT_WOE in available_spots:
+            available_spots.remove(bt.BossSpotID.MT_WOE)
 
-    # GG needs to not affect Layer1 when it is outside of Woe
-    woe_boss = config.boss_assign_dict[LocID.MT_WOE_SUMMIT]
-    if woe_boss != BossID.GIGA_GAIA:
-        gg_data = config.enemy_dict[EnemyID.GIGA_GAIA_HEAD]
-        gg_data.sprite_data.set_affect_layer_1(False)
+    # Make a twin spot assignment. whenever the twin spot is in the pool.
+    if bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM in available_spots:
+        all_one_part_bosses = bt.get_one_part_bosses()
+        available_one_part_bosses = [
+            boss_id for boss_id in available_bosses
+            if boss_id in all_one_part_bosses
+        ]
+        twin_choice = random.choice(available_one_part_bosses)
+        # set_twin_boss_data_in_config(twin_choice, settings, config)
+        # default assignment already has twin boss assigned to ocean palace.
+        # Just make sure nothing new is done with this spot.
+        available_spots.remove(bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM)
 
-    # Same for rusty outside of giant's claw
-    claw_boss = config.boss_assign_dict[LocID.GIANTS_CLAW_TYRANO]
-    if claw_boss != BossID.RUST_TYRANO:
-        rusty_data = config.enemy_dict[EnemyID.RUST_TYRANO]
-        rusty_data.sprite_data.set_affect_layer_1(False)
+        # We're going to write the one-part BossID into the assignment dict.
+        # Otherwise plando cannot set this reasonably.
+        boss_assignment[bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM] = twin_choice
+
+
+    if rset.ROFlags.PRESERVE_PARTS in settings.ro_settings.flags:
+        legacy_assignments = get_legacy_assignment(available_spots,
+                                                   available_bosses)
+        boss_assignment.update(legacy_assignments)
+    else:
+        assignments = get_random_assignment(available_spots, available_bosses)
+        boss_assignment.update(assignments)
+
+    config.boss_assign_dict = boss_assignment
+
+
+def change_enemy_sprite(
+        from_enemy_id: EnemyID,
+        to_enemy_id: EnemyID,
+        sprite_dict: dict[EnemyID, enemystats.EnemySpriteData],
+        keep_palette: bool = True
+        ):
+    '''
+    Change an enemy's sprite data to a copy of another enemy, possibly keeping
+    the original palette.
+    '''
+    new_sprite = sprite_dict[to_enemy_id].get_copy()
+
+    if keep_palette:
+        orig_data = sprite_dict[from_enemy_id]
+        new_sprite.palette = orig_data.palette
+
+    sprite_dict[from_enemy_id] = new_sprite
+
+
+def make_boss_rando_sprite_fixes(
+        assign_dict: dict[bt.BossSpotID, bt.BossID],
+        sprite_dict: dict[EnemyID, enemystats.EnemyStats]
+        ):
+    '''
+    Make sprite edits depending on boss assignments,
+    - Make Guardian a Nu outside of Arris dome.
+    - Make the Red/Blue beast Nus in some spots.
+    - Make Giga Gaia/Rust Tyrano not affect layer1 outside of vanilla spots.
+    '''
+
+    if assign_dict[bt.BossSpotID.ARRIS_DOME] != bt.BossID.GUARDIAN:
+        change_enemy_sprite(EnemyID.GUARDIAN, EnemyID.NU, sprite_dict)
+
+    if assign_dict[bt.BossSpotID.MT_WOE] != bt.BossID.GIGA_GAIA:
+        gg_data = sprite_dict[EnemyID.GIGA_GAIA_HEAD]
+        gg_data.set_affect_layer_1(False)
+
+    if assign_dict[bt.BossSpotID.GIANTS_CLAW] != bt.BossID.RUST_TYRANO:
+        rusty_data = sprite_dict[EnemyID.RUST_TYRANO]
+        rusty_data.set_affect_layer_1(False)
+
+    # This is likely incomplete.  The beast sprites seem to use an incredible
+    # amount of space.
+    bad_mud_imp_spots = (
+        bt.BossSpotID.KINGS_TRIAL, bt.BossSpotID.MAGUS_CASTLE_SLASH
+    )
+
+    bad_spots_assigned_bosses = [
+        assign_dict[spot] for spot in bad_mud_imp_spots
+    ]
+
+    if bt.BossID.MUD_IMP in bad_spots_assigned_bosses:
+        change_enemy_sprite(EnemyID.RED_BEAST, EnemyID.NU, sprite_dict)
+        change_enemy_sprite(EnemyID.BLUE_BEAST, EnemyID.NU, sprite_dict)
+
+
+def reassign_charms_drops(settings: rset.Settings,
+                          config: cfg.RandoConfig):
+    '''
+    When bosses get moved around, their rewards are no longer appropriate for
+    that part of the game.  This function calls out to enemyrewards to redo
+    the drop/charm assignment after the boss randomization.
+    '''
+    BSID = bt.BossSpotID
+    RG = enemyrewards.RewardGroup
+    spot_rgs = {
+        BSID.MANORIA_CATHERDAL: RG.EARLY_BOSS,
+        BSID.HECKRAN_CAVE: RG.EARLY_BOSS,
+        BSID.DENADORO_MTS: RG.EARLY_BOSS,
+        BSID.ZENAN_BRIDGE: RG.EARLY_BOSS,
+        BSID.REPTITE_LAIR: RG.MIDGAME_BOSS,
+        BSID.GIANTS_CLAW: RG.MIDGAME_BOSS,
+        BSID.SUNKEN_DESERT: RG.MIDGAME_BOSS,
+        BSID.ARRIS_DOME: RG.MIDGAME_BOSS,
+        BSID.FACTORY_RUINS: RG.MIDGAME_BOSS,
+        BSID.PRISON_CATWALKS: RG.MIDGAME_BOSS,
+        BSID.KINGS_TRIAL: RG.MIDGAME_BOSS,
+        BSID.MAGUS_CASTLE_FLEA: RG.MIDGAME_BOSS,
+        BSID.MAGUS_CASTLE_SLASH: RG.MIDGAME_BOSS,
+        BSID.OZZIES_FORT_FLEA_PLUS: RG.MIDGAME_BOSS,
+        BSID.OZZIES_FORT_SUPER_SLASH: RG.MIDGAME_BOSS,
+        BSID.TYRANO_LAIR_NIZBEL: RG.MIDGAME_BOSS,
+        BSID.EPOCH_REBORN: RG.MIDGAME_BOSS,
+        BSID.SUN_PALACE: RG.LATE_BOSS,
+        BSID.ZEAL_PALACE: RG.LATE_BOSS,
+        BSID.DEATH_PEAK: RG.LATE_BOSS,
+        BSID.BLACK_OMEN_GIGA_MUTANT: RG.LATE_BOSS,
+        BSID.BLACK_OMEN_TERRA_MUTANT: RG.LATE_BOSS, 
+        BSID.BLACK_OMEN_ELDER_SPAWN: RG.LATE_BOSS,
+        BSID.OCEAN_PALACE_TWIN_GOLEM: RG.LATE_BOSS,
+        BSID.GENO_DOME: RG.LATE_BOSS,
+        BSID.MT_WOE: RG.LATE_BOSS,
+    }
+
+    if settings.game_mode == rset.GameMode.VANILLA_RANDO:
+        spot_rgs[BSID.KINGS_TRIAL] = RG.LATE_BOSS
+        spot_rgs[BSID.SUNKEN_DESERT] = RG.LATE_BOSS
+
+    for spot, boss_id in config.boss_assign_dict.items():
+        scheme =  config.boss_data_dict[boss_id]
+        reward_group = spot_rgs[spot]
+
+        part_ids = list(set(part.enemy_id for part in scheme.parts))
+        
+        for part_id in part_ids:
+            stats = config.enemy_dict[part_id]
+            enemyrewards.set_enemy_charm_drop(stats, reward_group,
+                                              settings.item_difficulty)
 
 
 # Scale the bosses given (the game settings) and the current assignment of
@@ -308,63 +374,16 @@ def write_assignment_to_config(settings: rset.Settings,
 # scales based on the key item assignment.
 def scale_bosses_given_assignment(settings: rset.Settings,
                                   config: cfg.RandoConfig):
-    # dictionaries: location --> BossID
-    default_assignment = get_default_boss_assignment()
-    current_assignment = config.boss_assign_dict
 
-    # dictionaries: BossID --> Boss data
-    orig_data = config.boss_data_dict
+    make_boss_rando_sprite_fixes(config.boss_assign_dict,
+                                 config.enemy_sprite_dict)
+    update_twin_boss(settings, config)
+    reassign_charms_drops(settings, config)
+    roscale.make_weak_obstacle_copies(config)
 
-    endgame_locs = [
-        LocID.ZEAL_PALACE_THRONE_NIGHT, LocID.OCEAN_PALACE_TWIN_GOLEM,
-        LocID.BLACK_OMEN_ELDER_SPAWN, LocID.BLACK_OMEN_GIGA_MUTANT,
-        LocID.BLACK_OMEN_TERRA_MUTANT
-    ]
-
-    # Get the new obstacle (if needed) before tech scaling.  If further
-    # obstacle duplicates are made, they will inherit the right status.
-    enemy_aidb = config.enemy_ai_db
-    early_obstacle_bosses = []
-    obstacle_bosses = [BossID.MEGA_MUTANT, BossID.TERRA_MUTANT]
-    for loc in current_assignment:
-        if current_assignment[loc] in obstacle_bosses and \
-           loc not in endgame_locs:
-
-            boss = current_assignment[loc]
-            early_obstacle_bosses.append(boss)
-
-    if early_obstacle_bosses:
-        # Make a new obstacle
-        atk_db = config.enemy_atk_db
-        new_obstacle = atk_db.get_tech(0x58)
-        # Choose a status that doesn't incapacitate the team.
-        # But also no point choosing poison because mega has shadow slay
-        new_status = random.choice(
-            (StatusEffect.LOCK, StatusEffect.SLOW)
-        )
-        new_obstacle.effect.status_effect = new_status
-
-        new_id = enemy_aidb.unused_techs[-1]
-        atk_db.set_tech(new_obstacle, new_id)
-
-        for boss in early_obstacle_bosses:
-            boss_data = orig_data[boss]
-            scheme = boss_data.scheme
-
-            for part in list(set(scheme.ids)):
-                enemy_aidb.change_tech_in_ai(part, 0x58, new_id)
-
-    # We want to avoid a potential chain of assignments such as:
-    #    A is scaled relative to B
-    #    C is scaled relative to A
-    # In the second scaling we want to scale relative to A's original stats,
-    # not the stats that arose from the first scaling.
-
-    # So here's a dict to store the scaled stats before writing them back
-    # to the config at the very end.
-    scaled_dict = dict()
-    new_power_values = dict()
+    # Store hp, xp, tp, gp data before messing with stats
     hp_dict = bossspot.get_initial_hp_dict(settings, config)
+    reward_dict = bossspot.get_spot_reward_dict(settings, config)
 
     # Now it's safe to put the boss scaling ranked stats in
     if rset.GameFlags.BOSS_SCALE in settings.gameflags:
@@ -373,104 +392,44 @@ def scale_bosses_given_assignment(settings: rset.Settings,
             stats = bossscaler.get_ranked_boss_stats(boss_id, rank, config)
             config.enemy_dict.update(stats)
 
-    for location in settings.ro_settings.loc_list:
-        orig_boss = orig_data[default_assignment[location]]
-        new_boss = orig_data[current_assignment[location]]
-        scaled_stats = new_boss.scale_relative_to(orig_boss,
-                                                  config.enemy_dict,
-                                                  config.enemy_atk_db,
-                                                  config.enemy_ai_db)
+    default_assignment = bt.get_default_boss_assignment()
 
-        # Update rewards to match original boss
-        # TODO: This got too big.  Break into own function?
-        # orig_id = default_assignment[location]
-        # new_id = current_assignment[location]
-        # print(f'{orig_id} ({orig_boss.power}) --> '
-        #       f'{new_id} ({new_boss.power})')
-        spot_xp = sum(config.enemy_dict[part].xp
-                      for part in orig_boss.scheme.ids)
-        spot_tp = sum(config.enemy_dict[part].tp
-                      for part in orig_boss.scheme.ids)
-        spot_gp = sum(config.enemy_dict[part].gp
-                      for part in orig_boss.scheme.ids)
-        spot_reward_group = enemyrewards.get_tier_of_enemy(
-            orig_boss.scheme.ids[0]
+    # Store the scaled stats in a new dict which then gets merged into config.
+    scaled_stat_dict = {}
+    for spot in settings.ro_settings.spots:
+        if spot == bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM:
+            # This is handled by update_twin_boss() above
+            continue
+
+        assigned_boss_id = config.boss_assign_dict[spot]
+        orig_boss_id = default_assignment[spot]
+
+        spot_power = roscale.get_base_boss_power(orig_boss_id,
+                                                          settings)
+        assigned_boss_power = roscale.get_base_boss_power(
+            assigned_boss_id, settings
         )
 
-        boss_xp = sum(config.enemy_dict[part].xp
-                      for part in new_boss.scheme.ids)
-        boss_tp = sum(config.enemy_dict[part].tp
-                      for part in new_boss.scheme.ids)
-        boss_gp = sum(config.enemy_dict[part].gp
-                      for part in new_boss.scheme.ids)
+        from_scheme = config.boss_data_dict[orig_boss_id]
+        to_scheme = config.boss_data_dict[assigned_boss_id]
 
-        for ind, part in enumerate(scaled_stats.keys()):
-            part_count = sum(
-                part_id == part for part_id in new_boss.scheme.ids
-            )
-            part_xp = sum(
-                config.enemy_dict[part_id].xp
-                for part_id in new_boss.scheme.ids
-                if part_id == part
-            )
+        scaled_stats = roscale.scale_boss_scheme_progessive(
+            to_scheme, assigned_boss_power, spot_power,
+            config.enemy_dict, config.enemy_atk_db, config.enemy_ai_db,
+            settings.game_mode
+        )
 
-            part_tp = sum(
-                config.enemy_dict[part_id].tp
-                for part_id in new_boss.scheme.ids
-                if part_id == part
-            )
-
-            part_gp = sum(
-                config.enemy_dict[part_id].gp
-                for part_id in new_boss.scheme.ids
-                if part_id == part
-            )
-
-            if boss_xp == 0:
-                scaled_stats[part].xp = 0
-            else:
-                scaled_stats[part].xp = \
-                    round(part_xp/(part_count*boss_xp)*spot_xp)
-
-            if boss_tp == 0:
-                scaled_stats[part].tp = 0
-            else:
-                scaled_stats[part].tp = \
-                    round(part_tp/(part_count*boss_tp)*spot_tp)
-
-            if boss_gp == 0:
-                scaled_stats[part].gp = 0
-            else:
-                scaled_stats[part].gp = \
-                    round(part_gp/(part_count*boss_gp)*spot_gp)
-
-            enemyrewards.set_enemy_charm_drop(
-                scaled_stats[part],
-                spot_reward_group,
-                settings.item_difficulty
-            )
-
-        new_power_values[location] = orig_boss.power
-
+        bossspot.distribute_rewards(reward_dict[spot], to_scheme, scaled_stats)
         if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
-            new_hps = bossspot.get_scaled_hp_dict(
-                orig_boss, new_boss, hp_dict,
-                additional_power_scaling=False
+            bossspot.distribute_hp(
+                from_scheme, to_scheme, hp_dict, scaled_stats
             )
-            for part in new_hps:
-                scaled_stats[part].hp = new_hps[part]
 
         # Put the stats in scaled_dict
-        scaled_dict.update(scaled_stats)
-
-    # In case of multiple power adjustments, make sure that the boss powers
-    # are properly updated.
-    for loc in new_power_values:
-        boss = config.boss_assign_dict[loc]
-        config.boss_data_dict[boss].power = new_power_values[loc]
+        scaled_stat_dict.update(scaled_stats)
 
     # Write all of the scaled stats back to config's dict
-    config.enemy_dict.update(scaled_dict)
+    config.enemy_dict.update(scaled_stat_dict)
 
     # Update Rust Tyrano's magic boost in script
     set_rust_tyrano_script_mag(EnemyID.RUST_TYRANO, config)
@@ -537,6 +496,7 @@ def get_magus_nuke_id(config: cfg.RandoConfig):
 def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
 
     magus_stats = config.enemy_dict[EnemyID.MAGUS]
+    magus_sprite = config.enemy_sprite_dict[EnemyID.MAGUS]
 
     magus_nukes = {
         CharID.CRONO: 0xBB,  # Luminaire
@@ -573,7 +533,7 @@ def set_magus_character(new_char: CharID, config: cfg.RandoConfig):
         EnemyID.MAGUS, orig_nuke_id, new_nuke_id
     )
 
-    magus_stats.sprite_data.set_sprite_to_pc(new_char)
+    magus_sprite.set_sprite_to_pc(new_char)
     magus_stats.name = str(new_char)
 
     battle_msgs = config.enemy_ai_db.battle_msgs
@@ -818,7 +778,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
         LocID.HECKRAN_CAVE_NEW: ba.set_heckrans_cave_boss,
         LocID.KINGS_TRIAL_NEW: ba.set_kings_trial_boss,
         LocID.OZZIES_FORT_FLEA_PLUS: ba.set_ozzies_fort_flea_plus_spot_boss,
-        LocID.OZZIES_FORT_SUPER_SLASH: ba.set_ozzies_fort_super_slash_spot_boss,
+        LocID.OZZIES_FORT_SUPER_SLASH:
+        ba.set_ozzies_fort_super_slash_spot_boss,
         LocID.SUN_PALACE: ba.set_sun_palace_boss,
         LocID.SUNKEN_DESERT_DEVOURER: ba.set_desert_boss,
         LocID.OCEAN_PALACE_TWIN_GOLEM: ba.set_twin_golem_spot,
@@ -831,27 +792,27 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # Now do the writing. Only to locations in the above dict.  Only if the
     # assignment differs from default.
 
-    default_assignment = get_default_boss_assignment()
+    default_assignment = bt.get_default_boss_assignment()
     current_assignment = config.boss_assign_dict
 
-    for loc in current_assignment.keys():
-        if current_assignment[loc] == default_assignment[loc] and \
-           loc != LocID.OCEAN_PALACE_TWIN_GOLEM:
+    for spot in current_assignment.keys():
+        if current_assignment[spot] == default_assignment[spot] and \
+           spot != LocID.OCEAN_PALACE_TWIN_GOLEM:
             # print(f"Not assigning to {loc}.  No change from default.")
             pass
         else:
-            if loc not in assign_fn_dict:
+            if spot not in assign_fn_dict:
                 raise ValueError(
-                    f"Error: Tried assigning to {loc}.  Location not "
+                    f"Error: Tried assigning to {spot}.  Location not "
                     "supported for boss randomization."
                 )
-            else:
-                assign_fn = assign_fn_dict[loc]
-                boss_id = current_assignment[loc]
-                boss_scheme = config.boss_data_dict[boss_id].scheme
-                # print(f"Writing {boss_id} to {loc}")
-                # print(f"{boss_scheme}")
-                assign_fn(ctrom, boss_scheme)
+
+            assign_fn = assign_fn_dict[spot]
+            boss_id = current_assignment[spot]
+            boss_scheme = config.boss_data_dict[boss_id].scheme
+            # print(f"Writing {boss_id} to {loc}")
+            # print(f"{boss_scheme}")
+            assign_fn(ctrom, boss_scheme)
 
     # New fun sprite bug:  Enemy 0x4F was a frog before it was turned into
     # the twin golem.  Turning it into other bosses can make for pink screens
