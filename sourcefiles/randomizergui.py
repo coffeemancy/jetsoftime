@@ -17,8 +17,8 @@ from tkinter import messagebox
 import randomizer
 import bossrandotypes as rotypes
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
-    TechOrder, TabSettings, TabRandoScheme, ROSettings, CosmeticFlags, \
-    BucketSettings, GameMode, MysterySettings
+    TechOrder, TabSettings, TabRandoScheme, ROSettings, ROFlags, \
+    CosmeticFlags, BucketSettings, GameMode, MysterySettings
 from ctenums import LocID, ActionMap, InputMap
 import ctoptions
 import ctrom
@@ -107,6 +107,10 @@ class RandoGUI:
         for x in list(CosmeticFlags):
             self.cosmetic_flag_dict[x] = tk.IntVar()
 
+        self.ro_flag_dict = dict()
+        for x in list(ROFlags):
+            self.ro_flag_dict[x] = tk.IntVar()
+            
         self.flag_checkboxes = dict()
 
         self.item_difficulty = tk.StringVar()
@@ -241,20 +245,23 @@ class RandoGUI:
         # does not use an underlying variable.  Instead the
         # self.location_listbox and self.boss_listbox will report their
         # selections as indices into the following two lists
-        self.boss_locations = LocID.get_boss_locations()
+        self.boss_locations = list(rotypes.BossSpotID)
 
         BossID = rotypes.BossID
-        self.bosses = list(BossID)
+        self.bosses = rotypes.get_assignable_bosses()
 
         no_shuffle_bosses = [
-            BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
+            # BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
             BossID.MAGUS, BossID.BLACK_TYRANO, BossID.MAMMON_M,
             BossID.LAVOS_CORE, BossID.LAVOS_SHELL, BossID.INNER_LAVOS,
             BossID.ZEAL, BossID.ZEAL_2, BossID.TWIN_BOSS
         ]
 
         for x in no_shuffle_bosses:
-            self.bosses.remove(x)
+            if x in self.bosses:
+                self.bosses.remove(x)
+
+        print(self.bosses)
 
         self.display_dup_char_settings_window
         self.ro_page = self.get_ro_page()
@@ -378,7 +385,10 @@ class RandoGUI:
         cosmetic_flags = [x for x in list(CosmeticFlags)
                           if self.cosmetic_flag_dict[x].get() == 1]
 
-        
+        # RO Flags
+        ro_flags = [x for x in ROFlags
+                    if self.ro_flag_dict[x].get() == 1]
+
         # In-game options
         self.settings.ctoptions = ctoptions.CTOpts()
 
@@ -447,8 +457,11 @@ class RandoGUI:
         self.settings.ro_settings = ROSettings(
             loc_list,
             boss_list,
-            self.preserve_part_count.get() == 1,
+            False
         )
+        self.settings.ro_settings.flags = \
+            reduce(lambda a, b: a | b, ro_flags, ROFlags(False))
+
 
         # Bucket
         num_fragments = \
@@ -577,19 +590,22 @@ class RandoGUI:
 
         # push the ro flag lists
         ro_settings = self.settings.ro_settings
+        print(ro_settings.bosses)
         boss_indices = [self.bosses.index(x)
-                        for x in ro_settings.boss_list]
+                        for x in ro_settings.bosses]
 
         for index in boss_indices:
             self.boss_listbox.select_set(index)
 
         boss_loc_indices = [self.boss_locations.index(x)
-                            for x in ro_settings.loc_list]
+                            for x in ro_settings.spots]
 
         for index in boss_loc_indices:
             self.boss_location_listbox.select_set(index)
 
-        self.preserve_part_count.set(int(ro_settings.preserve_parts))
+        self.preserve_part_count.set(
+            int(ROFlags.PRESERVE_PARTS in ro_settings.flags)
+        )
 
         # Bucket Settings
         bucket_settings = self.settings.bucket_settings

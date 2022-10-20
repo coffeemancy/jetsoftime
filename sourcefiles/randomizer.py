@@ -1230,7 +1230,7 @@ class Randomizer:
             file_object.write('\n')
 
             boss_scheme = self.config.boss_data_dict[boss_id]
-            part_ids = [part.enemy_id for part in boss_scheme]
+            part_ids = [part.enemy_id for part in boss_scheme.parts]
             for part_id in part_ids:
                 if len(part_ids) > 1:
                     file_object.write(f"Part: {part_id}\n")

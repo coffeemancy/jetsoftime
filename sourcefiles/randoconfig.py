@@ -52,15 +52,15 @@ class RandoConfig:
                                     enemystats.EnemySpriteData] = None,
             enemy_atk_db: enemytechdb.EnemyAttackDB = None,
             enemy_ai_db: enemyai.EnemyAIDB = None,
-            boss_assign_dict: dict[ctenums.LocID, ctenums.BossID] = None,
-            boss_data_dict: dict[ctenums.BossID,
+            boss_assign_dict: dict[ctenums.LocID, rotypes.BossID] = None,
+            boss_data_dict: dict[rotypes.BossID,
                                  rotypes.BossScheme] = None,
             tab_stats: TabStats = TabStats(1, 1, 1),
             omen_elevator_fights_up: typing.Container[int] = None,  # 0,1,2
             omen_elevator_fights_down: typing.Container[int] = None,
             # stuff that's getting replaced
             shop_manager: shoptypes.ShopManager = None,
-            boss_rank_dict: dict[ctenums.BossID, int] = None,
+            boss_rank_dict: dict[rotypes.BossID, int] = None,
             key_item_locations: typing.Container[logictypes.Location] = None,
     ):
         '''
@@ -135,13 +135,13 @@ class RandoConfig:
 
         # make boss details dict
         # stats can be gotten from the enemies dict
-        BossID = ctenums.BossID
+        BossID = rotypes.BossID
         boss_ids = list(self.boss_assign_dict.values()) + \
                 [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2]
         boss_details_dict = {
                 str(boss_id): {
                     'scale': self.boss_rank_dict[boss_id] if boss_id in self.boss_rank_dict else None,
-                    'parts': [str(part_id) for part_id in list(dict.fromkeys(self.boss_data_dict[boss_id].scheme.ids))]
+                    'parts': [str(part.enemy_id) for part in self.boss_data_dict[boss_id].parts]
                 }
                 for boss_id in boss_ids
         }

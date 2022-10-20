@@ -115,7 +115,7 @@ def set_twin_boss_data_in_config(one_spot_boss: bt.BossID,
     if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
         twin_hp = twin_stats.hp
         new_hp = bossspot.get_part_new_hps(
-            base_boss.scheme, config.enemy_dict, twin_hp
+            base_boss, config.enemy_dict, twin_hp
         )[base_id]
         scaled_stats.hp = new_hp
 
@@ -247,7 +247,6 @@ def write_assignment_to_config(settings: rset.Settings,
         # Otherwise plando cannot set this reasonably.
         boss_assignment[bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM] = twin_choice
 
-
     if rset.ROFlags.PRESERVE_PARTS in settings.ro_settings.flags:
         legacy_assignments = get_legacy_assignment(available_spots,
                                                    available_bosses)
@@ -369,6 +368,50 @@ def reassign_charms_drops(settings: rset.Settings,
                                               settings.item_difficulty)
 
 
+def make_weak_obstacle_copies(config: cfg.RandoConfig):
+    '''
+    If an obstacle-using boss is found before guaranteed amulets, make the
+    obstacle have a weaker status.  All early obstacles will share the same
+    weaker status.
+    '''
+    BSID = bt.BossSpotID
+    endgame_spots = [
+        BSID.ZEAL_PALACE, BSID.OCEAN_PALACE_TWIN_GOLEM,
+        BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
+        BSID.BLACK_OMEN_TERRA_MUTANT
+    ]
+
+    early_obstacle_bosses = []
+    obstacle_bosses = [bt.BossID.MEGA_MUTANT,
+                       bt.BossID.TERRA_MUTANT]
+
+    for spot, boss in config.boss_assign_dict.items():
+        if spot in endgame_spots and boss in obstacle_bosses:
+            early_obstacle_bosses.append(boss)
+
+    if early_obstacle_bosses:
+        # Make a new obstacle
+        atk_db = config.enemy_atk_db
+        enemy_ai_db = config.enemy_ai_db
+
+        new_obstacle = atk_db.get_tech(0x58)
+        # Choose a status that doesn't incapacitate the team.
+        # But also no point choosing poison because mega has shadow slay
+        new_status = random.choice(
+            (StatusEffect.LOCK, StatusEffect.SLOW)
+        )
+        new_obstacle.effect.status_effect = new_status
+
+        new_id = enemy_ai_db.unused_techs[-1]
+        atk_db.set_tech(new_obstacle, new_id)
+
+        for boss in early_obstacle_bosses:
+            scheme = config.boss_data_dict[boss]
+
+            for part in scheme.parts:
+                enemy_ai_db.change_tech_in_ai(part.enemy_id, 0x58, new_id)
+
+
 # Scale the bosses given (the game settings) and the current assignment of
 # the bosses.  This is to be differentiated from the boss scaling flag which
 # scales based on the key item assignment.
@@ -379,7 +422,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
                                  config.enemy_sprite_dict)
     update_twin_boss(settings, config)
     reassign_charms_drops(settings, config)
-    roscale.make_weak_obstacle_copies(config)
+    make_weak_obstacle_copies(config)
 
     # Store hp, xp, tp, gp data before messing with stats
     hp_dict = bossspot.get_initial_hp_dict(settings, config)
@@ -761,32 +804,34 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # Associate each boss location with the function which sets that
     # location's boss.
     ba = bossassign
+    BSID = bt.BossSpotID
     assign_fn_dict = {
-        LocID.MANORIA_COMMAND: ba.set_manoria_boss,
-        LocID.CAVE_OF_MASAMUNE: ba.set_denadoro_boss,
-        LocID.REPTITE_LAIR_AZALA_ROOM: ba.set_reptite_lair_boss,
-        LocID.MAGUS_CASTLE_FLEA: ba.set_magus_castle_flea_spot_boss,
-        LocID.MAGUS_CASTLE_SLASH: ba.set_magus_castle_slash_spot_boss,
-        LocID.GIANTS_CLAW_TYRANO: ba.set_giants_claw_boss,
-        LocID.TYRANO_LAIR_NIZBEL: ba.set_tyrano_lair_midboss,
-        LocID.ZEAL_PALACE_THRONE_NIGHT: ba.set_zeal_palace_boss,
-        LocID.ZENAN_BRIDGE_BOSS: ba.set_zenan_bridge_boss,
-        LocID.DEATH_PEAK_GUARDIAN_SPAWN: ba.set_death_peak_boss,
-        LocID.BLACK_OMEN_GIGA_MUTANT: ba.set_giga_mutant_spot_boss,
-        LocID.BLACK_OMEN_TERRA_MUTANT: ba.set_terra_mutant_spot_boss,
-        LocID.BLACK_OMEN_ELDER_SPAWN: ba.set_elder_spawn_spot_boss,
-        LocID.HECKRAN_CAVE_NEW: ba.set_heckrans_cave_boss,
-        LocID.KINGS_TRIAL_NEW: ba.set_kings_trial_boss,
-        LocID.OZZIES_FORT_FLEA_PLUS: ba.set_ozzies_fort_flea_plus_spot_boss,
-        LocID.OZZIES_FORT_SUPER_SLASH:
-        ba.set_ozzies_fort_super_slash_spot_boss,
-        LocID.SUN_PALACE: ba.set_sun_palace_boss,
-        LocID.SUNKEN_DESERT_DEVOURER: ba.set_desert_boss,
-        LocID.OCEAN_PALACE_TWIN_GOLEM: ba.set_twin_golem_spot,
-        LocID.GENO_DOME_MAINFRAME: ba.set_geno_dome_boss,
-        LocID.MT_WOE_SUMMIT: ba.set_mt_woe_boss,
-        LocID.ARRIS_DOME_GUARDIAN_CHAMBER: ba.set_arris_dome_boss,
-        LocID.REBORN_EPOCH: ba.set_epoch_boss
+        BSID.MANORIA_CATHERDAL: ba.set_manoria_boss,
+        BSID.DENADORO_MTS: ba.set_denadoro_boss,
+        BSID.REPTITE_LAIR: ba.set_reptite_lair_boss,
+        BSID.MAGUS_CASTLE_FLEA: ba.set_magus_castle_flea_spot_boss,
+        BSID.MAGUS_CASTLE_SLASH: ba.set_magus_castle_slash_spot_boss,
+        BSID.GIANTS_CLAW: ba.set_giants_claw_boss,
+        BSID.TYRANO_LAIR_NIZBEL: ba.set_tyrano_lair_midboss,
+        BSID.ZEAL_PALACE: ba.set_zeal_palace_boss,
+        BSID.ZENAN_BRIDGE: ba.set_zenan_bridge_boss,
+        BSID.DEATH_PEAK: ba.set_death_peak_boss,
+        BSID.BLACK_OMEN_GIGA_MUTANT: ba.set_giga_mutant_spot_boss,
+        BSID.BLACK_OMEN_TERRA_MUTANT: ba.set_terra_mutant_spot_boss,
+        BSID.BLACK_OMEN_ELDER_SPAWN: ba.set_elder_spawn_spot_boss,
+        BSID.HECKRAN_CAVE: ba.set_heckrans_cave_boss,
+        BSID.KINGS_TRIAL: ba.set_kings_trial_boss,
+        BSID.OZZIES_FORT_FLEA_PLUS: ba.set_ozzies_fort_flea_plus_spot_boss,
+        BSID.OZZIES_FORT_SUPER_SLASH: ba.set_ozzies_fort_super_slash_spot_boss,
+        BSID.SUN_PALACE: ba.set_sun_palace_boss,
+        BSID.SUNKEN_DESERT: ba.set_desert_boss,
+        BSID.OCEAN_PALACE_TWIN_GOLEM: ba.set_twin_golem_spot,
+        BSID.GENO_DOME: ba.set_geno_dome_boss,
+        BSID.MT_WOE: ba.set_mt_woe_boss,
+        BSID.ARRIS_DOME: ba.set_arris_dome_boss,
+        BSID.EPOCH_REBORN: ba.set_epoch_boss,
+        BSID.FACTORY_RUINS: ba.set_factory_boss,
+        BSID.PRISON_CATWALKS: ba.set_prison_catwalks_boss
     }
 
     # Now do the writing. Only to locations in the above dict.  Only if the
@@ -809,7 +854,7 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
 
             assign_fn = assign_fn_dict[spot]
             boss_id = current_assignment[spot]
-            boss_scheme = config.boss_data_dict[boss_id].scheme
+            boss_scheme = config.boss_data_dict[boss_id]
             # print(f"Writing {boss_id} to {loc}")
             # print(f"{boss_scheme}")
             assign_fn(ctrom, boss_scheme)

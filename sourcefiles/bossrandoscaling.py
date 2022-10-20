@@ -414,53 +414,9 @@ def get_base_boss_power(boss_id: rotypes.BossID,
     Determine the power of a boss in its default location.
     '''
     if settings.game_mode == rset.GameMode.VANILLA_RANDO:
-        _vr_boss_power_dict[boss_id]
+        return _vr_boss_power_dict[boss_id]
 
     return _standard_powers[boss_id]
-
-
-def make_weak_obstacle_copies(config: cfg.RandoConfig):
-    '''
-    If an obstacle-using boss is found before guaranteed amulets, make the
-    obstacle have a weaker status.  All early obstacles will share the same
-    weaker status.
-    '''
-    BSID = rotypes.BossSpotID
-    endgame_spots = [
-        BSID.ZEAL_PALACE, BSID.OCEAN_PALACE_TWIN_GOLEM,
-        BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
-        BSID.BLACK_OMEN_TERRA_MUTANT
-    ]
-
-    early_obstacle_bosses = []
-    obstacle_bosses = [rotypes.BossID.MEGA_MUTANT,
-                       rotypes.BossID.TERRA_MUTANT]
-
-    for spot, boss in config.boss_assign_dict.items():
-        if spot in endgame_spots and boss in obstacle_bosses:
-            early_obstacle_bosses.append(boss)
-
-    if early_obstacle_bosses:
-        # Make a new obstacle
-        atk_db = config.enemy_atk_db
-        enemy_ai_db = config.enemy_ai_db
-
-        new_obstacle = atk_db.get_tech(0x58)
-        # Choose a status that doesn't incapacitate the team.
-        # But also no point choosing poison because mega has shadow slay
-        new_status = random.choice(
-            (ctenums.StatusEffect.LOCK, ctenums.StatusEffect.SLOW)
-        )
-        new_obstacle.effect.status_effect = new_status
-
-        new_id = enemy_ai_db.unused_techs[-1]
-        atk_db.set_tech(new_obstacle, new_id)
-
-        for boss in early_obstacle_bosses:
-            scheme = config.boss_data_dict[boss]
-
-            for part in scheme.parts:
-                enemy_ai_db.change_tech_in_ai(part.enemy_id, 0x58, new_id)
 
 
 def scale_boss_scheme_progessive(

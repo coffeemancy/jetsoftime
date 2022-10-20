@@ -136,8 +136,8 @@ def are_pixel_coords_forced(
     Determine whether a boss placed at (first_x_px, first_y_px) requires
     pixel coordinates or can use tile coordinates.
     '''
-    x_coords = [first_x_px + disp[0] for disp in boss.disps]
-    y_coords = [first_y_px + disp[1] for disp in boss.disps]
+    x_coords = [first_x_px + part.displacement[0] for part in boss.parts]
+    y_coords = [first_y_px + part.displacement[1] for part in boss.parts]
 
     x_tileable = functools.reduce(
         lambda val, item: val and ((item-8) & 0xF == 0), x_coords, True
@@ -200,71 +200,6 @@ def fix_bad_animations(
             pos += len(cmd)
 
 
-def set_object_boss(script: ctevent.Event, obj_id: int,
-                    boss_id: int, boss_slot: int,
-                    ignore_jumps: bool = True):
-
-    start = script.get_object_start(obj_id)
-    end = script.get_function_end(obj_id, 0)
-
-    pos = start
-    while pos < end:
-
-        cmd = eventcommand.get_command(script.data, pos)
-
-        if cmd.command in EC.fwd_jump_commands and ignore_jumps:
-            pos += (cmd.args[-1] - 1)
-        elif cmd.command == 0x83:
-            is_static = cmd.args[1] & 0x80
-            cmd.args[0], cmd.args[1] = boss_id, (boss_slot | is_static)
-            script.data[pos:pos+len(cmd)] = cmd.to_bytearray()
-            break
-
-        pos += len(cmd)
-
-
-def set_object_coordinates(script: ctevent.Event,
-                           obj_id: int, x: int, y: int,
-                           ignore_jumps: bool = True, fn_id: int = 0,
-                           force_pixel_coords: bool = False):
-
-    if force_pixel_coords:
-        cmd_fn = EC.set_object_coordinates_pixels
-    else:
-        cmd_fn = EC.set_object_coordinates_auto
-
-    start = script.get_function_start(obj_id, fn_id)
-    end = script.get_function_end(obj_id, fn_id)
-
-    pos = start
-    while pos < end:
-
-        cmd = eventcommand.get_command(script.data, pos)
-
-        if cmd.command in EC.fwd_jump_commands and ignore_jumps:
-            pos += (cmd.args[-1] - 1)
-        elif cmd.command in [0x8B, 0x8D]:
-            new_coord_cmd = cmd_fn(x, y)
-            # print(f"x={x:04X}, y={y:04X}")
-            # print(new_coord_cmd)
-            # input()
-
-            # The pixel-based and tile-based commands have different lengths.
-            # If the new coordinates don't match the old, you have to do a
-            # delete/insert.
-            if new_coord_cmd.command == cmd.command:
-                script.data[pos:pos+len(new_coord_cmd)] = \
-                    new_coord_cmd.to_bytearray()
-            else:
-                script.insert_commands(new_coord_cmd.to_bytearray(),
-                                       pos)
-                script.delete_commands(pos+len(new_coord_cmd), 1)
-
-            break
-
-        pos += len(cmd)
-
-
 # General Scheme for setting one-part boss spots
 def set_generic_one_spot_boss_script(
         script: ctevent.Event,
@@ -294,7 +229,8 @@ def set_generic_one_spot_boss_script(
     '''
 
     # Write the new load into the boss object
-    set_object_boss(script, boss_obj, boss.ids[0], boss.slots[0])
+    part = boss.parts[0]
+    set_object_boss(script, boss_obj, part.enemy_id, part.slot)
 
     pos = None
     if first_x is None or first_y is None:
@@ -327,7 +263,7 @@ def set_generic_one_spot_boss_script(
 
     # Add new objects for the additional boss parts if needed.
     # Simultaneously build up the list of commands to show the extra parts.
-    for i in range(1, len(boss.ids)):
+    for i in range(1, len(boss.parts)):
         new_obj = append_boss_object(script, boss, i, pixel_x, pixel_y,
                                      use_pixel_coords, is_shown)
         show.add(EC.set_object_drawing_status(new_obj, True))
@@ -366,7 +302,7 @@ def set_generic_one_spot_boss(
 
     set_generic_one_spot_boss_script(script, boss, boss_obj,
                                      show_pos_fn, last_coord_fn,
-                                     first_x, first_y, is_shown)
+                                     first_x, first_y, is_shown=is_shown)
 
 
 # Make a barebones object to make a boss part and hide it.
@@ -376,12 +312,12 @@ def append_boss_object(script: ctevent.Event,
                        force_pixel_coords: bool = False,
                        is_shown: bool = False) -> int:
 
-    new_id = boss.ids[part_index]
-    new_slot = boss.slots[part_index]
+    new_id = boss.parts[part_index].enemy_id
+    new_slot = boss.parts[part_index].slot
 
     # Pray these don't come up negative.  They shouldn't?
-    new_x = first_x_px + boss.disps[part_index][0]
-    new_y = first_y_px + boss.disps[part_index][1]
+    new_x = first_x_px + boss.parts[part_index].displacement[0]
+    new_y = first_y_px + boss.parts[part_index].displacement[1]
 
     if force_pixel_coords:
         coord_cmd = EC.set_object_coordinates_pixels(new_x, new_y)
@@ -427,14 +363,14 @@ def set_generic_one_spot_boss_script_old(
         is_shown: bool = False
 ):
 
-    first_id = boss.ids[0]
-    first_slot = boss.slots[0]
+    first_id = boss.parts[0].enemy_id
+    first_slot = boss.parts[0].slot
 
     set_object_boss(script, boss_obj, first_id, first_slot)
 
     show = EF()
 
-    for i in range(1, len(boss.ids)):
+    for i in range(1, len(boss.parts)):
         new_obj = append_boss_object(script, boss, i,
                                      first_x, first_y,
                                      is_shown)
@@ -461,7 +397,7 @@ def set_manoria_boss(
     script = ct_rom.script_manager.get_script(loc_id)
 
     good_ids = (EnemyID.YAKRA, EnemyID.YAKRA_XIII)
-    if boss.ids[0] not in good_ids:
+    if boss.parts[0].enemy_id not in good_ids:
         fix_bad_animations(script, obj_id=boss_obj)
 
     set_generic_one_spot_boss_script(
@@ -486,7 +422,7 @@ def set_heckrans_cave_boss(
         EnemyID.NIZBEL_II, EnemyID.YAKRA, EnemyID.YAKRA_XIII,
         EnemyID.MASA_MUNE, EnemyID.MUD_IMP
     )
-    if boss.ids[0] not in good_anim_ids:
+    if boss.parts[0].enemy_id not in good_anim_ids:
         fix_bad_animations(script, obj_id=boss_obj)
 
     set_generic_one_spot_boss_script(
@@ -580,20 +516,19 @@ def set_magus_castle_slash_spot_boss(
     # loc_id = 0xA9
     script = ct_rom.script_manager.get_script(loc_id)
 
-    if boss.ids[0] in [EnemyID.ELDER_SPAWN_SHELL, EnemyID.LAVOS_SPAWN_SHELL]:
+    if boss.parts[0].enemy_id in [EnemyID.ELDER_SPAWN_SHELL,
+                                  EnemyID.LAVOS_SPAWN_SHELL]:
         # Some sprite issue with overlapping slots?
         # If the shell is the static part, it will be invisible until it is
         # interacted with.
-        boss.ids[0], boss.ids[1] = boss.ids[1], boss.ids[0]
-        boss.slots[0], boss.slots[1] = boss.slots[1], boss.slots[0]
-        boss.disps[0] = (-boss.disps[0][0], -boss.disps[0][1])
-        boss.disps[1] = (-boss.disps[1][0], -boss.disps[1][1])
+        boss.make_part_first(1)
 
     # Slash's spot is ugly because there's a second Slash object that's used
     # for one of the endings (I think?).  You really have to set both of them
     # to the boss you want, otherwise you're highly likely to hit graphics
     # limits.
-    set_object_boss(script, 0xC, boss.ids[0], boss.slots[0])
+    set_object_boss(script, 0xC, boss.parts[0].enemy_id,
+                    boss.parts[0].slot)
 
     # The real, used Slash is in object 0xB.
     boss_obj = 0xB
@@ -621,7 +556,7 @@ def set_magus_castle_slash_spot_boss(
     good_anim_ids = (EnemyID.SLASH_SWORD, EnemyID.SUPER_SLASH,
                      EnemyID.ATROPOS_XR)
 
-    if False and boss.ids[0] not in good_anim_ids:
+    if False and boss.parts[0].enemy_id not in good_anim_ids:
         pos = script.get_function_start(0xB, 1)
         end = script.get_function_end(0xB, 1)
 
@@ -680,10 +615,11 @@ def set_kings_trial_boss(
 
     # first_x, first_y = 0x40, 0x100
 
-    if EnemyID.GUARDIAN_BIT in boss.ids:
-        boss.disps[1] = (-0x08, -0x3A)
-        boss.disps[2] = (-0x08, 0x30)
-    elif EnemyID.MOTHERBRAIN in boss.ids:
+    boss_ids = [part.enemy_id for part in boss.parts]
+    if EnemyID.GUARDIAN_BIT in boss_ids:
+        boss.parts[1].displacement = (-0x08, -0x3A)
+        boss.parts[2].displacement = (-0x08, 0x30)
+    elif EnemyID.MOTHERBRAIN in boss_ids:
         boss.reorder_horiz(left=True)
 
     # show spot is right at the end of obj 0xB, arb 0
@@ -698,7 +634,8 @@ def set_giants_claw_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.GIANTS_CLAW_TYRANO):
 
-    if EnemyID.RUST_TYRANO in boss.ids:
+    boss_ids = [part.enemy_id for part in boss.parts]
+    if EnemyID.RUST_TYRANO in boss_ids:
         return
 
     # loc_id = LocID.GIANTS_CLAW_TYRANO
@@ -832,47 +769,46 @@ def set_twin_golem_spot(
     # loc_id = 0x19E
     script = ct_rom.script_manager.get_script(loc_id)
 
-    if len(boss.ids) == 1:
+    if len(boss.parts) == 1:
         # Now, it should be that single target bosses get copied into
         # EnemyID.TWIN_BOSS.
+        return
 
-        print('Error putting single boss in twin spot.')
-        exit()
-    else:
-        # Somewhat center the multi_spot boss
-        # 1) Change the move command to have an x-coord of 0x80 + displacement
-        # Only twin golem has a displacement on its first part though.
-        move_cmd = EC.generic_two_arg(0x96, 0x6, 0xE)
-        pos = script.find_exact_command(move_cmd,
-                                        script.get_function_start(0xA, 3))
+    # Somewhat center the multi_spot boss
+    # 1) Change the move command to have an x-coord of 0x80 + displacement
+    # Only twin golem has a displacement on its first part though.
+    move_cmd = EC.generic_two_arg(0x96, 0x6, 0xE)
+    pos = script.find_exact_command(move_cmd,
+                                    script.get_function_start(0xA, 3))
 
-        first_x = 0x80
-        first_y = 0xE0
+    first_x = 0x80
+    first_y = 0xE0
 
-        # Move command is given in tile coords, so >> 4
-        new_x = (first_x + boss.disps[0][0] >> 4)
-        new_y = (first_y + boss.disps[0][1] >> 4)
-        script.data[pos+1] = new_x
+    # Move command is given in tile coords, so >> 4
+    new_x = (first_x + boss.parts[0].displacement[0] >> 4)
+    new_y = (first_y + boss.parts[0].displacement[1] >> 4)
+    script.data[pos+1] = new_x
 
-        # Back to pixels for set coords
-        new_x = new_x << 4
-        new_y = new_y << 4
+    # Back to pixels for set coords
+    new_x = new_x << 4
+    new_y = new_y << 4
 
-        # 2) Change the following set coords command to the dest of the move
-        coord_cmd = EC.set_object_coordinates(new_x, new_y)
+    # 2) Change the following set coords command to the dest of the move
+    coord_cmd = EC.set_object_coordinates(new_x, new_y)
 
-        pos += len(move_cmd)
-        script.data[pos:pos+len(coord_cmd)] = coord_cmd.to_bytearray()
+    pos += len(move_cmd)
+    script.data[pos:pos+len(coord_cmd)] = coord_cmd.to_bytearray()
 
     # Now proceed with a normal multi-spot assignment
     boss_objs = [0xA, 0xB]
 
     # overwrite the boss objs
     for i in range(0, 2):
-        set_object_boss(script, boss_objs[i], boss.ids[i], boss.slots[i])
+        part = boss.parts[i]
+        set_object_boss(script, boss_objs[i], part.enemy_id, part.slot)
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + part.displacement[0]
+        new_y = first_y + part.displacement[1]
 
         # first object's coordinates don't matter.  Second is set in arb0
         if i != 0:
@@ -882,7 +818,7 @@ def set_twin_golem_spot(
     # Add as many new ones as needed.  Slight modification of one spot stuff
 
     show = EF()
-    for i in range(2, len(boss.ids)):
+    for i in range(2, len(boss.parts)):
         new_obj = append_boss_object(script, boss, i, first_x, first_y,
                                      False)
         show.add(EC.set_object_drawing_status(new_obj, True))
@@ -903,7 +839,7 @@ def set_zenan_bridge_boss(
     # loc_id = LocID.ZENAN_BRIDGE_BOSS
     script = ct_rom.script_manager.get_script(loc_id)
 
-    num_parts = len(boss.ids)
+    num_parts = len(boss.parts)
 
     if num_parts == 1:
         # Use object 0xB (Zombor's Head, 0xB4) for the boss because it has
@@ -918,7 +854,7 @@ def set_zenan_bridge_boss(
         # Note: These are tile coordinates, not suitable for anything but the
         #       one spot assignment.
         first_x, first_y = 0xE0, 0x80
-        first_id, first_slot = boss.ids[0], boss.slots[0]
+        first_id, first_slot = boss.parts[0].enemy_id, boss.parts[0].slot
 
         while pos < script.get_function_end(0xB, 0):
             cmd = eventcommand.get_command(script.data, pos)
@@ -961,11 +897,11 @@ def set_zenan_bridge_boss(
 
     force_pixel_coords = are_pixel_coords_forced(first_x, first_y, boss)
 
+    boss_ids = [part.enemy_id for part in boss.parts]
     if num_parts > 1:
-
         if (
-                EnemyID.GUARDIAN_BIT in boss.ids or
-                EnemyID.MOTHERBRAIN in boss.ids
+                EnemyID.GUARDIAN_BIT in boss_ids or
+                EnemyID.MOTHERBRAIN in boss_ids
         ):
             boss.reorder_horiz(left=False)
 
@@ -973,20 +909,20 @@ def set_zenan_bridge_boss(
         reused_objs = [0xB, 0xC]
 
         for i in [0, 1]:
-            new_x = first_x + boss.disps[i][0]
-            new_y = first_y + boss.disps[i][1]
+            new_x = first_x + boss.parts[i].displacement[0]
+            new_y = first_y + boss.parts[i].displacement[1]
 
             # print(f"({new_x:04X}, {new_y:04X})")
             # input()
-            new_id = boss.ids[i]
-            new_slot = boss.slots[i]
+            new_id = boss.parts[i].enemy_id
+            new_slot = boss.parts[i].slot
 
             set_object_boss(script, reused_objs[i], new_id, new_slot)
             set_object_coordinates(script, reused_objs[i], new_x, new_y,
                                    force_pixel_coords=force_pixel_coords)
 
         show_cmds = bytearray()
-        for i in range(2, len(boss.ids)):
+        for i in range(2, len(boss.parts)):
             new_obj = append_boss_object(
                 script, boss, i, first_x, first_y,
                 force_pixel_coords=force_pixel_coords
@@ -1014,16 +950,17 @@ def set_death_peak_boss(
     # It is in object 9, and the head is in object 0xA
     boss_objs = [0x9, 0xA]
 
-    num_used = min(len(boss.ids), 2)
+    num_used = min(len(boss.parts), 2)
 
     first_x, first_y = 0x70, 0xC0
 
     for i in range(num_used):
-        boss_id = boss.ids[i]
-        boss_slot = boss.slots[i]
+        part = boss.parts[i]
+        boss_id = part.enemy_id
+        boss_slot = part.slot
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + part.displacement[0]
+        new_y = first_y + part.displacement[1]
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[i], new_x, new_y,
                                force_pixel_coords=False)
@@ -1031,7 +968,7 @@ def set_death_peak_boss(
     # Remove unused boss objects from the original script.
     # Will do nothing unless there are fewer boss ids provided than there
     # are original boss objects
-    for i in range(len(boss.ids), len(boss_objs)):
+    for i in range(len(boss.parts), len(boss_objs)):
         script.remove_object(boss_objs[i])
 
     # For every object exceeding the count in this map, make a new object.
@@ -1039,13 +976,14 @@ def set_death_peak_boss(
     # the enemy load/coords
     calls = bytearray()
 
-    for i in range(len(boss_objs), len(boss.ids)):
+    for i in range(len(boss_objs), len(boss.parts)):
         obj_id = script.append_copy_object(0xA)
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
+        part = boss.parts[i]
+        set_object_boss(script, obj_id, part.enemy_id, part.slot)
         set_object_coordinates(script, obj_id, new_x, new_y)
 
         call = EC.call_obj_function(obj_id, 3, 3, FS.CONT)
@@ -1071,46 +1009,47 @@ def set_giga_mutant_spot_boss(
 
     boss_objs = [0xE, 0xF]
 
-    num_used = min(len(boss.ids), 2)
+    num_used = min(len(boss.parts), 2)
     first_x, first_y = 0x278, 0x1A0
 
     # mutant coords are weird.  The coordinates are the bottom of the mutant's
     # bottom part.  We need to shift up so non-mutants aren't on the party.
     # Golems also float above their coordinate location.
-    if boss.ids[0] not in [EnemyID.GIGA_MUTANT_HEAD,
-                           EnemyID.GIGA_MUTANT_BOTTOM,
-                           EnemyID.TERRA_MUTANT_HEAD,
-                           EnemyID.TERRA_MUTANT_BOTTOM,
-                           EnemyID.MEGA_MUTANT_HEAD,
-                           EnemyID.MEGA_MUTANT_BOTTOM,
-                           EnemyID.GOLEM, EnemyID.GOLEM_BOSS]:
+    if boss.parts[0].enemy_id not in [EnemyID.GIGA_MUTANT_HEAD,
+                                      EnemyID.GIGA_MUTANT_BOTTOM,
+                                      EnemyID.TERRA_MUTANT_HEAD,
+                                      EnemyID.TERRA_MUTANT_BOTTOM,
+                                      EnemyID.MEGA_MUTANT_HEAD,
+                                      EnemyID.MEGA_MUTANT_BOTTOM,
+                                      EnemyID.GOLEM, EnemyID.GOLEM_BOSS]:
         first_y -= 0x20
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
-        boss_id = boss.ids[i]
-        boss_slot = boss.slots[i]
+        boss_id = boss.parts[i].enemy_id
+        boss_slot = boss.parts[i].slot
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[i], new_x, new_y,
                                force_pixel_coords=True)
 
     # Remove unused boss objects.
-    for i in range(len(boss.ids), len(boss_objs)):
+    for i in range(len(boss.parts), len(boss_objs)):
         script.remove_object(boss_objs[i])
 
     # Add more boss objects if needed
     calls = bytearray()
-    for i in range(len(boss_objs), len(boss.ids)):
+    for i in range(len(boss_objs), len(boss.parts)):
         obj_id = script.append_copy_object(boss_objs[1])
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
+        set_object_boss(script, obj_id, boss.parts[i].enemy_id,
+                        boss.parts[i].slot)
         set_object_coordinates(script, obj_id, new_x, new_y,
                                force_pixel_coords=True)
 
@@ -1148,7 +1087,7 @@ def set_terra_mutant_spot_boss(
 
     boss_objs = [0xF, 0x10]
 
-    num_used = min(len(boss.ids), 2)
+    num_used = min(len(boss.parts), 2)
     # first_x, first_y = 0x70, 0x80
     first_x, first_y = 0x78, 0x90  # pixel version
     force_pixel_coords = are_pixel_coords_forced(first_x, first_y,
@@ -1157,39 +1096,40 @@ def set_terra_mutant_spot_boss(
     # mutant coords are weird.  The coordinates are the bottom of the mutant's
     # bottom part.  We need to shift up so non-mutants aren't on the party.
     # Golems also float above their coordinate location.
-    if boss.ids[0] not in [EnemyID.GIGA_MUTANT_HEAD,
-                           EnemyID.GIGA_MUTANT_BOTTOM,
-                           EnemyID.TERRA_MUTANT_HEAD,
-                           EnemyID.TERRA_MUTANT_BOTTOM,
-                           EnemyID.MEGA_MUTANT_HEAD,
-                           EnemyID.MEGA_MUTANT_BOTTOM,
-                           EnemyID.GOLEM, EnemyID.GOLEM_BOSS]:
+    if boss.parts[0].enemy_id not in [EnemyID.GIGA_MUTANT_HEAD,
+                                      EnemyID.GIGA_MUTANT_BOTTOM,
+                                      EnemyID.TERRA_MUTANT_HEAD,
+                                      EnemyID.TERRA_MUTANT_BOTTOM,
+                                      EnemyID.MEGA_MUTANT_HEAD,
+                                      EnemyID.MEGA_MUTANT_BOTTOM,
+                                      EnemyID.GOLEM, EnemyID.GOLEM_BOSS]:
         first_y -= 0x20
 
     for i in range(num_used):
-        boss_id = boss.ids[i]
-        boss_slot = boss.slots[i]
+        boss_id = boss.parts[i].enemy_id
+        boss_slot = boss.parts[i].slot
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[i], new_x, new_y,
                                force_pixel_coords=force_pixel_coords)
 
     # Remove unused boss objects.
-    for i in range(len(boss.ids), len(boss_objs)):
+    for i in range(len(boss.parts), len(boss_objs)):
         script.remove_object(boss_objs[i])
 
     # Add more boss objects if needed
     calls = bytearray()
-    for i in range(len(boss_objs), len(boss.ids)):
+    for i in range(len(boss_objs), len(boss.parts)):
         obj_id = script.append_copy_object(boss_objs[1])
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
+        set_object_boss(script, obj_id, boss.parts[i].enemy_id,
+                        boss.parts[i].slot)
         set_object_coordinates(script, obj_id, new_x, new_y,
                                force_pixel_coords=force_pixel_coords)
 
@@ -1219,16 +1159,16 @@ def set_elder_spawn_spot_boss(
 
     boss_objs = [0x8, 0x9]
 
-    num_used = min(len(boss.ids), 2)
+    num_used = min(len(boss.parts), 2)
     first_x, first_y = 0x170, 0xB2
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
-        boss_id = boss.ids[i]
-        boss_slot = boss.slots[i]
+        boss_id = boss.parts[i].enemy_id
+        boss_slot = boss.parts[i].slot
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in activate for whatever reason.
@@ -1236,18 +1176,19 @@ def set_elder_spawn_spot_boss(
                                force_pixel_coords=True)
 
     # Remove unused boss objects.
-    for i in range(len(boss.ids), len(boss_objs)):
+    for i in range(len(boss.parts), len(boss_objs)):
         script.remove_object(boss_objs[i])
 
     # Add more boss objects if needed
     calls = bytearray()
-    for i in range(len(boss_objs), len(boss.ids)):
+    for i in range(len(boss_objs), len(boss.parts)):
         obj_id = script.append_copy_object(boss_objs[1])
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
+        set_object_boss(script, obj_id, boss.parts[i].enemy_id,
+                        boss.parts[i].slot)
         # The coordinate setting is in activate for whatever reason.
         set_object_coordinates(script, obj_id, new_x, new_y, True,
                                fn_id=1, force_pixel_coords=True)
@@ -1291,7 +1232,7 @@ def set_sun_palace_boss(
     script.insert_commands(cmd.to_bytearray(), pos)
 
     boss_objs = [0xB, 0xC, 0xD, 0xE, 0xF]
-    num_used = min(len(boss.ids), len(boss_objs))
+    num_used = min(len(boss.parts), len(boss_objs))
 
     # After the ambush
     # first_x, first_y = 0x100, 0x1B0
@@ -1301,11 +1242,11 @@ def set_sun_palace_boss(
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
-        boss_id = boss.ids[i]
-        boss_slot = boss.slots[i]
+        boss_id = boss.parts[i].enemy_id
+        boss_slot = boss.parts[i].slot
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[i], new_x, new_y, True,
@@ -1317,27 +1258,27 @@ def set_sun_palace_boss(
             first_x, first_y = 0x100, 0x1FF
 
     # Remove unused boss objects.  In reverse order of course.
-    for i in range(len(boss_objs), len(boss.ids), -1):
+    for i in range(len(boss_objs), len(boss.parts), -1):
         script.remove_object(boss_objs[i-1])
 
     # Add more boss objects if needed.  This will never happen for vanilla
     # Son of Sun, but maybe if scaling adds flames?
 
     calls = bytearray()
-    for i in range(len(boss_objs), len(boss.ids)):
+    for i in range(len(boss_objs), len(boss.parts)):
         obj_id = script.append_copy_object(boss_objs[1])
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
+        set_object_boss(script, obj_id, boss.parts[i].enemy_id, boss.parts[i].slot)
         # The coordinate setting is in init
         set_object_coordinates(script, obj_id, new_x, new_y, True,
                                force_pixel_coords=force_pixel_coords)
 
         # mimic call of other objects
         call = EF()
-        if i == len(boss.ids)-1:
+        if i == len(boss.parts)-1:
             call.add(EC.call_obj_function(obj_id, 1, 1, FS.SYNC))
         else:
             call.add(EC.call_obj_function(obj_id, 1, 1, FS.HALT))
@@ -1375,16 +1316,16 @@ def set_desert_boss(
     for x in del_objs:
         script.remove_object(x)
 
-    num_used = min(len(boss.ids), 3)
+    num_used = min(len(boss.parts), 3)
     first_x, first_y = 0x120, 0xC9
 
     # overwrite as many boss objects as possible
     for i in range(num_used):
-        boss_id = boss.ids[i]
-        boss_slot = boss.slots[i]
+        boss_id = boss.parts[i].enemy_id
+        boss_slot = boss.parts[i].slot
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
         set_object_boss(script, boss_objs[i], boss_id, boss_slot)
         # The coordinate setting is in arb0 for whatever reason.
@@ -1392,19 +1333,20 @@ def set_desert_boss(
                                force_pixel_coords=True)
 
     # Remove unused boss objects.  In reverse order of course.
-    for i in range(len(boss_objs), len(boss.ids), -1):
+    for i in range(len(boss_objs), len(boss.parts), -1):
         script.remove_object(boss_objs[i-1])
 
     # Add more boss objects if needed.
     calls = bytearray()
 
-    for i in range(len(boss_objs), len(boss.ids)):
+    for i in range(len(boss_objs), len(boss.parts)):
         obj_id = script.append_copy_object(boss_objs[1])
 
-        new_x = first_x + boss.disps[i][0]
-        new_y = first_y + boss.disps[i][1]
+        new_x = first_x + boss.parts[i].displacement[0]
+        new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.ids[i], boss.slots[i])
+        set_object_boss(script, obj_id, boss.parts[i].enemy_id,
+                        boss.parts[i].slot)
         # The coordinate setting is in arb0
         set_object_coordinates(script, obj_id, new_x, new_y, True,
                                fn_id=4, force_pixel_coords=True)
@@ -1434,7 +1376,8 @@ def set_mt_woe_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MT_WOE_SUMMIT):
 
-    if EnemyID.GIGA_GAIA_HEAD in boss.ids:
+    boss_ids = [part.enemy_id for part in boss.parts]
+    if EnemyID.GIGA_GAIA_HEAD in boss_ids:
         return
 
     # loc_id = LocID.MT_WOE_SUMMIT
@@ -1461,23 +1404,23 @@ def set_mt_woe_boss(
 
     first_x, first_y = 0x80, 0x158  # will force pixel coords
 
-    if len(boss_objs) > len(boss.ids):
+    if len(boss_objs) > len(boss.parts):
         # Remove unused objects
-        for i in range(len(boss_objs), len(boss.ids), -1):
+        for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
             del(boss_objs[i-1])
-    elif len(boss.ids) > len(boss_objs):
+    elif len(boss.parts) > len(boss_objs):
         # Add new copies of a GG Hand object
-        for i in range(len(boss_objs), len(boss.ids)):
+        for i in range(len(boss_objs), len(boss.parts)):
             obj_id = script.append_copy_object(boss_objs[1])
             boss_objs.append(obj_id)
 
     for ind, obj in enumerate(boss_objs):
-        new_x = first_x + boss.disps[ind][0]
-        new_y = first_y + boss.disps[ind][1]
+        new_x = first_x + boss.parts[ind].displacement[0]
+        new_y = first_y + boss.parts[ind].displacement[1]
 
-        boss_id = boss.ids[ind]
-        boss_slot = boss.slots[ind]
+        boss_id = boss.parts[ind].enemy_id
+        boss_slot = boss.parts[ind].slot
 
         set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[ind],
@@ -1493,7 +1436,8 @@ def set_geno_dome_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.GENO_DOME_MAINFRAME):
 
-    if EnemyID.MOTHERBRAIN in boss.ids:
+    boss_ids = [part.enemy_id for part in boss.parts]
+    if EnemyID.MOTHERBRAIN in boss_ids:
         return
 
     # loc_id = LocID.GENO_DOME_MAINFRAME
@@ -1518,15 +1462,15 @@ def set_geno_dome_boss(
     first_x, first_y = 0xA0, 0x6F  # pixel coords, force pixels
 
     ins_cmds = EF()
-    if len(boss_objs) > len(boss.ids):
+    if len(boss_objs) > len(boss.parts):
         # Remove unused objects
-        for i in range(len(boss_objs), len(boss.ids), -1):
+        for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
             del(boss_objs[i-1])
-    elif len(boss.ids) > len(boss_objs):
+    elif len(boss.parts) > len(boss_objs):
         # Add new copies of a display object
         ins_cmds = EF()
-        for i in range(len(boss_objs), len(boss.ids)):
+        for i in range(len(boss_objs), len(boss.parts)):
             obj_id = script.append_copy_object(boss_objs[1])
             boss_objs.append(obj_id)
 
@@ -1542,11 +1486,11 @@ def set_geno_dome_boss(
     )
 
     for ind, obj in enumerate(boss_objs):
-        new_x = first_x + boss.disps[ind][0]
-        new_y = first_y + boss.disps[ind][1]
+        new_x = first_x + boss.parts[ind].displacement[0]
+        new_y = first_y + boss.parts[ind].displacement[1]
 
-        boss_id = boss.ids[ind]
-        boss_slot = boss.slots[ind]
+        boss_id = boss.parts[ind].enemy_id
+        boss_slot = boss.parts[ind].slot
 
         set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[ind],
@@ -1567,7 +1511,7 @@ def set_arris_dome_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ARRIS_DOME_GUARDIAN_CHAMBER):
 
-    if EnemyID.GUARDIAN in boss.ids:
+    if EnemyID.GUARDIAN in [part.enemy_id for part in boss.parts]:
         return
 
     #loc_id = LocID.ARRIS_DOME_GUARDIAN_CHAMBER
@@ -1625,23 +1569,23 @@ def set_arris_dome_boss(
     pos = script.find_exact_command(call, start, end)
     script.delete_commands(pos, 2)
 
-    if len(boss_objs) > len(boss.ids):
+    if len(boss_objs) > len(boss.parts):
         # Remove unused objects
-        for i in range(len(boss_objs), len(boss.ids), -1):
+        for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
             del(boss_objs[i-1])
-    elif len(boss.ids) > len(boss_objs):
+    elif len(boss.parts) > len(boss_objs):
         # Add new copies of a bit object (that we cleaned up above)
-        for i in range(len(boss_objs), len(boss.ids)):
+        for i in range(len(boss_objs), len(boss.parts)):
             obj_id = script.append_copy_object(boss_objs[1])
             boss_objs.append(obj_id)
 
     for ind, obj in enumerate(boss_objs):
-        new_x = first_x + boss.disps[ind][0]
-        new_y = first_y + boss.disps[ind][1]
+        new_x = first_x + boss.parts[ind].displacement[0]
+        new_y = first_y + boss.parts[ind].displacement[1]
 
-        boss_id = boss.ids[ind]
-        boss_slot = boss.slots[ind]
+        boss_id = boss.parts[ind].enemy_id
+        boss_slot = boss.parts[ind].slot
 
         set_object_boss(script, obj, boss_id, boss_slot)
         set_object_coordinates(script, boss_objs[ind],
@@ -1688,7 +1632,8 @@ def set_prison_catwalks_boss(
     pos = get_last_coord_cmd_pos(script, 0xE, 0)
     script.insert_commands(EC.generic_command(0x8E, 0x84).to_bytearray(), pos)
 
-    if ctenums.EnemyID.DRAGON_TANK in boss.ids:
+    boss_ids = [part.enemy_id for part in boss.parts]
+    if ctenums.EnemyID.DRAGON_TANK in boss_ids:
         return
 
     # body, head, grinder
@@ -1701,7 +1646,7 @@ def set_prison_catwalks_boss(
 
     EID = ctenums.EnemyID
 
-    if EID.RETINITE_EYE in boss.ids:
+    if EID.RETINITE_EYE in boss_ids:
         first_y -= 0x28
 
     # Since bosses may move, add a move back to the explosion point
@@ -1718,21 +1663,24 @@ def set_prison_catwalks_boss(
         pos+len(cmd)
     )
 
+    print(len(boss_objs), len(boss.parts))
+    
     # Set up all of the boss objects -- make own function?
-    if len(boss_objs) == 1:
+    if len(boss.parts) == 1:
         # Keep static object E
         script.remove_object(0xF)
         script.remove_object(0xD)
-    elif len(boss_objs) > len(boss.ids):
-        boss.reorder(1)
+        boss_objs = [0xE]
+    elif len(boss_objs) > len(boss.parts):
+        boss.make_part_first(1)
         # Remove unused objects
-        for i in range(len(boss_objs), len(boss.ids), -1):
+        for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
             del boss_objs[i-1]
-    elif len(boss.ids) > len(boss_objs):
+    elif len(boss.parts) > len(boss_objs):
         # Add copies of the grinder
-        boss.reorder(1)
-        for i in range(len(boss_objs), len(boss.ids)):
+        boss.make_part_first(1)
+        for i in range(len(boss_objs), len(boss.parts)):
             obj_id = script.append_copy_object(boss_objs[-1])
             boss_objs.append(obj_id)
 
@@ -1748,10 +1696,11 @@ def set_prison_catwalks_boss(
     call_cmds = EF()
 
     for ind, obj in enumerate(boss_objs):
-        new_x = first_x + boss.disps[ind][0]
-        new_y = first_y + boss.disps[ind][1]
+        new_x = first_x + boss.parts[ind].displacement[0]
+        new_y = first_y + boss.parts[ind].displacement[1]
 
-        set_object_boss(script, obj, boss.ids[ind], boss.slots[ind])
+        set_object_boss(script, obj, boss.parts[ind].enemy_id,
+                        boss.parts[ind].slot)
         set_object_coordinates(script, obj, new_x, new_y,
                                force_pixel_coords=force_pixel_coords)
         script.set_function(obj, 3, new_arb0)
@@ -1787,13 +1736,13 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
     first_x, first_y = coord_cmd.get_pixel_coordinates()
     force_pixel_coords = are_pixel_coords_forced(first_x, first_y, boss)
 
-    if len(boss_objs) > len(boss.ids):
-        for i in range(len(boss_objs), len(boss.ids), -1):
+    if len(boss_objs) > len(boss.parts):
+        for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
             del boss_objs[i-1]
-    elif len(boss.ids) > len(boss_objs):
+    elif len(boss.parts) > len(boss_objs):
         # Add copies of an R-series
-        for i in range(len(boss_objs), len(boss.ids)):
+        for i in range(len(boss_objs), len(boss.parts)):
             obj_id = script.append_copy_object(boss_objs[-1])
             boss_objs.append(obj_id)
 
@@ -1806,10 +1755,10 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
 
     call_cmds = EF()
     for ind, obj in enumerate(boss_objs):
-        new_x = first_x + boss.disps[ind][0]
-        new_y = first_y + boss.disps[ind][1]
-        boss_id = boss.ids[ind]
-        boss_slot = boss.slots[ind]
+        new_x = first_x + boss.parts[ind].displacement[0]
+        new_y = first_y + boss.parts[ind].displacement[1]
+        boss_id = boss.parts[ind].enemy_id
+        boss_slot = boss.parts[ind].slot
 
         # R-Series loads are locked behind if flag
         set_object_boss(script, obj, boss_id, boss_slot,

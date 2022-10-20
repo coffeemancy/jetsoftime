@@ -202,7 +202,7 @@ class ROSettings:
     def from_game_mode(
             cls,
             mode: GameMode,
-            boss_list: list[ctenums.BossID] = None,
+            boss_list: list[rotypes.BossID] = None,
             ro_flags: ROFlags = ROFlags(0)
             ) -> ROSettings:
         '''
@@ -233,7 +233,7 @@ class ROSettings:
             spots = list(BS)
 
         if boss_list is None:
-            boss_list = list(rotypes.BossID)
+            boss_list = rotypes.get_assignable_bosses()
 
         return ROSettings(spots, boss_list, ro_flags)
 

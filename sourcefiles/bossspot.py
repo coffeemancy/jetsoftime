@@ -77,44 +77,35 @@ def distribute_rewards(
     '''
     Distribute spot_reward over the parts of scheme with the same distribution.
     '''
-    # print(f'Distributing {spot_reward} to {scheme}')
+    print(f'Distributing {spot_reward} to {scheme}')
     total_xp = sum(stat_dict[part.enemy_id].xp for part in scheme.parts)
     total_tp = sum(stat_dict[part.enemy_id].tp for part in scheme.parts)
     total_gp = sum(stat_dict[part.enemy_id].gp for part in scheme.parts)
 
     part_ids = [part.enemy_id for part in scheme.parts]
-    part_counts = {
-        part.enemy_id: part_ids.count(part.enemy_id)
-        for part in set(scheme.parts)
-    }
-
-    for part in set(scheme.parts):
-        part_id = part.enemy_id
-        count = part_counts[part_id]
-
+    for part_id in set(part_ids):
         if total_xp == 0:
-            xp_share = count / len(part_ids)
+            xp_share = 1 / len(part_ids)
         else:
-            xp_share = count*stat_dict[part_id].xp/total_xp
+            xp_share = stat_dict[part_id].xp/total_xp
 
         if total_tp == 0:
-            tp_share = count / len(part_ids)
+            tp_share = 1 / len(part_ids)
         else:
-            tp_share = count*stat_dict[part_id].tp/total_tp
+            tp_share = stat_dict[part_id].tp/total_tp
 
         if total_gp == 0:
-            gp_share = count / len(part_ids)
+            gp_share = 1 / len(part_ids)
         else:
-            gp_share = count*stat_dict[part_id].gp/total_gp
+            gp_share = stat_dict[part_id].gp/total_gp
 
         new_xp = round(xp_share*spot_reward.xp)
         new_tp = round(tp_share*spot_reward.tp)
         new_gp = round(gp_share*spot_reward.gp)
+        print(f'\t{part_id}: xp={new_xp}, tp={new_tp}, gp={new_gp}')
         stat_dict[part_id].xp = new_xp
         stat_dict[part_id].tp = new_tp
         stat_dict[part_id].gp = new_gp
-
-        # print(f'\t{part_id}: xp={new_xp}, tp={new_tp}, gp=new{new_gp}')
 
     # TODO:  Total may be off by 1.  Fix if so desired.
 

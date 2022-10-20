@@ -18,7 +18,6 @@ class EnemySpriteData:
     def get_copy(self) -> EnemySpriteData:
         return EnemySpriteData(self._data)
 
-
     @property
     def palette(self) -> int:
         return self._data[2]
