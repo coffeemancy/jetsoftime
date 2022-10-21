@@ -224,7 +224,7 @@ class XPThreshholds(ctt.BinaryData):
     Class for storing XP needed to gain a level.
     '''
     SIZE = 99*2
-    ROM_RW = ctt.AbsPointerRW(0x018F3F)
+    ROM_RW = ctt.AbsPointerRW(0x01F83E)
 
     def get_xp_for_level(self, level: int):
         '''
