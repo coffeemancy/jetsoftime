@@ -7,6 +7,7 @@ import typing
 
 import ctenums
 
+
 class BossSpotID(enum.Enum):
     MANORIA_CATHERDAL = enum.auto()
     HECKRAN_CAVE = enum.auto()
@@ -34,6 +35,39 @@ class BossSpotID(enum.Enum):
     FACTORY_RUINS = enum.auto()
     PRISON_CATWALKS = enum.auto()
     EPOCH_REBORN = enum.auto()
+
+    def __str__(self):
+        return _boss_spot_names[self]
+
+
+_boss_spot_names: dict[BossSpotID: str] = {
+    BossSpotID.MANORIA_CATHERDAL: 'Cathedral',
+    BossSpotID.HECKRAN_CAVE: 'Heckran\'s Cave',
+    BossSpotID.DENADORO_MTS: 'Denadoro Mountains',
+    BossSpotID.ZENAN_BRIDGE: 'Zenan Bridge',
+    BossSpotID.REPTITE_LAIR: 'Reptite Lair',
+    BossSpotID.MAGUS_CASTLE_FLEA: 'Magus Castle Flea',
+    BossSpotID.MAGUS_CASTLE_SLASH: 'Magus Castle Slash',
+    BossSpotID.GIANTS_CLAW: 'Giant\'s Claw',
+    BossSpotID.TYRANO_LAIR_NIZBEL: 'Tyrano Lair Midboss',
+    BossSpotID.ZEAL_PALACE: 'Zeal Palace Throneroom',
+    BossSpotID.DEATH_PEAK: 'Death Peak',
+    BossSpotID.BLACK_OMEN_GIGA_MUTANT: 'Black Omen Giga Mutant',
+    BossSpotID.BLACK_OMEN_TERRA_MUTANT: 'Black Omen Terra Mutant',
+    BossSpotID.BLACK_OMEN_ELDER_SPAWN: 'Black Omen Elder Spawn',
+    BossSpotID.KINGS_TRIAL: 'King\'s Trial',
+    BossSpotID.OZZIES_FORT_FLEA_PLUS: 'Ozzie\'s Fort Flea Plus',
+    BossSpotID.OZZIES_FORT_SUPER_SLASH: 'Ozzie\'s Fort Super Slash',
+    BossSpotID.SUN_PALACE: 'Sun Palace',
+    BossSpotID.SUNKEN_DESERT: 'Sunken Desert',
+    BossSpotID.OCEAN_PALACE_TWIN_GOLEM: 'Ocean Palace Twin Boss',
+    BossSpotID.GENO_DOME: 'Geno Dome',
+    BossSpotID.MT_WOE: 'Mt. Woe',
+    BossSpotID.ARRIS_DOME: 'Arris Dome',
+    BossSpotID.FACTORY_RUINS: 'Factory',
+    BossSpotID.PRISON_CATWALKS: 'Prison Catwalks',
+    BossSpotID.EPOCH_REBORN: 'Epoch Reborn'
+}
 
 
 class BossID(enum.Enum):
@@ -81,6 +115,18 @@ class BossID(enum.Enum):
     LAVOS_CORE = enum.auto()
     ZEAL = enum.auto()
     ZEAL_2 = enum.auto()
+
+    def __str__(self):
+        if self == BossID.MAGUS_NORTH_CAPE:
+            return 'Magus (North Cape)'
+        elif self == BossID.YAKRA_XIII:
+            return 'Yakra XIII'
+        elif self == BossID.NIZBEL_2:
+            return 'Nizbel II'
+        else:
+            out = self.__repr__().split('.')[1].split(':')[0].lower().title()
+            out = out.replace('_', ' ')
+            return out
 
 
 def get_assignable_bosses():
