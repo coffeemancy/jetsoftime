@@ -48,7 +48,7 @@ def add_sunstone_spot_to_config(config: cfg.RandoConfig):
     td = treasuredata
     assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
 
-    sunstone_spot = cfg.ScriptTreasure(
+    sunstone_spot = treasuretypes.ScriptTreasure(
         ctenums.LocID.SUN_KEEP_2300, 8, 1, assigned_item
     )
 
@@ -160,7 +160,7 @@ def add_check_to_ozzies_fort_in_config(config: cfg.RandoConfig):
     td = treasuredata
     assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
 
-    ozzies_fort_check = cfg.ScriptTreasure(
+    ozzies_fort_check = treasuretypes.ScriptTreasure(
         ctenums.LocID.OZZIES_FORT_THRONE_INCOMPETENCE,
         0x8, 0x2, assigned_item, 0
     )
@@ -364,7 +364,7 @@ def add_arris_food_locker_check_to_config(config: cfg.RandoConfig):
     td = treasuredata
     assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
 
-    food_locker_check = cfg.ScriptTreasure(
+    food_locker_check = treasuretypes.ScriptTreasure(
         ctenums.LocID.ARRIS_DOME_FOOD_LOCKER, 0x8, 0x1, assigned_item, 0
     )
 
@@ -664,7 +664,7 @@ def restore_cyrus_grave_check_to_config(config: cfg.RandoConfig):
     assigned_item = random.choice(
         td.get_item_list(td.ItemTier.AWESOME_GEAR)
     )
-    cyrus_check = cfg.ScriptTreasure(
+    cyrus_check = treasuretypes.ScriptTreasure(
         ctenums.LocID.NORTHERN_RUINS_HEROS_GRAVE, 5, 8,
         assigned_item
     )

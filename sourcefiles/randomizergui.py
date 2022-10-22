@@ -249,6 +249,7 @@ class RandoGUI:
 
         BossID = rotypes.BossID
         self.bosses = rotypes.get_assignable_bosses()
+        self.bosses = sorted(self.bosses, key=str)
 
         no_shuffle_bosses = [
             # BossID.DRAGON_TANK, BossID.R_SERIES, BossID.MUD_IMP,
@@ -260,8 +261,6 @@ class RandoGUI:
         for x in no_shuffle_bosses:
             if x in self.bosses:
                 self.bosses.remove(x)
-
-        print(self.bosses)
 
         self.display_dup_char_settings_window
         self.ro_page = self.get_ro_page()
@@ -590,7 +589,6 @@ class RandoGUI:
 
         # push the ro flag lists
         ro_settings = self.settings.ro_settings
-        print(ro_settings.bosses)
         boss_indices = [self.bosses.index(x)
                         for x in ro_settings.bosses]
 

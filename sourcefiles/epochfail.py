@@ -460,7 +460,7 @@ def update_config(config: cfg.RandoConfig):
     '''
     Add JetsOfTime to the item list.
     '''
-    jot = config.itemdb[ctenums.ItemID.JETSOFTIME]
+    jot = config.item_db[ctenums.ItemID.JETSOFTIME]
     jot.set_name_from_str(' JetsOfTime')
 
 

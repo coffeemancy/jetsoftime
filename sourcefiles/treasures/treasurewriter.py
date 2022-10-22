@@ -88,7 +88,7 @@ def add_lw_key_item_gear(settings: rset.Settings,
         lw_tids += lw_key_tids
 
     lw_avail_tids = [x for x in lw_tids
-                     if config.treasure_assign_dict[x].held_item
+                     if config.treasure_assign_dict[x].reward
                      not in lw_keys]
 
     # added_treasures = []
@@ -105,7 +105,7 @@ def add_lw_key_item_gear(settings: rset.Settings,
 
     for ind, tid in enumerate(added_tids):
         item = added_treasures[ind]
-        config.treasure_assign_dict[tid].held_item = item
+        config.treasure_assign_dict[tid].reward = item
 
         # We use Cronosanity's location types in the spoiler log, so we
         # sort of hack some new ones on to have the new items.
@@ -198,7 +198,7 @@ def write_treasures_to_config(settings: rset.Settings,
 
     for ind, tid in enumerate(specials):
         items = item_lists[ind]
-        assign[tid].held_item = rand.choice(items)
+        assign[tid].reward = rand.choice(items)
 
     # finally rocks
     rock_tids = [TID.DENADORO_ROCK, TID.GIANTS_CLAW_ROCK,
@@ -209,7 +209,7 @@ def write_treasures_to_config(settings: rset.Settings,
     rand.shuffle(rocks)
 
     for ind, tid in enumerate(rock_tids):
-        assign[tid].held_item = rocks[ind]
+        assign[tid].reward = rocks[ind]
 
 
 def ptr_to_enum(ptr_list):
