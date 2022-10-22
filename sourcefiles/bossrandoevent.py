@@ -840,24 +840,25 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     default_assignment = bt.get_default_boss_assignment()
     current_assignment = config.boss_assign_dict
 
-    for spot in current_assignment.keys():
-        if current_assignment[spot] == default_assignment[spot] and \
-           spot != LocID.OCEAN_PALACE_TWIN_GOLEM:
-            # print(f"Not assigning to {loc}.  No change from default.")
-            pass
-        else:
-            if spot not in assign_fn_dict:
-                raise ValueError(
-                    f"Error: Tried assigning to {spot}.  Location not "
-                    "supported for boss randomization."
-                )
+    for spot, boss_id in current_assignment.items():
+        if current_assignment[spot] == default_assignment[spot]:
+            continue
 
-            assign_fn = assign_fn_dict[spot]
-            boss_id = current_assignment[spot]
+        if spot not in assign_fn_dict:
+            raise ValueError(
+                f"Error: Tried assigning to {spot}.  Location not "
+                "supported for boss randomization."
+            )
+
+        if spot == BSID.OCEAN_PALACE_TWIN_GOLEM:
+            boss_scheme = config.boss_data_dict[bt.BossID.TWIN_BOSS]
+        else:
             boss_scheme = config.boss_data_dict[boss_id]
-            # print(f"Writing {boss_id} to {loc}")
-            # print(f"{boss_scheme}")
-            assign_fn(ctrom, boss_scheme)
+
+        assign_fn = assign_fn_dict[spot]
+        # print(f"Writing {boss_id} to {loc}")
+        # print(f"{boss_scheme}")
+        assign_fn(ctrom, boss_scheme)
 
     # New fun sprite bug:  Enemy 0x4F was a frog before it was turned into
     # the twin golem.  Turning it into other bosses can make for pink screens

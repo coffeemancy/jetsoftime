@@ -686,6 +686,14 @@ def set_tyrano_lair_midboss(
     # first_x = 0x70
     # first_y = 0xD0
 
+    if boss.parts[0].enemy_id == EnemyID.R_SERIES:
+        script = ct_rom.script_manager.get_script(loc_id)
+        anim_pos = script.find_exact_command(
+            EC.generic_command(0xAA, 0x07),
+            script.get_function_start(8, 0)
+        )
+        script.data[anim_pos+1] = 1
+
     set_generic_one_spot_boss(
         ct_rom, boss, loc_id, boss_obj,
         lambda s: s.get_function_end(8, 3) - 1,
@@ -781,21 +789,16 @@ def set_twin_golem_spot(
     pos = script.find_exact_command(move_cmd,
                                     script.get_function_start(0xA, 3))
 
-    first_x = 0x80
-    first_y = 0xE0
+    first_x = 0x88
+    first_y = 0xF0
 
     # Move command is given in tile coords, so >> 4
-    new_x = (first_x + boss.parts[0].displacement[0] >> 4)
-    new_y = (first_y + boss.parts[0].displacement[1] >> 4)
+    new_x = (first_x - 0x8 + boss.parts[0].displacement[0]) >> 4
+    new_y = (first_y - 0x10 + boss.parts[0].displacement[1]) >> 4
     script.data[pos+1] = new_x
 
-    # Back to pixels for set coords
-    new_x = new_x << 4
-    new_y = new_y << 4
-
     # 2) Change the following set coords command to the dest of the move
-    coord_cmd = EC.set_object_coordinates(new_x, new_y)
-
+    coord_cmd = EC.set_object_coordinates_tile(new_x, new_y)
     pos += len(move_cmd)
     script.data[pos:pos+len(coord_cmd)] = coord_cmd.to_bytearray()
 
@@ -1648,6 +1651,9 @@ def set_prison_catwalks_boss(
 
     if EID.RETINITE_EYE in boss_ids:
         first_y -= 0x28
+    elif EID.MOTHERBRAIN in boss_ids:
+        first_y -= 0x28
+        first_x -= 0x20
 
     # Since bosses may move, add a move back to the explosion point
     # Do this before the object order gets all messed up.
@@ -1663,8 +1669,6 @@ def set_prison_catwalks_boss(
         pos+len(cmd)
     )
 
-    print(len(boss_objs), len(boss.parts))
-    
     # Set up all of the boss objects -- make own function?
     if len(boss.parts) == 1:
         # Keep static object E
