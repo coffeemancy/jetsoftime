@@ -130,7 +130,7 @@ class BossID(enum.Enum):
 
 
 def get_assignable_bosses():
-    return [
+    boss_list = [
         BossID.ATROPOS_XR, BossID.DALTON_PLUS, BossID.FLEA, BossID.FLEA_PLUS,
         BossID.GOLEM, BossID.GOLEM_BOSS, BossID.HECKRAN,
         BossID.MAGUS_NORTH_CAPE, BossID.MASA_MUNE, BossID.NIZBEL,
@@ -139,8 +139,10 @@ def get_assignable_bosses():
         BossID.ZOMBOR, BossID.LAVOS_SPAWN, BossID.ELDER_SPAWN,
         BossID.MEGA_MUTANT, BossID.GIGA_MUTANT, BossID.TERRA_MUTANT,
         BossID.RETINITE, BossID.SON_OF_SUN, BossID.MOTHER_BRAIN,
-        BossID.GUARDIAN, BossID.MUD_IMP
+        BossID.GUARDIAN, BossID.MUD_IMP, BossID.R_SERIES
     ]
+
+    return boss_list
 
 
 def get_one_part_bosses():
@@ -334,7 +336,7 @@ _default_schemes: dict[BossID, BossScheme] = {
         BossPart(_EID.MOTHERBRAIN, 3),
         BossPart(_EID.DISPLAY, 6, (-0x40, -0x0F)),  # (-0x50, -0x1F) Orig
         BossPart(_EID.DISPLAY, 7, (-0x08, -0x1F)),  # (-0x20, -0x2F) Orig
-        BossPart(_EID.DISPLAY, 8, (-0x38, -0x0F)),  # (-0x40, -0x1F) Orig
+        BossPart(_EID.DISPLAY, 8, (0x38, -0x0F)),  # (-0x40, -0x1F) Orig
     ),
     BossID.MUD_IMP: BossScheme(
         BossPart(_EID.MUD_IMP, 9),
