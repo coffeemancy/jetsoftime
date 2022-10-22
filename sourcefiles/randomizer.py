@@ -7,6 +7,7 @@ import sys
 import json
 
 import charassign
+import enemyai
 import enemystats
 import itemdata
 import itemrando
@@ -691,6 +692,9 @@ class Randomizer:
         # Write enemies out
         for enemy_id, stats in config.enemy_dict.items():
             stats.write_to_ctrom(ctrom, enemy_id)
+
+        for enemy_id, sprite_data in config.enemy_sprite_dict.items():
+            sprite_data.write_to_ctrom(ctrom, enemy_id)
 
         # Write treasures out -- this includes key items
         # for treasure in config.treasure_assign_dict.values():
@@ -1471,6 +1475,7 @@ class Randomizer:
         # I do have a pickle with a default config and normal/hard enemy dicts
         # which can be used instead if this is an issue.  The problem with
         # using those is the need to update them with every patch.
+        van_ct_rom = CTRom(ct_vanilla, True)
         ct_rom = CTRom(ct_vanilla, True)
         Randomizer.__apply_basic_patches(ct_rom)
         config = cfg.RandoConfig()
@@ -1478,11 +1483,26 @@ class Randomizer:
         config.boss_data_dict = rotypes.get_boss_data_dict()
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
-            config.update_from_ct_rom(ct_vanilla)
+            config.update_from_ct_rom(van_ct_rom)
             vanillarando.fix_config(config)
 
         else:
+            van_config = cfg.RandoConfig()
+            van_config.update_from_ct_rom(van_ct_rom)
             config.update_from_ct_rom(ct_rom)
+
+            # patch.ips apparently writes marle into the magus spot with
+            # custom ai to heal and cast ice2.  It's cool, but we want the
+            # vanilla north cape magus.
+            magus_id = ctenums.EnemyID.MAGUS_NORTH_CAPE
+            magus_nc_sprite = van_config.enemy_sprite_dict[magus_id]
+            magus_nc_ai = van_config.enemy_ai_db.scripts[magus_id]
+            magus_nc_stats = van_config.enemy_dict[magus_id]
+
+            config.enemy_ai_db.scripts[magus_id] = magus_nc_ai
+            config.enemy_sprite_dict[magus_id] = magus_nc_sprite
+            config.enemy_dict[magus_id] = magus_nc_stats
+
 
             if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
                 vanillarando.apply_vanilla_keys_to_config(config)
@@ -1545,7 +1565,7 @@ class Randomizer:
                                      9)
 
             pcstats.pc_stat_dict[ctenums.CharID.FROG]\
-                   .tp_threshholds[3] = 100
+                   .tp_threshholds.set_threshold(3, 100)
 
             # Reduce Robo tackle to 24 power (follow +15% rule)
             tackle_id = int(ctenums.TechID.ROBO_TACKLE)
