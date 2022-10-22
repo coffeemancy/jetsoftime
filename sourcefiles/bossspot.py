@@ -77,7 +77,7 @@ def distribute_rewards(
     '''
     Distribute spot_reward over the parts of scheme with the same distribution.
     '''
-    print(f'Distributing {spot_reward} to {scheme}')
+    # print(f'Distributing {spot_reward} to {scheme}')
     total_xp = sum(stat_dict[part.enemy_id].xp for part in scheme.parts)
     total_tp = sum(stat_dict[part.enemy_id].tp for part in scheme.parts)
     total_gp = sum(stat_dict[part.enemy_id].gp for part in scheme.parts)
@@ -102,7 +102,7 @@ def distribute_rewards(
         new_xp = round(xp_share*spot_reward.xp)
         new_tp = round(tp_share*spot_reward.tp)
         new_gp = round(gp_share*spot_reward.gp)
-        print(f'\t{part_id}: xp={new_xp}, tp={new_tp}, gp={new_gp}')
+        # print(f'\t{part_id}: xp={new_xp}, tp={new_tp}, gp={new_gp}')
         stat_dict[part_id].xp = new_xp
         stat_dict[part_id].tp = new_tp
         stat_dict[part_id].gp = new_gp
@@ -188,30 +188,31 @@ def get_boss_total_hp(
 ) -> int:
 
     EnID = ctenums.EnemyID
+    boss_ids = [part.enemy_id for part in boss_scheme.parts]
     main_ids = set([EnID.LAVOS_SPAWN_HEAD,
                     EnID.ELDER_SPAWN_HEAD,
                     EnID.GUARDIAN,
                     EnID.GIGA_GAIA_HEAD])
-    if len(boss_scheme.ids) == 1:
-        ret_hp = hp_dict[boss_scheme.ids[0]]
-        if boss_scheme.ids[0] == EnID.RUST_TYRANO:
+    if len(boss_ids) == 1:
+        ret_hp = hp_dict[boss_ids[0]]
+        if boss_ids[0] == EnID.RUST_TYRANO:
             ret_hp = round(ret_hp / 1.75)
-    elif boss_scheme.ids[0] == EnID.TWIN_BOSS:
+    elif boss_ids[0] == EnID.TWIN_BOSS:
         ret_hp = round((hp_dict[EnID.TWIN_BOSS]*3)/2)
-    elif EnID.TERRA_MUTANT_HEAD in boss_scheme.ids:
+    elif EnID.TERRA_MUTANT_HEAD in boss_ids:
         head_hp = max(1, hp_dict[EnID.TERRA_MUTANT_HEAD])
         ret_hp = round(3*head_hp/2)
-    elif not main_ids.isdisjoint(set(boss_scheme.ids)):
-        main_id = next(x for x in main_ids if x in boss_scheme.ids)
+    elif not main_ids.isdisjoint(set(boss_ids)):
+        main_id = next(x for x in main_ids if x in boss_ids)
         ret_hp = hp_dict[main_id]
-    elif EnID.MOTHERBRAIN in boss_scheme.ids:
+    elif EnID.MOTHERBRAIN in boss_ids:
         ret_hp = hp_dict[EnID.MOTHERBRAIN]
-    elif EnID.SON_OF_SUN_EYE in boss_scheme.ids:
+    elif EnID.SON_OF_SUN_EYE in boss_ids:
         ret_hp = 6500  # Completely Fabricated!
     else:
         # The general case.  Just sum up the part HPs.
 
-        ret_hp = sum(hp_dict[part] for part in boss_scheme.ids)
+        ret_hp = sum(hp_dict[part] for part in boss_ids)
 
     return ret_hp
 
@@ -229,13 +230,14 @@ def get_part_new_hps(
                     EnID.GUARDIAN,
                     EnID.GIGA_GAIA_HEAD])
 
-    if len(boss_scheme.ids) == 1:
-        if boss_scheme.ids[0] == EnID.RUST_TYRANO:
+    boss_ids = [part.enemy_id for part in boss_scheme.parts]
+    if len(boss_ids) == 1:
+        if boss_ids[0] == EnID.RUST_TYRANO:
             new_hp = round(new_hp * 1.75)
-        ret_dict = {boss_scheme.ids[0]: new_hp}
-    elif boss_scheme.ids[0] == EnID.TWIN_BOSS:
+        ret_dict = {boss_ids[0]: new_hp}
+    elif boss_ids[0] == EnID.TWIN_BOSS:
         ret_dict = {EnID.TWIN_BOSS: round((new_hp*2)/3)}
-    elif EnID.TERRA_MUTANT_HEAD in boss_scheme.ids:
+    elif EnID.TERRA_MUTANT_HEAD in boss_ids:
         head_hp = max(1, hp_dict[EnID.TERRA_MUTANT_HEAD])
         bottom_hp = hp_dict[EnID.TERRA_MUTANT_BOTTOM]
         bot_proportion = bottom_hp/head_hp
@@ -247,28 +249,28 @@ def get_part_new_hps(
             EnID.TERRA_MUTANT_HEAD: new_head_hp,
             EnID.TERRA_MUTANT_BOTTOM: new_bottom_hp
         }
-    elif not main_ids.isdisjoint(set(boss_scheme.ids)):
+    elif not main_ids.isdisjoint(set(boss_ids)):
         # Covers Lavos Spawns, Guardian, Giga Gaia
         # Give the main part the spot hp.  Assign the others proportionally.
-        main_id = next(x for x in main_ids if x in boss_scheme.ids)
+        main_id = next(x for x in main_ids if x in boss_ids)
         main_hp = hp_dict[main_id]
         ret_dict = {
             part: round(new_hp*(hp_dict[part]/main_hp))
-            for part in boss_scheme.ids
+            for part in boss_ids
         }
-    elif EnID.MOTHERBRAIN in boss_scheme.ids:
+    elif EnID.MOTHERBRAIN in boss_ids:
         ret_dict = {
             EnID.MOTHERBRAIN: new_hp,
             EnID.DISPLAY: 1
         }
-    elif EnID.SON_OF_SUN_EYE in boss_scheme.ids:
+    elif EnID.SON_OF_SUN_EYE in boss_ids:
         ret_dict = {}
     else:
         # The general case.  Carve up new_hp by the original hp distribution.
         # Being lazy because no leftover bosses have duplicate parts.
-        total_hp = sum(hp_dict[part] for part in boss_scheme.ids)
+        total_hp = sum(hp_dict[part] for part in boss_ids)
         part_props = {
-            part: hp_dict[part]/total_hp for part in boss_scheme.ids
+            part: hp_dict[part]/total_hp for part in boss_ids
         }
         ret_dict = {
             part: round(part_props[part]*new_hp) for part in part_props
