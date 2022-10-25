@@ -24,6 +24,7 @@ def update_prismshard_quest(ct_rom: ctrom.CTRom):
     fix_basement_music(ct_rom)
     alter_shard_spot_pickup(ct_rom)
     accelerate_end_scene(ct_rom)
+    shorten_shard_turn_in_script(ct_rom)
 
     ct_rom.rom_data.seek(0x01FFFF)
     ct_rom.rom_data.write(b'\x01')
@@ -220,6 +221,49 @@ def accelerate_end_scene(ct_rom: ctrom.CTRom):
         else:  # cmd.command == 0xF0  # darken
             script.data[pos+1] = max(1, script.data[pos+1]//4)
             pos += len(cmd)
+
+
+def shorten_shard_turn_in_script(ct_rom: ctrom.CTRom):
+    '''
+    Reduce some dialogue when asking the king to retrieve the shell.
+    '''
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.GUARDIA_THRONEROOM_600
+    )
+
+    # Remove everything leading up to "Done! I shall...."
+    # Now the king interaction is just him saying he'll get the shell
+    # followed by someone saying thanks.
+    del_st = script.find_exact_command(
+        EC.darken(0xF8),
+        script.get_function_start(0x13, 1),
+        script.get_function_end(0x13, 1)
+    )
+
+    del_end = script.find_exact_command(
+        EC.generic_command(0xAA, 0x3),
+        del_st, script.get_function_end(0x13, 1)
+    )
+
+    script.delete_commands_range(del_st, del_end)
+
+    # Remove the extra frog dialog that can trigger.
+    pos = script.find_exact_command(
+        EC.party_follow(),
+        script.get_function_start(0x13, 1),
+        script.get_function_end(0x13, 1)
+    )
+
+    func = (
+        EF()
+        .add(EC.party_follow())
+        .add(EC.return_cmd())
+    )
+
+    script.insert_commands(func.get_bytearray(), pos)
+    pos += len(func)
+    script.delete_commands(pos, 1)
+
 
 def main():
     ct_rom = ctrom.CTRom.from_file('./roms/shard_test.sfc', True)
