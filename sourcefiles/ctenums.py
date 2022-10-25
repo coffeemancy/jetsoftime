@@ -167,6 +167,7 @@ class LocID(StrIntEnum):
     CHORAS_CARPENTER_600 = 0xBA
     GUARDIA_BASEMENT = 0x1A
     KINGS_CHAMBER_600 = 0x79
+    TRUCE_MARKET = 0x11
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT
