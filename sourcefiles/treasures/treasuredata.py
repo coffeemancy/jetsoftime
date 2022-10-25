@@ -512,7 +512,7 @@ _treas_dists[rset.Difficulty.NORMAL][TreasureLocTier.MID_HIGH] = \
         (12, _high_gear),
         (45, _good_gear)
     )
-# Total weight 1000, could simplify but this is clean enough
+# Total weight 1100, could simplify but this is clean enough
 _treas_dists[rset.Difficulty.NORMAL][TreasureLocTier.HIGH_AWESOME] = \
     TreasureDist(
         (400, _good_cons + _high_cons + _awe_cons),
@@ -543,7 +543,7 @@ _treas_dists[rset.Difficulty.HARD][TreasureLocTier.MID_HIGH] = \
         (5, _mid_cons + _good_cons),
         (6, _mid_gear + _good_gear)
     )
-# Total weight 1000, could simplify but clean enough
+# Total weight 1100, could simplify but clean enough
 _treas_dists[rset.Difficulty.HARD][TreasureLocTier.HIGH_AWESOME] = \
     TreasureDist(
         (400, _mid_cons + _good_cons + _high_cons + _awe_cons),

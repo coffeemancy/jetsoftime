@@ -297,5 +297,5 @@ def set_free_menu_glitch(ct_rom: CTRom, settings: rset.Settings):
 def attempt_all_qol_hacks(ctrom: CTRom, settings: rset.Settings):
     force_sightscope_on(ctrom, settings)
     fast_tab_pickup(ctrom, settings)
-    set_guaranteed_drops(ctrom, settings)
+    set_guaranteed_drops(ctrom)
     set_free_menu_glitch(ctrom, settings)
