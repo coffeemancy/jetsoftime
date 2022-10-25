@@ -1213,12 +1213,20 @@ class Event:
                 jump_mult = 2*(cmd.command in EC.fwd_jump_commands)-1
                 jump_target = pos + len(cmd) + cmd.args[-1]*jump_mult - 1
 
-                st = min(jump_target, pos)
-                end = max(jump_target, pos)
+                is_shifted = False
+                if jump_mult == -1:
+                    # Backwards jumps need to be shifted if after_pos coincides
+                    # with the jump command's position (pos)
+                    if pos >= after_pos and jump_target < before_pos:
+                        is_shifted = True
+                elif pos < before_pos and jump_target > after_pos:
+                    # For forwards jumps, you need the jump command (@ pos) to
+                    # be strictly before before_pos and you need jump_target
+                    # to be strictly after after_pos.  When before_pos and
+                    # after_pos coincide, the insertion is after the if block.
+                    is_shifted = True
 
-                # the >= and < are due to treating [before_pos, after_pos)
-                # as a half open interval (as python tends to do)
-                if end >= after_pos and st < before_pos:
+                if is_shifted:
                     arg_offset = len(cmd) - cmd.arg_lens[-1]
                     self.data[pos+arg_offset] += shift
                 else:
