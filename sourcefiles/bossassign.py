@@ -121,7 +121,6 @@ def set_object_coordinates(script: ctevent.Event, obj_id: int,
                 script.insert_commands(new_coord_cmd.to_bytearray(),
                                        pos)
                 script.delete_commands(pos+len(new_coord_cmd), 1)
-
             break
 
         pos += len(cmd)
@@ -239,7 +238,6 @@ def set_generic_one_spot_boss_script(
 
         first_x, first_y = cmd.get_pixel_coordinates()
         pixel_coords = True
-        # print(f'({first_x:03X}, {first_y:03X})')
 
     # Determine whether it's necessary to use pixel coordinates
     if not pixel_coords:
@@ -672,7 +670,8 @@ def set_giants_claw_boss(
     set_generic_one_spot_boss_script(
         script, boss, boss_obj,
         lambda s: s.get_function_start(0, 0) + 1,
-        lambda s: get_first_coord_cmd_pos(s, boss_obj, 0)
+        lambda s: get_first_coord_cmd_pos(s, boss_obj, 0),
+        is_shown=True
     )
 # end set giant's claw boss
 
@@ -837,6 +836,7 @@ def set_twin_golem_spot(
 def set_zenan_bridge_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ZENAN_BRIDGE_BOSS):
+
     # 0x87 is Zombor's map - Zenan Bridge (Middle Ages)
     # Except to avoid sprite bugs we changed it
     # loc_id = LocID.ZENAN_BRIDGE_BOSS
@@ -856,7 +856,7 @@ def set_zenan_bridge_boss(
 
         # Note: These are tile coordinates, not suitable for anything but the
         #       one spot assignment.
-        first_x, first_y = 0xE0, 0x80
+        first_x, first_y = 0xE8, 0x90
         first_id, first_slot = boss.parts[0].enemy_id, boss.parts[0].slot
 
         while pos < script.get_function_end(0xB, 0):
@@ -875,7 +875,7 @@ def set_zenan_bridge_boss(
                 # This is only safe because we know it will give the tile
                 # based command to perfectly overwrite the existing tile based
                 # command.
-                cmd = EC.set_object_coordinates(first_x, first_y)
+                cmd = EC.set_object_coordinates_auto(first_x, first_y)
                 script.data[pos:pos+len(cmd)] = cmd.to_bytearray()
 
             pos += len(cmd)
@@ -897,6 +897,7 @@ def set_zenan_bridge_boss(
     pos = get_last_coord_cmd_pos(script, 0xB, 0)
     coord_cmd = eventcommand.get_command(script.data, pos)
     first_x, first_y = coord_cmd.get_pixel_coordinates()
+    # print(f'{first_x:04X}, {first_y:04X}')
 
     force_pixel_coords = are_pixel_coords_forced(first_x, first_y, boss)
 
@@ -915,8 +916,6 @@ def set_zenan_bridge_boss(
             new_x = first_x + boss.parts[i].displacement[0]
             new_y = first_y + boss.parts[i].displacement[1]
 
-            # print(f"({new_x:04X}, {new_y:04X})")
-            # input()
             new_id = boss.parts[i].enemy_id
             new_slot = boss.parts[i].slot
 
@@ -1221,6 +1220,16 @@ def set_sun_palace_boss(
     # loc_id = 0xFB
     script = ct_rom.script_manager.get_script(loc_id)
 
+    # Remove bad animation commands.
+    boss_ids = set([part.enemy_id for part in boss.parts])
+    bad_ids = [EnemyID.MOTHERBRAIN, ]
+    if set(bad_ids).intersection(boss_ids):
+        pos = script.find_exact_command(
+            EC.generic_command(0xB7, 7, 3),
+            script.get_function_start(0xB, 3)
+        )
+        script.delete_commands(pos, 2)  # Two animation commands
+
     # Eyeball in 0xB and rest are flames. 0x10 is hidden in rando.
     # Really, 0x10 should just be removed from the start.
     script.remove_object(0x10)
@@ -1274,7 +1283,8 @@ def set_sun_palace_boss(
         new_x = first_x + boss.parts[i].displacement[0]
         new_y = first_y + boss.parts[i].displacement[1]
 
-        set_object_boss(script, obj_id, boss.parts[i].enemy_id, boss.parts[i].slot)
+        set_object_boss(script, obj_id,
+                        boss.parts[i].enemy_id, boss.parts[i].slot)
         # The coordinate setting is in init
         set_object_coordinates(script, obj_id, new_x, new_y, True,
                                force_pixel_coords=force_pixel_coords)
