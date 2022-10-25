@@ -757,7 +757,7 @@ class EventCommand:
         elif duration_secs == 2:
             return EventCommand.generic_zero_arg(0xBD)
         else:
-            num_ticks = int(duration_secs/64)
+            num_ticks = int(duration_secs*0x10)
             return EventCommand.generic_one_arg(0xAD, num_ticks)
 
     def copy(self) -> EventCommand:
