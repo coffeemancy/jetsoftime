@@ -36,6 +36,7 @@ import epochfail
 import flashreduce
 import seedhash
 import prismshard
+import scriptshortener
 
 import byteops
 import ctenums
@@ -730,6 +731,7 @@ class Randomizer:
         # Omen elevator
         self.__set_omen_elevators_ctrom(ctrom, config)
 
+        scriptshortener.shorten_all_scripts(ctrom)
         # Disabling xmenu character locks is only relevant in LoC and IA, but
         # there's no reason not to just do it always.
         self.__disable_xmenu_charlocks(ctrom)
