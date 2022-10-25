@@ -210,10 +210,10 @@ def write_assignment_to_config(settings: rset.Settings,
 
     # Restrict default assignment to the provided spots.
     boss_assignment = bt.get_default_boss_assignment()
-    boss_assignment = {
-        spot: boss for (spot, boss) in boss_assignment.items()
-        if spot in settings.ro_settings.spots
-    }
+    # boss_assignment = {
+    #     spot: boss for (spot, boss) in boss_assignment.items()
+    #     if spot in settings.ro_settings.spots
+    # }
 
     # Use fixed order.  Ordering in the ROSettings won't change assignment.
     available_spots = [spot for spot in bt.BossSpotID
@@ -447,8 +447,7 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         assigned_boss_id = config.boss_assign_dict[spot]
         orig_boss_id = default_assignment[spot]
 
-        spot_power = roscale.get_base_boss_power(orig_boss_id,
-                                                          settings)
+        spot_power = roscale.get_spot_power(spot, settings)
         assigned_boss_power = roscale.get_base_boss_power(
             assigned_boss_id, settings
         )
@@ -845,10 +844,11 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
             continue
 
         if spot not in assign_fn_dict:
-            raise ValueError(
-                f"Error: Tried assigning to {spot}.  Location not "
-                "supported for boss randomization."
-            )
+            # raise ValueError(
+            #     f"Error: Tried assigning to {spot}.  Location not "
+            #     "supported for boss randomization."
+            # )
+            continue
 
         if spot == BSID.OCEAN_PALACE_TWIN_GOLEM:
             boss_scheme = config.boss_data_dict[bt.BossID.TWIN_BOSS]

@@ -333,7 +333,7 @@ _standard_powers: dict[rotypes.BossID, int] = {
     rotypes.BossID.GOLEM_BOSS: 15,  # Power is only for hp setting
     rotypes.BossID.HECKRAN: 8,
     rotypes.BossID.LAVOS_SPAWN: 18,
-    rotypes.BossID.MAGUS_NORTH_CAPE: 20,  # Unsure
+    rotypes.BossID.MAGUS_NORTH_CAPE: 30,  # Unsure
     rotypes.BossID.MASA_MUNE: 12,
     rotypes.BossID.MEGA_MUTANT: 30,
     rotypes.BossID.MOTHER_BRAIN: 14,
@@ -406,6 +406,25 @@ _vr_boss_power_dict = {
     rotypes.BossID.ZEAL: None,
     rotypes.BossID.ZEAL_2: None,
 }
+
+
+def get_spot_power(spot_id: rotypes.BossSpotID,
+                   settings: rset.Settings):
+    '''
+    Get the power of a spot.  This only exists because the Epoch Reborn spot
+    should not have Dalton's power.  It needs to be a mid-game spot.
+    '''
+    if settings.game_mode == rset.GameMode.VANILLA_RANDO:
+        epoch_spot_power = 25  # ?
+    else:
+        epoch_spot_power = 15  # ?
+
+    default_assignment = rotypes.get_default_boss_assignment()
+
+    if spot_id == rotypes.BossSpotID.EPOCH_REBORN:
+        return epoch_spot_power
+
+    return get_base_boss_power(default_assignment[spot_id], settings)
 
 
 def get_base_boss_power(boss_id: rotypes.BossID,
