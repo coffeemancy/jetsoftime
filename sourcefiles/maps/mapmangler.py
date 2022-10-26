@@ -91,7 +91,6 @@ def duplicate_zenan_bridge(ct_rom: ctrom.CTRom,
     # Insert the transition commands after the party moves
     new_move_party = EC.move_party(0x8B, 0x08, 0x8B, 0x7, 0x8B, 0x0A)
 
-    script.delete_commands(pos, 1)
     # pos += len(new_move_party)
 
     change_loc = EC.change_location(dup_loc_id, 0x08, 0x08)
@@ -108,6 +107,7 @@ def duplicate_zenan_bridge(ct_rom: ctrom.CTRom,
     )
 
     script.insert_commands(insert_cmds.get_bytearray(), pos)
+    script.delete_commands(pos+len(insert_cmds), 1)
 
     # after the move party in the normal script, each pc strikes a pose and the
     # screen scrolls (4 commands). We'll delete those commands because they'll
@@ -118,8 +118,7 @@ def duplicate_zenan_bridge(ct_rom: ctrom.CTRom,
     # Now, trim down the event for the duplicate map by removing the skeletons
     # other than the ones that make Zombor and the guards.
     unneeded_objs = sorted(
-        (0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x15, 0x16, 0x17, 0x0F,
-         0x0E, 0x0D),
+        (0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x15, 0x16, 0x17),
         reverse=True
     )
 

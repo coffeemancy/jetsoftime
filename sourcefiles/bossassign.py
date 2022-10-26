@@ -872,11 +872,10 @@ def set_zenan_bridge_boss(
                 script.data[pos:pos+len(cmd)] = cmd.to_bytearray()
             elif cmd.command == 0x8B:
                 found_coord = True
-                # This is only safe because we know it will give the tile
-                # based command to perfectly overwrite the existing tile based
-                # command.
+
                 cmd = EC.set_object_coordinates_auto(first_x, first_y)
-                script.data[pos:pos+len(cmd)] = cmd.to_bytearray()
+                script.insert_commands(cmd.to_bytearray(), pos)
+                script.delete_commands(pos+len(cmd), 1)
 
             pos += len(cmd)
 
