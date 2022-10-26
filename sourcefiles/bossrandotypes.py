@@ -375,7 +375,7 @@ _default_schemes: dict[BossID, BossScheme] = {
         BossPart(_EID.TWIN_BOSS, 6, (0x20, 0))
     ),
     BossID.YAKRA: BossScheme(BossPart(_EID.YAKRA, 3)),
-    BossID.YAKRA_XIII: BossScheme(BossPart(_EID.YAKRA, 3)),
+    BossID.YAKRA_XIII: BossScheme(BossPart(_EID.YAKRA_XIII, 3)),
     BossID.ZEAL: BossScheme(BossPart(_EID.ZEAL, 9)),
     BossID.ZEAL_2: BossScheme(
         BossPart(_EID.ZEAL_2_CENTER, 3),
