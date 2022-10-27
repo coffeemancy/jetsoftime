@@ -1209,32 +1209,27 @@ class Event:
 
             if pos is None:
                 break
+
+            jump_mult = 2*(cmd.command in EC.fwd_jump_commands)-1
+            jump_target = pos + len(cmd) + cmd.args[-1]*jump_mult - 1
+
+            # This has been wrong a few times.  Let's be clear.
+            # We only shift if [before_pos, after_pos) is contained in
+            # (start, end).  We don't shift when before_pos == start
+            # because this means either the insertion will happen prior
+            # to the jump (before_pos == after_pos) or the deletion would
+            # include the jump command.
+            start = min(pos, jump_target)
+            end = max(pos, jump_target)
+            if end >= after_pos and start < before_pos:
+                arg_offset = len(cmd) - cmd.arg_lens[-1]
+                self.data[pos+arg_offset] += shift
             else:
-                jump_mult = 2*(cmd.command in EC.fwd_jump_commands)-1
-                jump_target = pos + len(cmd) + cmd.args[-1]*jump_mult - 1
+                pass
+                # print('not shifting')
+                # input()
 
-                is_shifted = False
-                if jump_mult == -1:
-                    # Backwards jumps need to be shifted if after_pos coincides
-                    # with the jump command's position (pos)
-                    if pos >= after_pos and jump_target < before_pos:
-                        is_shifted = True
-                elif pos < before_pos and jump_target > after_pos:
-                    # For forwards jumps, you need the jump command (@ pos) to
-                    # be strictly before before_pos and you need jump_target
-                    # to be strictly after after_pos.  When before_pos and
-                    # after_pos coincide, the insertion is after the if block.
-                    is_shifted = True
-
-                if is_shifted:
-                    arg_offset = len(cmd) - cmd.arg_lens[-1]
-                    self.data[pos+arg_offset] += shift
-                else:
-                    pass
-                    # print('not shifting')
-                    # input()
-
-                pos += len(cmd)
+            pos += len(cmd)
 
     # Helper method for dealing with insertions and deletions.
     # All function starts strictly exceeding start_thresh will be shifted
