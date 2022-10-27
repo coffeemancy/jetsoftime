@@ -1683,7 +1683,7 @@ def set_prison_catwalks_boss(
         # Keep static object E
         script.remove_object(0xF)
         script.remove_object(0xD)
-        boss_objs = [0xE]
+        boss_objs = [0xD]
     elif len(boss_objs) > len(boss.parts):
         boss.make_part_first(1)
         # Remove unused objects
