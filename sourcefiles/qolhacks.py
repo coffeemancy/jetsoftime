@@ -1,5 +1,7 @@
 # File for quality of life hacks
 
+import bossrandotypes as rotypes
+
 import ctevent
 import ctenums
 
@@ -228,10 +230,10 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
 
 
 def enable_boss_sightscope(config: cfg.RandoConfig):
-    for boss in list(ctenums.BossID):
+    for boss in list(rotypes.BossID):
         boss_data = config.boss_data_dict[boss]
-        for part in set(boss_data.scheme.ids):
-            config.enemy_dict[part].can_sightscope = True
+        for part in set(boss_data.parts):
+            config.enemy_dict[part.enemy_id].can_sightscope = True
 
 
 def set_guaranteed_drops(ctrom: CTRom):
