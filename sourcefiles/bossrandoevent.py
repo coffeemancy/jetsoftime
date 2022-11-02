@@ -2358,6 +2358,12 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
                 # print(f"{boss_scheme}")
                 assign_fn(ctrom, boss_scheme)
 
+    # Zombor animation fix
+    zenan_boss = config.boss_assign_dict[LocID.ZENAN_BRIDGE_BOSS]
+    if zenan_boss != BossID.ZOMBOR:
+        ctrom.rom_data.seek(0x0DC087)
+        ctrom.rom_data.write(b'\x10')  # Straight line to coords command
+
     # New fun sprite bug:  Enemy 0x4F was a frog before it was turned into
     # the twin golem.  Turning it into other bosses can make for pink screens
     # in the LW credits.
