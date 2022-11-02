@@ -1433,6 +1433,10 @@ class Randomizer:
             # Why is Dalton worth so few TP?
             config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
 
+            # Elder Spawn Name
+            elder = config.enemy_dict[ctenums.EnemyID.ELDER_SPAWN_SHELL]
+            elder.name = 'Elder Spawn'
+
             # Give Rusty a few more HP, like avg hp of old boss rando
             enemy_id = ctenums.EnemyID.RUST_TYRANO
             rt_stats = config.enemy_dict[enemy_id]
@@ -1444,8 +1448,15 @@ class Randomizer:
             rt_stats.magic = int(rt_stats.magic * 0.6)
             rt_stats.level = int(rt_stats.level * 0.6)
 
-            # Fix Falcon Hit to use Spincut as a prerequisite
             techdb = config.techdb
+
+            # Community needs to decide on a name.
+            # inferno = techdb.get_tech(ctenums.TechID.BLAZE_TWISTER)
+            # inferno['name'] = ctstrings.CTNameString.from_string(
+            #     'Inferno'
+            # )
+
+            # Fix Falcon Hit to use Spincut as a prerequisite
             falcon_hit = techdb.get_tech(ctenums.TechID.FALCON_HIT)
             falcon_hit['lrn_req'][0] = int(ctenums.TechID.SPINCUT)
             techdb.set_tech(falcon_hit, ctenums.TechID.FALCON_HIT)
