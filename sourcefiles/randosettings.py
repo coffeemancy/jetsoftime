@@ -390,6 +390,15 @@ class Settings:
 
         return ret
 
+    @staticmethod
+    def get_tourney_top8_preset() -> Settings:
+        ret = Settings.get_tourney_early_preset()
+
+        ret.item_difficulty = Difficulty.HARD
+        ret.gameflags &= ~GameFlags.FREE_MENU_GLITCH
+
+        return ret
+
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode
 
