@@ -531,7 +531,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         gear_in_tier[tier] = [x for x in gear_in_tier[tier] if x < 0x94
                               and x not in ignored_ids]
 
-    gear_in_tier[Tier.AWESOME_GEAR].append(IID.MASAMUNE_1)
+    gear_in_tier[Tier.AWESOME_GEAR].extend([IID.MASAMUNE_1, IID.MASAMUNE_2])
 
     for tier in gear_tiers:
         boost_dist = stat_boost_dict[tier]
