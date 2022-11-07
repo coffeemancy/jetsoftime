@@ -2,6 +2,7 @@
 This module contains enumerations for bosses and boss spots and some functions
 describing the default relationship between them.
 '''
+import copy
 import enum
 import typing
 
@@ -393,14 +394,15 @@ def get_default_scheme(boss_id: BossID) -> BossScheme:
     '''
     Associate BossID with a scheme consistent with default JoT.
     '''
-    return _default_schemes[boss_id]
+    return copy.deepcopy(_default_schemes[boss_id])
 
 
 def get_boss_data_dict() -> dict[BossID: BossScheme]:
-    return {
-        boss_id: get_default_scheme(boss_id)
-        for boss_id in BossID
-    }
+    # return {
+    #     boss_id: get_default_scheme(boss_id)
+    #     for boss_id in BossID
+    # }
+    return copy.deepcopy(_default_schemes)
 
 
 def get_default_boss_assignment() -> dict[BossSpotID, BossID]:
