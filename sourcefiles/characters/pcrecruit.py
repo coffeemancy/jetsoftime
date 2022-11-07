@@ -13,7 +13,7 @@ class RecruitSpot(typing.Protocol):
 
     # Still explicitly defining this in implementing classes
     def _jot_json(self):
-        return str(held_char)
+        return str(self.held_char)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
         pass

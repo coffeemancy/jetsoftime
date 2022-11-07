@@ -61,7 +61,7 @@ def double_xp(ctrom: CTRom, mem_addr: int = 0x7E287E):
 
     mem_bank = (mem_addr >> 16) << 16
     if mem_bank != 0x7E0000:
-        raise SystemExit('Address of flag must be in bank 7E')
+        raise ValueError('Address of flag must be in bank 7E')
 
     mem_offset = mem_addr % 0x10000
     mem_offset_b = tle(mem_offset, 2)

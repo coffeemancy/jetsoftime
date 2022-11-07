@@ -246,7 +246,7 @@ class ScriptTreasure(Treasure):
         x = (
             f"{type(self).__name__}(location={self.location}, " +
             f"object_id={self.object_id}, function_id={self.function_id},  " +
-            f"held_item={self.held_item}, "
+            f"reward={self.reward}, "
             f"item_num={self.item_num})"
         )
         return x
