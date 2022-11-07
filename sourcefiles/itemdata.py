@@ -5,6 +5,7 @@ import byteops
 import ctenums
 import ctrom
 import ctstrings
+import cttypes as ctt
 
 import functools
 import typing
@@ -319,6 +320,24 @@ class ItemSecondaryData(ItemData):
         self._data[1:3] = val.to_bytes(2, 'little')
 
     @property
+    def is_unsellable(self) -> bool:
+        return bool(self._data[0] & 0x04)
+
+    @is_unsellable.setter
+    def is_unsellable(self, val: bool):
+        self._data[0] &= (0xFF - 0x04)
+        self._data[0] |= (0x04*val)
+
+    @property
+    def is_key_item(self) -> bool:
+        return bool(self._data[0] & 0x08)
+
+    @is_key_item.setter
+    def is_key_item(self, val: bool):
+        self._data[0] &= (0xFF - 0x08)
+        self._data[0] |= (0x08*val)
+
+    @property
     def ngplus_carryover(self) -> bool:
         return not (self._data[0] & 0x10)
 
@@ -357,7 +376,7 @@ class WeaponStats(ItemData):
     SIZE = 5
     ROM_START = 0x0C0262
     MIN_ID = 0
-    MAX_ID = 0x55
+    MAX_ID = 0x59
 
     @property
     def attack(self) -> int:

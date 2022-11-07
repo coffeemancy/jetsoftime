@@ -74,11 +74,7 @@ def set_fragment_properties(ctrom: CTRom):
 
 def write_fragments_to_config(settings: rset.Settings,
                               config: cfg.RandoConfig):
-
-    if rset.GameFlags.BUCKET_FRAGMENTS not in settings.gameflags:
-        return
-
-    item_db = config.itemdb
+    item_db = config.item_db
 
     # 0xFF is a space instead of an item type icon
     item_db[ctenums.ItemID.BUCKETFRAG].name = \
@@ -149,7 +145,6 @@ def write_fragments_to_config(settings: rset.Settings,
     #     print(name)
 
     # print('****')
-
     avail_locs = [loc for loc in all_locs
                   if loc.getName() not in key_loc_names]
 
@@ -161,5 +156,6 @@ def write_fragments_to_config(settings: rset.Settings,
     fragment_locs = random.sample(avail_locs, num_fragments)
 
     for x in fragment_locs:
+        # print(f'Putting fragment in {x.getName()}')
         x.setKeyItem(ctenums.ItemID.BUCKETFRAG)
         x.writeKeyItem(config)

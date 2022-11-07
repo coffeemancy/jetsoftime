@@ -236,14 +236,22 @@ class ROSettings:
             boss_list = rotypes.get_assignable_bosses()
 
         return ROSettings(spots, boss_list, ro_flags)
-
+    
 @dataclass
 class BucketSettings:
     '''
     Class for settings passed to bucket flag.
     '''
+    # Configuration for when fragments is used as an objective
     num_fragments: int = 15
     needed_fragments: int = 10
+    # Should add configuration for rock collection/other objs that need it
+
+    disable_other_go_modes = False
+
+    # Configuration for number of objectives avail/needed
+    num_objectives: int = 5
+    objectives_needed: int = 4
 
 
 class MysterySettings:

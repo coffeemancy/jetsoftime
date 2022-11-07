@@ -27,7 +27,6 @@ import roboribbon
 import techrandomizer
 import qolhacks
 import cosmetichacks
-import bucketfragment
 import iceage
 import legacyofcyrus
 import mystery
@@ -37,6 +36,7 @@ import flashreduce
 import seedhash
 import prismshard
 import scriptshortener
+import bucketlist
 
 import byteops
 import ctenums
@@ -115,6 +115,7 @@ class Randomizer:
             self.settings
         )
 
+        tech_db = self.config.tech_db
         # An alternate approach is to build the base config with the pickles
         # provided.  You just have to make sure to redump any time time that
         # patch.ips or hard.ips change.  Below is how you would use pickles.
@@ -189,7 +190,7 @@ class Randomizer:
         tabwriter.write_tabs_to_config(self.settings, self.config)
 
         # Bucket
-        bucketfragment.write_fragments_to_config(self.settings, self.config)
+        bucketlist.add_objectives_to_config(self.settings, self.config)
 
         # Omen elevator
         self.__update_key_item_descs()
@@ -912,6 +913,8 @@ class Randomizer:
         elif mode == rset.GameMode.VANILLA_RANDO:
             vanillarando.restore_sos(self.out_rom, self.config)
 
+        bucketlist.write_objectives_to_ctrom(self.out_rom, self.settings,
+                                             self.config)
         # Write and remove all scripts
         self.out_rom.write_all_scripts_to_rom(clear_scripts=True)
 
@@ -1087,6 +1090,11 @@ class Randomizer:
         CharID = ctenums.CharID
         dup_chars = rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags
         tech_db = self.config.tech_db
+
+        # Fix volt bite damage error.
+        tech = tech_db.get_tech(ctenums.TechID.VOLT_BITE)
+        tech['control'][1] |= 1  # control which effects get damage displayed
+        tech_db.set_tech(tech, ctenums.TechID.VOLT_BITE)
 
         for char_id in range(7):
             pc_id = CharID(char_id)
@@ -1397,13 +1405,6 @@ class Randomizer:
 
         if rset.GameFlags.FAST_TABS in flags:
             qolhacks.fast_tab_pickup(ctrom, settings)
-
-        if rset.GameFlags.BUCKET_FRAGMENTS in flags and \
-           settings.game_mode != rset.GameMode.LOST_WORLDS:
-            # Apparently, LW really changes up the EoT event, so the bucket
-            # function can't work.  It's ok because bucket should be disabled
-            # in LW.
-            bucketfragment.set_bucket_function(ctrom, settings)
 
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
