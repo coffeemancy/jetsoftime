@@ -1221,7 +1221,13 @@ class Event:
             # include the jump command.
             start = min(pos, jump_target)
             end = max(pos, jump_target)
-            if end >= after_pos and start < before_pos:
+
+            if before_pos == after_pos:
+                can_shift_aft = (end > after_pos)
+            else:
+                can_shift_aft = (end >= after_pos)
+
+            if can_shift_aft and start < before_pos:
                 arg_offset = len(cmd) - cmd.arg_lens[-1]
                 self.data[pos+arg_offset] += shift
             else:
