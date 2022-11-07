@@ -856,7 +856,7 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
             boss_scheme = config.boss_data_dict[boss_id]
 
         assign_fn = assign_fn_dict[spot]
-        # print(f"Writing {boss_id} to {loc}")
+        # print(f"Writing {boss_id} to {spot}")
         # print(f"{boss_scheme}")
         assign_fn(ctrom, boss_scheme)
 

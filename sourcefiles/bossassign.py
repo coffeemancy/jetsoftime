@@ -953,7 +953,7 @@ def set_death_peak_boss(
 
     num_used = min(len(boss.parts), 2)
 
-    first_x, first_y = 0x70, 0xC0
+    first_x, first_y = 0x78, 0xD0
 
     for i in range(num_used):
         part = boss.parts[i]
@@ -1737,7 +1737,7 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
     loc_id = 0xE6
     script = ct_rom.script_manager.get_script(loc_id)
 
-    if is_vanilla:
+    if not is_vanilla:
         script.remove_object(0xE)
         script.remove_object(0xF)
         boss_objs = [0xA, 0xB, 0xC, 0xD]
@@ -1792,10 +1792,8 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         start_pos=script.get_object_start(1)
     )
 
-    while script.data[pos] in (2, 3, 4):  # call cmds
-        if script.data[pos+1] != 4:  # There's a call to obj2 w/ the battle
-            script.delete_commands(pos, 1)
-        else:
-            pos += 3
+    # call cmds but stop with the obj2 call
+    while script.data[pos] in (2, 3, 4) and script.data[pos+1] != 4:
+        script.delete_commands(pos, 1)
 
     script.insert_commands(call_cmds.get_bytearray(), pos)
