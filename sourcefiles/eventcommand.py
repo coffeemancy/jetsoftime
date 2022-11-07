@@ -30,9 +30,11 @@ def is_script_mem(addr: int):
 def is_local_mem(addr: int):
     return (
         not is_script_mem(addr) and
-        0x7F0000 <= addr < 0x7F0000
+        0x7F0000 <= addr < 0x7F0200
     )
 
+def is_memory_addr(addr: int):
+    return 0x7E0000 < addr < 0x800000
 
 def is_bank_7E(addr: int):
     return 0x7E0000 <= addr < 0x7F0000
@@ -90,8 +92,7 @@ class EventCommand:
         if self.command == 0x8B:
             return (self.args[0]*0x10+8, self.args[1]*0x10+0x10)
         elif self.command == 0x8D:
-            return ((self.args[0]-0x80) >> 4,
-                    (self.args[1]-0x100) >> 4)
+            return (self.args[0] >> 4, self.args[1] >> 4)
         else:
             print(self)
             raise AttributeError('This command does not set coordinates.')
@@ -417,6 +418,21 @@ class EventCommand:
     def add_item(item_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xCA, item_id)
 
+    def remove_item(item_id: int) -> EventCommand:
+        return EventCommand.generic_command(0xCB, item_id)
+
+    @staticmethod
+    def get_item_count(item_id: int, script_addr: int) -> EventCommand:
+        if not is_script_mem(script_addr):
+            raise ValueError('Address must be script memory.')
+
+        offset = get_offset(script_addr)
+        return EventCommand.generic_command(0xD7, item_id, offset)
+
+    @staticmethod
+    def if_storyline_counter_lt(storyline_val: int, jump_bytes: int):
+        return EventCommand.generic_command(0x18, storyline_val, jump_bytes)
+
     def if_has_item(item_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xC9, int(item_id), jump_bytes)
 
@@ -465,6 +481,20 @@ class EventCommand:
     def set_storyline_counter(val: int) -> EventCommand:
         return EventCommand.assign_val_to_mem(val, 0x7F0000, 1)
 
+    @staticmethod
+    def increment_mem(script_addr: int, num_bytes: int = 1) -> EventCommand:
+        if not is_script_mem(script_addr):
+            raise ValueError('Can only increment script memory')
+
+        if num_bytes == 1:
+            cmd_id = 0x71
+        else:
+            cmd_id = 0x72
+
+        offset = get_offset(script_addr)
+
+        return EventCommand.generic_command(cmd_id, offset)
+
     def add_value_to_mem(value: int, script_addr: int):
         if not is_script_mem(script_addr):
             raise ValueError('Can only add to script memory')
@@ -505,7 +535,7 @@ class EventCommand:
         elif is_script_mem(from_addr) and is_local_mem(to_addr):
             # arg 1: offset of from_addr
             # arg 2: to_addr - 0x7F0000
-            cmd_args[get_offset(from_addr), to_addr - 0x7F0000]
+            cmd_args = [get_offset(from_addr), to_addr - 0x7F0000]
             if num_bytes == 1:
                 cmd_id = 0x58
             else:
@@ -518,7 +548,7 @@ class EventCommand:
                 cmd_id = 0x48
             else:
                 cmd_id = 0x49
-        elif is_script_mem(from_addr) and is_bank_7E(to_addr):
+        elif is_script_mem(from_addr) and is_memory_addr(to_addr):
             # arg 1: to_addr (3 bytes)
             # arg 2: (from_addr - 0x7F000) / 2
             cmd_args = [to_addr, get_offset(from_addr)]
@@ -732,6 +762,37 @@ class EventCommand:
     def replace_characters() -> EventCommand:
         return EventCommand.special_dialog(0x00)
 
+    @staticmethod
+    def decision_box(str_id: int, first_line: int, last_line: int,
+                     mode_str: str = 'auto'):
+        mode_str = mode_str.lower()
+        if mode_str not in ('auto', 'top', 'bottom'):
+            mode_str = 'auto'
+
+        if mode_str == 'auto':
+            cmd_id = 0xC0
+        elif mode_str == 'top':
+            cmd_id = 0xC3
+        else:
+            cmd_id = 0xC4
+
+        if first_line not in range(0,4):
+            raise ValueError('First line must be in range(0, 4)')
+
+        if last_line not in range(0,4):
+            raise ValueError('Last line must be in range(0, 4)')
+
+        lines_byte = first_line << 2
+        lines_byte |= last_line
+
+        print(f'{lines_byte:02X}')
+        
+        return EventCommand.generic_command(cmd_id, str_id, lines_byte)
+
+    @staticmethod
+    def if_result_equals(result_val: int, jump_bytes) -> EventCommand:
+        return EventCommand.generic_command(0x1A, result_val, jump_bytes)
+    
     # TODO: merge these two textbox commands
     def auto_text_box(string_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xBB, string_id)
@@ -1369,14 +1430,14 @@ event_commands[0x57] = \
                  'Load Crono if in party.')
 
 event_commands[0x58] = \
-    EventCommand(0x58, 2, [2, 1],
+    EventCommand(0x58, 2, [1, 2],
                  ['oo: Offset to load from (*2, +7F0200)',
                   'aaaa: Address to store to (+7F0000)'],
                  'Assignment (Mem to Mem)',
                  'Assign local memory to bank 7F memory (1 byte).')
 
 event_commands[0x59] = \
-    EventCommand(0x59, 2, [2, 1],
+    EventCommand(0x59, 2, [1, 2],
                  ['oo: Offset to load from (*2, +7F0200)',
                   'aaaa: Address to store to (+7F0000)'],
                  'Assignment (Mem to Mem)',
