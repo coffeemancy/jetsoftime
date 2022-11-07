@@ -168,6 +168,8 @@ class LocID(StrIntEnum):
     GUARDIA_BASEMENT = 0x1A
     KINGS_CHAMBER_600 = 0x79
     TRUCE_MARKET = 0x11
+    TYRANO_LAIR_KEEP = 0x12D
+    MELCHIORS_KITCHEN = 0x28
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT
@@ -183,7 +185,6 @@ class LocID(StrIntEnum):
     DEATH_PEAK_LOWER_NORTH_FACE = 0x107
     DEATH_PEAK_CAVE = 0x108
     DEATH_PEAK_SUMMIT = 0x109
-
 
     # Other Important Locations
     ENDING_SELECTOR = 0x52
@@ -277,6 +278,10 @@ class ItemID(StrIntEnum):
     SONICARROW = 0x18
     VALKERYE = 0x19
     SIREN = 0x1A
+    OBJ_COUNT = 0x1B
+    UNUSED_1C = 0x1C
+    UNUSED_1D = 0x1D
+    UNUSED_1E = 0x1E
     AIR_GUN = 0x1F
     DART_GUN = 0x20
     AUTO_GUN = 0x21
@@ -288,6 +293,10 @@ class ItemID(StrIntEnum):
     SHOCK_WAVE = 0x27
     WONDERSHOT = 0x28
     GRAEDUS = 0x29
+    UNUSED_2A = 0x2A
+    UNUSED_2B = 0x2B
+    UNUSED_2C = 0x2C
+    UNUSED_2D = 0x2D
     TIN_ARM = 0x2E
     HAMMER_ARM = 0x2F
     MIRAGEHAND = 0x30
@@ -325,6 +334,10 @@ class ItemID(StrIntEnum):
     SWALLOW = 0x53
     SLASHER_2 = 0x54
     RAINBOW = 0x55
+    UNUSED_56 = 0x56
+    UNUSED_57 = 0x57
+    UNUSED_58 = 0x58
+    UNUSED_59 = 0x59
     HIDE_TUNIC = 0x5B
     KARATE_GI = 0x5C
     BRONZEMAIL = 0x5D
@@ -465,6 +478,14 @@ class ItemID(StrIntEnum):
     FEATHERS_2 = 0xE7
     BUCKETFRAG = 0xE8
     JETSOFTIME = 0xE9
+    UNUSED_EA = 0xEA
+    UNUSED_EB = 0xEB
+    UNUSED_EC = 0xEC
+    UNUSED_ED = 0xED
+    UNUSED_EE = 0xEE
+    UNUSED_EF = 0xEF
+    UNUSED_F0 = 0xF0
+    UNUSED_F1 = 0xF1
 
     @classmethod
     def get_key_items(cls):
