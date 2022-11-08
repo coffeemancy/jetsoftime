@@ -226,6 +226,25 @@ class Randomizer:
         bossscaler.set_boss_power(self.settings, self.config)
 
     @classmethod
+    def __set_active_wait_song(cls, ct_rom: CTRom, song_id = 3):
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.LOAD_SCREEN)
+
+        pos = script.get_object_start(0)
+
+        while True:
+            pos, cmd = script.find_command([0xC8], pos)
+
+            if cmd.args[0] in range(0xC0, 0xC7):  # name cmd_args
+                break
+
+            pos += len(cmd)
+
+        song_cmd = ctevent.EC.generic_one_arg(0xEA, song_id)
+        script.insert_commands(song_cmd.to_bytearray(), pos)
+
+
+    @classmethod
     def __set_fast_magus_castle(cls, ct_rom: CTRom):
         '''
         Do not require the player to visit the Flea and Slash room in castle
@@ -805,6 +824,8 @@ class Randomizer:
 
         if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
             fastmagic.add_tracker_hook(self.out_rom)
+
+        self.__set_active_wait_song(self.out_rom)
 
         # Don't require visiting Flea/Slash rooms for Magus's Castle
         if self.settings.game_mode != rset.GameMode.LOST_WORLDS:
