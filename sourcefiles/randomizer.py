@@ -226,6 +226,19 @@ class Randomizer:
         bossscaler.set_boss_power(self.settings, self.config)
 
     @classmethod
+    def __clean_lw_loadscreen(cls, ct_rom: CTRom):
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.LOAD_SCREEN)
+
+        EC = ctevent.EC
+        cmd = EC.assign_val_to_mem(0x7F, 0x7F01E0, 1)
+        pos = script.get_object_start(0)
+        pos = script.find_exact_command(cmd, pos)
+        pos += len(cmd)        
+        script.delete_commands(pos, 5)
+
+
+    @classmethod
     def __set_active_wait_song(cls, ct_rom: CTRom, song_id = 3):
         script = ct_rom.script_manager.get_script(
             ctenums.LocID.LOAD_SCREEN)
@@ -234,7 +247,6 @@ class Randomizer:
 
         while True:
             pos, cmd = script.find_command([0xC8], pos)
-
             if cmd.args[0] in range(0xC0, 0xC7):  # name cmd_args
                 break
 
@@ -824,6 +836,9 @@ class Randomizer:
 
         if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
             fastmagic.add_tracker_hook(self.out_rom)
+
+        if self.settings.game_mode == rset.GameMode.LOST_WORLDS:
+            self.__clean_lw_loadscreen(self.out_rom)
 
         self.__set_active_wait_song(self.out_rom)
 
