@@ -13,6 +13,7 @@ from ctrom import CTRom
 import enemyrewards
 import enemystats
 from eventcommand import EventCommand as EC
+import objectivehints as oh
 
 import randosettings as rset
 import randoconfig as cfg
@@ -221,6 +222,25 @@ def write_assignment_to_config(settings: rset.Settings,
     available_bosses = bt.get_assignable_bosses()
     available_bosses = [boss for boss in available_bosses
                         if boss in settings.ro_settings.bosses]
+
+    # Make sure that bosses forced by objectives are in the pool
+    if rset.GameFlags.BUCKET_LIST in settings.gameflags:
+        hints = settings.bucket_settings.hints
+        forced_bosses = []
+        for hint in hints:
+            forced_bosses.extend(oh.get_forced_bosses(hint))
+
+        for boss in forced_bosses:
+            if boss not in available_bosses:
+                raise ValueError(f'Objective forces unavailable boss: {boss}.')
+
+        if len(available_bosses) > len(available_spots):
+            num_extra_bosses = len(available_bosses)-len(available_spots)
+            unforced_bosses = [boss_id for boss_id in available_bosses if
+                               boss_id not in forced_bosses]
+            removed_bosses = random.sample(unforced_bosses, k=num_extra_bosses)
+            for boss_id in removed_bosses:
+                available_bosses.remove(boss_id)
 
     # Don't randomize Giga Gaia/Woe in Ice Age
     if settings.game_mode == rset.GameMode.ICE_AGE:
