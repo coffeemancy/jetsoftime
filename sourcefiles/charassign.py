@@ -95,6 +95,13 @@ def assign_pc_to_manoria(ct_rom: ctrom.CTRom,
     '''
     script = ct_rom.script_manager.get_script(ctenums.LocID.MANORIA_SANCTUARY)
 
+    if char_id == ctenums.CharID.FROG:
+        pc_obj_id = 4
+    elif char_id == ctenums.CharID.ROBO:
+        pc_obj_id = 5
+    else:
+        pc_obj_id = char_id + 1
+
     pc_npc_startup = (
         EF()
         .add(EC.load_pc_always(char_id))
@@ -108,7 +115,7 @@ def assign_pc_to_manoria(ct_rom: ctrom.CTRom,
     startup = _build_pc_npc_startup_function(
         char_id, 0x7F0100, 0x01, pc_npc_startup
     )
-    script.set_function(1+char_id, 0, startup)
+    script.set_function(pc_obj_id, 0, startup)
 
     # A call is made to obj 1 before the battle.  Replace with a call to PC1.
     # Note: This actually causes a bug if not fixed because calling out will
@@ -170,10 +177,10 @@ def assign_pc_to_manoria(ct_rom: ctrom.CTRom,
         )
         .add(EC.return_cmd())
     )
-    script.set_function(char_id+1, 3+0xA, recruit_func)
+    script.set_function(pc_obj_id, 3+0xA, recruit_func)
 
     hook_cmd = EC.call_obj_function(0x19, 3, 3, FS.HALT)
-    repl_cmd = EC.call_obj_function(1+char_id, 3+0xA, 3, FS.HALT)
+    repl_cmd = EC.call_obj_function(pc_obj_id, 3+0xA, 3, FS.HALT)
 
     hook_pos = script.find_exact_command(hook_cmd,
                                          script.get_object_start(0xF))
