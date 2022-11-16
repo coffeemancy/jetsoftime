@@ -166,7 +166,7 @@ class EventCommand:
         return EventCommand.generic_one_arg(0xF0, duration)
 
     def load_pc_always(pc_id: int) -> EventCommand:
-        return EventCommand.generic_one_arg(0x81, pc_id)
+        return EventCommand.generic_one_arg(0x81, int(pc_id))
 
     def load_pc_in_party(pc_id: int) -> EventCommand:
         if pc_id == 0:
@@ -598,7 +598,6 @@ class EventCommand:
         if val > max_val:
             print(f"Warning: Value ({val}) exceeds maximum ({max_val}). "
                   f"Truncating to {max_val}")
-            input('asdf')
             val = max_val
 
         # Make sure that the target address is in RAM - [0x7E0000, 0x7FFFFF]
@@ -785,8 +784,6 @@ class EventCommand:
         lines_byte = first_line << 2
         lines_byte |= last_line
 
-        print(f'{lines_byte:02X}')
-        
         return EventCommand.generic_command(cmd_id, str_id, lines_byte)
 
     @staticmethod
@@ -2503,7 +2500,6 @@ def get_command(buf: bytearray, offset: int = 0) -> EventCommand:
             command.arg_lens = [1, 1, 2]
         else:
             print(f"{command_id:02X}: Error, Unknown Mode")
-            input()
     elif command_id == 0x4E:
         # Data to copy follows command.  Shove data in last arg.
         data_len = get_value_from_bytes(buf[offset+4:offset+6]) - 2
@@ -2522,7 +2518,6 @@ def get_command(buf: bytearray, offset: int = 0) -> EventCommand:
             command.arg_lens = [1, 1, 1, copy_len]
         else:
             print(f"{command_id:02X}: Error, Unknown Mode")
-            input()
     elif command_id == 0xF1:
         color = buf[offset+1]
         if color == 0:
