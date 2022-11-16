@@ -140,7 +140,8 @@ def get_assignable_bosses():
         BossID.ZOMBOR, BossID.LAVOS_SPAWN, BossID.ELDER_SPAWN,
         BossID.MEGA_MUTANT, BossID.GIGA_MUTANT, BossID.TERRA_MUTANT,
         BossID.RETINITE, BossID.SON_OF_SUN, BossID.MOTHER_BRAIN,
-        BossID.GUARDIAN, BossID.MUD_IMP, BossID.R_SERIES
+        BossID.GUARDIAN, BossID.MUD_IMP, BossID.R_SERIES,
+        BossID.DRAGON_TANK
     ]
 
     return boss_list
