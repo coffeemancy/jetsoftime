@@ -5,7 +5,9 @@ import typing
 
 import bossrandotypes as rotypes
 from bossrandotypes import BossSpotID as BSID
+import bucketfragment
 
+from common import distribution
 import ctenums
 import ctevent
 import ctrom
@@ -18,12 +20,19 @@ from eventfunction import EventFunction as EF
 
 import itemdata
 
+from maps import locationtypes
+
+import objectivehints as obhint
 import objectivetypes as oty
 
 import randoconfig as cfg
 import randosettings as rset
 
 import xpscale
+
+
+class ImpossibleHintException(Exception):
+    pass
 
 
 @dataclasses.dataclass(frozen=True)
@@ -116,92 +125,141 @@ def add_objectives_to_config(settings: rset.Settings,
         IID.UNUSED_EE, IID.UNUSED_EF, IID.UNUSED_F0, IID.UNUSED_F1
     ]
 
-    QID = oty.QuestID
-    ungated_quests = [
-        QID.CLEAR_CATHEDRAL, QID.CLEAR_DENADORO, QID.CLEAR_HECKRANS_CAVE,
-        QID.CLEAR_ZENAN_BRIDGE
-    ]
-    gated_quests = [
-        QID.GIVE_JERKY_TO_MAYOR, QID.GET_ARRIS_FOOD_ITEM,
-        QID.GIVE_SEED_TO_DOAN, QID.GAIN_EPOCH_FLIGHT, QID.CLEAR_FACTORY_RUINS,
-        QID.CLEAR_GIANTS_CLAW, QID.CLEAR_KINGS_TRIAL, QID.CLEAR_OZZIES_FORT,
-        QID.CLEAR_PENDANT_TRIAL, QID.CLEAR_REPTITE_LAIR,
-        QID.CLEAR_SUN_PALACE, QID.CLEAR_SUNKEN_DESERT, QID.CHARGE_MOONSTONE
-    ]
-    late_gated_quests = [
-        QID.FORGE_MASAMUNE, QID.CLEAR_MT_WOE, QID.CLEAR_GENO_DOME,
-        QID.CLEAR_BLACK_TYRANO
-    ]
-    go_mode_quests = [
-        QID.CLEAR_ZEAL_PALACE, QID.CLEAR_MAGUS_CASTLE
-    ]
-
+    # Make the objective count item.
     rem_objs = config.item_db[IID.OBJ_COUNT]
     rem_objs.set_name_from_str('*ObjsRemain')
     rem_objs.set_desc_from_str('Count shows remaining objectives')
     rem_objs.secondary_stats.is_unsellable = True
     rem_objs.secondary_stats.is_key_item = True
 
-    config.objectives = []
+    num_objs = settings.bucket_settings.num_objectives
+    needed_objs = settings.bucket_settings.num_objectives_needed
+    hints = list(settings.bucket_settings.hints)
 
-    quest_objs = oty.get_quest_obj_dict(settings, config)
-    boss_objs = oty.get_defeat_boss_obj_dict(settings, config)
-    recruit_objs = oty.get_recruit_obj_dict(settings, config)
-    collect_objs = oty.get_item_collect_obj_dict(settings, config)
+    # Quest Keys
+    obj_pool = list(oty.QuestID)
+    obj_pool.remove(oty.QuestID.DEFEAT_JOHNNY)
+    obj_pool.remove(oty.QuestID.WIN_RACE_BET)
+    obj_pool.remove(oty.QuestID.GIVE_SEED_TO_DOAN)
+    obj_pool.remove(oty.QuestID.GET_ARRIS_FOOD_ITEM)
+    obj_pool.remove(oty.QuestID.CLEAR_OZZIES_FORT)
 
-    categories = ['quest', 'boss', 'recruit', 'collect']
-    weights = [35, 35, 15, 15]
+    # Recruit keys
+    obj_pool.extend(list(ctenums.CharID))
+    obj_pool.extend([ctenums.RecruitID.CASTLE, ctenums.RecruitID.DACTYL_NEST,
+                     ctenums.RecruitID.PROTO_DOME,
+                     ctenums.RecruitID.FROGS_BURROW])
 
-    # OK, this is going to be very rough for now
-    # Go for 35 35 15 15 for quest, boss, recruit, collect
-    for ind in range(settings.bucket_settings.num_objectives):
-        category = random.choices(categories, weights, k=1)[0]
+    # Boss keys
+    avail_bosses = [boss_id for spot_id, boss_id
+                    in config.boss_assign_dict.items()]
+    obj_pool.extend(avail_bosses)
 
-        if category == 'quest':
-            qid, objective = random.choice(list(quest_objs.items()))
+    # CollectKeys
+    obj_pool.extend(['rocks', 'fragments', 'recruits'])
 
-            del quest_objs[qid]
-            # At most one ungated quest
-            if qid in ungated_quests:
-                for ungated_id in ungated_quests:
-                    if ungated_id in quest_objs:
-                        del quest_objs[ungated_id]
+    objectives = []
+    used_keys = []
+    default_hint = '50:quest_gated, 30:boss_nogo, 20:recruit_gated'
+    for ind in range(len(hints), num_objs):
+        hints.append(default_hint)
 
-        elif category == 'boss':
-            boss_id, objective = random.choice(list(boss_objs.items()))
-            del boss_objs[boss_id]
-        elif category == 'recruit':
-            _, objective = random.choice(list(recruit_objs.items()))
-            weights[2] = 0  # no more recruit objectives
-        else:
-            _, objective = random.choice(list(collect_objs.items()))
-            weights[3] = 0
+    for ind in range(num_objs):
+        hint = hints[ind]
+        if hint == '':
+            hint = default_hint
+        dist = obhint.parse_hint(hint, settings, config)
 
-        objective.item_id = objective_pool[ind]
-        objective.add_objective_to_config(settings, config)
+        # Remove already-chosen objectives from the distribution
+        # If it's empty after cleaning, try the default hint.
+        dist = clean_distribution(dist, used_keys)
+        if dist.get_total_weight() == 0:
+            dist = obhint.parse_hint(default_hint, settings, config)
+            dist = clean_distribution(dist, used_keys)
 
-    # charge_obj = oty.ChargeMoonStoneObjective(objective_pool[0])
-    # charge_obj.add_objective_to_config(config)
-    # jerky_obj = oty.JerkyRewardObjective(objective_pool[0])
-    # jerky_obj.add_objective_to_config(config)
-    # recruit = config.char_assign_dict[ctenums.RecruitID.CATHEDRAL]
-    # recruit_obj = oty.RecruitSpotObjective(
-    #     f'*Find {str(recruit.held_char)}',
-    #     f'Recruit {str(recruit.held_char)}',
-    #     recruit,
-    #     objective_pool[0]
-    # )
-    # recruit_obj.add_objective_to_config(config)
-    # recruit_n = oty.RecruitNCharactersObjective(
-    #     2, 0x7F003E, objective_pool[0])
-    # recruit_n.add_objective_to_config(config)
-    # rock_n = oty.ObtainNRocksObjective(1, 0x7F003D, objective_pool[0])
-    # rock_n.add_objective_to_config(settings, config)
+            if dist.get_total_weight() == 0:
+                raise ImpossibleHintException
 
-    # forge_obj = oty.ForgeMasaMuneObjective(objective_pool[1])
-    # forge_obj.add_objective_to_config(config)
-    # frag = oty.CollectNFragmentsObjective(10, 5, objective_pool[1])
-    # frag.add_objective_to_config(settings, config)
+        chosen_key = dist.get_random_item()
+
+        objective = get_obj_from_key(chosen_key, settings, config,
+                                     objective_pool[ind])
+        objectives.append(objective)
+
+        if type(chosen_key) == str:
+            chosen_key = chosen_key.split('_')[0]
+        used_keys.append(chosen_key)
+
+    for objective in objectives:
+        objective.update_item_db(config.item_db)
+        if isinstance(objective, oty.CollectNFragmentsObjective):
+            bucketfragment.write_fragments_to_config(
+                objective.fragments_needed+objective.extra_fragments,
+                settings, config
+            )
+
+    config.objectives = objectives
+
+
+def clean_distribution(dist: distribution.Distribution,
+                       used_keys: list):
+    '''Remove used keys from a distribution.'''
+    wo_pairs = dist.get_weight_object_pairs()
+    new_wo_pairs = []
+    for weight, items in wo_pairs:
+        for key in used_keys:
+            if key in ('fragments', 'rocks', 'recruits'):
+                str_keys = [x for x in items if type(x) == str]
+                match_keys = [x for x in str_keys if key in x]
+                for key in match_keys:
+                    items.remove(key)
+            elif key in items:
+                items.remove(key)
+                
+        if items:
+            new_wo_pairs.append((weight, items))
+                    
+    dist = distribution.Distribution(*new_wo_pairs)
+    return dist
+        
+
+def get_obj_from_key(key, settings: rset.Settings,
+                     config: cfg.RandoConfig,
+                     item_id: ctenums.ItemID):
+    if type(key) == rotypes.BossID:
+        return oty.get_defeat_boss_obj(key, settings,
+                                       config.boss_assign_dict, item_id)
+    if type(key) == oty.QuestID:
+        return oty.get_quest_obj(key, settings, item_id)
+    if type(key) == ctenums.RecruitID:
+        return oty.get_recruit_spot_obj(key, settings,
+                                        config.char_assign_dict, item_id)
+    if type(key) == ctenums.CharID:
+        return oty.get_recruit_char_obj(key, settings,
+                                        config.char_assign_dict, item_id)
+    if type(key) == str:
+        parts = key.split('_')
+        if parts[0] == 'rocks':
+            num_rocks = int(parts[1])
+            return oty.ObtainNRocksObjective(num_rocks, 0x7F003D, item_id)
+        if parts[0] == 'fragments':
+            num_fragments = int(parts[1])
+            total_fragments = int(parts[2])
+
+            if total_fragments < num_fragments:
+                total_fragments = num_fragments
+
+            return oty.CollectNFragmentsObjective(
+                num_fragments, total_fragments, item_id
+            )
+        if parts[0] == 'recruits':
+            num_recruits = int(parts[1])
+            num_recruits = min(num_recruits, 5)
+            num_recruits = max(1, num_recruits)
+            return oty.RecruitNCharactersObjective(num_recruits, 0x7F003E,
+                                                   item_id)
+
+    raise ValueError('Could not handle: ' + str(key))
 
 
 def modify_bucket_activation(
@@ -256,21 +314,115 @@ def modify_bucket_activation(
     script.set_function(bucket_obj_id, bucket_func_id, bucket_func)
 
 
+def disable_non_bucket_go(ct_rom: ctrom.CTRom):
+    '''
+    Add blocks/warps out when the last boss in Ocean Palace/Omen are defeated.
+    '''
+
+    # Releveant maps are 0x19F Ocean Palace Throne and 0x1C2 Omega Defense
+
+    # Ocean Palace: Have the Nu in the final hallway not move.
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.OCEAN_PALACE_THRONE)
+
+    nu_obj = 0x17
+    start = script.get_function_start(nu_obj, 1)
+    end = script.get_function_end(nu_obj, 1)
+
+    _, cmd = script.find_command([0xBB], start, end)
+    nu_str_ind = cmd.args[-1]
+
+    new_nu_fn = (
+        EF()
+        .add(EC.generic_command(0x17))  # facing down
+        .add(EC.generic_command(0xAA, 1))  # anim 1
+        .add(EC.generic_command(0xAA, 5))  # anim 5
+        .add(EC.pause(0.25))
+        .add(EC.generic_command(0xAC, 0x0F))  # static anim 0xF
+        .add(EC.auto_text_box(nu_str_ind))
+        .add(EC.generic_command(0xAE))  # reset anim
+        .add(EC.return_cmd())
+    )
+
+    script.set_function(nu_obj, 1, new_nu_fn)
+
+    # Black Omen:  Stop the central panel from being overwritten.
+    # Copy tiles flags are weird, so just copying the command
+
+    loc_id = ctenums.LocID.BLACK_OMEN_OMEGA_DEFENSE
+    script = ct_rom.script_manager.get_script(loc_id)
+
+    copy_cmd = EC.generic_command(0xE4, 0, 0x1C, 1, 0x1F, 7, 1, 0x3B)
+
+    pos = script.find_exact_command(copy_cmd)
+    script.delete_commands(pos, 1)
+
+    copy_cmd.command = 0xE5  # Switch to vblank version
+    pos = script.find_exact_command(copy_cmd, script.get_function_start(8, 1))
+    script.delete_commands(pos, 1)
+
+    # Delete the exit from to the throne.
+    all_exits = locationtypes.LocExits.from_rom(ct_rom.rom_data)
+    loc_exits = all_exits.get_exits(loc_id)
+
+    for ind, loc_exit in enumerate(loc_exits):
+        if loc_exit.dest_loc == 0x1C3:
+            all_exits.delete_exit(loc_id, ind)
+            break
+
+    all_exits.write_to_fsrom(ct_rom.rom_data)
+
+
 def write_objectives_to_ctrom(
         ct_rom: ctrom.CTRom,
         settings: rset.Settings,
         config: cfg.RandoConfig
         ):
 
+    if rset.GameFlags.BUCKET_LIST not in settings.gameflags:
+        return
+    
     bucket_settings = settings.bucket_settings
     modify_bucket_activation(
-        ct_rom, bucket_settings.objectives_needed, 0x7F003F
+        ct_rom, bucket_settings.num_objectives_needed, 0x7F003F
+    )
+
+    script = ct_rom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
+    obj_id = script.append_empty_object()
+
+    num_objs = len(config.objectives)
+    needed_objs = settings.bucket_settings.num_objectives_needed
+
+    objs = config.objectives
+    add_objs_fn = EF()
+    for ind in range(needed_objs):
+        add_objs_fn.add(EC.add_item(ctenums.ItemID.OBJ_COUNT))
+
+    for obj in objs:
+        add_objs_fn.add(EC.add_item(obj.item_id))
+
+    script.set_function(
+        obj_id, 0,
+        EF().add(EC.return_cmd()).add(EC.end_cmd())
+    )
+
+    script.set_function(obj_id, 1, add_objs_fn)
+
+    pos = script.get_object_start(0)
+    while True:
+        pos, cmd = script.find_command([0xC8], pos)
+
+        if cmd.args[0] in range(0xC0, 0xC7):
+            break
+        pos += len(cmd)
+
+    script.insert_commands(
+        EC.call_obj_function(obj_id, 1, 5, FS.HALT).to_bytearray(), pos
     )
 
     script = ct_rom.script_manager.get_script(ctenums.LocID.TELEPOD_EXHIBIT)
     obj_id = script.append_empty_object()
 
-    objs = config.objectives
     obj_str = ''
     for ind, obj in enumerate(objs):
         obj_str += f'{ind+1}) {obj.desc}'
@@ -282,15 +434,23 @@ def write_objectives_to_ctrom(
         else:
             obj_str += '{linebreak+0}'
 
-    num_objs = len(config.objectives)
-    needed_objs = settings.bucket_settings.objectives_needed
     if num_objs == needed_objs:
         count_str = 'All.{linebreak+0}'
     else:
         count_str = f'{needed_objs} of {num_objs}.{{linebreak+0}}'
 
-    obj_str = 'Bucket List: Complete ' + count_str + obj_str
+    if settings.bucket_settings.objectives_win:
+        reward_str = 'Win Game'
+    else:
+        reward_str = 'Bucket List'
+
+    warning_str = ''
+    if settings.bucket_settings.disable_other_go_modes:
+        warning_str = 'Other go modes are disabled!{linebreak+0}'
+
+    obj_str = f'{reward_str}: Complete {count_str} {obj_str}'
     dec_str = \
+        warning_str + \
         'Review Objectives in the Item Menu!{line break}'\
         '   See the list again{line break}'\
         '   Close this message{null}'
@@ -298,15 +458,10 @@ def write_objectives_to_ctrom(
     str_id = script.add_py_string(obj_str)
     dec_id = script.add_py_string(dec_str)
 
-    add_objs_fn = EF()
-    for ind in range(needed_objs):
-        add_objs_fn.add(EC.add_item(ctenums.ItemID.OBJ_COUNT))
-
-    for obj in objs:
-        add_objs_fn.add(EC.add_item(obj.item_id))
-
-
-        
+    if warning_str:
+        dec_st = 2
+    else:
+        dec_st = 1
 
     script.set_function(
         obj_id, 0,
@@ -316,12 +471,12 @@ def write_objectives_to_ctrom(
             .add_if(
                 EC.if_storyline_counter_lt(0x0C, 0),
                 EF()
-                .append(add_objs_fn)
+                # .append(add_objs_fn)
                 .set_label('text')
                 .add(EC.auto_text_box(str_id))
-                .add(EC.decision_box(dec_id, 1, 2, 'auto'))
+                .add(EC.decision_box(dec_id, dec_st, dec_st+1, 'auto'))
                 .add_if(
-                    EC.if_result_equals(1, 0),
+                    EC.if_result_equals(dec_st, 0),
                     EF().jump_to_label(EC.jump_back(0), 'text')
                 )
             )
@@ -332,8 +487,9 @@ def write_objectives_to_ctrom(
     objectives = config.objectives
     for objective in objectives:
         objective.add_objective_check_to_ctrom(
-            ct_rom,
-            settings.bucket_settings.objectives_needed,
-            0x7F003F)
+            ct_rom, settings.bucket_settings, 0x7F003F)
 
     xpscale.double_xp(ct_rom, 0x7E287E)
+
+    if bucket_settings.disable_other_go_modes:
+        disable_non_bucket_go(ct_rom)

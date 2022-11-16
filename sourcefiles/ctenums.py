@@ -170,6 +170,8 @@ class LocID(StrIntEnum):
     TRUCE_MARKET = 0x11
     TYRANO_LAIR_KEEP = 0x12D
     MELCHIORS_KITCHEN = 0x28
+    MILLENIAL_FAIR = 0x5
+    OCEAN_PALACE_THRONE = 0x19F
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT

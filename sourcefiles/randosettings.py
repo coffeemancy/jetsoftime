@@ -65,7 +65,7 @@ class GameFlags(Flag):
     DUPLICATE_TECHS = auto()
     VISIBLE_HEALTH = auto()
     FAST_TABS = auto()
-    BUCKET_FRAGMENTS = auto()
+    BUCKET_LIST = auto()
     MYSTERY = auto()
     BOSS_SIGHTSCOPE = auto()
     USE_ANTILIFE = auto()
@@ -98,24 +98,24 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_FRAGMENTS: _GF(0),
+    _GF.BUCKET_LIST: _GF(0),
     _GF.MYSTERY: _GF(0),
     _GF.GEAR_RANDO: _GF(0),
     _GF.HEALING_ITEM_RANDO: _GF(0),
     _GF.EPOCH_FAIL: _GF(0),
     _GM.STANDARD: _GF(0),
-    _GM.LOST_WORLDS: _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS | _GF.EPOCH_FAIL,
+    _GM.LOST_WORLDS: _GF.BOSS_SCALE | _GF.BUCKET_LIST | _GF.EPOCH_FAIL,
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
-        _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
+        _GF.BOSS_SCALE | _GF.BUCKET_LIST
     ),
     _GM.LEGACY_OF_CYRUS: (
         _GF.ZEAL_END |
-        _GF.BUCKET_FRAGMENTS |
+        _GF.BUCKET_LIST |
         _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
     ),
     _GM.VANILLA_RANDO: (
-        _GF.BOSS_SCALE | _GF.BUCKET_FRAGMENTS
+        _GF.BOSS_SCALE | _GF.BUCKET_LIST
     )
 }
 
@@ -135,7 +135,7 @@ _forced_on_dict = {
     _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_FRAGMENTS: _GF(0),
+    _GF.BUCKET_LIST: _GF(0),
     _GF.MYSTERY: _GF(0),
     _GF.GEAR_RANDO: _GF(0),
     _GF.HEALING_ITEM_RANDO: _GF(0),
@@ -242,16 +242,13 @@ class BucketSettings:
     '''
     Class for settings passed to bucket flag.
     '''
-    # Configuration for when fragments is used as an objective
-    num_fragments: int = 15
-    needed_fragments: int = 10
-    # Should add configuration for rock collection/other objs that need it
-
     disable_other_go_modes = False
+    objectives_win = False
 
     # Configuration for number of objectives avail/needed
     num_objectives: int = 5
-    objectives_needed: int = 4
+    num_objectives_needed: int = 4
+    hints: list[str] = field(default_factory=list)
 
 
 class MysterySettings:
@@ -286,7 +283,7 @@ class MysterySettings:
         self.flag_prob_dict: dict[GameFlags, float] = {
             GameFlags.TAB_TREASURES: 0.10,
             GameFlags.UNLOCKED_MAGIC: 0.5,
-            GameFlags.BUCKET_FRAGMENTS: 0.15,
+            GameFlags.BUCKET_LIST: 0.15,
             GameFlags.CHRONOSANITY: 0.50,
             GameFlags.BOSS_RANDO: 0.50,
             GameFlags.BOSS_SCALE: 0.10,
@@ -481,7 +478,7 @@ class Settings:
             GameFlags.HEALING_ITEM_RANDO: 'h',  # h for Healing
             GameFlags.GEAR_RANDO: 'q',  # q for eQuipment (g taken)
             GameFlags.EPOCH_FAIL: 'ef',  # ef for Epoch Fail
-            GameFlags.BUCKET_FRAGMENTS: 'k'  # k for bucKet
+            GameFlags.BUCKET_LIST: 'k'  # k for bucKet
         }
 
         shop_str_dict = {

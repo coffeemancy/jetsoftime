@@ -72,8 +72,11 @@ def set_fragment_properties(ctrom: CTRom):
     ctrom.rom_data.write(frag_name)
 
 
-def write_fragments_to_config(settings: rset.Settings,
-                              config: cfg.RandoConfig):
+def write_fragments_to_config(
+        num_fragments: int,
+        settings: rset.Settings,
+        config: cfg.RandoConfig,
+        ):
     item_db = config.item_db
 
     # 0xFF is a space instead of an item type icon
@@ -152,7 +155,6 @@ def write_fragments_to_config(settings: rset.Settings,
     #     print(x.getName())
 
     # print('****')
-    num_fragments = settings.bucket_settings.num_fragments
     fragment_locs = random.sample(avail_locs, num_fragments)
 
     for x in fragment_locs:

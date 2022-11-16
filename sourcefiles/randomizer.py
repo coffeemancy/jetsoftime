@@ -45,6 +45,7 @@ from ctrom import CTRom
 import ctstrings
 import enemyrewards
 
+
 # from freespace import FSWriteType
 import randoconfig as cfg
 import randosettings as rset
