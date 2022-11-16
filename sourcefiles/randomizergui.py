@@ -723,6 +723,12 @@ class RandoGUI:
         else:
             self.notebook.tab(self.mystery_page, state=tk.DISABLED)
 
+        # Check Bucket Page
+        if self.flag_dict[GameFlags.BUCKET_LIST].get() == 1:
+            self.notebook.tab(self.bucket_page, state=tk.NORMAL)
+        else:
+            self.notebook.tab(self.bucket_page, state=tk.DISABLED)
+
         # check the tab rando slider
         if self.tab_rando_scheme.get() == \
            TabRandoScheme.str_dict()[TabRandoScheme.UNIFORM]:
@@ -2238,6 +2244,19 @@ class RandoGUI:
         CreateToolTip(
             checkbox,
             'Use VanillaRando Key Item changes.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Bucket List',
+            variable=self.flag_dict[GameFlags.BUCKET_LIST],
+            command=self.verify_settings
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Allow for objectives to control bucket activation.'
         )
 
         return frame
