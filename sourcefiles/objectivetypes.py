@@ -256,7 +256,7 @@ class QuestID(enum.Enum):
     # Meme Objectives
     DEFEAT_JOHNNY = QuestData('*BeatJohnny', 'Beat Johnny in a Race')
     WIN_RACE_BET = QuestData('*Fair Race', 'Bet on a fair race and win.')
-
+    DRINK_SODA = QuestData('*SodaGame', 'Play the fair Drinking Game.')
 
 _quest_to_spot_dict: dict[QuestID, BSID] = {
     QuestID.CLEAR_ARRIS_DOME: BSID.ARRIS_DOME,
@@ -463,7 +463,7 @@ class DefeatJohnnyObjective(QuestObjective):
         script.delete_commands(pos, 1)
 
 
-class ClearOzziesFortObjective(Objective):
+class ClearOzziesFortObjective(QuestObjective):
     '''Class for beating Ozzie's Fort (cat drop).'''
     def __init__(self, item_id: ctenums.ItemID):
         QuestObjective.__init__(self, QuestID.CLEAR_OZZIES_FORT, item_id)
@@ -478,13 +478,55 @@ class ClearOzziesFortObjective(Objective):
             ctenums.LocID.OZZIES_FORT_THRONE_INCOMPETENCE)
 
         hook_cmd = EC.call_pc_function(2, 5, 6, FS.HALT)
-        pos = script.find_command(hook_cmd, script.get_function_start(8, 2))
+        pos = script.find_exact_command(
+            hook_cmd, script.get_function_start(8, 2))
         pos += len(hook_cmd)
 
         add_obj_complete(script, pos, self, num_objectives_needed,
                          bucket_settings.objectives_win,
                          objective_count_addr)
-        
+
+
+class DrinkSodaObjective(QuestObjective):
+    '''Class for drinking a soda at the fair.'''
+    def __init__(self, item_id: ctenums.ItemID):
+        QuestObjective.__init__(self, QuestID.DRINK_SODA, item_id)
+
+    def add_objective_check_to_ctrom(
+            self, ct_rom: ctrom.CTRom,
+            bucket_settings: rset.BucketSettings,
+            objective_count_addr: int
+            ):
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.LEENE_SQUARE)
+
+        hook_cmd = EC.assign_mem_to_mem(0x7F0236, 0x7E0200, 1)
+
+        pos = script.find_exact_command(
+            hook_cmd, script.get_function_start(0x1B, 1))
+        pos += len(hook_cmd)
+
+        func = (
+            EF()
+            .add_if(
+                EC.if_has_item(self.item_id, 0),
+                EF()
+                .add_if(
+                    EC.if_mem_op_value(0x7F0236, OP.NOT_EQUALS, 0, 1, 0),
+                    EF()
+                    .set_label('hook')
+                    .add(EC.pause(0))
+                )
+            )
+        )
+        offset = func.labels['hook']
+        script.insert_commands(func.get_bytearray(), pos)
+
+        add_obj_complete(script, pos+offset, self,
+                         bucket_settings.num_objectives_needed,
+                         bucket_settings.objectives_win,
+                         objective_count_addr)
+
 
 class RecruitStarterObjective(Objective):
     '''
@@ -975,8 +1017,14 @@ def get_quest_obj(qid: QuestID,
     if qid == QuestID.VISIT_CYRUS_GRAVE:
         return CyrusGraveObjecitve(item_id)
 
+    if qid == QuestID.CLEAR_OZZIES_FORT:
+        return ClearOzziesFortObjective(item_id)
+
     if qid == QuestID.DEFEAT_JOHNNY:
         return DefeatJohnnyObjective(item_id)
+
+    if qid == QuestID.DRINK_SODA:
+        return DrinkSodaObjective(item_id)
 
     raise ValueError(f'Invalid QuestID: {qid}')
 

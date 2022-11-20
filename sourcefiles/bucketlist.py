@@ -250,7 +250,7 @@ def get_obj_from_key(key, settings: rset.Settings,
                 total_fragments = num_fragments
 
             return oty.CollectNFragmentsObjective(
-                num_fragments, total_fragments, item_id
+                num_fragments, total_fragments-num_fragments, item_id
             )
         if parts[0] == 'recruits':
             num_recruits = int(parts[1])

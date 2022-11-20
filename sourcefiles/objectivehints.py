@@ -176,6 +176,8 @@ def parse_quest_name(name: str):
         return QID.DEFEAT_JOHNNY
     elif name in ('fairrace', 'fairbet'):
         return QID.WIN_RACE_BET
+    elif name in ('soda', 'drink'):
+        return QID.DRINK_SODA
     else:
         raise InvalidNameException(name)
     
@@ -224,7 +226,7 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
                 QID.CHARGE_MOONSTONE, QID.GIVE_JERKY_TO_MAYOR,
                 QID.CLEAR_ARRIS_DOME, QID.GAIN_EPOCH_FLIGHT,
                 QID.CLEAR_FACTORY_RUINS, QID.CLEAR_GIANTS_CLAW,
-                #QID.CLEAR_OZZIES_FORT,
+                QID.CLEAR_OZZIES_FORT,
                 QID.CLEAR_KINGS_TRIAL,
                 QID.CLEAR_PENDANT_TRIAL, QID.CLEAR_REPTITE_LAIR,
                 QID.CLEAR_SUN_PALACE, QID.CLEAR_SUNKEN_DESERT,
@@ -268,7 +270,7 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
             return [spot_ids[index]]
         else:
             num_recruits = int(char_choice)
-            return 'recruits_' + char_choice
+            return ['recruits_' + char_choice]
     elif obj_type == 'collect':
         num_collect = int(obj_parts[1])
         collect_type = obj_parts[2]
