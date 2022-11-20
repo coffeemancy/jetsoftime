@@ -406,7 +406,7 @@ def make_weak_obstacle_copies(config: cfg.RandoConfig):
                        bt.BossID.TERRA_MUTANT]
 
     for spot, boss in config.boss_assign_dict.items():
-        if spot in endgame_spots and boss in obstacle_bosses:
+        if spot not in endgame_spots and boss in obstacle_bosses:
             early_obstacle_bosses.append(boss)
 
     if early_obstacle_bosses:
