@@ -444,6 +444,11 @@ class ArmorStats(ItemData):
     @effect_id.setter
     def effect_id(self, val: ArmorEffects):
         # validate?
+        if val == ArmorEffects.NONE:
+            self.has_effect = False
+        else:
+            self.has_effect = True
+
         self._data[1] = int(val)
 
     @property
