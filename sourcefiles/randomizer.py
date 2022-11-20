@@ -165,7 +165,8 @@ class Randomizer:
         itemrando.write_item_prices_to_config(self.settings, self.config)
         itemrando.randomize_healing(self.settings, self.config)
         itemrando.randomize_accessories(self.settings, self.config)
-        itemrando.randomize_weapon_armor_stats(self.settings, self.config)
+        # itemrando.randomize_weapon_armor_stats(self.settings, self.config)
+        itemrando.alt_gear_rando(self.settings, self.config)
         self.config.item_db.update_all_descriptions()
 
         # Boss Rando
