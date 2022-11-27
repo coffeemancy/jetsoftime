@@ -13,7 +13,7 @@ def write_config(settings: rset.Settings, config: cfg.RandoConfig):
     if rset.GameFlags.UNLOCKED_MAGIC not in settings.gameflags:
         return
 
-    techdb = config.techdb
+    techdb = config.tech_db
 
     control_headers = techdb.controls
     control_size = techdb.control_size

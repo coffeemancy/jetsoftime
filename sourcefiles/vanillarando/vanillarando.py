@@ -1,5 +1,6 @@
 import random
 
+import bossassign
 import bossrandotypes as rotypes
 import bossrandoevent
 import ctenums
@@ -650,10 +651,10 @@ def restore_magus_castle_decedents(config: cfg.RandoConfig):
     '''Copy Decedent to Frog King spot'''
     decedent_stats = config.enemy_dict[ctenums.EnemyID.DECEDENT].get_copy()
     config.enemy_dict[ctenums.EnemyID.DECEDENT_II] = decedent_stats
-    config.enemy_aidb.change_enemy_ai(
+    config.enemy_ai_db.change_enemy_ai(
         ctenums.EnemyID.DECEDENT_II, ctenums.EnemyID.DECEDENT
     )
-    config.enemy_atkdb.copy_atk_gfx(
+    config.enemy_atk_db.copy_atk_gfx(
         ctenums.EnemyID.DECEDENT_II, ctenums.EnemyID.DECEDENT
     )
 
@@ -675,22 +676,22 @@ def restore_cyrus_grave_check_to_config(config: cfg.RandoConfig):
 
 def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
 
-    if config.boss_assign_dict[ctenums.LocID.SUN_PALACE] == \
-       ctenums.BossID.SON_OF_SUN:
+    if config.boss_assign_dict[rotypes.BossSpotID.SUN_PALACE] == \
+       rotypes.BossID.SON_OF_SUN:
 
-        bossrandoevent.set_sun_palace_boss(
+        bossassign.set_sun_palace_boss(
             ct_rom,
-            config.boss_data_dict[ctenums.BossID.SON_OF_SUN].scheme
+            config.boss_data_dict[rotypes.BossID.SON_OF_SUN]
         )
 
 
 def fix_item_data(config: cfg.RandoConfig):
 
-    item_db = config.itemdb
+    item_db = config.item_db
     IID = ctenums.ItemID
 
-    config.itemdb[IID.MASAMUNE_2].set_name_from_str('{blade}GrandLeon')
-    roboribbon = config.itemdb[IID.ROBORIBBON]
+    config.item_db[IID.MASAMUNE_2].set_name_from_str('{blade}GrandLeon')
+    roboribbon = config.item_db[IID.ROBORIBBON]
 
     # Put roboribbon in (but inaccessible) so that roboribbon.py doesn't
     # mess things up.
@@ -740,19 +741,20 @@ def scale_enemy_xp_tp(config: cfg.RandoConfig,
                       xp_scale_factor: float = 4.0,
                       tp_scale_factor: float = 2.0):
 
-    xp_thresh = config.char_manager.xp_thresh
+    xp_thresh = config.pcstats.xp_thresholds
     for ind, x in enumerate(xp_thresh):
         xp_thresh[ind] = round(x/xp_scale_factor)
 
-    for char in config.char_manager.pcs:
+    for char, stats in config.pcstats.pc_stat_dict.items():
         # fix xp to next
-        char.stats.xp_thresh = list(config.char_manager.xp_thresh)
-        char.stats.set_level(char.stats.level)
+        cur_level = config.pcstats.get_level(char)
+        config.pcstats.set_level(char, cur_level)
 
-        for ind, tp_thresh in enumerate(char.stats.tp_thresh):
-            new_thresh = round(tp_thresh/tp_scale_factor)
+        for ind in range(8):
+            old_thresh = stats.tp_threshholds.get_threshold(ind)
+            new_thresh = round(old_thresh/tp_scale_factor)
             new_thresh = max(1, new_thresh)
-            char.stats.tp_thresh[ind] = new_thresh
+            stats.tp_threshholds.set_threshold(ind, new_thresh)
 
 
 def fix_required_tp(config: cfg.RandoConfig):
@@ -761,16 +763,20 @@ def fix_required_tp(config: cfg.RandoConfig):
 
     # Crono, Lucca, Marle, and Frog have no TP for 3rd tech
     for char_id in (CharID.CRONO, CharID.MARLE, CharID.LUCCA, CharID.FROG):
-        char = config.char_manager.pcs[char_id]
-        char.stats.tp_thresh[2] = 100
+        tp_thresh = config.pcstats.pc_stat_dict[char_id].tp_threshholds
+        tp_thresh.set_threshold(2, 100)
 
     # Robo has no TP for first two techs and 5 TP for Laser Spin
-    robo = config.char_manager.pcs[CharID.ROBO]
-    robo.stats.tp_thresh[0:3] = [5, 50, 100]
+    robo_tp = config.pcstats.pc_stat_dict[CharID.ROBO].tp_threshholds
+    robo_tp.set_threshold(0, 5)
+    robo_tp.set_threshold(1, 50)
+    robo_tp.set_threshold(2, 100)
 
     # Magus has no TP for first three techs
-    magus = config.char_manager.pcs[CharID.MAGUS]
-    magus.stats.tp_thresh[0:3] = [100, 100, 100]
+    magus_tp = config.pcstats.pc_stat_dict[CharID.MAGUS].tp_threshholds
+    magus_tp.set_threshold(0, 100)
+    magus_tp.set_threshold(1, 100)
+    magus_tp.set_threshold(2, 100)
 
 
 def fix_magic_learning(config: cfg.RandoConfig):
@@ -780,11 +786,11 @@ def fix_magic_learning(config: cfg.RandoConfig):
         for tech_num in range(3):
             tech_id = 1 + char_id*8 + tech_num
             magic_byte = tech_id*0xB
-            config.techdb.controls[magic_byte] &= 0x7F
+            config.tech_db.controls[magic_byte] &= 0x7F
         for tech_num in range(3, 8):
             tech_id = 1 + char_id*8 + tech_num
             magic_byte = tech_id*0xB
-            config.techdb.controls[magic_byte] |= 0x80
+            config.tech_db.controls[magic_byte] |= 0x80
 
 
 def restore_son_of_sun_flame(config: cfg.RandoConfig):
@@ -809,14 +815,16 @@ def fix_twin_boss(config: cfg.RandoConfig):
     # In vanilla, the twin boss is just a copy of the golem
     golem_stats = config.enemy_dict[EnemyID.GOLEM].get_copy()
     config.enemy_dict[EnemyID.TWIN_BOSS] = golem_stats
-    config.enemy_aidb.change_enemy_ai(EnemyID.TWIN_BOSS, EnemyID.GOLEM)
-    config.enemy_atkdb.copy_atk_gfx(EnemyID.TWIN_BOSS, EnemyID.GOLEM)
+    config.enemy_ai_db.change_enemy_ai(EnemyID.TWIN_BOSS, EnemyID.GOLEM)
+    config.enemy_atk_db.copy_atk_gfx(EnemyID.TWIN_BOSS, EnemyID.GOLEM)
 
-    base_slot = config.boss_data_dict[ctenums.BossID.GOLEM].scheme.slots[0]
-    alt_slot = bossrandoevent.get_alt_twin_slot(config, ctenums.BossID.GOLEM)
+    base_slot = config.boss_data_dict[rotypes.BossID.GOLEM]\
+        .parts[0].slot
+    alt_slot = bossrandoevent.get_alt_twin_slot(config, rotypes.BossID.GOLEM)
 
-    new_slots = [base_slot, alt_slot]
-    config.boss_data_dict[ctenums.BossID.TWIN_BOSS].scheme.slots = new_slots
+    scheme = config.boss_data_dict[rotypes.BossID.TWIN_BOSS]
+    scheme.parts[0].slot = base_slot
+    scheme.parts[1].slot = alt_slot
 
 
 def rebalance_nizbel(config: cfg.RandoConfig):
@@ -828,7 +836,7 @@ def rebalance_nizbel(config: cfg.RandoConfig):
     nizbel.defense = 0xC3  # 195
     nizbel.mdef = 0x4B  # 75
 
-    nizbel_ai = config.enemy_aidb.scripts[ctenums.EnemyID.NIZBEL]
+    nizbel_ai = config.enemy_ai_db.scripts[ctenums.EnemyID.NIZBEL]
     nizbel_ai_b = nizbel_ai.get_as_bytearray()
 
     loc = nizbel_ai.find_command(nizbel_ai_b, 0x12)[0]
@@ -838,12 +846,12 @@ def rebalance_nizbel(config: cfg.RandoConfig):
 
     nizbel_ai_b[loc: loc + len(new_cmd)] = new_cmd
 
-    config.enemy_aidb.scripts[ctenums.EnemyID.NIZBEL] = \
+    config.enemy_ai_db.scripts[ctenums.EnemyID.NIZBEL] = \
         cfg.enemyai.AIScript(nizbel_ai_b)
 
 
 def rescale_bosses(config: cfg.RandoConfig):
-    BID = ctenums.BossID
+    BID = rotypes.BossID
     bdd = config.boss_data_dict
 
     bdd[BID.ATROPOS_XR].power = 20
