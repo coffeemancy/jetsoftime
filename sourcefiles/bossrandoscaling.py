@@ -8,7 +8,7 @@ import random
 import bossrandotypes as rotypes
 
 import ctenums
-import ctpcstats
+from characters import ctpcstats
 
 import enemyai
 import enemystats as es
