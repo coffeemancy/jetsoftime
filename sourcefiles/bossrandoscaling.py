@@ -15,8 +15,6 @@ import enemystats as es
 import enemytechdb
 
 import piecewiselinear
-
-import randoconfig as cfg
 import randosettings as rset
 
 
