@@ -1042,7 +1042,7 @@ def randomize_unique_gear(settings: rset.Settings,
         IID.VALKERYE: '{bow}Valkerye',
         IID.WONDERSHOT: '{gun}RainbowGun',
         IID.CRISIS_ARM: '{arm}RainbowArm',
-        IID.MASAMUNE_2: '{blade}Crit Leon',
+        IID.MASAMUNE_2: '{blade}GrandLeon',
         IID.DOOMSICKLE: '{scythe}RbowSickle'
     }
 
@@ -1052,7 +1052,7 @@ def randomize_unique_gear(settings: rset.Settings,
         IID.WONDERSHOT: '{gun}Crisis Gun',
         IID.CRISIS_ARM: '{arm}Crisis Arm',
         IID.MASAMUNE_2: '{blade}CrisisMune',
-        IID.DOOMSICKLE: '{scythe}Crisis Scy'
+        IID.DOOMSICKLE: '{scythe}Crisickle'
     }
 
     wonder_names = {
