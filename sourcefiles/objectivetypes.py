@@ -245,6 +245,8 @@ class QuestID(enum.Enum):
                                   'Defeat the Boss in Zeal Throne')
     CLEAR_ZENAN_BRIDGE = QuestData('*ZenanBrdge', 'Clear Zenan Bridge')
     CLEAR_BLACK_TYRANO = QuestData('*TyranoLair', 'Clear the Tyrano Lair')
+    CLEAR_MAGUS_FLEA_SPOT = QuestData('*MagusFlea',
+                                      'Defeat the boss at Flea\'s Spot')
     CLEAR_MAGUS_CASTLE = QuestData('*MagusCstle', 'Clear Magus\'s Castle')
     CLEAR_OMEN_GIGASPOT = QuestData('*OmenGiga', 'Clear Omen GigaMutant Spot')
     CLEAR_OMEN_TERRASPOT = QuestData('*OmenTerra',
@@ -279,7 +281,8 @@ _quest_to_spot_dict: dict[QuestID, BSID] = {
     QuestID.CLEAR_ZENAN_BRIDGE: BSID.ZENAN_BRIDGE,
     QuestID.CLEAR_OMEN_GIGASPOT: BSID.BLACK_OMEN_GIGA_MUTANT,
     QuestID.CLEAR_OMEN_TERRASPOT: BSID.BLACK_OMEN_TERRA_MUTANT,
-    QuestID.CLEAR_OMEN_ELDERSPOT: BSID.BLACK_OMEN_ELDER_SPAWN
+    QuestID.CLEAR_OMEN_ELDERSPOT: BSID.BLACK_OMEN_ELDER_SPAWN,
+    QuestID.CLEAR_MAGUS_FLEA_SPOT: BSID.MAGUS_CASTLE_FLEA
 }
 
 
