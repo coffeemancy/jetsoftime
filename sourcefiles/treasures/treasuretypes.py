@@ -4,6 +4,8 @@ give a reward.  It also provides an association of ctenums.TreasureID to the
 appropriate objects as in a base Jets of Time rom.
 '''
 
+from __future__ import annotations
+
 import abc
 import typing
 
