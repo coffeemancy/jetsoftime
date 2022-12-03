@@ -323,7 +323,6 @@ class RandoGUI:
                     [settings, input_file, output_dir] = pickle.load(infile)
                     self.settings = settings
                 except (ValueError, AttributeError, EOFError, KeyError) as ex:
-                    raise ex
                     tk.messagebox.showinfo(
                         title='Settings Error',
                         message='Unable to load saved settings.  This often'

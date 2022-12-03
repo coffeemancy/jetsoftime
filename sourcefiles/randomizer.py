@@ -37,6 +37,7 @@ import seedhash
 import prismshard
 import scriptshortener
 import bucketlist
+import techdescs
 
 import byteops
 import ctenums
@@ -201,6 +202,8 @@ class Randomizer:
         # Ice age GG buffs if IA flag is present in settings.
         iceage.write_config(self.settings, self.config)
 
+        # Do this after charrando to hopefully get dup duals too
+        techdescs.update_all_tech_descs(self.config.tech_db)
 
     @classmethod
     def __set_fast_zeal_teleporters(cls, ct_rom: CTRom):
