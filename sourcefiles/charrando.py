@@ -576,6 +576,8 @@ def get_ll_prot_all(old_db):
     prot_all['gfx'][0] = 0x81
 
     prot_all['name'] = get_ct_name('Protect All')
+    prot_all['desc_ptr'] = None
+    prot_all['desc'] = b'\x00'
 
     return prot_all
 
@@ -598,6 +600,8 @@ def get_ff_hex_mist(old_db):
     hex_mist['gfx'][6] = 0x4
 
     hex_mist['name'] = get_ct_name('FlexgonMist')
+    hex_mist['desc_ptr'] = None
+    hex_mist['desc'] = b'\x00'
 
     return hex_mist
 
@@ -611,7 +615,8 @@ def get_rr_supervolt(old_db):
     sv['lrn_req'] = [8, 8, 0xFF]
     sv['mmp'] = [0x20, 0x20]
     sv['gfx'][0] = 0x83
-
+    sv['desc_ptr'] = None
+    sv['desc'] = b'\x00'
     return sv
 
 
@@ -632,7 +637,8 @@ def get_mm_haste_all(old_db):
     ha['gfx'][6] = 0x15
 
     ha['name'] = get_ct_name('Haste All')
-
+    ha['desc_ptr'] = None
+    ha['desc'] = b'\x00'
     return ha
 
 
@@ -649,7 +655,8 @@ def get_mm_glacier(old_db):
 
     gl['gfx'][0] = 0x85
     gl['name'] = get_ct_name('Glacier')
-
+    gl['desc_ptr'] = None
+    gl['desc'] = b'\x00'
     return gl
 
 
@@ -671,9 +678,10 @@ def get_ll_point_flare(old_db):
 
     pf['gfx'][0] = 0x86
     pf['gfx'][6] = 0x5D
-    
-    pf['name'] = get_ct_name('PointFlare')
 
+    pf['name'] = get_ct_name('PointFlare')
+    pf['desc_ptr'] = None
+    pf['desc'] = b'\x00'
     return pf
 
 def get_aa_beast_toss(old_db):
@@ -686,7 +694,8 @@ def get_aa_beast_toss(old_db):
 
     # This will need to change as we add more scripts
     beast_toss['gfx'][0] = 0x80
-
+    beast_toss['desc_ptr'] = None
+    beast_toss['desc'] = b'\x00'
     return beast_toss
 
 
@@ -810,6 +819,7 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                         gl = get_mm_glacier(old_db)
                         reassign_tech(gl, [i, j], reassign)
                         new_db.set_tech(gl, to_start_id+1)
+                        new_db.set_tech(gl, to_start_id+2)
 
                         num_duals = 2
                     elif reassign[i] == 2:
@@ -822,6 +832,7 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                         pf = get_ll_point_flare(old_db)
                         reassign_tech(pf, [i, j], reassign)
                         new_db.set_tech(pf, to_start_id+1)
+                        new_db.set_tech(pf, to_start_id+2)
 
                         num_duals = 2
                     elif reassign[i] == 3:
@@ -829,22 +840,28 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                         sv = get_rr_supervolt(old_db)
                         reassign_tech(sv, [i, j], reassign)
                         new_db.set_tech(sv, to_start_id)
+                        new_db.set_tech(sv, to_start_id+1)
+                        new_db.set_tech(sv, to_start_id+2)
                     elif reassign[i] == 4:
                         # Fr-Fr Hex Mist
                         hex_mist = get_ff_hex_mist(old_db)
                         reassign_tech(hex_mist, [i, j], reassign)
                         new_db.set_tech(hex_mist, to_start_id)
+                        new_db.set_tech(hex_mist, to_start_id+1)
+                        new_db.set_tech(hex_mist, to_start_id+2)
                     elif reassign[i] == 5:
                         # Ayla-Ayla Beast Toss
 
                         beast_toss = get_aa_beast_toss(old_db)
                         reassign_tech(beast_toss, [i, j], reassign)
                         new_db.set_tech(beast_toss, to_start_id)
+                        new_db.set_tech(beast_toss, to_start_id+1)
+                        new_db.set_tech(beast_toss, to_start_id+2)
 
                     # Make the rest unlearnable
                     for k in range(num_duals, 3):
-                        id = to_start_id + k
-                        new_db.controls[id*TechDB.control_size] |= 0x80
+                        tid = to_start_id + k
+                        new_db.controls[tid*TechDB.control_size] |= 0x80
                 else:
                     to_start_id = new_db.group_sizes[to_mg_ind]
 
@@ -852,9 +869,8 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                           % (to_mg_ind, to_mg_ind+2))
 
                     for k in range(3):
-                        id = to_start_id + k
-
-                        new_db.controls[id*TechDB.control_size] |= 0x80
+                        tid = to_start_id + k
+                        new_db.controls[tid*TechDB.control_size] |= 0x80
 
                 continue
 
@@ -1365,7 +1381,7 @@ def get_reassign_techdb(orig_db, reassign, dup_duals=False):
     new_db.name_start = 0x5F4000
 
     # new_db.desc_new_start = 0x5F5100
-    new_db.set_desc_start(0x5F5100)
+    new_db.set_desc_start(0x5F4800)
     new_db.desc_ptr_start = 0x5F4600
 
     new_db.techs_learned_start = 0x4F0230
