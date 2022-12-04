@@ -3,11 +3,11 @@ Module for turning text expressions into objective choices.
 '''
 import bossrandotypes as rotypes
 import objectivetypes
+from characters import pcrecruit
 from common import distribution
 import ctenums
 
 import randosettings as rset
-import randoconfig as cfg
 
 class InvalidNameException(Exception):
     pass
@@ -184,7 +184,9 @@ def parse_quest_name(name: str):
         raise InvalidNameException(name)
     
 
-def get_go_bosses(config: cfg.RandoConfig) -> list[rotypes.BossID]:
+_BossDict = dict[rotypes.BossSpotID: rotypes.BossID]
+_RecruitDict = dict[ctenums.RecruitID: ctenums.CharID]
+def get_go_bosses(boss_assign_dict: _BossDict) -> list[rotypes.BossID]:
     BSID = rotypes.BossSpotID
     go_spots = [BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
                 BSID.BLACK_OMEN_TERRA_MUTANT, BSID.OCEAN_PALACE_TWIN_GOLEM,
@@ -192,27 +194,29 @@ def get_go_bosses(config: cfg.RandoConfig) -> list[rotypes.BossID]:
                 BSID.MAGUS_CASTLE_SLASH]
 
     return [
-        boss_id for spot, boss_id in config.boss_assign_dict.items()
+        boss_id for spot, boss_id in boss_assign_dict.items()
         if spot in go_spots
     ]
     
 
 def get_objective_keys(obj_str: str, settings: rset.Settings,
-                       config: cfg.RandoConfig) -> list:
+                       boss_assign_dict: _BossDict,
+                       char_assign_dict: _RecruitDict
+                       ) -> list:
     obj_parts = obj_str.split('_')
     obj_type = obj_parts[0]
 
     epoch_fail = rset.GameFlags.EPOCH_FAIL in settings.gameflags
-    
+
     if obj_type == 'boss':
         boss_type = obj_parts[1]
         if boss_type == 'any':
-            return list(config.boss_assign_dict.values())
+            return list(boss_assign_dict.values())
         elif boss_type == 'go':
-            return get_go_bosses(config)
+            return get_go_bosses(boss_assign_dict)
         elif boss_type == 'nogo':
-            go_bosses = get_go_bosses(config)
-            all_bosses = list(config.boss_assign_dict.values())
+            go_bosses = get_go_bosses(boss_assign_dict)
+            all_bosses = list(boss_assign_dict.values())
             return([boss_id for boss_id in all_bosses
                     if boss_id not in go_bosses])
         else:
@@ -261,7 +265,7 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
             return list(ctenums.CharID)
         if char_choice == 'gated':
             return [
-                config.char_assign_dict[rid].held_char
+                char_assign_dict[rid].held_char
                 for rid in spot_ids
             ]
         if char_choice in chars:
@@ -292,12 +296,12 @@ def is_hint_valid(hint: str):
         return True, ''
 
     fake_settings = rset.Settings.get_race_presets()
-    fake_config = cfg.RandoConfig()
-    fake_config.boss_assign_dict = rotypes.get_default_boss_assignment()
-    fake_config.char_assign_dict = cfg.pcrecruit.get_base_recruit_dict()
-    
+    boss_assign_dict = rotypes.get_default_boss_assignment()
+    char_assign_dict = pcrecruit.get_base_recruit_dict()
+
     try:
-        dist = parse_hint(hint, fake_settings, fake_config)
+        dist = parse_hint(hint, fake_settings, boss_assign_dict,
+                          char_assign_dict)
     except InvalidNameException as exc:
         return (False, str(exc))
 
@@ -307,7 +311,9 @@ def is_hint_valid(hint: str):
     return True, ''
 
 def parse_hint(
-        hint: str, settings: rset.Settings, config: cfg.RandoConfig
+        hint: str, settings: rset.Settings,
+        boss_assign_dict: _BossDict,
+        char_assign_dict: _RecruitDict
         ) -> distribution.Distribution:
     hint = ''.join(hint.lower().split())  # Remove whitespace
     obj_strs = hint.split(',')
@@ -333,7 +339,8 @@ def parse_hint(
             weight = 1
 
         # print(f'******* weight = {weight}')
-        obj_keys =  get_objective_keys(obj_str, settings, config)
+        obj_keys =  get_objective_keys(obj_str, settings,
+                                       boss_assign_dict, char_assign_dict)
         # print(obj_keys)
         # print('*******')
 

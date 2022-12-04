@@ -168,13 +168,17 @@ def add_objectives_to_config(settings: rset.Settings,
         hint = hints[ind]
         if hint == '':
             hint = default_hint
-        dist = obhint.parse_hint(hint, settings, config)
+        dist = obhint.parse_hint(hint, settings,
+                                 config.boss_assign_dict,
+                                 config.char_assign_dict)
 
         # Remove already-chosen objectives from the distribution
         # If it's empty after cleaning, try the default hint.
         dist = clean_distribution(dist, used_keys)
         if dist.get_total_weight() == 0:
-            dist = obhint.parse_hint(default_hint, settings, config)
+            dist = obhint.parse_hint(default_hint, settings,
+                                     config.boss_assign_dict,
+                                     config.char_assign_dict)
             dist = clean_distribution(dist, used_keys)
 
             if dist.get_total_weight() == 0:
