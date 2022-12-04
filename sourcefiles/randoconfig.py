@@ -141,25 +141,42 @@ class RandoConfig:
         # stats can be gotten from the enemies dict
         BossID = rotypes.BossID
         boss_ids = list(self.boss_assign_dict.values()) + \
-                [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL, BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M, BossID.ZEAL, BossID.ZEAL_2]
+            [BossID.MAGUS, BossID.BLACK_TYRANO, BossID.LAVOS_SHELL,
+             BossID.INNER_LAVOS, BossID.LAVOS_CORE, BossID.MAMMON_M,
+             BossID.ZEAL, BossID.ZEAL_2]
         boss_details_dict = {
-                str(boss_id): {
-                    'scale': self.boss_rank_dict[boss_id] if boss_id in self.boss_rank_dict else None,
-                    'parts': [str(part.enemy_id) for part in self.boss_data_dict[boss_id].parts]
-                }
-                for boss_id in boss_ids
+            str(boss_id): {
+                'scale': self.boss_rank_dict.get(boss_id, None),
+                'parts': [str(part.enemy_id)
+                          for part in self.boss_data_dict[boss_id].parts]
+            }
+            for boss_id in boss_ids
         }
 
-        boss_details_dict[str(BossID.MAGUS)]['character'] = self.enemy_dict[ctenums.EnemyID.MAGUS].name.strip()
-        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = str(bossrando.get_black_tyrano_element(self))
+        boss_details_dict[str(BossID.MAGUS)]['character'] = \
+            self.enemy_dict[ctenums.EnemyID.MAGUS].name.strip()
+
+        boss_details_dict[str(BossID.BLACK_TYRANO)]['element'] = \
+            str(bossrando.get_black_tyrano_element(self))
 
         chars = self.pcstats._jot_json()
-        # the below is ugly, would be nice to have tech lists on PlayerChar objects maybe
+        # the below is ugly, would be nice to have tech lists on PlayerChar
+        # objects maybe
+        def get_tech_list(char_id: int, tech_db: techdb.TechDB):
+            ret_names = [
+                str(ctstrings.CTNameString(tech_db.get_tech(ind)['name']))\
+                .strip(' *')
+                for ind in range(1+char_id*8, 1+(char_id+1)*8)
+            ]
+            return ret_names
+
         for char_id in range(7):
-            chars[str(ctenums.CharID(char_id))]['techs'] = [ctstrings.CTString.ct_bytes_to_techname(self.tech_db.get_tech(1 + 8*char_id + i)['name']).strip(' *') for i in range(8)]
+            chars[str(ctenums.CharID(char_id))]['techs'] = \
+                get_tech_list(char_id, self.tech_db)
 
         obstacle = self.enemy_atk_db.get_tech(0x58)
-        obstacle_status = ", ".join(str(x) for x in obstacle.effect.status_effect)
+        obstacle_status = ", ".join(
+            str(x) for x in obstacle.effect.status_effect)
 
         return {
             'key_items': merged_list_dict(self.key_item_locations),
@@ -217,11 +234,3 @@ class RandoConfig:
             rom_data.getbuffer()
         )
         self.shop_manager = shoptypes.ShopManager(rom_data.getbuffer())
-
-
-def main():
-    pass
-
-
-if __name__ == '__main__':
-    main()

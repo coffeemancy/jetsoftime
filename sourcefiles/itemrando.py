@@ -852,9 +852,6 @@ def restrict_gear(settings: rset.Settings,
         pool: random.choice(pool) for pool in item_pools
     }
 
-    for choice in restrict_dict.values():
-        print(choice)
-
     def get_replacement(item_id: ctenums.ItemID):
 
         if not isinstance(item_id, ctenums.ItemID):
