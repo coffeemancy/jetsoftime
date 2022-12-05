@@ -52,4 +52,4 @@ def randomize_magus(settings: rset.Settings, config:cfg.RandoConfig):
 
 
 def set_black_tyrano_element(config: cfg.RandoConfig):
-    
+    pass 
