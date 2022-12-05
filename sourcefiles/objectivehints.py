@@ -3,6 +3,8 @@ Module for turning text expressions into objective choices.
 '''
 from __future__ import annotations
 
+from typing import Dict
+
 import bossrandotypes as rotypes
 import objectivetypes
 from characters import pcrecruit
@@ -188,8 +190,8 @@ def parse_quest_name(name: str):
         raise InvalidNameException(name)
     
 
-_BossDict = dict[rotypes.BossSpotID: rotypes.BossID]
-_RecruitDict = dict[ctenums.RecruitID: ctenums.CharID]
+_BossDict = Dict[rotypes.BossSpotID, rotypes.BossID]
+_RecruitDict = Dict[ctenums.RecruitID, ctenums.CharID]
 def get_go_bosses(boss_assign_dict: _BossDict) -> list[rotypes.BossID]:
     BSID = rotypes.BossSpotID
     go_spots = [BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
