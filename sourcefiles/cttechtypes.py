@@ -9,6 +9,8 @@ import ctstrings
 
 from cttypes import BinaryData, BinaryData, byte_prop, bytes_prop
 
+T = typing.TypeVar('T')
+
 class DamageFormula(ctenums.StrIntEnum):
     NONE = 0
     PC_MELEE = 1
