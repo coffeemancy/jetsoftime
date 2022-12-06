@@ -2,6 +2,9 @@
 This module contains enumerations for bosses and boss spots and some functions
 describing the default relationship between them.
 '''
+
+from __future__ import annotations
+
 import copy
 import enum
 import typing

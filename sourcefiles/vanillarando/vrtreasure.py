@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctenums
 from treasures import treasuredata
 
