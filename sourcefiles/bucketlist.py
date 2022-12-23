@@ -196,6 +196,9 @@ def add_objectives_to_config(settings: rset.Settings,
             chosen_key = chosen_key.split('_')[0]
         used_keys.append(chosen_key)
 
+        if type(chosen_key) == ctenums.CharID:
+            used_keys.append('recruits')
+
     for objective in objectives:
         objective.update_item_db(config.item_db)
         if isinstance(objective, oty.CollectNFragmentsObjective):
