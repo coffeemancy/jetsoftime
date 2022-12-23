@@ -154,6 +154,20 @@ class ChestTreasureData(ctt.BinaryData):
 
         return self._held_item
 
+    @property
+    def loc_pointer(self) -> ctenums.LocID:
+        if self.x_coord == 0 and self.x_coord == 0:
+            loc_id = int.from_bytes(self[2:4], 'little')
+            return ctenums.LocID(loc_id)
+
+        return None
+
+    @loc_pointer.setter
+    def loc_pointer(self, loc_id: ctenums.LocID):
+        self.x_coord = 0
+        self.y_coord = 0
+        self[2:4] = int.to_bytes(int(loc_id), 2, 'little')
+
     @held_item.setter
     def held_item(self, item: ctenums.ItemID):
         item = ctenums.ItemID(item)
@@ -450,7 +464,8 @@ def get_base_treasure_dict() -> dict[ctenums.TreasureID, Treasure]:
         TID.GUARDIA_JAIL_OMNICRONE_4: ChestTreasure(0x17),
         TID.GUARDIA_JAIL_FRITZ: ChestTreasure(0x18),
         # end non-cs
-        TID.GIANTS_CLAW_KINO_CELL: ChestTreasure(0x19),
+        # This is the "copy tyrano lair" chest data
+        # TID.GIANTS_CLAW_KINO_CELL: ChestTreasure(0x19),
         TID.GIANTS_CLAW_TRAPS: ChestTreasure(0x1A),
         TID.TRUCE_CANYON_1: ChestTreasure(0x1B),
         TID.TRUCE_CANYON_2: ChestTreasure(0x1C),

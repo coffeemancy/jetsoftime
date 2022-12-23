@@ -900,6 +900,11 @@ class Randomizer:
         # Now, write the information from the config to the rom.
         self.__write_config_to_out_rom()
 
+        # Fix to giant's claw box
+        claw_copy = treasuretypes.ChestTreasureData()
+        claw_copy.copy_location = ctenums.LocID.TYRANO_LAIR_ANTECHAMBERS
+        claw_copy.write_to_ctrom(self.out_rom, 0x19)
+
         # Ice Age/LoC script changes need to go after the config is written
         # because the recruit spot works by changing all character recruit
         # commands into the recruit's version.  The code inserted by theen

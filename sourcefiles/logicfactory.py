@@ -269,7 +269,7 @@ class ChronosanityGameConfig(GameConfig):
                           lambda game: game.canAccessGiantsClaw())
         (
             giantsClawLocations
-            .addLocation(Location(TID.GIANTS_CLAW_KINO_CELL))
+            # .addLocation(Location(TID.GIANTS_CLAW_KINO_CELL))
             .addLocation(Location(TID.GIANTS_CLAW_TRAPS))
             .addLocation(Location(TID.GIANTS_CLAW_CAVES_1))
             .addLocation(Location(TID.GIANTS_CLAW_CAVES_2))
@@ -877,7 +877,7 @@ def apply_epoch_fail(game_config: GameConfig):
         TID.GIANTS_CLAW_CAVES_1, TID.GIANTS_CLAW_CAVES_2,
         TID.GIANTS_CLAW_CAVES_3, TID.GIANTS_CLAW_CAVES_4,
         TID.GIANTS_CLAW_CAVES_5, TID.GIANTS_CLAW_KEY,
-        TID.GIANTS_CLAW_TRAPS, TID.GIANTS_CLAW_KINO_CELL,
+        TID.GIANTS_CLAW_TRAPS, # TID.GIANTS_CLAW_KINO_CELL,
         TID.GIANTS_CLAW_THRONE_1, TID.GIANTS_CLAW_THRONE_2,
         # Northern Ruins
         TID.NORTHERN_RUINS_ANTECHAMBER_LEFT_1000,
