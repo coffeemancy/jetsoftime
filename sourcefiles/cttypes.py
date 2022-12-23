@@ -317,6 +317,8 @@ class BinaryData(bytearray):
 
     def __init__(self, *args, **kwargs):
         bytearray.__init__(self, *args, **kwargs)
+        if len(self) == 0:
+            self[:] = bytearray([0 for _ in range(self.SIZE)])
         self.validate_data(self)
 
     @classmethod
