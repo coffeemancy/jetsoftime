@@ -490,6 +490,14 @@ def scale_bosses_given_assignment(settings: rset.Settings,
         # Put the stats in scaled_dict
         scaled_stat_dict.update(scaled_stats)
 
+        if assigned_boss_id == bt.BossID.SON_OF_SUN:
+            # Update SoS Flame count
+            roscale.update_son_of_sun_scheme(
+                settings.game_mode,
+                config.boss_data_dict[bt.BossID.SON_OF_SUN],
+                spot_power
+            )
+
     # Write all of the scaled stats back to config's dict
     config.enemy_dict.update(scaled_stat_dict)
 
@@ -662,7 +670,10 @@ def set_yakra_xiii_offense_boost(
     AI = cfg.enemyai.AIScript
 
     base_offense = config.enemy_dict[yakra_id].offense
-    boosted_offense = round(min(base_offense * 1.5, 0xFF))
+    # Very weird.  Allowing offense to be 0xFF prevents ondeath counter.
+    # Later: The game uses FF to mark the end of a script, so it just fails
+    #        to load the reactions correctly with an FF in the actions part.
+    boosted_offense = round(min(base_offense * 1.5, 0xFD))
 
     loc = AI.find_command(yakra_ai_b, 0x12)[0]
     cmd = yakra_ai_b[loc: loc+16]
