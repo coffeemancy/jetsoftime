@@ -735,6 +735,7 @@ def fix_item_data(config: cfg.RandoConfig):
     item_db[IID.MAGIC_SEAL].price = 20000
     item_db[IID.POWER_SEAL].price = 25000
     item_db[IID.TABAN_VEST].price = 10000
+    item_db[IID.FLEA_VEST].price = 10000
 
     # Make things sellable
 
@@ -776,9 +777,9 @@ def fix_required_tp(config: cfg.RandoConfig):
 
     # Magus has no TP for first three techs
     magus_tp = config.pcstats.pc_stat_dict[CharID.MAGUS].tp_threshholds
-    magus_tp.set_threshold(0, 100)
-    magus_tp.set_threshold(1, 100)
-    magus_tp.set_threshold(2, 100)
+    magus_tp.set_threshold(0, 50)
+    magus_tp.set_threshold(1, 50)
+    magus_tp.set_threshold(2, 50)
 
 
 def fix_magic_learning(config: cfg.RandoConfig):
@@ -802,11 +803,11 @@ def restore_son_of_sun_flame(config: cfg.RandoConfig):
     EID = ctenums.EnemyID
     sos_scheme = rotypes.BossScheme(
         rotypes.BossPart(EID.SON_OF_SUN_EYE, 3, (0, 0)),
-        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 4, (0x18, -0x8)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 4, (0x18, -0x7)),
         rotypes.BossPart(EID.SON_OF_SUN_FLAME, 5, (0xC, 0x17)),
         rotypes.BossPart(EID.SON_OF_SUN_FLAME, 6, (-0xC, 0x17)),
-        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 7, (-0x18, 0x8)),
-        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 7, (0, 0x16)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 7, (-0x18, -0x7)),
+        rotypes.BossPart(EID.SON_OF_SUN_FLAME, 8, (0, -0x17)),
     )
     config.boss_data_dict[rotypes.BossID.SON_OF_SUN] = sos_scheme
 
@@ -823,6 +824,9 @@ def fix_twin_boss(config: cfg.RandoConfig):
     base_slot = config.boss_data_dict[rotypes.BossID.GOLEM]\
         .parts[0].slot
     alt_slot = bossrandoevent.get_alt_twin_slot(config, rotypes.BossID.GOLEM)
+
+    golem_sprite = config.enemy_sprite_dict[EnemyID.GOLEM].get_copy()
+    config.enemy_sprite_dict[EnemyID.TWIN_BOSS] = golem_sprite
 
     scheme = config.boss_data_dict[rotypes.BossID.TWIN_BOSS]
     scheme.parts[0].slot = base_slot
@@ -850,38 +854,6 @@ def rebalance_nizbel(config: cfg.RandoConfig):
 
     config.enemy_ai_db.scripts[ctenums.EnemyID.NIZBEL] = \
         cfg.enemyai.AIScript(nizbel_ai_b)
-
-
-def rescale_bosses(config: cfg.RandoConfig):
-    BID = rotypes.BossID
-    bdd = config.boss_data_dict
-
-    bdd[BID.ATROPOS_XR].power = 20
-    bdd[BID.DALTON_PLUS].power = 30
-    bdd[BID.ELDER_SPAWN].power = 45
-    bdd[BID.FLEA].power = 20
-    bdd[BID.FLEA_PLUS].power = 20
-    bdd[BID.GIGA_GAIA].power = 30
-    bdd[BID.GIGA_MUTANT].power = 45
-    bdd[BID.GOLEM].power = 25
-    bdd[BID.GOLEM_BOSS].power = 25
-    bdd[BID.GUARDIAN].power = 10
-    bdd[BID.HECKRAN].power = 10
-    bdd[BID.LAVOS_SPAWN].power = 25
-    bdd[BID.MASA_MUNE].power = 12
-    bdd[BID.MEGA_MUTANT].power = 40
-    bdd[BID.MOTHER_BRAIN].power = 30
-    bdd[BID.NIZBEL].power = 20
-    bdd[BID.NIZBEL_2].power = 25
-    bdd[BID.RETINITE].power = 40
-    bdd[BID.RUST_TYRANO].power = 40
-    bdd[BID.SON_OF_SUN].power = 45
-    bdd[BID.SLASH_SWORD].power = 20
-    bdd[BID.SUPER_SLASH].power = 20
-    bdd[BID.TERRA_MUTANT].power = 50
-    bdd[BID.TWIN_BOSS].power = 25  # power of single golem
-    bdd[BID.YAKRA].power = 1
-    bdd[BID.YAKRA_XIII].power = 40
 
 
 def use_easy_lavos(ct_rom: ctrom.CTRom):
@@ -1074,4 +1046,3 @@ def fix_config(config: cfg.RandoConfig):
     restore_magus_castle_decedents(config)
     fix_twin_boss(config)
     rebalance_nizbel(config)
-    rescale_bosses(config)
