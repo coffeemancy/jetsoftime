@@ -1221,16 +1221,6 @@ def set_sun_palace_boss(
     # loc_id = 0xFB
     script = ct_rom.script_manager.get_script(loc_id)
 
-    # Remove bad animation commands.
-    boss_ids = set([part.enemy_id for part in boss.parts])
-    bad_ids = [EnemyID.MOTHERBRAIN, ]
-    if set(bad_ids).intersection(boss_ids):
-        pos = script.find_exact_command(
-            EC.generic_command(0xB7, 7, 3),
-            script.get_function_start(0xB, 3)
-        )
-        script.delete_commands(pos, 2)  # Two animation commands
-
     # Eyeball in 0xB and rest are flames. 0x10 is hidden in rando.
     # Really, 0x10 should just be removed from the start.
     script.remove_object(0x10)
@@ -1313,6 +1303,17 @@ def set_sun_palace_boss(
         pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
+
+    # Remove bad animation commands.  Do this after the assignment because
+    # an animation command is used as a hook position.
+    boss_ids = set([part.enemy_id for part in boss.parts])
+    bad_ids = [EnemyID.MOTHERBRAIN, ]
+    if set(bad_ids).intersection(boss_ids):
+        pos = script.find_exact_command(
+            EC.generic_command(0xB7, 7, 3),
+            script.get_function_start(0xB, 3)
+        )
+        script.delete_commands(pos, 2)  # Two animation commands
 
 
 def set_desert_boss(
