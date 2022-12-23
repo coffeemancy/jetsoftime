@@ -692,7 +692,7 @@ class RecruitNCharactersObjective(Objective):
         recruit_locs = [
             ctenums.LocID.MANORIA_SANCTUARY,
             ctenums.LocID.GUARDIA_QUEENS_CHAMBER_600,
-            ctenums.LocID.DACTYL_NEST_SUMMIT, ctenums.LocID.ARRIS_DOME,
+            ctenums.LocID.DACTYL_NEST_SUMMIT, ctenums.LocID.PROTO_DOME,
             ctenums.LocID.FROGS_BURROW
         ]
 
