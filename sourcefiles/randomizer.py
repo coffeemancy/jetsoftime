@@ -226,6 +226,60 @@ class Randomizer:
         bossscaler.set_boss_power(self.settings, self.config)
 
     @classmethod
+    def __set_bike_champions(
+            cls, ct_rom: CTRom,
+            name_1: str,
+            name_2: str,
+            name_3: str):
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.ARRIS_DOME_COMMAND)
+
+        _, cmd = script.find_command(
+            [0xBB],
+            script.get_function_start(9, 1),
+            script.get_function_end(9, 1)
+        )
+        string_id = cmd.args[0]
+        lb = '{linebreak+0}'
+        new_string = \
+            'Bike racing champions: {full break}'\
+            f'{name_1}{lb}{name_2}{lb}{name_3}{{null}}'
+
+        new_ctstr = ctstrings.CTString.from_str(new_string)
+        new_ctstr.compress()
+
+        script.strings[string_id] = new_ctstr
+        script.modified_strings = True
+
+    def __set_fair_racers(
+            cls, ct_rom: CTRom,
+            catalack_name: str,
+            steel_runner_name: str,
+            gi_jogger_name: str,
+            green_ambler_name: str
+            ):
+
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.MILLENNIAL_FAIR)
+
+        for ind, ctstr in enumerate(script.strings):
+            pystr = ctstrings.CTString.ct_bytes_to_ascii(ctstr)
+            pystr = pystr.replace('Catalack', f'{catalack_name} (Ca)')
+            pystr = pystr.replace('G. I. Jogger', f'{gi_jogger_name} (GI)')
+            pystr = pystr.replace('the Green Ambler',
+                                  f'{green_ambler_name} (GA)')
+            pystr = pystr.replace('Green Ambler', f'{green_ambler_name} (GA)')
+            pystr = pystr.replace('The Steel Runner',
+                                  f'{steel_runner_name} (SR)')
+            pystr = pystr.replace('Steel Runner',
+                                  f'{steel_runner_name} (SR)')
+
+            new_ctstr = ctstrings.CTString.from_str(pystr)
+            new_ctstr.compress()
+            script.strings[ind] = new_ctstr
+            script.modified_strings = True
+
+    @classmethod
     def __clean_lw_loadscreen(cls, ct_rom: CTRom):
         '''
         LW load screen has some extra commands which make a jump command
@@ -903,6 +957,17 @@ class Randomizer:
 
         # Apply post-randomization changes
         self.__apply_cosmetic_patches(self.out_rom, self.settings)
+        self.__set_bike_champions(
+            self.out_rom,
+            'Xelpher', 'I\'m All N', 'Korenth'
+        )
+        self.__set_fair_racers(
+            self.out_rom,
+            catalack_name='Xelpher',
+            steel_runner_name='Korenth',
+            green_ambler_name='I\'m All N',
+            gi_jogger_name='AzureCale',
+        )
 
         # Rewrite any scripts changed by post-randomization
         self.out_rom.write_all_scripts_to_rom()

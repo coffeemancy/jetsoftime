@@ -262,7 +262,8 @@ class LocID(StrIntEnum):
 
     # Other Important Locations
     ENDING_SELECTOR = 0x52
-    MILENNIAL_FAIR = 0x05
+    MILLENNIAL_FAIR = 0x05
+    ARRIS_DOME_COMMAND = 0xDA
 
     @classmethod
     def get_boss_locations(cls):
