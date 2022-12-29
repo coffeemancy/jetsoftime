@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import ctenums
 import ctevent
 from ctrom import CTRom
+from treasures import treasuretypes
 import randosettings as rset
 import randoconfig as cfg
 
@@ -35,10 +36,10 @@ def apply_fast_pendant_script(ctrom: CTRom,
     ]
 
     # Just to get the TID -> script reference dict
-    base_config = cfg.RandoConfig()
+    treasure_dict = treasuretypes.get_base_treasure_dict()
     obj_refs = []
     for tid in sealed_tids:
-        treasure_obj = base_config.treasure_assign_dict[tid]
+        treasure_obj = treasure_dict[tid]
         obj_refs.append(
             ObjectRef(treasure_obj.location,
                       treasure_obj.object_id,
