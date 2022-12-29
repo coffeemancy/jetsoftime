@@ -456,7 +456,9 @@ def write_objectives_to_ctrom(
     warning_str = ''
     if settings.bucket_settings.disable_other_go_modes:
         warning_str = 'Other go modes are disabled!{linebreak+0}'
-
+    else:
+        warning_str = 'Other go modes are enabled!{linebreak+0}'
+ 
     obj_str = f'{reward_str}: Complete {count_str} {obj_str}'
     dec_str = \
         warning_str + \
@@ -467,10 +469,7 @@ def write_objectives_to_ctrom(
     str_id = script.add_py_string(obj_str)
     dec_id = script.add_py_string(dec_str)
 
-    if warning_str:
-        dec_st = 2
-    else:
-        dec_st = 1
+    dec_st = 2
 
     script.set_function(
         obj_id, 0,
