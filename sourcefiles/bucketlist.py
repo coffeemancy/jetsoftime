@@ -288,39 +288,77 @@ def modify_bucket_activation(
     bucket_obj_id = 9
     bucket_func_id = 1
 
-    start = script.get_function_start(bucket_obj_id, bucket_func_id)
-    end = script.get_function_end(bucket_obj_id, bucket_func_id)
+    # Function for the normal bucket activation.  Notably, this does not have
+    # a trailing return.  So we'll just append the bucket gauntlet function
+    # to the end.
+    bucket_func = script.get_function(9, 1)
 
+    dec_str = \
+        'Warp to bucket boss gauntlet?{line break}'\
+        '   Yes{line break}'\
+        '   No{null}'
+    dec_str_id = script.add_py_string(dec_str)
+
+    # Detect no value on time gauge for apoc
     jump_cmd = EC.if_mem_op_value(0x7F022E, OP.NOT_EQUALS, 0, 1, 0)
-    jump_pos = script.find_exact_command(jump_cmd, start, end)
-    jump_cmd = eventcommand.get_command(script.data, jump_pos)
+    warp_cmd = EC.change_location(0x1A6, 0x8, 0x12, 0, 1)
+    warp_cmd.command = 0xDD
 
-    block_st = jump_pos + len(jump_cmd)
-    jump_bytes = jump_cmd.args[-1]
-    block_end = block_st + jump_bytes - 1
-
-    bucket_act = EF.from_bytearray(script.data[block_st: block_end])
-    bucket_func = (
+    bucket_gauntlet_func = (
         EF()
+        # If you already have 1999 access, then forget about this.
+        .add_if(jump_cmd, EF().add(EC.return_cmd()))
         .add_if(
-            EC.if_mem_op_value(objective_count_addr, OP.GREATER_OR_EQUAL,
+            EC.if_mem_op_value(objective_count_addr, OP.LESS_THAN,
                                num_objectives_needed, 1, 0),
-            EF().jump_to_label(EC.jump_forward(0), 'activate')
+            EF().add(EC.return_cmd())
         )
-        .add_if_else(
-            EC.if_mem_op_value(0x7F022E, OP.NOT_EQUALS, 0, 1, 0),
-            EF().jump_to_label(EC.jump_forward(0), 'activate'),
-            EF().jump_to_label(EC.jump_forward(0), 'end')
+        .add(EC.decision_box(dec_str_id, 1, 2))
+        .add_if(
+            EC.if_result_equals(1, 0),
+            (
+                EF()
+                .add(EC.assign_val_to_mem(1, 0x7E288B, 2))
+                .add(warp_cmd)
+                .add(EC.generic_command(0xEB, 0, 0))
+                .add(EC.generic_command(0xEB, 0xFF, 0xFF))
+                .add(EC.generic_command(0xEA, 0x34))  # song, needed?
+                .add(EC.generic_command(0xFF, 0x83))
+            )
         )
-        .set_label('activate')
-        .add(EC.pause(0))  # dummy command to attach label to
-        .append(bucket_act)
-        .add(EC.set_explore_mode(True))
-        .set_label('end')
-        .add(EC.return_cmd())
     )
 
+    bucket_func.append(bucket_gauntlet_func)
     script.set_function(bucket_obj_id, bucket_func_id, bucket_func)
+
+    # Now fix the Zeal2 location
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.BLACK_OMEN_CELESTIAL_GATE
+    )
+
+    if_mammon_m_defeated = EC.if_mem_op_value(0x7F01A8, OP.BITWISE_AND_NONZERO,
+                                              0x80, 1, 0)
+    ins_func = (
+        EF()
+        .add_if(
+            if_mammon_m_defeated,
+            EF()
+            .set_label('jump')
+            .add(EC.jump_forward(0))
+        )
+    )
+
+    offset = ins_func.labels['jump']
+
+    ins_pos = script.find_exact_command(EC.return_cmd()) + 1
+    script.insert_commands(ins_func.get_bytearray(), ins_pos)
+
+    jump_target = script.find_exact_command(if_mammon_m_defeated,
+                                            ins_pos+len(ins_func))
+    jump_offset = ins_pos + offset + 1
+    script.data[jump_offset] = jump_target-jump_offset
+
+    return
 
 
 def disable_non_bucket_go(ct_rom: ctrom.CTRom):
