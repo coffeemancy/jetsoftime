@@ -161,6 +161,7 @@ class CosmeticFlags(Flag):
     DEATH_PEAK_ALT_MUSIC = auto()
     QUIET_MODE = auto()
     REDUCE_FLASH = auto()
+    AUTORUN = auto()
 
 
 class TabRandoScheme(StrIntEnum):

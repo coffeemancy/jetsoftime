@@ -138,3 +138,28 @@ def death_peak_singing_mountain_music(ctrom: CTRom,
         raise ValueError('Error finding play \'Silent light\' command')
 
     script.data[pos+1] = 0x52
+
+
+def set_auto_run(ct_rom: CTRom):
+    # Each direction (up, down, left, right, + 4 diags) has a block for
+    # setting run or not.  We follow an old Mauron post
+    # https://gamefaqs.gamespot.com/boards/563538-chrono-trigger/ \
+    #   75569957?page=5
+    # and reverse BEQs to BNEs.  Note that the post is missing the down/left
+    # jump location.
+    jump_command_addrs = [
+        0x00892A, 0x008949, 0x008968, 0x008987, 0x008A41,
+        0x008A0C, 0x0089A6, 0x0089D7
+    ]
+
+    jump_cmds = bytes.fromhex('ADF8008902F0')
+    rom = ct_rom.rom_data.getbuffer()
+
+    for addr in jump_command_addrs:
+        end = addr + 1
+        st = end - len(jump_cmds)
+
+        if bytes(rom[st:end]) != jump_cmds:
+            raise ValueError(f'Did not find a jump at {addr:06X}')
+
+        rom[addr] = 0xD0  # BNE instead of the 0xF0 BEQ

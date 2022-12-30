@@ -1437,6 +1437,9 @@ class Randomizer:
         if rset.CosmeticFlags.REDUCE_FLASH in cos_flags:
             flashreduce.apply_all_flash_hacks(ctrom)
 
+        if rset.CosmeticFlags.AUTORUN in cos_flags:
+            cosmetichacks.set_auto_run(ctrom)
+
         settings.ctoptions.write_to_ctrom(ctrom)
 
     @classmethod

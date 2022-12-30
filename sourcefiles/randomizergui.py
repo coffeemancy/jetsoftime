@@ -2312,6 +2312,17 @@ class RandoGUI:
             "Reduces the number of bright flashes in the game."
         )
 
+        checkButton = tk.Checkbutton(
+            frame,
+            text="AutoRun",
+            variable=self.cosmetic_flag_dict[CosmeticFlags.AUTORUN]
+        )
+        checkButton.pack(anchor=tk.W)
+        CreateToolTip(
+            checkButton,
+            "Characters run by default and walk if the run button is pressed."
+        )
+
         label = tk.Label(frame, text='Default Names:')
         label.pack(anchor=tk.W)
 
