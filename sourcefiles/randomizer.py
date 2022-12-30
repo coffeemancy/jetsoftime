@@ -42,6 +42,7 @@ import techdescs
 import byteops
 import ctenums
 import ctevent
+import eventcommand
 from ctrom import CTRom
 import ctstrings
 import enemyrewards
@@ -1375,7 +1376,8 @@ class Randomizer:
 
         # TODO:  I'd like to do this with .Flux event changes
         if rset.GameFlags.ZEAL_END in flags:
-            rom_data.patch_txt_file('./patches/zeal_end_boss.txt')
+            # rom_data.patch_txt_file('./patches/zeal_end_boss.txt')
+            cls.__apply_zeal_end(ctrom)
 
         # Patching with lost.ips does not give a valid event for
         # mystic mountains.  I could fix the event by applying a flux file,
@@ -1415,6 +1417,61 @@ class Randomizer:
 
         if rset.GameFlags.FAST_TABS in flags:
             qolhacks.fast_tab_pickup(ctrom, settings)
+
+    @classmethod
+    def __apply_zeal_end(cls, ct_rom: CTRom):
+        '''
+        Makes the Zeal fight end the game.  We need to add a check to make
+        sure that it's not the Zeal fight from the bucket boss gauntlet.
+        '''
+
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.BLACK_OMEN_CELESTIAL_GATE
+        )
+
+        obj_id, func_id = 9, 1
+        # Finding Zeal's textbox before sending to Lavos
+        pos, cmd = script.find_command(
+            [0xBB],
+            script.get_function_start(obj_id, func_id),
+            script.get_function_end(obj_id, func_id)
+        )
+
+        EC = ctevent.EC
+        EF = ctevent.EF
+        OP = eventcommand.Operation
+
+        # I'm just copying the change location command originally used.
+        # I don't know what all of the variants do.
+        change_loc_command = EC.change_location(0x52, 0, 0, 0, 1)
+        change_loc_command.command = 0xDF
+
+        end_func = (
+            EF()
+            .add(EC.set_storyline_counter(0x75))
+            .add(EC.darken(0x0C))
+            .add(EC.fade_screen())
+            .add_if(
+                EC.if_mem_op_value(0x7F01A8, OP.BITWISE_AND_NONZERO, 0x80,
+                                   1, 0),
+                EF().add(EC.generic_command(0xFF, 0x9F))  # NG+ Mode7
+            )
+            .add(change_loc_command)
+            .add(EC.return_cmd())
+        )
+
+        # The current way to encode that we're in the boss gauntlet is to
+        # write 0x0001 to the apocalypse spot in 0x7E288B
+        func = (
+            EF()
+            .add(EC.assign_mem_to_mem(0x7E288B, 0x7F0300, 2))
+            .add_if(
+                EC.if_mem_op_value(0x7F0300, OP.NOT_EQUALS, 1, 2, 0),
+                end_func
+            )
+        )
+
+        script.insert_commands(func.get_bytearray(), pos)
 
     @classmethod
     def __apply_cosmetic_patches(cls, ctrom: CTRom,
