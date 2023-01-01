@@ -344,7 +344,7 @@ def modify_bucket_activation(
             if_mammon_m_defeated,
             EF()
             .set_label('jump')
-            .add(EC.jump_forward(0))
+            .add(EC.jump_forward(1))
         )
     )
 
