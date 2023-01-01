@@ -247,6 +247,16 @@ def shorten_shard_turn_in_script(ct_rom: ctrom.CTRom):
 
     script.delete_commands_range(del_st, del_end)
 
+    # Remove all of the knight captain commands
+    del_st = script.find_exact_command(
+        EC.if_mem_op_value(0x7F0101, OP.LESS_THAN, 2, 1, 0),
+        del_st
+    )
+    last_cmd = EC.call_obj_function(0x0D, 4, 4, FS.HALT)
+    del_end = script.find_exact_command(last_cmd, del_st) + len(last_cmd)
+
+    script.delete_commands_range(del_st, del_end)
+
     # Remove the extra frog dialog that can trigger.
     pos = script.find_exact_command(
         EC.party_follow(),
