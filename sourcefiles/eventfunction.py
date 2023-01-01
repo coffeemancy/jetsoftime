@@ -518,14 +518,13 @@ class EventFunction:
                 print(jump_record)
                 for i, x in enumerate(self.offsets):
                     print(f'[{x:04X}]\t{self.commands[i]}')
-                raise SystemExit('JumpRecord does not point to a jump cmd')
+                raise ValueError('JumpRecord does not point to a jump cmd')
 
             if cmd_id in EventCommand.back_jump_commands and jump_length > 0:
-                raise SystemExit('Back jump jumps to forward label')
+                raise ValueError('Back jump jumps to forward label')
 
             if cmd_id in EventCommand.fwd_jump_commands and jump_length < 0:
-                print('jump error?')
-                # raise SystemExit('Forward jump jumps to backward label')
+                raise ValueError('Forward jump jumps to backward label')
 
             jump_length = abs(jump_length + 1)
             command.args[-1] = jump_length
