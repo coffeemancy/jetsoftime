@@ -1,4 +1,4 @@
-# Jets of Time: An Open Ended Chrono Trigger Randomizer
+# Jets of Time: An Open World Chrono Trigger Randomizer
 
 Online Seed Generator: https://www.ctjot.com
 Discord: https://discord.gg/cKYjHwj  
