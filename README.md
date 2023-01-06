@@ -7,7 +7,7 @@ Wiki: https://wiki.ctjot.com/
 
 ## USAGE
 
-Windows users can directly run `randomizergui.exe` in the 'randomizergui.dist' directory.  For other platforms, users should run `python3 randomizergui.py` in the 'sourcefiles directory'.  Python >=3.8 is required and can be obtained for free at https://www.python.org/downloads/.  Most users will best by served by using the online generator at https://www.ctjot.com.
+Windows users can directly run `randomizergui.exe` in the 'randomizergui.dist' directory.  For other platforms, users should run `python3 randomizergui.py` in the 'sourcefiles' directory.  Python >=3.8 is required and can be obtained for free at https://www.python.org/downloads/.  Most users will best by served by using the online generator at https://www.ctjot.com.
 
 ## Credits
 Most contributions can be seen in the commit history, but special thanks go:
