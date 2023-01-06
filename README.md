@@ -1,10 +1,9 @@
 # Jets of Time: An Open World Chrono Trigger Randomizer
+Jets of Time is a remake of Wings of Time, an open world Chrono Trigger randomizer.  Liberties have been taken to the gameplay to decrease seed time and to accommodate the open world, but it is still mostly classic Chrono Trigger.  
 
 Online Seed Generator: https://www.ctjot.com  
 Discord: https://discord.gg/cKYjHwj  
 Wiki: https://wiki.ctjot.com/  
-
-Jets of Time is a remake of Wings of Time, an open world Chrono Trigger randomizer.  Liberties have been taken to the gameplay to decrease seed time and to accommodate the open world, but it is still mostly classic Chrono Trigger.
 
 ## USAGE
 
