@@ -1741,8 +1741,8 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
     script = ct_rom.script_manager.get_script(loc_id)
 
     if not is_vanilla:
-        script.remove_object(0xE)
         script.remove_object(0xF)
+        script.remove_object(0xE)
         boss_objs = [0xA, 0xB, 0xC, 0xD]
     else:
         boss_objs = [0xA, 0xB, 0xC, 0xD, 0xE, 0xF]
