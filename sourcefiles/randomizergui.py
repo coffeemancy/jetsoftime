@@ -234,7 +234,7 @@ class RandoGUI:
         self.qol_page = self.get_qol_page()
         self.cosmetic_page = self.get_cosmetic_page()
         self.options_page = self.get_options_page()
-        self.experimental_page = self.get_experimental_page()
+        self.extra_page = self.get_extra_page()
         self.mystery_page = self.get_mystery_page()
 
         # The boss rando page is a little different because the Tk.Listbox
@@ -268,7 +268,7 @@ class RandoGUI:
         self.notebook.add(self.qol_page, text='QoL')
         self.notebook.add(self.cosmetic_page, text='Cos')
         self.notebook.add(self.options_page, text='Opt')
-        self.notebook.add(self.experimental_page, text='Exp')
+        self.notebook.add(self.extra_page, text='Ext')
         self.notebook.add(self.mystery_page, text='Mys')
 
         # This can only be called after all of the widgets are initialized
@@ -1255,6 +1255,20 @@ class RandoGUI:
             row=row, column=0, sticky=tk.W, columnspan=2
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Epoch Fail (ef)',
+            variable=self.flag_dict[GameFlags.EPOCH_FAIL]
+        )
+        checkbox.grid(row=row, column=2,  sticky=tk.W, columnspan=2)
+
+        CreateToolTip(
+            checkbox,
+            'Players start without wings on the '
+            'Epoch.  The \'Jets of Time\' can be obtained and turned in '
+            'to Dalton in the Snail Stop to upgrade the Epoch.'
+        )
+
         row += 1
 
         # Shop Prices dropdown
@@ -2179,7 +2193,7 @@ class RandoGUI:
 
         return frame
 
-    def get_experimental_page(self):
+    def get_extra_page(self):
         frame = ttk.Frame(self.notebook)
 
         checkbox = tk.Checkbutton(
@@ -2222,20 +2236,6 @@ class RandoGUI:
             'through Omen and Ocean Palace with only the starting two. '
             'It is possible but not guaranteed that Magus\'s castle will be '
             'available if Frog is among the starters.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Epoch Fail (ef)',
-            variable=self.flag_dict[GameFlags.EPOCH_FAIL]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Players start without wings on the '
-            'Epoch.  The \'Jets of Time\' can be obtained and turned in '
-            'to Dalton in the Snail Stop to upgrade the Epoch.'
         )
 
         self.bucket_fragment_checkbox = tk.Checkbutton(
