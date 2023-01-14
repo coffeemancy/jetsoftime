@@ -239,6 +239,98 @@ class Randomizer:
 
 
     @classmethod
+    def __set_bike_champions(
+            cls, ct_rom: CTRom,
+            name_1: str,
+            name_2: str,
+            name_3: str):
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.ARRIS_DOME_COMMAND)
+
+        _, cmd = script.find_command(
+            [0xBB],
+            script.get_function_start(9, 1),
+            script.get_function_end(9, 1)
+        )
+        string_id = cmd.args[0]
+        lb = '{linebreak+0}'
+        new_string = \
+            'Bike racing champions: {full break}'\
+            f'{name_1}{lb}{name_2}{lb}{name_3}{{null}}'
+
+        new_ctstr = ctstrings.CTString.from_str(new_string)
+        new_ctstr.compress()
+
+        script.strings[string_id] = new_ctstr
+        script.modified_strings = True
+
+    def __set_fair_racers(
+            cls, ct_rom: CTRom,
+            catalack_name: str,
+            steel_runner_name: str,
+            gi_jogger_name: str,
+            green_ambler_name: str
+            ):
+
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.MILLENNIAL_FAIR)
+
+        for ind, ctstr in enumerate(script.strings):
+            pystr = ctstrings.CTString.ct_bytes_to_ascii(ctstr)
+            pystr = pystr.replace('Catalack', f'{catalack_name} (Ca)')
+            pystr = pystr.replace('G. I. Jogger', f'{gi_jogger_name} (GI)')
+            pystr = pystr.replace('the Green Ambler',
+                                  f'{green_ambler_name} (GA)')
+            pystr = pystr.replace('Green Ambler', f'{green_ambler_name} (GA)')
+            pystr = pystr.replace('The Steel Runner',
+                                  f'{steel_runner_name} (SR)')
+            pystr = pystr.replace('Steel Runner',
+                                  f'{steel_runner_name} (SR)')
+
+            new_ctstr = ctstrings.CTString.from_str(pystr)
+            new_ctstr.compress()
+            script.strings[ind] = new_ctstr
+            script.modified_strings = True
+
+    @classmethod
+    def __clean_lw_loadscreen(cls, ct_rom: CTRom):
+        '''
+        LW load screen has some extra commands which make a jump command
+        have a 255 byte jump.  We need to delete a few of these to make room.
+        '''
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.LOAD_SCREEN)
+
+        EC = ctevent.EC
+        cmd = EC.assign_val_to_mem(0x7F, 0x7F01E0, 1)
+        pos = script.get_object_start(0)
+        pos = script.find_exact_command(cmd, pos)
+        pos += len(cmd)        
+        script.delete_commands(pos, 5)
+
+
+    @classmethod
+    def __set_active_wait_song(cls, ct_rom: CTRom, song_id = 3):
+        '''
+        Put a song (corridors of time default) at the active/wait screen.
+        '''
+        script = ct_rom.script_manager.get_script(
+            ctenums.LocID.LOAD_SCREEN)
+
+        pos = script.get_object_start(0)
+
+        while True:
+            pos, cmd = script.find_command([0xC8], pos)
+            if cmd.args[0] in range(0xC0, 0xC7):  # name cmd_args
+                break
+
+            pos += len(cmd)
+
+        song_cmd = ctevent.EC.generic_one_arg(0xEA, song_id)
+        script.insert_commands(song_cmd.to_bytearray(), pos)
+
+
+    @classmethod
     def __set_fast_magus_castle(cls, ct_rom: CTRom):
         '''
         Do not require the player to visit the Flea and Slash room in castle
@@ -870,6 +962,11 @@ class Randomizer:
         if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
             fastmagic.add_tracker_hook(self.out_rom)
 
+        if self.settings.game_mode == rset.GameMode.LOST_WORLDS:
+            self.__clean_lw_loadscreen(self.out_rom)
+
+        self.__set_active_wait_song(self.out_rom)
+
         # Don't require visiting Flea/Slash rooms for Magus's Castle
         if self.settings.game_mode != rset.GameMode.LOST_WORLDS:
             # The Telepod script is different in LW.  Just ignore.
@@ -934,6 +1031,17 @@ class Randomizer:
 
         # Apply post-randomization changes
         self.__apply_cosmetic_patches(self.out_rom, self.settings)
+        self.__set_bike_champions(
+            self.out_rom,
+            'Xelpher', 'I\'m All N', 'Korenth'
+        )
+        self.__set_fair_racers(
+            self.out_rom,
+            catalack_name='Xelpher',
+            steel_runner_name='Korenth',
+            green_ambler_name='I\'m All N',
+            gi_jogger_name='AzureCale',
+        )
 
         # Rewrite any scripts changed by post-randomization
         self.out_rom.write_all_scripts_to_rom()
@@ -1595,6 +1703,10 @@ class Randomizer:
 
             # Why is Dalton worth so few TP?
             config.enemy_dict[ctenums.EnemyID.DALTON_PLUS].tp = 50
+
+            # Elder Spawn Name
+            elder = config.enemy_dict[ctenums.EnemyID.ELDER_SPAWN_SHELL]
+            elder.name = 'Elder Spawn'
 
             # Give Rusty a few more HP, like avg hp of old boss rando
             enemy_id = ctenums.EnemyID.RUST_TYRANO
