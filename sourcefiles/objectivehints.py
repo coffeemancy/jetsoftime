@@ -252,7 +252,7 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
             late_quests = [QID.CLEAR_MT_WOE, QID.CLEAR_GENO_DOME]
             return late_quests
         elif quest_type == 'go':
-            go_quests = [QID.CLEAR_ZEAL_PALACE, QID.CLEAR_TWINBOSS_SPOT,
+            go_quests = [QID.CLEAR_ZEAL_PALACE, # QID.CLEAR_TWINBOSS_SPOT,
                          QID.CLEAR_DEATH_PEAK, QID.CLEAR_BLACK_TYRANO,
                          QID.CLEAR_OMEN_GIGASPOT, QID.CLEAR_OMEN_TERRASPOT,
                          QID.CLEAR_OMEN_ELDERSPOT]  # +Magus

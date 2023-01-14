@@ -243,7 +243,7 @@ class QuestID(enum.Enum):
     CLEAR_REPTITE_LAIR = QuestData('*Reptite Lr', 'Clear Reptite Lair')
     CLEAR_SUN_PALACE = QuestData('*Sun Palace', 'Clear the Sun Palace')
     CLEAR_SUNKEN_DESERT = QuestData('*Desert', 'Clear the Sunken Desert')
-    CLEAR_ZEAL_PALACE = QuestData('*Zeal Throne',
+    CLEAR_ZEAL_PALACE = QuestData('*ZealThrone',
                                   'Defeat the Boss in Zeal Throne')
     CLEAR_ZENAN_BRIDGE = QuestData('*ZenanBrdge', 'Clear Zenan Bridge')
     CLEAR_BLACK_TYRANO = QuestData('*TyranoLair', 'Clear the Tyrano Lair')
@@ -1082,3 +1082,5 @@ def get_recruit_char_obj(
         return RecruitStarterObjective(name, desc, recruit, item_id)
     else:
         return RecruitSpotObjective(name, desc, recruit, item_id)
+
+
