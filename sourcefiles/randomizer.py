@@ -1661,6 +1661,15 @@ class Randomizer:
         Randomizer.__apply_basic_patches(ct_rom)
         config = cfg.RandoConfig()
         cls.fill_default_config_entries(config)
+
+        # Be sure to remove the Epoch boss spot when EF is not set
+        if rset.GameFlags.EPOCH_FAIL not in settings.gameflags:
+            del config.boss_assign_dict[rotypes.BossSpotID.EPOCH_REBORN]
+            if rotypes.BossSpotID.EPOCH_REBORN in settings.ro_settings.spots:
+                settings.ro_settings.spots.remove(
+                    rotypes.BossSpotID.EPOCH_REBORN
+                )
+
         config.boss_data_dict = rotypes.get_boss_data_dict()
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
