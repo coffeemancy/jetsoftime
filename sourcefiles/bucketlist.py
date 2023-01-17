@@ -118,6 +118,10 @@ _boss_names: dict[rotypes.BossID, str] = {
 
 def add_objectives_to_config(settings: rset.Settings,
                              config: cfg.RandoConfig):
+
+    if rset.GameFlags.BUCKET_LIST not in settings.gameflags:
+        return
+
     IID = ctenums.ItemID
     objective_pool = [
         IID.UNUSED_1C, IID.UNUSED_1D, IID.UNUSED_1E,
@@ -144,7 +148,7 @@ def add_objectives_to_config(settings: rset.Settings,
     obj_pool.remove(oty.QuestID.WIN_RACE_BET)
     obj_pool.remove(oty.QuestID.GIVE_SEED_TO_DOAN)
     obj_pool.remove(oty.QuestID.GET_ARRIS_FOOD_ITEM)
-    obj_pool.remove(oty.QuestID.CLEAR_OZZIES_FORT)
+    obj_pool.remove(oty.QuestID.CLEAR_BLACK_TYRANO)
 
     # Recruit keys
     obj_pool.extend(list(ctenums.CharID))
