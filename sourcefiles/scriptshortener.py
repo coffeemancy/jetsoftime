@@ -6,7 +6,7 @@ import eventcommand
 import eventfunction
 
 from eventcommand import EventCommand as EC, FuncSync as FS, Operation as OP
-from eventfunction import EventCommand as EF
+from eventfunction import EventFunction as EF
 
 
 def shorten_fritz_script(ct_rom: ctrom.CTRom):
@@ -82,6 +82,111 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
     )
 
 
+def shorten_pop_turnin(ct_rom: ctrom.CTRom):
+    '''
+    Give the player an option to watch the Giant's claw appear.
+    In either case, remove unimportant dialog.
+    '''
+    loc_id = ctenums.LocID.WEST_CAPE
+    script = ct_rom.script_manager.get_script(loc_id)
+
+    # Toma will ask whether you want to see the giant's claw
+    toma_obj = 9
+
+    string_id = script.add_py_string(
+        "TOMA: You know where that is, right?{line break}"\
+        "   Yes{line break}"\
+        "   No{null}"
+    )
+
+    st = script.get_function_start(toma_obj, 2)
+    end = script.get_function_end(toma_obj, 2)
+
+    flag_cmd = EC.set_bit(0x7F01AC, 0x40)
+    block_st = script.find_exact_command(flag_cmd, st, end)
+    block_end = script.find_exact_command(EC.return_cmd(), block_st, end)
+
+    warp_func = EF.from_bytearray(script.data[block_st: block_end])
+    script.delete_commands_range(block_st, block_end)  # Leave the return intact
+
+    warp_choice_func = (
+        EF()
+        .add(EC.decision_box(string_id, 1, 2))
+        .add_if(
+            EC.if_result_equals(2, 1),
+            warp_func
+        )
+    )
+    script.insert_commands(warp_choice_func.get_bytearray(), block_st)
+
+    # Now the function will return if we say we know where the claw is.
+    # Go back to the caller, Obj8, Activate and call Toma's exit.
+    st = script.get_function_start(8, 1)
+    end = script.get_function_end(8, 1)
+    orig_call_cmd = EC.call_obj_function(9, 2, 6, FS.HALT)
+    extra_call_cmd = EC.call_obj_function(9, 1, 6, FS.HALT)
+
+    # Inserting at the end of a block is always weird.  Do the insert first
+    # so that the if bounds don't shorten.
+    pos = script.find_exact_command(orig_call_cmd, st, end)
+    new_calls = EF().add(orig_call_cmd).add(extra_call_cmd)
+    script.insert_commands(new_calls.get_bytearray(), pos)
+
+    pos += len(new_calls)
+    script.delete_commands(pos, 1)
+
+    # Now, speed up some of the movement and pauses.
+    st = script.get_function_start(1, 3)
+    pos, _ = script.find_command([0x89], st)
+    script.data[pos+1] = 0x20  # speed command
+
+    def reduce_pause(pos: int, end: int):
+        while True:
+            pos, cmd = script.find_command([0xBA, 0xBD], pos, end)
+
+            if pos is None:
+                break
+
+            if cmd.command == 0xBD:
+                script.data[pos] = 0xBA
+            elif cmd.command == 0xBA:
+                script.data[pos] = 0xB9
+
+            pos += len(cmd)
+
+    pos = script.get_function_start(9, 1)
+    end = script.get_function_end(9, 2)
+    reduce_pause(pos, end)
+
+    pos = script.get_function_start(8, 1)
+    end = script.get_function_end(8, 1)
+    reduce_pause(pos, end)
+
+    new_speed = 0x20
+    cmd = EC.generic_command(0x89, new_speed)
+    pos = script.get_function_start(9, 1)
+    script.insert_commands(cmd.to_bytearray(), pos)
+
+    pos = script.get_function_start(9, 2)
+    script.insert_commands(cmd.to_bytearray(), pos)
+
+    pos = script.get_function_start(9, 1)
+    end = script.get_function_end(9, 2)
+
+    while True:
+        pos, cmd = script.find_command([0x9C, 0x92], pos, end)
+
+        if pos is None:
+            break
+
+        mag = script.data[pos+2]
+        mag = (mag * 0x10) // new_speed
+        script.data[pos+2] = mag
+
+        pos += len(cmd)
+
+
 def shorten_all_scripts(ct_rom: ctrom.CTRom):
     shorten_fritz_script(ct_rom)
     shorten_lavos_crash_script(ct_rom)
+    shorten_pop_turnin(ct_rom)
