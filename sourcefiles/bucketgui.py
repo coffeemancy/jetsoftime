@@ -51,7 +51,7 @@ _objective_preset_dict: dict[str, str] = {
     'Defeat the Boss in the Zeal Throneroom': 'quest_zealthrone',
     'Defeat the Boss of Zenan Bridge': 'quest_zenan',
     'Defeat the Black Tyrano': 'quest_blacktyrano',
-    # Nizbel2 spot needs to be added
+    'Defeat the Tyrano Lair Midboss': 'quest_tyranomid',
     'Defeat the Boss in Flea\'s Spot': 'quest_flea',
     # Slash Spot needs to be added
     'Defeat Magus in Magus\'s Castle': 'quest_magus',

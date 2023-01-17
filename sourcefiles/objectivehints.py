@@ -166,6 +166,8 @@ def parse_quest_name(name: str):
         return QID.CLEAR_ZENAN_BRIDGE
     elif name in ('tyrano', 'blacktyrano', 'azala'):
         return QID.CLEAR_BLACK_TYRANO
+    elif name in ('tyranomid', 'nizbel2spot'):
+        return QID.CLEAR_TYRANO_MIDBOSS
     elif name in ('magus', 'maguscastle'):
         return QID.CLEAR_MAGUS_CASTLE
     elif name in ('omengiga', 'gigamutant', 'gigaspot'):

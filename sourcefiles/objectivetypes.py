@@ -246,6 +246,7 @@ class QuestID(enum.Enum):
     CLEAR_ZEAL_PALACE = QuestData('*ZealThrone',
                                   'Defeat the Boss in Zeal Throne')
     CLEAR_ZENAN_BRIDGE = QuestData('*ZenanBrdge', 'Clear Zenan Bridge')
+    CLEAR_TYRANO_MIDBOSS = QuestData('*TyranoMid', 'Clear Nizbel II Spot.')
     CLEAR_BLACK_TYRANO = QuestData('*TyranoLair', 'Clear the Tyrano Lair')
     CLEAR_MAGUS_FLEA_SPOT = QuestData('*MagusFlea',
                                       'Defeat the boss at Flea\'s Spot')
@@ -283,6 +284,7 @@ _quest_to_spot_dict: dict[QuestID, BSID] = {
     QuestID.CLEAR_TWINBOSS_SPOT: BSID.OCEAN_PALACE_TWIN_GOLEM,
     QuestID.CLEAR_ZEAL_PALACE: BSID.ZEAL_PALACE,
     QuestID.CLEAR_ZENAN_BRIDGE: BSID.ZENAN_BRIDGE,
+    QuestID.CLEAR_TYRANO_MIDBOSS: BSID.TYRANO_LAIR_NIZBEL,
     QuestID.CLEAR_OMEN_GIGASPOT: BSID.BLACK_OMEN_GIGA_MUTANT,
     QuestID.CLEAR_OMEN_TERRASPOT: BSID.BLACK_OMEN_TERRA_MUTANT,
     QuestID.CLEAR_OMEN_ELDERSPOT: BSID.BLACK_OMEN_ELDER_SPAWN,
@@ -1039,6 +1041,12 @@ def get_quest_obj(qid: QuestID,
         battle_loc = _spot_battle_dict[spot]
         return BattleObjective(
             battle_loc, qid.value.name, qid.value.desc, item_id
+        )
+
+    if qid == QuestID.CLEAR_BLACK_TYRANO:
+        return BattleObjective(
+            BattleLoc(ctenums.LocID.TYRANO_LAIR_KEEP, 0x10, 3),
+            qid.value.name, qid.value.desc, item_id
         )
 
     if qid == QuestID.FORGE_MASAMUNE:
