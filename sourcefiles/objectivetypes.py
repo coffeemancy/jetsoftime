@@ -262,6 +262,7 @@ class QuestID(enum.Enum):
     WIN_RACE_BET = QuestData('*Fair Race', 'Bet on a fair race and win.')
     DRINK_SODA = QuestData('*SodaGame', 'Play the fair Drinking Game.')
 
+
 _quest_to_spot_dict: dict[QuestID, BSID] = {
     QuestID.CLEAR_ARRIS_DOME: BSID.ARRIS_DOME,
     QuestID.CLEAR_DEATH_PEAK: BSID.DEATH_PEAK,
@@ -279,6 +280,7 @@ _quest_to_spot_dict: dict[QuestID, BSID] = {
     QuestID.CLEAR_REPTITE_LAIR: BSID.REPTITE_LAIR,
     QuestID.CLEAR_SUN_PALACE: BSID.SUN_PALACE,
     QuestID.CLEAR_SUNKEN_DESERT: BSID.SUNKEN_DESERT,
+    QuestID.CLEAR_TWINBOSS_SPOT: BSID.OCEAN_PALACE_TWIN_GOLEM,
     QuestID.CLEAR_ZEAL_PALACE: BSID.ZEAL_PALACE,
     QuestID.CLEAR_ZENAN_BRIDGE: BSID.ZENAN_BRIDGE,
     QuestID.CLEAR_OMEN_GIGASPOT: BSID.BLACK_OMEN_GIGA_MUTANT,
@@ -486,6 +488,35 @@ class ClearOzziesFortObjective(QuestObjective):
         pos = script.find_exact_command(
             hook_cmd, script.get_function_start(8, 2))
         pos += len(hook_cmd)
+
+        add_obj_complete(script, pos, self, num_objectives_needed,
+                         bucket_settings.objectives_win,
+                         objective_count_addr)
+
+
+class DefeatMagusObjective(QuestObjective):
+    '''Class for defeating Magus at the end of Magus's Castle.'''
+    def __init__(self, item_id: ctenums.ItemID):
+        QuestObjective.__init__(self, QuestID.CLEAR_MAGUS_CASTLE, item_id)
+
+    def add_objective_check_to_ctrom(
+            self, ct_rom: ctrom.CTRom,
+            bucket_settings: rset.BucketSettings,
+            objective_count_addr: int
+            ):
+        num_objectives_needed = bucket_settings.num_objectives_needed
+        loc_id = ctenums.LocID.MAGUS_CASTLE_INNER_SANCTUM
+        script = ct_rom.script_manager.get_script(loc_id)
+
+        obj_id, func_id = 9, 1  # Magus activation to start battle
+        start = script.get_function_start(obj_id, func_id)
+        end = script.get_function_end(obj_id, func_id)
+
+        battle_result_cmd = \
+            EC.if_mem_op_value(0x7F0232, OP.EQUALS, 0, 1, 0)
+
+        pos = script.find_exact_command(battle_result_cmd, start, end)
+        pos += len(battle_result_cmd)
 
         add_obj_complete(script, pos, self, num_objectives_needed,
                          bucket_settings.objectives_win,
@@ -1030,6 +1061,9 @@ def get_quest_obj(qid: QuestID,
 
     if qid == QuestID.DRINK_SODA:
         return DrinkSodaObjective(item_id)
+
+    if qid == QuestID.CLEAR_MAGUS_CASTLE:
+        return DefeatMagusObjective(item_id)
 
     raise ValueError(f'Invalid QuestID: {qid}')
 
