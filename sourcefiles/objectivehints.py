@@ -176,6 +176,8 @@ def parse_quest_name(name: str):
         return QID.CLEAR_OMEN_TERRASPOT
     elif name in ('flea', 'magusflea'):
         return QID.CLEAR_MAGUS_FLEA_SPOT
+    elif name in ('slash', 'magusslash'):
+        return QID.CLEAR_MAGUS_SLASH_SPOT
     elif name in ('omenelder', 'elderspawn', 'elderspot'):
         return QID.CLEAR_OMEN_ELDERSPOT
     elif name in ('twinboss', 'twingolem', 'twinspot'):

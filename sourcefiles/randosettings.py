@@ -243,8 +243,8 @@ class BucketSettings:
     '''
     Class for settings passed to bucket flag.
     '''
-    disable_other_go_modes = False
-    objectives_win = False
+    disable_other_go_modes: bool = False
+    objectives_win: bool = False
 
     # Configuration for number of objectives avail/needed
     num_objectives: int = 5

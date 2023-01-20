@@ -53,7 +53,7 @@ _objective_preset_dict: dict[str, str] = {
     'Defeat the Black Tyrano': 'quest_blacktyrano',
     'Defeat the Tyrano Lair Midboss': 'quest_tyranomid',
     'Defeat the Boss in Flea\'s Spot': 'quest_flea',
-    # Slash Spot needs to be added
+    'Defeat the Boss in Slash\'s Spot': 'quest_slash',
     'Defeat Magus in Magus\'s Castle': 'quest_magus',
     'Defeat the Boss in the GigaMutant Spot': 'quest_omengiga',
     'Defeat the Boss in the TerraMutant Spot': 'quest_omenterra',

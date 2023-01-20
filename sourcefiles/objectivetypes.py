@@ -219,7 +219,7 @@ class QuestData:
 class QuestID(enum.Enum):
     FORGE_MASAMUNE = QuestData('*Forge Masa', 'Forge the Masamune')
     CHARGE_MOONSTONE = QuestData('*ChargeMoon', 'Charge the Moonstone')
-    GIVE_JERKY_TO_MAYOR = QuestData('*Give Jerky', 'Turn in the Jerky')
+    GIVE_JERKY_TO_MAYOR = QuestData('*Give Jerky', 'Trade away the Jerky')
     CLEAR_ARRIS_DOME = QuestData('*ArrisBoss', 'Defeat Arris Dome Boss')
     GET_ARRIS_FOOD_ITEM = QuestData('*Arris Food',
                                     'Get Arris Food Storage Item')
@@ -233,12 +233,10 @@ class QuestID(enum.Enum):
     CLEAR_GIANTS_CLAW = QuestData('*GiantsClaw', 'Clear Giant\'s Claw')
     CLEAR_HECKRANS_CAVE = QuestData('*HeckranCve', 'Clear Hecrkan\'s Cave')
     CLEAR_KINGS_TRIAL = QuestData('*ShardTrial', 'Clear King\'s Trial')
-    # Are Magus Flea/Slash quests?  Probably not.
     CLEAR_CATHEDRAL = QuestData('*Cathedral', 'Clear Cathedral')
     CLEAR_MT_WOE = QuestData('*Mt. Woe', 'Clear Mt. Woe')
     CLEAR_OCEAN_PALACE = QuestData('*OceanPalac', 'Clear Ocean Palace')
     CLEAR_OZZIES_FORT = QuestData('*Ozzie Fort', 'Clear Ozzie\'s Fort')
-    # Are Ozzie Flea/Slash quests?  Probably not.
     CLEAR_PENDANT_TRIAL = QuestData('*PendntJail', 'Clear Pendant Trial')
     CLEAR_REPTITE_LAIR = QuestData('*Reptite Lr', 'Clear Reptite Lair')
     CLEAR_SUN_PALACE = QuestData('*Sun Palace', 'Clear the Sun Palace')
@@ -250,6 +248,8 @@ class QuestID(enum.Enum):
     CLEAR_BLACK_TYRANO = QuestData('*TyranoLair', 'Clear the Tyrano Lair')
     CLEAR_MAGUS_FLEA_SPOT = QuestData('*MagusFlea',
                                       'Defeat the boss at Flea\'s Spot')
+    CLEAR_MAGUS_SLASH_SPOT = QuestData('*MagusSlash',
+                                       'Defeat the boss at Slash\'s Spot')
     CLEAR_MAGUS_CASTLE = QuestData('*MagusCstle', 'Clear Magus\'s Castle')
     CLEAR_OMEN_GIGASPOT = QuestData('*OmenGiga', 'Clear Omen GigaMutant Spot')
     CLEAR_OMEN_TERRASPOT = QuestData('*OmenTerra',
@@ -288,7 +288,8 @@ _quest_to_spot_dict: dict[QuestID, BSID] = {
     QuestID.CLEAR_OMEN_GIGASPOT: BSID.BLACK_OMEN_GIGA_MUTANT,
     QuestID.CLEAR_OMEN_TERRASPOT: BSID.BLACK_OMEN_TERRA_MUTANT,
     QuestID.CLEAR_OMEN_ELDERSPOT: BSID.BLACK_OMEN_ELDER_SPAWN,
-    QuestID.CLEAR_MAGUS_FLEA_SPOT: BSID.MAGUS_CASTLE_FLEA
+    QuestID.CLEAR_MAGUS_FLEA_SPOT: BSID.MAGUS_CASTLE_FLEA,
+    QuestID.CLEAR_MAGUS_SLASH_SPOT: BSID.MAGUS_CASTLE_SLASH
 }
 
 
