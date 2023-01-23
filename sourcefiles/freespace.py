@@ -25,13 +25,13 @@ class FreeSpace():
     # block is a half-open interval [block[0], block[1]) as is Python's way.
     def mark_block(self,
                    block: Tuple[int, int],
-                   is_free: FSWriteType):
+                   mark_type: FSWriteType):
 
-        if is_free == FSWriteType.NO_MARK:
+        if mark_type == FSWriteType.NO_MARK:
             return
         else:
             # print(f"Marking [{block[0]:06X}, {block[1]:06X})  as {is_free}")
-            is_free = (is_free == FSWriteType.MARK_FREE)
+            is_free = (mark_type == FSWriteType.MARK_FREE)
 
         # maybe verify block is valid?
         if block[1] <= block[0]:
@@ -100,7 +100,7 @@ class FreeSpace():
 
         # delete all markers between the start and the end (not inclusive)
         if end > start+1:
-            del(self.markers[start+1:end])
+            del self.markers[start+1:end]
     # End of mark_block
 
     def is_block_free(self, block) -> bool:
@@ -108,7 +108,7 @@ class FreeSpace():
         right = block[1]
 
         left_ind = self.__search(0, len(self.markers)-2, left)
-        right_ind = self.__search(0, len(self.mark_block)-2, right)
+        right_ind = self.__search(0, len(self.markers)-2, right)
 
         left_parity = left_ind % 2 == 0
         left_free = left_parity == (self.first_free is True)
@@ -181,7 +181,7 @@ class FreeSpace():
             return []
 
         tries = [0 for x in sizes]
-        perm = [i for i in range(len(sizes))]
+        perm = tuple(i for i in range(len(sizes)))
 
         # going to assign in sorted order.
         # Should discard heavily used blocks more quickly.
@@ -210,7 +210,7 @@ class FreeSpace():
                     # undo previous markings
                     for j in range(0, i):
                         self.mark_block((tries[j], tries[j]+sort_sizes[j]),
-                                        True)
+                                        FSWriteType.MARK_FREE)
                 else:
                     # Mark and proceed to next
                     self.mark_block((tries[i], tries[i]+sort_sizes[i]),
@@ -226,23 +226,9 @@ class FreeSpace():
             self.mark_block((tries[i], tries[i]+sort_sizes[i]),
                             FSWriteType.MARK_FREE)
 
-        perm, tries = zip(*sorted(zip(perm, tries)))
+        perm, tries_tuple = zip(*sorted(zip(perm, tries)))
 
-        return list(tries)
-
-    '''
-    # writes data into the buffer.  The write can introduce free space, such
-    # as when ipswriter extends a rom.  So the is_free flag (default False)
-    # indicates whether the written area is free or not.
-    def write_data(self, addr, data, is_free=False):
-
-        x = self.tell()
-
-        self.seek(addr)
-        self.write(data, is_free)
-
-        self.seek(x)
-    '''
+        return list(tries_tuple)
 
     # Mark a file with Anskiy's .txt patch format
     # Duplicates much code.  Consider adding patching functionality into
@@ -258,14 +244,6 @@ class FreeSpace():
             bytes = bytes.split(" ")
 
             self.mark_block((address, address+length), False)
-            """
-            while i < length:
-                bytes[i] = int(bytes[i],0x10)
-                f.seek(address)
-                f.write(st.pack("B",bytes[i]))
-                address += 1
-                i += 1
-            """
 
     def mark_blocks_txt(self, patch_filename):
         with open(patch_filename, 'r') as patch_obj:
@@ -469,7 +447,7 @@ class FSRom(BytesIO):
 
         if write_addr is None and hint != 0:
             print('Warning: Insufficient free space.  Ignoring hint.')
-            write_addr = spaceman.get_free_addr(self, len(data), 0)
+            write_addr = spaceman.get_free_addr(len(data), 0)
 
         if write_addr is None:
             print('Error: Insufficient free space. Quitting.')
