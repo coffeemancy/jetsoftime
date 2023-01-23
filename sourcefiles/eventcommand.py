@@ -33,8 +33,10 @@ def is_local_mem(addr: int):
         0x7F0000 <= addr < 0x7F0200
     )
 
+
 def is_memory_addr(addr: int):
     return 0x7E0000 < addr < 0x800000
+
 
 def is_bank_7E(addr: int):
     return 0x7E0000 <= addr < 0x7F0000
@@ -43,8 +45,8 @@ def is_bank_7E(addr: int):
 def get_offset(script_addr):
     if script_addr % 2 != 0:
         raise ValueError('Script address must be even.')
-    else:
-        return (script_addr - 0x7F0200) // 2
+
+    return (script_addr - 0x7F0200) // 2
 
 
 class EventCommand:
@@ -91,11 +93,11 @@ class EventCommand:
     def get_pixel_coordinates(self):
         if self.command == 0x8B:
             return (self.args[0]*0x10+8, self.args[1]*0x10+0x10)
-        elif self.command == 0x8D:
+
+        if self.command == 0x8D:
             return (self.args[0] >> 4, self.args[1] >> 4)
-        else:
-            print(self)
-            raise AttributeError('This command does not set coordinates.')
+
+        raise AttributeError('This command does not set coordinates.')
 
     def to_bytearray(self) -> bytearray:
 
@@ -112,6 +114,7 @@ class EventCommand:
 
         return x
 
+    @staticmethod
     def set_explore_mode(is_on: bool) -> EventCommand:
         ret_cmd = event_commands[0xE3].copy()
         ret_cmd.args = [0]
@@ -130,14 +133,17 @@ class EventCommand:
     def set_controllable_infinite() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB0)
 
+    @staticmethod
     def party_follow() -> EventCommand:
         return EventCommand.generic_zero_arg(0xDA)
 
+    @staticmethod
     def move_party(pc1_x, pc1_y, pc2_x, pc2_y, pc3_x, pc3_y):
         ret_cmd = event_commands[0xD9].copy()
         ret_cmd.args = [pc1_x, pc1_y, pc2_x, pc2_y, pc3_x, pc3_y]
         return ret_cmd
 
+    @staticmethod
     def change_location(location, x_coord, y_coord, facing=0,
                         unk=0, wait_vblank=True) -> EventCommand:
         # There are many different change location commands.  I'll update this
@@ -159,15 +165,19 @@ class EventCommand:
 
         return ret_cmd
 
+    @staticmethod
     def fade_screen() -> EventCommand:
         return EventCommand.generic_zero_arg(0xF2)
 
+    @staticmethod
     def darken(duration) -> EventCommand:
         return EventCommand.generic_one_arg(0xF0, duration)
 
+    @staticmethod
     def load_pc_always(pc_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0x81, int(pc_id))
 
+    @staticmethod
     def load_pc_in_party(pc_id: int) -> EventCommand:
         if pc_id == 0:
             cmd_id = 0x57
@@ -186,9 +196,11 @@ class EventCommand:
 
         return EventCommand.generic_zero_arg(cmd_id)
 
+    @staticmethod
     def load_npc(npc_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0x82, npc_id)
 
+    @staticmethod
     def load_enemy(enemy_id: int, slot_number: int,
                    is_static: bool = False) -> EventCommand:
         # maybe validate?
@@ -197,6 +209,7 @@ class EventCommand:
         x = EventCommand.generic_two_arg(0x83, int(enemy_id), slot_arg)
         return x
 
+    @staticmethod
     def set_reset_bits(address: int, bitmask: int,
                        set_bits: bool = True) -> EventCommand:
         if not is_script_mem(address):
@@ -208,12 +221,13 @@ class EventCommand:
         if not 0 <= bitmask < 0x100:
             raise ValueError('bitmask must be in [0, 0x100)')
 
-        offset  = (address - 0x7F0200)//2
+        offset = (address - 0x7F0200)//2
         if set_bits:
             return EventCommand.generic_two_arg(0x69, bitmask, offset)
         else:
             return EventCommand.generic_two_arg(0x67, bitmask, offset)
 
+    @staticmethod
     def set_reset_bit(address: int, bit: int, set_bit: bool) -> EventCommand:
 
         # For addresses in [0x7F0000, 0x7F0200) we can access any byte.
@@ -249,12 +263,15 @@ class EventCommand:
 
         return ret_cmd
 
+    @staticmethod
     def set_bit(address: int, bit: int) -> EventCommand:
         return EventCommand.set_reset_bit(address, bit, True)
 
+    @staticmethod
     def reset_bit(address: int, bit: int) -> EventCommand:
         return EventCommand.set_reset_bit(address, bit, False)
 
+    @staticmethod
     def set_object_drawing_status(obj_id: int, is_drawn: bool) -> EventCommand:
         if is_drawn:
             x = EventCommand.generic_one_arg(0x7C, obj_id*2)
@@ -263,6 +280,7 @@ class EventCommand:
 
         return x
 
+    @staticmethod
     def set_own_drawing_status(is_drawn):
         if is_drawn:
             cmd_id = 0x90
@@ -272,9 +290,11 @@ class EventCommand:
         x = event_commands[cmd_id].copy()
         return x
 
+    @staticmethod
     def remove_object(object_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xA, 2*object_id)
 
+    @staticmethod
     def vector_move(angle: int, magnitude: int,
                     keep_facing: bool) -> EventCommand:
         hex_angle = (0x100 * angle)//360
@@ -282,8 +302,8 @@ class EventCommand:
 
         if keep_facing:
             return EventCommand.generic_two_arg(0x9C, hex_angle, cmd_mag)
-        else:
-            return EventCommand.generic_two_arg(0x92, hex_angle, cmd_mag)
+
+        return EventCommand.generic_two_arg(0x92, hex_angle, cmd_mag)
 
     @staticmethod
     def call_pc_function(
@@ -300,6 +320,7 @@ class EventCommand:
             cmd_id, pc_id*2, (priority << 4) | fn_id
         )
 
+    @staticmethod
     def call_obj_function(obj_id: int,
                           fn_id: int,
                           priority: int,
@@ -338,6 +359,7 @@ class EventCommand:
 
         return ret
 
+    @staticmethod
     def copy_tiles(src_left: int, src_top: int, src_right: int, src_bot: int,
                    dest_left: int, dest_top: int,
                    copy_l1: bool = False,
@@ -371,6 +393,7 @@ class EventCommand:
 
         return ret_cmd
 
+    @staticmethod
     def get_blank_command(cmd_id: int) -> EventCommand:
         ret_cmd = event_commands[cmd_id].copy()
         ret_cmd.args = [0 for i in range(ret_cmd.num_args)]
@@ -383,17 +406,20 @@ class EventCommand:
 
         return ret_cmd
 
+    @staticmethod
     def generic_zero_arg(cmd_id: int) -> EventCommand:
         ret = event_commands[cmd_id].copy()
         return ret
 
     # one arg, 1 byte
+    @staticmethod
     def generic_one_arg(cmd_id: int, arg) -> EventCommand:
         ret = event_commands[cmd_id].copy()
         ret.args = [arg]
         return ret
 
     # two args, 1 byte each
+    @staticmethod
     def generic_two_arg(cmd_id: int,
                         arg0: int,
                         arg1: int) -> EventCommand:
@@ -409,15 +435,19 @@ class EventCommand:
     def break_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB1)
 
+    @staticmethod
     def end_cmd() -> EventCommand:
         return EventCommand.generic_zero_arg(0xB2)
 
+    @staticmethod
     def add_gold(gold_amt: int) -> EventCommand:
         return EventCommand.generic_command(0xCD, gold_amt)
 
+    @staticmethod
     def add_item(item_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xCA, item_id)
 
+    @staticmethod
     def remove_item(item_id: int) -> EventCommand:
         return EventCommand.generic_command(0xCB, item_id)
 
@@ -433,9 +463,11 @@ class EventCommand:
     def if_storyline_counter_lt(storyline_val: int, jump_bytes: int):
         return EventCommand.generic_command(0x18, storyline_val, jump_bytes)
 
+    @staticmethod
     def if_has_item(item_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xC9, int(item_id), jump_bytes)
 
+    @staticmethod
     def if_mem_op_value(
             address: int, operation: Operation,
             value: int, num_bytes: int,  bytes_jump: int
@@ -478,6 +510,7 @@ class EventCommand:
 
         return ret_cmd
 
+    @staticmethod
     def set_storyline_counter(val: int) -> EventCommand:
         return EventCommand.assign_val_to_mem(val, 0x7F0000, 1)
 
@@ -495,6 +528,7 @@ class EventCommand:
 
         return EventCommand.generic_command(cmd_id, offset)
 
+    @staticmethod
     def add_value_to_mem(value: int, script_addr: int):
         if not is_script_mem(script_addr):
             raise ValueError('Can only add to script memory')
@@ -507,6 +541,7 @@ class EventCommand:
 
         return cmd
 
+    @staticmethod
     def assign_mem_to_mem(
             from_addr: int,
             to_addr: int,
@@ -562,6 +597,7 @@ class EventCommand:
 
         return cmd
 
+    @staticmethod
     def assign_val_to_mem(
             val: int, address: int, num_bytes: int
     ) -> EventCommand:
@@ -650,9 +686,11 @@ class EventCommand:
 
     # Reminder that jumps in CT are always computed as being a jump from the
     # last byte of the jump command.  This is what the jump_bytes argument is.
+    @staticmethod
     def jump_back(jump_bytes: int) -> EventCommand:
         return EventCommand.generic_one_arg(0x11, jump_bytes)
 
+    @staticmethod
     def jump_forward(jump_bytes: int) -> EventCommand:
         return EventCommand.generic_one_arg(0x10, jump_bytes)
 
@@ -664,9 +702,11 @@ class EventCommand:
     def switch_pcs() -> EventCommand:
         return EventCommand.generic_command(0xC8, 0x00)
 
+    @staticmethod
     def check_active_pc(char_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xD2, char_id, jump_bytes)
 
+    @staticmethod
     def check_recruited_pc(char_id: int, jump_bytes: int) -> EventCommand:
         return EventCommand.generic_two_arg(0xCF, char_id, jump_bytes)
 
@@ -725,6 +765,7 @@ class EventCommand:
         )
 
     #  Here x and y are assumed to be pixel coordinates
+    @staticmethod
     def set_object_coordinates(x: int, y: int,
                                shift: bool = True) -> EventCommand:
         # print(f"set: ({x:04X}, {y:04X})")
@@ -749,15 +790,19 @@ class EventCommand:
                                                 (x << 4) + shift_x,
                                                 (y << 4) + shift_y)
 
+    @staticmethod
     def set_string_index(str_ind_rom: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xB8, str_ind_rom)
 
+    @staticmethod
     def special_dialog(dialog_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xC8, dialog_id)
 
+    @staticmethod
     def rename_character(char_id: int) -> EventCommand:
         return EventCommand.special_dialog(0xC0 | char_id)
 
+    @staticmethod
     def replace_characters() -> EventCommand:
         return EventCommand.special_dialog(0x00)
 
@@ -791,9 +836,11 @@ class EventCommand:
         return EventCommand.generic_command(0x1A, result_val, jump_bytes)
     
     # TODO: merge these two textbox commands
+    @staticmethod
     def auto_text_box(string_id: int) -> EventCommand:
         return EventCommand.generic_one_arg(0xBB, string_id)
 
+    @staticmethod
     def text_box(string_id: int, top: bool = True) -> EventCommand:
         if top:
             return EventCommand.generic_one_arg(0xC1, string_id)
@@ -805,6 +852,7 @@ class EventCommand:
         speed = min(speed, 0x80)
         return EventCommand.generic_one_arg(0x87, speed)
 
+    @staticmethod
     def pause(duration_secs: float):
         if duration_secs == 0.25:
             return EventCommand.generic_zero_arg(0xB9)

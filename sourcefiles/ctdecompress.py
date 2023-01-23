@@ -8,7 +8,7 @@ try:
     # print('Using C compression implementation.')
 except ImportError:
     # print('C compression module not found.  Falling back to python.')
-    def compress(source):
+    def compress(source: bytearray) -> bytearray:
         return compress_py_2(source)
 
 
@@ -313,7 +313,7 @@ def compress_py_2(source: bytes):
 
     best_size = 0x10000
 
-    byte_starts = [[] for ind in range(0x100)]
+    byte_starts: list[list[int]] = [[] for ind in range(0x100)]
     for ind, byte in enumerate(source):
         byte_starts[byte].append(ind)
 

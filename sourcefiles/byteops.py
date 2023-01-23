@@ -1,5 +1,6 @@
-# Collection of routines for operating on bytearrays
+'''Collection of routines for operating on bytearrays'''
 
+import typing
 
 def get_record(data, index, record_size):
     return data[index*record_size:(index+1)*record_size]
@@ -123,7 +124,9 @@ def get_minimal_shift(mask: int):
 
 
 def get_masked_range(data: bytes, start_idx: int, num_bytes: int,
-                     mask: int, byteorder: str = 'little') -> int:
+                     mask: int,
+                     byteorder: typing.Literal['big', 'little'] = 'little'
+                     ) -> int:
     '''
     Return the bytes in range(start_idx, start_idx+num_bytes) with
     mask applied.
@@ -148,7 +151,9 @@ def get_masked_range(data: bytes, start_idx: int, num_bytes: int,
 
 
 def set_masked_range(data: bytearray, start_idx: int, num_bytes: int,
-                     mask: int, val: int, byteorder: str = 'little'):
+                     mask: int, val: int,
+                     byteorder: typing.Literal['big', 'little'] = 'little'
+                     ):
     '''
     Set the bytes in range(start_idx, start_idx+num_bytes) corresponding
     to bits set in mask to val.  Dual to get_masked_range such that
