@@ -11,6 +11,9 @@ import randosettings as rset
 import randoconfig as cfg
 
 
+class ImpossibleGameConfigException(Exception):
+    pass
+
 #
 # The LogicFactory is used by the logic writer to get a GameConfig
 # object for the flags that the user selected.  The returned GameConfig
@@ -42,6 +45,7 @@ class GameConfig:
         self.game = None
         self.initLocations()
         self.initKeyItems()
+        self.resolveExtraKeyItems()
         self.initGame()
 
     #
@@ -50,6 +54,15 @@ class GameConfig:
     #
     def initLocations(self):
         raise NotImplementedError()
+
+
+    #
+    # Subclasses will override this method to
+    # handle the case that more key items than spots exist
+    #
+    def resolveExtraKeyItems(self):
+        raise NotImplementedError()
+
 
     #
     # Subclasses will override this method to
@@ -596,6 +609,69 @@ class ChronosanityGameConfig(GameConfig):
         # Sealed Locations (chests and doors)
         self.locationGroups.append(sealedLocations)
 
+        flags = self.settings.gameflags
+        GF = rset.GameFlags
+
+        if GF.ADD_SUNKEEP_SPOT in flags:
+            sunstoneKey = LocationGroup(
+                "Sun Keep 2300", 1,
+                lambda game: (
+                    game.hasKeyItem(ItemID.GATE_KEY) and
+                    game.hasKeyItem(ItemID.PENDANT) and
+                    game.hasKeyItem(ItemID.MOON_STONE)
+                )
+            )
+
+            sunstoneKey.addLocation(Location(TID.SUN_KEEP_2300))
+            self.locationGroups.append(sunstoneKey)
+
+        if GF.ADD_BEKKLER_SPOT in flags:
+            bekklerKey = LocationGroup(
+                "BekklersLab", 2,
+                lambda game: game.hasKeyItem(ItemID.C_TRIGGER))
+            bekklerKey.addLocation(Location(TID.BEKKLER_KEY))
+
+            self.locationGroups.append(bekklerKey)
+
+        if GF.ADD_CYRUS_SPOT in flags:
+            northernRuinsLocations = self.getLocationGroup('NorthernRuins')
+            northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
+
+            northernRuinsFrog = self.getLocationGroup(
+                'NorthernRuinsFrogLocked')
+            northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
+            northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
+
+        if GF.ADD_OZZIE_SPOT in flags:
+            ozziesFort = self.getLocationGroup("Ozzie's Fort")
+            ozziesFort.locations.append(Location(TID.OZZIES_FORT_KEY))
+            self.locationGroups.append(ozziesFort)
+
+        if GF.ADD_RACELOG_SPOT in flags:
+            lab32Key = LocationGroup(
+                "RaceLog Chest", 2,
+                lambda game: (
+                    game.hasKeyItem(ItemID.PENDANT) and
+                    game.hasKeyItem(ItemID.BIKE_KEY)
+                )
+            )
+            lab32Key.addLocation(Location(TID.LAB_32_RACE_LOG))
+            self.locationGroups.append(lab32Key)
+
+        if GF.SPLIT_ARRIS_DOME in flags:
+            future = self.getLocationGroup("FutureOpen")
+            future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
+            future.addLocation(Location(TID.ARRIS_DOME_FOOD_LOCKER_KEY))
+
+            doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
+            doanKey.addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
+            self.locationGroups.append(doanKey)
+
+        if GF.VANILLA_DESERT in flags:
+            fiona_shrine = self.getLocationGroup('Fionashrine')
+            fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+
     def initKeyItems(self):
         # NOTE:
         # The initial list of key items contains multiples of most of the key
@@ -609,7 +685,31 @@ class ChronosanityGameConfig(GameConfig):
 
         # Seed the list with 5 copies of each item
         # keyItemList = [key for key in (KeyItems)]
-        keyItemList = ItemID.get_key_items()
+        keyItemList = [
+            ItemID.GATE_KEY, ItemID.DREAMSTONE, ItemID.RUBY_KNIFE,
+            ItemID.PENDANT, ItemID.C_TRIGGER, ItemID.CLONE,
+            ItemID.BENT_HILT, ItemID.BENT_SWORD, ItemID.MASAMUNE_2,
+            ItemID.HERO_MEDAL, ItemID.ROBORIBBON, ItemID.PRISMSHARD,
+            ItemID.TOMAS_POP, ItemID.MOON_STONE, ItemID.JERKY
+        ]
+
+        if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
+            keyItemList.append(ItemID.JETSOFTIME)
+
+        if rset.GameFlags.ADD_SUNKEEP_SPOT in self.settings.gameflags:
+            keyItemList.append(ItemID.SUN_STONE)
+
+        if rset.GameFlags.RESTORE_TOOLS in self.settings.gameflags:
+            keyItemList.append(ItemID.TOOLS)
+
+        if rset.GameFlags.RESTORE_JOHNNY_RACE in self.settings.gameflags:
+            keyItemList.append(ItemID.BIKE_KEY)
+
+        if rset.GameFlags.SPLIT_ARRIS_DOME in self.settings.gameflags:
+            keyItemList.append(ItemID.SEED)
+
+        if rset.GameFlags.VANILLA_ROBO_RIBBON in self.settings.gameflags:
+            keyItemList.remove(ItemID.ROBORIBBON)
 
         # keyItemList ends up with 5 of each key item except for
         # lateProgression items
@@ -649,6 +749,10 @@ class ChronosanityGameConfig(GameConfig):
             return newList
         else:
             return keyItemList
+
+    # Chronosanity always has enough spots for items.
+    def resolveExtraKeyItems(self):
+        pass
 
 # end ChronosanityGameConfig class
 
@@ -901,21 +1005,20 @@ def apply_epoch_fail(game_config: GameConfig):
         TID.MELCHIOR_KEY
     ]
 
-    # In extended keys, Melchior just needs a sunstone, but the sunstone
-    # check needs flight.
-    if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags or \
-       rset.GameMode.VANILLA_RANDO == settings.game_mode:
-        flight_tids.remove(TID.MELCHIOR_KEY)
+    # When the Sun Keep spot is in, the Sun Keep needs flight but Melchior
+    # no longer requires flight.
+    if rset.GameFlags.ADD_SUNKEEP_SPOT in settings.gameflags:
         flight_tids.append(TID.SUN_KEEP_2300)
+        flight_tids.remove(TID.MELCHIOR_KEY)
 
     def add_flight(func):
 
         def ret_func(game: Game):
-            if game.extended_keys:
+            settings = game.settings
+            if rset.GameFlags.UNLOCKED_SKYGATES in settings.gameflags:
                 return (func(game) and game.hasKeyItem(ItemID.JETSOFTIME) and
                         game.canAccessEndOfTime())
-            else:
-                return func(game) and game.hasKeyItem(ItemID.JETSOFTIME)
+            return func(game) and game.hasKeyItem(ItemID.JETSOFTIME)
 
         return ret_func
 
@@ -960,34 +1063,6 @@ def apply_epoch_fail(game_config: GameConfig):
 
     game_config.locationGroups.extend(new_groups)
 
-    # Make sure that JoT gets added to the key item list, and that something
-    # gets removed when there's no room.  For now, we're just always going
-    # to remove Jerky.  An alternate idea would be to make Jerky a KI check?
-    if rset.GameFlags.CHRONOSANITY in settings.gameflags:
-        for temp in range(3):
-            game_config.keyItemList.append(ItemID.JETSOFTIME)
-    else:
-        # Vanilla Rando has extra KI spots, and IA has fewer KIs.
-        # For other modes, trade out Jerky for Jets
-
-        # LoC has a free KI spot if locked char is on, otherwise it needs
-        # something (jerky) removed.
-        loc_remove_jerky = (
-            settings.game_mode == rset.GameMode.LEGACY_OF_CYRUS and
-            rset.GameFlags.LOCKED_CHARS in settings.gameflags
-        )
-
-        std_remove_jerky = (
-            settings.game_mode == rset.GameMode.STANDARD and
-            rset.GameFlags.USE_EXTENDED_KEYS not in settings.gameflags
-        )
-
-        if loc_remove_jerky or std_remove_jerky:
-            game_config.keyItemList.remove(ItemID.JERKY)
-
-        game_config.keyItemList.append(ItemID.JETSOFTIME)
-
-
 #
 # This class represents the game configuration for a
 # Normal game.
@@ -1004,7 +1079,50 @@ class NormalGameConfig(GameConfig):
         self.game = Game(self.settings, self.config)
 
     def initKeyItems(self):
-        self.keyItemList = ItemID.get_key_items()
+        IID = ItemID
+        self.keyItemList = [
+            IID.GATE_KEY, IID.DREAMSTONE, IID.RUBY_KNIFE,
+            IID.PENDANT, IID.C_TRIGGER, IID.CLONE,
+            IID.BENT_HILT, IID.BENT_SWORD, IID.MASAMUNE_2,
+            IID.HERO_MEDAL, IID.ROBORIBBON, IID.PRISMSHARD,
+            IID.TOMAS_POP, IID.MOON_STONE, IID.JERKY
+        ]
+
+        if rset.GameFlags.EPOCH_FAIL in self.settings.gameflags:
+            self.keyItemList.append(ItemID.JETSOFTIME)
+
+        if rset.GameFlags.ADD_SUNKEEP_SPOT in self.settings.gameflags:
+            self.keyItemList.append(IID.SUN_STONE)
+
+        if rset.GameFlags.RESTORE_TOOLS in self.settings.gameflags:
+            self.keyItemList.append(IID.TOOLS)
+
+        if rset.GameFlags.RESTORE_JOHNNY_RACE in self.settings.gameflags:
+            self.keyItemList.append(ItemID.BIKE_KEY)
+
+        if rset.GameFlags.SPLIT_ARRIS_DOME in self.settings.gameflags:
+            self.keyItemList.append(ItemID.SEED)
+
+        if rset.GameFlags.VANILLA_ROBO_RIBBON in self.settings.gameflags:
+            self.keyItemList.remove(ItemID.ROBORIBBON)
+
+    def resolveExtraKeyItems(self):
+        num_spots = sum(
+            len(group.locations) for group in self.locationGroups
+        )
+        num_keys = len(self.keyItemList)
+
+        if num_spots >= num_keys:
+            return
+
+        if ItemID.JERKY in self.keyItemList:
+            self.keyItemList.remove(ItemID.JERKY)
+            num_keys -= 1
+
+        if num_spots >= num_keys:
+            return
+
+        raise ImpossibleGameConfigException
 
     def initLocations(self):
 
@@ -1122,14 +1240,84 @@ class NormalGameConfig(GameConfig):
         # 2300
         self.locationGroups.append(futureKeys)
 
+        flags = self.settings.gameflags
+        GF = rset.GameFlags
+
+        if GF.ADD_SUNKEEP_SPOT in flags:
+            sunstoneKey = LocationGroup(
+                "Sun Keep 2300", 1,
+                lambda game: (
+                    game.canAccessPrehistory() and
+                    game.canAccessFuture() and
+                    game.hasKeyItem(ItemID.MOON_STONE)
+                )
+            )
+            sunstoneKey.addLocation(BaselineLocation(TID.SUN_KEEP_2300,
+                                                     _high_gear_dist))
+            self.locationGroups.append(sunstoneKey)
+
+        if GF.ADD_BEKKLER_SPOT in flags:
+            bekklerKey = LocationGroup(
+                "BekklersLab", 1,
+                lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
+            )
+            bekklerKey.addLocation(
+                BaselineLocation(TID.BEKKLER_KEY, _awesome_gear_dist)
+            )
+            self.locationGroups.append(bekklerKey)
+
+        if GF.ADD_CYRUS_SPOT in flags:
+            cyrusKey = LocationGroup(
+                "HerosGrave", 1, _canAccessCyrusGraveVR
+            )
+            cyrusKey.addLocation(
+                BaselineLocation(TID.CYRUS_GRAVE_KEY, _awesome_gear_dist)
+            )
+            self.locationGroups.append(cyrusKey)
+
+        if GF.ADD_OZZIE_SPOT in flags:
+            # Logically, Ozzie's fort is gated behind EoT/Woe access, but
+            # players can physically enter once they can fly there.
+            ozzieKey = LocationGroup("Ozzie's Fort", 1,
+                                     lambda game: game.canAccessMtWoe())
+            ozzieKey.addLocation(BaselineLocation(TID.OZZIES_FORT_KEY,
+                                                  _high_gear_dist))
+            self.locationGroups.append(ozzieKey)
+        
+        if GF.ADD_RACELOG_SPOT in flags:
+            lab32Key = LocationGroup(
+            "RaceLog Chest", 1,
+                lambda game: (
+                game.hasKeyItem(ItemID.PENDANT) and
+                game.hasKeyItem(ItemID.BIKE_KEY)
+                )
+            )
+            lab32Key.addLocation(BaselineLocation(TID.LAB_32_RACE_LOG,
+                                                  _high_gear_dist))
+            self.locationGroups.append(lab32Key)
+
+        if GF.SPLIT_ARRIS_DOME in flags:
+            future = self.getLocationGroup("FutureOpen")
+            future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
+            future.addLocation(BaselineLocation(TID.ARRIS_DOME_FOOD_LOCKER_KEY,
+                                                _high_gear_dist))
+
+            doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
+            doanKey.addLocation(BaselineLocation(TID.ARRIS_DOME_DOAN_KEY,
+                                                 _high_gear_dist))
+            self.locationGroups.append(doanKey)
+
+        if GF.VANILLA_DESERT in flags:
+            fiona_shrine = self.getLocationGroup('Fionashrine')
+            fiona_shrine.accessRule = _canAccessFionasShrineVR
+
 # end NormalGameConfig class
+
 
 #
 # This class represents the game configuration for a
 # Lost Worlds game.
 #
-
-
 class LostWorldsGameConfig(GameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
         self.charLocations = config.char_assign_dict
@@ -1439,14 +1627,27 @@ def _canAccessKingsTrialVR(game: Game):
 
 
 def _canAccessFionasShrineVR(game: Game):
-    return (
-        game.hasCharacter(Characters.ROBO) and
-        game.canAccessMtWoe()
-    )
+
+    flags = game.settings.gameflags
+    GF = rset.GameFlags
+
+    if not game.hasCharacter(Characters.ROBO):
+        return False
+
+    if GF.UNLOCKED_SKYGATES:
+        return game.canAccessMtWoe()
+    else:
+        return game.canAccessTyranoLair() or game.canAccessMagusCastle()
 
 
 def _canAccessNorthernRuinsVR(game: Game):
-    return game.hasKeyItem(ItemID.TOOLS)
+    restore_tools = rset.GameFlags.RESTORE_TOOLS in  game.settings.gameflags
+    if restore_tools:
+        fix_item = ItemID.TOOLS
+    else:
+        fix_item = ItemID.MASAMUNE_2
+
+    return game.hasKeyItem(fix_item)
 
 
 def _canAccessCyrusGraveVR(game: Game):
@@ -1474,12 +1675,13 @@ class VanillaRandoGameConfig(NormalGameConfig):
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
 
-        self.keyItemList.append(ItemID.TOOLS)
-        self.keyItemList.append(ItemID.SEED)
-        self.keyItemList.append(ItemID.BIKE_KEY)
-        self.keyItemList.append(ItemID.SUN_STONE)
+        # Not needed anyore
+        # self.keyItemList.append(ItemID.TOOLS)
+        # self.keyItemList.append(ItemID.SEED)
+        # self.keyItemList.append(ItemID.BIKE_KEY)
+        # self.keyItemList.append(ItemID.SUN_STONE)
 
-        self.keyItemList.remove(ItemID.ROBORIBBON)
+        # self.keyItemList.remove(ItemID.ROBORIBBON)
 
     def initLocations(self):
         NormalGameConfig.initLocations(self)
@@ -1560,80 +1762,81 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
     def initKeyItems(self):
         ChronosanityGameConfig.initKeyItems(self)
 
-        for i in range(5):
-            self.keyItemList.append(ItemID.TOOLS)
-            self.keyItemList.append(ItemID.SEED)
-            self.keyItemList.append(ItemID.BIKE_KEY)
-            self.keyItemList.append(ItemID.SUN_STONE)
+        # This is call done in ChronosanityGameConfig now.
+        # for i in range(5):
+        #     self.keyItemList.append(ItemID.TOOLS)
+        #     self.keyItemList.append(ItemID.SEED)
+        #     self.keyItemList.append(ItemID.BIKE_KEY)
+        #     self.keyItemList.append(ItemID.SUN_STONE)
 
-        while ItemID.ROBORIBBON in self.keyItemList:
-            self.keyItemList.remove(ItemID.ROBORIBBON)
+        # while ItemID.ROBORIBBON in self.keyItemList:
+        #     self.keyItemList.remove(ItemID.ROBORIBBON)
 
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
 
+        # In Vanilla, Giant's Claw and King's Trial are endgame areas, so
+        # logically gate them behind EoT access.
         giants_claw = self.getLocationGroup('Giantsclaw')
         giants_claw.accessRule = _canAccessGiantsClawVR
 
         kings_trial = self.getLocationGroup('GuardiaTreasury')
         kings_trial.accessRule = _canAccessKingsTrialVR
 
-        fiona_shrine = self.getLocationGroup('Fionashrine')
-        fiona_shrine.accessRule = _canAccessFionasShrineVR
+        # The below should all be implemented in ChronosanityGameConfig now
+        # bekklerKey = LocationGroup(
+        #     "BekklersLab", 2,
+        #     lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
+        # )
+        # bekklerKey.addLocation(Location(TID.BEKKLER_KEY))
 
-        bekklerKey = LocationGroup(
-            "BekklersLab", 2,
-            lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
-        )
-        bekklerKey.addLocation(Location(TID.BEKKLER_KEY))
+        # self.locationGroups.append(bekklerKey)
 
-        self.locationGroups.append(bekklerKey)
+        # northernRuinsLocations = self.getLocationGroup('NorthernRuins')
+        # northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
 
-        northernRuinsLocations = self.getLocationGroup('NorthernRuins')
-        northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
+        # northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
+        # northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
+        # northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
 
-        northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
-        northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
-        northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
+        # # Get the split Arris Dome Keys right.
+        # # Remove Doan from future, add food storage to future
+        # # Add Doan to his own group
+        # future = self.getLocationGroup("FutureOpen")
+        # future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
+        # future.addLocation(Location(TID.ARRIS_DOME_FOOD_LOCKER_KEY))
 
-        # Get the split Arris Dome Keys right.
-        # Remove Doan from future, add food storage to future
-        # Add Doan to his own group
-        future = self.getLocationGroup("FutureOpen")
-        future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
-        future.addLocation(Location(TID.ARRIS_DOME_FOOD_LOCKER_KEY))
+        # doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
+        # doanKey.addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
+        # self.locationGroups.append(doanKey)
 
-        doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
-        doanKey.addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
-        self.locationGroups.append(doanKey)
+        # ozziesFort = self.getLocationGroup("Ozzie's Fort")
+        # ozziesFort.locations.append(Location(TID.OZZIES_FORT_KEY))
+        # self.locationGroups.append(ozziesFort)
 
-        ozziesFort = self.getLocationGroup("Ozzie's Fort")
-        ozziesFort.locations.append(Location(TID.OZZIES_FORT_KEY))
-        self.locationGroups.append(ozziesFort)
+        # # Increase Ozzie's Fort weight?
 
-        # Increase Ozzie's Fort weight?
+        # lab32Key = LocationGroup(
+        #     "RaceLog Chest", 2,
+        #     lambda game: (
+        #         game.hasKeyItem(ItemID.PENDANT) and
+        #         game.hasKeyItem(ItemID.BIKE_KEY)
+        #     )
+        # )
+        # lab32Key.addLocation(Location(TID.LAB_32_RACE_LOG))
+        # self.locationGroups.append(lab32Key)
 
-        lab32Key = LocationGroup(
-            "RaceLog Chest", 2,
-            lambda game: (
-                game.hasKeyItem(ItemID.PENDANT) and
-                game.hasKeyItem(ItemID.BIKE_KEY)
-            )
-        )
-        lab32Key.addLocation(Location(TID.LAB_32_RACE_LOG))
-        self.locationGroups.append(lab32Key)
+        # sunstoneKey = LocationGroup(
+        #     "Sun Keep 2300", 1,
+        #     lambda game: (
+        #         game.hasKeyItem(ItemID.GATE_KEY) and
+        #         game.hasKeyItem(ItemID.PENDANT) and
+        #         game.hasKeyItem(ItemID.MOON_STONE)
+        #     )
+        # )
 
-        sunstoneKey = LocationGroup(
-            "Sun Keep 2300", 1,
-            lambda game: (
-                game.hasKeyItem(ItemID.GATE_KEY) and
-                game.hasKeyItem(ItemID.PENDANT) and
-                game.hasKeyItem(ItemID.MOON_STONE)
-            )
-        )
-
-        sunstoneKey.addLocation(Location(TID.SUN_KEEP_2300))
-        self.locationGroups.append(sunstoneKey)
+        # sunstoneKey.addLocation(Location(TID.SUN_KEEP_2300))
+        # self.locationGroups.append(sunstoneKey)
 
 
 #
@@ -1667,10 +1870,7 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
         elif vanilla:
             CfgType = ChronosanityVanillaRandoGameConfig
         elif standard:
-            if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
-                CfgType = ChronosanityVanillaRandoGameConfig
-            else:
-                CfgType = ChronosanityGameConfig
+            CfgType = ChronosanityGameConfig
         else:
             raise ValueError('Invalid Game Mode')
     else:
@@ -1683,10 +1883,7 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
         elif vanilla:
             CfgType = VanillaRandoGameConfig
         elif standard:
-            if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
-                CfgType = VanillaRandoGameConfig
-            else:
-                CfgType = NormalGameConfig
+            CfgType = NormalGameConfig
         else:
             raise ValueError('Invalid Game Mode')
 

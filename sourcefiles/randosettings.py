@@ -76,7 +76,19 @@ class GameFlags(Flag):
     STARTERS_SUFFICIENT = auto()
     EPOCH_FAIL = auto()
     BOSS_SPOT_HP = auto()
-    USE_EXTENDED_KEYS = auto()
+    # Logic Tweak flags from VanillaRando mode
+    UNLOCKED_SKYGATES = auto()
+    ADD_SUNKEEP_SPOT = auto()
+    ADD_BEKKLER_SPOT = auto()
+    ADD_CYRUS_SPOT = auto()
+    RESTORE_TOOLS = auto()
+    ADD_OZZIE_SPOT = auto()
+    RESTORE_JOHNNY_RACE = auto()
+    ADD_RACELOG_SPOT = auto()
+    SPLIT_ARRIS_DOME = auto()
+    VANILLA_ROBO_RIBBON = auto()
+    VANILLA_DESERT = auto()
+
 
 # Dictionary for what flags force what other flags off.
 # Note that this is NOT symmetric.  For example Lost Worlds will force

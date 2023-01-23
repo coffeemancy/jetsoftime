@@ -31,10 +31,6 @@ class Game:
             rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
 
         self.epoch_fail = rset.GameFlags.EPOCH_FAIL in settings.gameflags
-        self.extended_keys = (
-            settings.game_mode == rset.GameMode.VANILLA_RANDO or
-            rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags
-        )
 
     # In case we need to look something else up
         self.settings = settings
@@ -123,6 +119,13 @@ class Game:
     #
     def hasKeyItem(self, item):
         return item in self.keyItems
+
+
+    def hasKeyItems(self, *items: ItemID):
+        for item in items:
+            if not self.hasKeyItem(item):
+                return False
+        return True
 
     #
     # Add a key item to the set of key items acquired
@@ -228,20 +231,36 @@ class Game:
             (self.canAccessProtoDome() or self.canAccessPrehistory())
         )
 
+    def canFly(self):
+        flags = self.settings.gameflags
+        GF = rset.GameFlags
+        if GF.EPOCH_FAIL in flags:
+            if not self.hasKeyItem(ItemID.JETSOFTIME):
+                return False
+            # Now assume the jets is obtained
+            if GF.UNLOCKED_SKYGATES in flags:
+                return self.canAccessEndOfTime()
+            else:
+                return True
+        return True
+
     def canAccessProtoDome(self):
         # This is the only place that self.epoch_fail is used because it's
         # part of a character check.  For TID access rules, I rely on
         # apply_epoch_fail to add flight requirements to Locations.
-        if self.extended_keys and self.epoch_fail:
-            return self.canAccessFuture() and (
-                self.hasKeyItem(ItemID.BIKE_KEY) or
+
+        flags = self.settings.gameflags
+        GF = rset.GameFlags
+
+        if GF.RESTORE_JOHNNY_RACE in flags and GF.EPOCH_FAIL in flags:
+            return (
+                self.canAccessFuture() and
                 (
-                    self.hasKeyItem(ItemID.JETSOFTIME) and
+                    self.hasKeyItem(ItemID.BIKE_KEY) or
                     self.hasKeyItem(ItemID.GATE_KEY)
                 )
             )
-        else:
-            return self.canAccessFuture()
+        return self.canAccessFuture()
 
     def canAccessPrehistory(self):
         return self.hasKeyItem(ItemID.GATE_KEY) or self.lostWorlds
@@ -274,9 +293,13 @@ class Game:
         # TODO: There's an issue here with EF needing Jets to access.
         #       It's not game-breaking because seeds are 100%able, but spheres
         #       will be wrong.
-        return (self.canAccessFuture() and
-                self.hasKeyItem(ItemID.CLONE) and
-                self.hasKeyItem(ItemID.C_TRIGGER))
+
+        return(
+            self.canAccessFuture() and
+            self.hasKeyItem(ItemID.CLONE) and
+            self.hasKeyItem(ItemID.C_TRIGGER) and
+            self.canFly()
+        )
 
     def canGetSunstone(self):
         return (self.canAccessFuture() and
@@ -288,7 +311,10 @@ class Game:
                 self.hasKeyItem(ItemID.PRISMSHARD))
 
     def canAccessMelchiorsRefinements(self):
-        if self.extended_keys:
+        flags = self.settings.gameflags
+        GF = rset.GameFlags
+
+        if GF.ADD_SUNKEEP_SPOT in flags:
             return (self.canAccessKingsTrial() and
                     self.hasKeyItem(ItemID.SUN_STONE))
         else:
@@ -304,10 +330,13 @@ class Game:
     def canAccessSealedChests(self):
         # With 3.1.1. logic change, canAccessDarkAges isn't correct for
         # checking sealed chest access.  Instead check for actual go modes.
-        
+
+        unlocked_skygates = rset.GameFlags.UNLOCKED_SKYGATES in \
+            self.settings.gameflags
+
         return (
             self.hasKeyItem(ItemID.PENDANT) and (
-                (self.extended_keys and self.canAccessEndOfTime()) or
+                (unlocked_skygates and self.canAccessEndOfTime()) or
                 self.earlyPendant or
                 self.canAccessTyranoLair() or
                 self.canAccessMagusCastle()
@@ -318,7 +347,9 @@ class Game:
         return self.hasKeyItem(ItemID.HERO_MEDAL)
 
     def canAccessFionasShrine(self):
-        if self.extended_keys:
+        vanilla_desert = \
+            rset.GameFlags.VANILLA_DESERT in self.settings.gameflags
+        if vanilla_desert:
             return (self.hasCharacter(CharID.ROBO) and
                     self.canAccessEndOfTime())
         else:

@@ -5,9 +5,9 @@ import random
 import pickle
 import sys
 import json
+import typing
 
 import charassign
-import enemyai
 import enemystats
 import itemdata
 import itemrando
@@ -30,6 +30,7 @@ import cosmetichacks
 import iceage
 import legacyofcyrus
 import mystery
+import vanillarando
 from vanillarando import vanillarando
 import epochfail
 import flashreduce
@@ -264,6 +265,7 @@ class Randomizer:
         script.strings[string_id] = new_ctstr
         script.modified_strings = True
 
+    @classmethod
     def __set_fair_racers(
             cls, ct_rom: CTRom,
             catalack_name: str,
@@ -305,7 +307,7 @@ class Randomizer:
         cmd = EC.assign_val_to_mem(0x7F, 0x7F01E0, 1)
         pos = script.get_object_start(0)
         pos = script.find_exact_command(cmd, pos)
-        pos += len(cmd)        
+        pos += len(cmd)
         script.delete_commands(pos, 5)
 
 
@@ -430,34 +432,44 @@ class Randomizer:
             'Unlock Porre Mayor (Porre Elder)'
         )
 
+        item_db[IID.SUN_STONE].set_desc_from_str(
+            'Give to Melchior after King\'s Trial'
+        )
+
         medal_desc = item_db[IID.HERO_MEDAL].get_desc_as_str()
         medal_desc += ' (Frog\'s Chest)'
         item_db[IID.HERO_MEDAL].set_desc_from_str(medal_desc)
 
-        if self.settings.game_mode == rset.GameMode.VANILLA_RANDO or \
-           rset.GameFlags.USE_EXTENDED_KEYS in self.settings.gameflags:
-            item_db[IID.C_TRIGGER].set_desc_from_str(
-                'Go DthPeak (KeeperDome), Bekkler'
-            )
-            item_db[IID.TOOLS].set_desc_from_str(
-                'Repair Ruins (Choras Cafe)'
-            )
+        gameflags = self.settings.gameflags
+        GF = rset.GameFlags
+
+        if GF.UNLOCKED_SKYGATES in gameflags:
             item_db[IID.JETSOFTIME].set_desc_from_str(
                 'Upgrade Epoch (Blackbird)'
             )
-            item_db[IID.SEED].set_desc_from_str(
-                'Give to Doan after CPU (Arris)'
+        if GF.ADD_BEKKLER_SPOT in gameflags:
+            item_db[IID.C_TRIGGER].set_desc_from_str(
+                'Go DthPeak (KeeperDome), Bekkler'
             )
-            item_db[IID.BIKE_KEY].set_desc_from_str(
-                'Walk Lab32 + RaceLog Box'
-            )
-            item_db[IID.SUN_STONE].set_desc_from_str(
-                'Give to Melchior after King\'s Trial'
+        if GF.RESTORE_TOOLS in gameflags:
+            item_db[IID.TOOLS].set_desc_from_str(
+                'Repair Ruins (Choras Cafe)'
             )
         else:
             grandleon_desc = item_db[IID.MASAMUNE_2].get_desc_as_str()
             grandleon_desc += ' (Tools)'
             item_db[IID.MASAMUNE_2].set_desc_from_str(grandleon_desc)
+
+        if GF.SPLIT_ARRIS_DOME in gameflags:
+            item_db[IID.SEED].set_desc_from_str(
+                'Give to Doan after CPU (Arris)'
+            )
+        if GF.RESTORE_JOHNNY_RACE in gameflags:
+            desc = 'Walk Lab32'
+            if GF.ADD_RACELOG_SPOT in gameflags:
+                desc += ' + RaceLog Box'
+
+            item_db[IID.BIKE_KEY].set_desc_from_str(desc)
 
     def __accelerate_carpenter_quest(self, ct_rom: CTRom):
         '''
@@ -953,11 +965,12 @@ class Randomizer:
             epochfail.apply_epoch_fail(self.out_rom, self.settings)
 
         if vanilla:
+            # Restore geno conveyor, 6 R-series, easier lavos script.
+            # Logic changes are all handled by flags now.
             vanillarando.restore_scripts(self.out_rom)
 
-        if mode == rset.GameMode.STANDARD and \
-           rset.GameFlags.USE_EXTENDED_KEYS in self.settings.gameflags:
-            vanillarando.apply_vanilla_keys_scripts(self.out_rom)
+        self.__apply_logic_tweaks_to_ctrom(self.settings, self.config,
+                                           self.out_rom)
 
         if rset.GameFlags.UNLOCKED_MAGIC in self.settings.gameflags:
             fastmagic.add_tracker_hook(self.out_rom)
@@ -1062,6 +1075,7 @@ class Randomizer:
             self.write_settings_spoilers(outfile)
             self.write_tab_spoilers(outfile)
             self.write_consumable_spoilers(outfile)
+            self.write_objective_spoilers(outfile)
             self.write_key_item_spoilers(outfile)
             self.write_boss_rando_spoilers(outfile)
             self.write_character_spoilers(outfile)
@@ -1162,8 +1176,8 @@ class Randomizer:
             self.config.speed_tab_amt
         ]
 
-        for i in range(len(tab_names)):
-            file_object.write(f'{tab_names[i]}: +{tab_magnitudes[i]}\n')
+        for name, magnitude in zip(tab_names, tab_magnitudes):
+            file_object.write(f'{name}: +{magnitude}\n')
 
         file_object.write('\n')
 
@@ -1187,7 +1201,7 @@ class Randomizer:
             self.settings, self.config
         )
         file_object.write(spheres + '\n')
-
+   
     def write_character_spoilers(self, file_object):
         pcstats = self.config.pcstats
         char_assign = self.config.char_assign_dict
@@ -1429,6 +1443,100 @@ class Randomizer:
 
         file_object.write('\n')
 
+    def write_objective_spoilers(self, file_object: typing.TextIO):
+        if rset.GameFlags.BUCKET_LIST not in self.settings.gameflags:
+            return
+
+        file_object.write("Objectives\n")
+        file_object.write("----------\n")
+
+        bset = self.settings.bucket_settings
+
+        reward_str = "unlock the bucket"
+        if bset.objectives_win:
+            reward_str = "win the game"
+        file_object.write(f"Complete {bset.num_objectives_needed} to"
+                          f"{reward_str}.\n")
+
+        if bset.disable_other_go_modes:
+            file_object.write("Other go modes are DISABLED.\n\n")
+
+        num_objectives = self.settings.bucket_settings.num_objectives
+        for ind, objective in enumerate(self.config.objectives):
+            if ind >= num_objectives:
+                break
+
+            file_object.write(f'Objective {ind+1}: {objective.desc}\n')
+
+        file_object.write('\n')
+
+    @classmethod
+    def __apply_logic_tweaks_to_config(cls, settings: rset.Settings,
+                                       config: cfg.RandoConfig):
+        flags = settings.gameflags
+        GF = rset.GameFlags
+
+        if settings.game_mode == rset.GameMode.STANDARD:
+            if GF.ADD_SUNKEEP_SPOT in flags:
+                vanillarando.add_sunstone_spot_to_config(config)
+
+            if GF.ADD_BEKKLER_SPOT in flags:
+                vanillarando.add_vanilla_clone_check_to_config(config)
+
+            if GF.ADD_CYRUS_SPOT in flags:
+                vanillarando.restore_cyrus_grave_check_to_config(config)
+
+            if GF.ADD_OZZIE_SPOT in flags:
+                vanillarando.add_check_to_ozzies_fort_in_config(config)
+
+            if GF.SPLIT_ARRIS_DOME in flags:
+                vanillarando.add_arris_food_locker_check_to_config(config)
+
+            if GF.ADD_RACELOG_SPOT in flags:
+                vanillarando.add_racelog_chest_to_config(config)
+
+    @classmethod
+    def __apply_logic_tweaks_to_ctrom(cls, settings: rset.Settings,
+                                      config: cfg.RandoConfig,
+                                      ct_rom: CTRom):
+        flags = settings.gameflags
+        mode = settings.game_mode
+        GF = rset.GameFlags
+        GM = rset.GameMode
+
+        if mode == GM.STANDARD:
+            if GF.UNLOCKED_SKYGATES in flags:
+                vanillarando.unlock_skyways(ct_rom)
+
+            if GF.ADD_SUNKEEP_SPOT in flags:
+                vanillarando.split_sunstone_quest(ct_rom)
+
+            if GF.ADD_BEKKLER_SPOT in flags:
+                vanillarando.add_vanilla_clone_check_scripts(ct_rom)
+
+            if GF.RESTORE_TOOLS in flags:
+                vanillarando.restore_tools_to_carpenter_script(ct_rom)
+
+            if GF.ADD_CYRUS_SPOT in flags:
+                vanillarando.restore_cyrus_grave_script(ct_rom)
+
+            if GF.ADD_OZZIE_SPOT in flags:
+                vanillarando.add_check_to_ozzies_fort_script(ct_rom)
+
+            if GF.RESTORE_JOHNNY_RACE in flags:
+                vanillarando.restore_johnny_race(ct_rom)
+
+            if GF.SPLIT_ARRIS_DOME in flags:
+                vanillarando.split_arris_dome(ct_rom)
+
+            if GF.VANILLA_ROBO_RIBBON in flags:
+                vanillarando.restore_ribbon_boost_atropos(
+                    ct_rom, config.boss_assign_dict
+            )
+
+            if GF.VANILLA_DESERT in flags:
+                vanillarando.revert_sunken_desert_lock(ct_rom)
+
     # Because switching logic is a feature now, we need a settings object.
     # Ugly.  BETA_LOGIC flag is gone now, but keeping it as-is in case of
     # logic changes to test.
@@ -1469,8 +1577,10 @@ class Randomizer:
     @classmethod
     def __apply_settings_patches(cls, ctrom: CTRom,
                                  settings: rset.Settings):
-        '''Apply patches to a vanilla ctrom based on randomizer settings.  '''
-        '''These are patches not handled by writing the config.'''
+        '''
+        Apply patches to a vanilla ctrom based on randomizer settings.
+        These are patches not handled by writing the config.
+        '''
 
         rom_data = ctrom.rom_data
         flags = settings.gameflags
@@ -1693,9 +1803,8 @@ class Randomizer:
             config.enemy_sprite_dict[magus_id] = magus_nc_sprite
             config.enemy_dict[magus_id] = magus_nc_stats
 
-
-            if rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
-                vanillarando.apply_vanilla_keys_to_config(config)
+            # Apply the experimental logic tweaks in the config
+            cls.__apply_logic_tweaks_to_config(settings, config)
 
             # Get hard versions of config items if needed.
             # We're done with the rom at this point, so it's OK to patch

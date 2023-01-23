@@ -2233,30 +2233,11 @@ class RandoGUI:
             'available if Frog is among the starters.'
         )
 
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Epoch Fail (ef)',
-            variable=self.flag_dict[GameFlags.EPOCH_FAIL]
-        )
-        checkbox.pack(anchor=tk.W)
-
         CreateToolTip(
             checkbox,
             'Players start without wings on the '
             'Epoch.  The \'Jets of Time\' can be obtained and turned in '
             'to Dalton in the Snail Stop to upgrade the Epoch.'
-        )
-
-        checkbox = tk.Checkbutton(
-            frame,
-            text='Use Extended Key Items',
-            variable=self.flag_dict[GameFlags.USE_EXTENDED_KEYS]
-        )
-        checkbox.pack(anchor=tk.W)
-
-        CreateToolTip(
-            checkbox,
-            'Use VanillaRando Key Item changes.'
         )
 
         checkbox = tk.Checkbutton(
@@ -2271,6 +2252,127 @@ class RandoGUI:
             checkbox,
             'Allow for objectives to control bucket activation.'
         )
+
+        plus_ki_flags = [
+            GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS
+        ]
+
+        plus_spot_flags = [
+            GameFlags.ADD_BEKKLER_SPOT, GameFlags.ADD_OZZIE_SPOT,
+            GameFlags.ADD_RACELOG_SPOT, GameFlags.VANILLA_ROBO_RIBBON,
+            GameFlags.ADD_CYRUS_SPOT
+        ]
+
+        ki_neutral_flags = [
+            GameFlags.UNLOCKED_SKYGATES, GameFlags.ADD_SUNKEEP_SPOT,
+            GameFlags.SPLIT_ARRIS_DOME, GameFlags.VANILLA_DESERT
+        ]
+
+        flag_names = {
+            GameFlags.UNLOCKED_SKYGATES: 'Unlocked Skygates',
+            GameFlags.ADD_SUNKEEP_SPOT: 'Add Sun Keep Spot',
+            GameFlags.ADD_BEKKLER_SPOT: 'Add Bekkler Spot',
+            GameFlags.ADD_CYRUS_SPOT: 'Add Cyrus Grave Spot',
+            GameFlags.RESTORE_TOOLS: 'Restore Tools',
+            GameFlags.ADD_OZZIE_SPOT: 'Add Ozzie\'s Fort Spot',
+            GameFlags.RESTORE_JOHNNY_RACE: 'Restore Johnny Race',
+            GameFlags.ADD_RACELOG_SPOT: 'Add Race Log Spot',
+            GameFlags.SPLIT_ARRIS_DOME: 'Split Arris Dome',
+            GameFlags.VANILLA_ROBO_RIBBON: 'Vanilla Robo Ribbon',
+            GameFlags.VANILLA_DESERT: 'Vanilla Desert'
+        }
+        tooltip_text = {
+            GameFlags.UNLOCKED_SKYGATES: (
+                'Skygates are open as soon as the Dark Ages are reached. '
+                'If Epoch Fail is selected, also moves the Jets turn-in to '
+                'The Blackbird Dock'
+            ),
+            GameFlags.ADD_SUNKEEP_SPOT: (
+                'The Moon Stone will charge into a random item, and the Sun '
+                'Stone can be found independently.'
+            ),
+            GameFlags.ADD_BEKKLER_SPOT: (
+                'After the C.Trigger is obtained, Bekkler will allow you to '
+                'play the vanilla Clone game for random Key Item.'
+            ),
+            GameFlags.ADD_CYRUS_SPOT: (
+                'Interacting with Cyrus\'s grave with Frog will yield a KI '
+                'instead of a stat boost'
+            ),
+            GameFlags.RESTORE_TOOLS: (
+                'Adds the Tools as a KI, and the Tools are required to fix '
+                'the Northern Ruins.'
+            ),
+            GameFlags.ADD_OZZIE_SPOT: (
+                'Adds a KI as a reward for defeating Ozzie in Ozzie\'s Fort'
+            ),
+            GameFlags.RESTORE_JOHNNY_RACE: (
+                'Adds the Gate Key as a KI which can be used by Crono to '
+                'race Johnny'
+            ),
+            GameFlags.ADD_RACELOG_SPOT: (
+                'Adds a KI in the Lab32 Race Log chest.'
+            ),
+            GameFlags.SPLIT_ARRIS_DOME: (
+                'Adds a KI as a reward for interacting with the corpse in '
+                'Arris Dome Food Locker.  Adds the Seed as a KI.  Changes the '
+                'normal Doan KI reward to additionally require the Seed.'
+            ),
+            GameFlags.VANILLA_ROBO_RIBBON: (
+                'The Robo Ribbon is removed from the KI pool.  Instead, a '
+                'permanent stat boost of +10 Mdef and +3 speed is rewarded '
+                'when the Geno Dome is completed.'
+            ),
+            GameFlags.VANILLA_DESERT: (
+                'The Desert begins locked and is only unlocked by talking to '
+                'the plant lady in Zeal palace.'
+            ),
+        }
+
+        def gridify(frame: tk.Frame, flags: list):
+            row, col = 0, 0
+            for flag in flags:
+                checkbox = tk.Checkbutton(
+                    frame,
+                    text=flag_names[flag],
+                    variable=self.flag_dict[flag],
+                    width=20,
+                    anchor=tk.W
+                )
+                CreateToolTip(checkbox, text=tooltip_text[flag])
+                checkbox.grid(row=row, column=col, sticky=tk.W)
+                col += 1
+                if col == 2:
+                    col = 0
+                    row += 1
+
+        tk.Label(frame, text='Logic Tweaks').pack(anchor=tk.W)
+        logic_tweak_frame = tk.Frame(frame)
+
+        label = tk.Label(logic_tweak_frame, text='Flags that Add a KI:')
+        label.pack(anchor=tk.W)
+        CreateToolTip(
+            label,
+            'For each of these flags which are chosen, you MUST also select a '
+            'flag which adds a spot.'
+        )
+        check_frame = tk.Frame(logic_tweak_frame)
+        gridify(check_frame, plus_ki_flags)
+        check_frame.pack(anchor=tk.W, padx=10)
+
+        label = tk.Label(logic_tweak_frame, text='Flags that Add a KI Spot:')
+        label.pack(anchor=tk.W)
+        check_frame = tk.Frame(logic_tweak_frame)
+        gridify(check_frame, plus_spot_flags)
+        check_frame.pack(anchor=tk.W, padx=10)
+
+        label = tk.Label(logic_tweak_frame, text='KI-count neutral Flags:')
+        label.pack(anchor=tk.W)
+        check_frame = tk.Frame(logic_tweak_frame)
+        gridify(check_frame, ki_neutral_flags)
+        check_frame.pack(anchor=tk.W, padx=10)
+
+        logic_tweak_frame.pack(anchor=tk.W, padx=10)
 
         return frame
 

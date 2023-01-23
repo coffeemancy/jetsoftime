@@ -478,9 +478,10 @@ def apply_epoch_fail(ct_rom: ctrom.CTRom, settings: rset.Settings):
         undo_epoch_relocation(ct_rom)
         restore_dactyls(ct_rom)
 
-        # Use the Dark Ages turn-in for Jets in Vanilla
+        # Use the Dark Ages turn-in for Jets in Vanilla or with unlocked
+        # skygates.
         if settings.game_mode == rset.GameMode.VANILLA_RANDO or \
-           rset.GameFlags.USE_EXTENDED_KEYS in settings.gameflags:
+           rset.GameFlags.UNLOCKED_SKYGATES in settings.gameflags:
             add_jets_turnin_to_blackbird_scaffolding(ct_rom)
         else:
             add_dalton_to_snail_stop(ct_rom)

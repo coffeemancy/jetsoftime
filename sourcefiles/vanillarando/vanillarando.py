@@ -11,37 +11,10 @@ import ctstrings
 import eventcommand
 import itemdata
 from maps import locationtypes
+import objectivetypes as obtypes  # giving spot -> battle command
 from treasures import treasuredata, treasuretypes
 
 import randoconfig as cfg
-
-
-def apply_vanilla_keys_scripts(ct_rom: ctrom.CTRom):
-    '''
-    Apply only the parts of VanillaRando that have to do with Key items.
-    '''
-    restore_ribbon_boost(ct_rom)
-    add_vanilla_clone_check_scripts(ct_rom)
-    restore_cyrus_grave_script(ct_rom)
-    restore_tools_to_carpenter_script(ct_rom)
-    split_arris_dome(ct_rom)
-    revert_sunken_desert_lock(ct_rom)
-    unlock_skyways(ct_rom)
-    add_check_to_ozzies_fort_script(ct_rom)
-    restore_johnny_race(ct_rom)
-    split_sunstone_quest(ct_rom)
-
-
-def apply_vanilla_keys_to_config(config: cfg.RandoConfig):
-    '''
-    Only update the config with vanilla KI data.
-    '''
-    add_vanilla_clone_check_to_config(config)
-    restore_cyrus_grave_check_to_config(config)
-    add_arris_food_locker_check_to_config(config)
-    add_check_to_ozzies_fort_in_config(config)
-    add_racelog_chest_to_config(config)
-    add_sunstone_spot_to_config(config)
 
 
 def add_sunstone_spot_to_config(config: cfg.RandoConfig):
@@ -60,9 +33,7 @@ def add_sunstone_spot_to_config(config: cfg.RandoConfig):
 
 
 def split_sunstone_quest(ct_rom: ctrom.CTRom):
-    '''
-    Have the Moonstone charge into a random item.
-    '''
+    '''Have the Moonstone charge into a random item.'''
 
     script = ct_rom.script_manager.get_script(ctenums.LocID.SUN_KEEP_2300)
 
@@ -475,7 +446,10 @@ def split_arris_dome(ct_rom: ctrom.CTRom):
 
 
 def restore_scripts(ct_rom: ctrom.CTRom):
-    apply_vanilla_keys_scripts(ct_rom)
+    '''
+    Apply parts of VanillaRando mode that are not covered by the various
+    logic tweak flags.
+    '''
 
     restore_geno_dome_conveyor(ct_rom)
     restore_r_series(ct_rom)
@@ -505,26 +479,48 @@ def restore_tools_to_carpenter_script(ct_rom: ctrom.CTRom):
     ct_rom.script_manager.set_script(script, ctenums.LocID.CHORAS_CAFE)
 
 
-def restore_ribbon_boost(ct_rom: ctrom.CTRom):
+def restore_ribbon_boost_atropos(
+        ct_rom: ctrom.CTRom,
+        boss_assign_dict: dict[rotypes.BossSpotID, rotypes.BossID]
+        ):
     '''
-    Gives Robo +3 speed and +10 mdef after the Geno Dome.
+    Give Robo +3 speed and +10 mdef after fighting AtroposXR.
+    If AtroposXR is missing from the seed, place the boost after Geno Dome.
     '''
-    script = ct_rom.script_manager.get_script(
-        ctenums.LocID.GENO_DOME_MAINFRAME
-    )
 
+    atropos_spots = [
+        (spot, boss_id) for (spot, boss_id) in boss_assign_dict.items()
+        if boss_id == rotypes.BossID.ATROPOS_XR and
+        spot != rotypes.BossSpotID.OCEAN_PALACE_TWIN_GOLEM
+    ]
+
+    if atropos_spots:
+        spot = atropos_spots[0][0]
+        battle_loc = obtypes.get_battle_loc_from_spot(spot)
+
+        script = ct_rom.script_manager.get_script(battle_loc.loc_id)
+        pos = script.get_function_start(battle_loc.obj_id, battle_loc.fn_id)
+        end = script.get_function_end(battle_loc.obj_id, battle_loc.fn_id)
+
+        for _ in range(battle_loc.battle_num+1):
+            pos, cmd = script.find_command([0xD8], pos, end)
+            pos += len(cmd)
+
+        str_id = script.add_py_string(
+            'Found AtroposXR\'s ribbon!{line break}'
+            '{robo}\'s Speed+3 and Mdef+10{null}'
+        )
+
+        func = get_robo_ribbon_boost_function(str_id)
+        script.insert_commands(func.get_bytearray(), pos)
+    else:
+        restore_ribbon_boost_geno(ct_rom)
+
+
+def get_robo_ribbon_boost_function(ribbon_str_id: int) -> ctrom.ctevent.EF:
     EC = ctrom.ctevent.EC
     EF = ctrom.ctevent.EF
     OP = eventcommand.Operation
-
-    ribbon_str = \
-        'Found AtroposXR\'s ribbon!{line break}' \
-        '{robo}\'s Speed+3 and Mdef+10{null}'
-
-    ribbon_ct_str = ctstrings.CTString.from_str(ribbon_str)
-    ribbon_ct_str.compress()
-
-    ribbon_str_id = script.add_string(ribbon_ct_str)
 
     func = EF()
     (
@@ -551,6 +547,24 @@ def restore_ribbon_boost(ct_rom: ctrom.CTRom):
         .add(EC.assign_mem_to_mem(0x7F021C, 0x7E2701, 1))
         .add(EC.text_box(ribbon_str_id))
     )
+
+    return func
+
+
+def restore_ribbon_boost_geno(ct_rom: ctrom.CTRom):
+    '''
+    Gives Robo +3 speed and +10 mdef after the Geno Dome.
+    '''
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.GENO_DOME_MAINFRAME
+    )
+
+    ribbon_str_id = script.add_py_string(
+        'Found AtroposXR\'s ribbon!{line break}'
+        '{robo}\'s Speed+3 and Mdef+10{null}'
+    )
+
+    func = get_robo_ribbon_boost_function(ribbon_str_id)
 
     st = script.get_function_start(1, 4)
     end = script.get_function_end(1, 4)
@@ -1036,7 +1050,9 @@ def get_vanilla_treasure_tiers() -> dict[treasuredata.TreasureLocTier,
 
 
 def fix_config(config: cfg.RandoConfig):
-    apply_vanilla_keys_to_config(config)
+    '''
+    Update parts of the config that are not covered by the logic tweak flags.
+    '''
 
     fix_item_data(config)
     fix_required_tp(config)  # Do before scaling.

@@ -59,8 +59,12 @@ class RandomRejectionFiller:
                                                           max_game, [])
 
             if len(available_locations) < len(key_items_list):
+                print(available_locations)
+                print(key_items_list)
                 raise ImpossibleConfigurationException(
-                    'More key items than locations'
+                    'More key items than locations: '
+                    f'{len(available_locations)} locs, '
+                    f'{len(key_items_list)} KIs'
                 )
 
             random.shuffle(available_locations)
@@ -712,7 +716,9 @@ def get_proof_string(
 
     def can_unlock_flight(game: logictypes.Game):
         IID = ctenums.ItemID
-        if game.extended_keys:
+        unlocked_skygates = \
+            rset.GameFlags.UNLOCKED_SKYGATES in game.settings.gameflags
+        if unlocked_skygates:
             return (game.hasKeyItem(IID.JETSOFTIME) and
                     game.canAccessEndOfTime())
         else:
