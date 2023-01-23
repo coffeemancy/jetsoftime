@@ -139,6 +139,7 @@ class Event:
 
     # Put the given event back into the rom attached to a specific location.
     # Returns the start address of where the data is written
+    @staticmethod
     def write_to_rom_fs(fsrom: FS, loc_id: int,
                         script: Event) -> int:
         # We're going to write the strings immediately before the event data.
@@ -219,13 +220,14 @@ class Event:
         fsrom.write(to_little_endian(to_rom_ptr(script_ptr), 3))
 
     # End write_to_rom_fs
-
+    @staticmethod
     def from_rom_location(rom: bytearray, loc_id: int) -> Event:
         ''' Read an event from the specified game location. '''
 
         ptr = get_loc_event_ptr(rom, loc_id)
         return Event.from_rom(rom, ptr)
 
+    @staticmethod
     def from_flux(filename: str):
         '''Reads a .flux file and loads it into an Event'''
 
@@ -307,7 +309,8 @@ class Event:
 
         return ret_script
 
-    def from_rom(rom: bytearray, ptr: int) -> Event:
+    @classmethod
+    def from_rom(cls, rom: bytearray, ptr: int) -> Event:
         ret_event = Event()
 
         event = decompress(rom, ptr)
@@ -401,7 +404,8 @@ class Event:
     # Using the FS object's getbuffer() gives a memoryview which doesn't
     # support bytearray's .index method.  This is a stupid short method to
     # extract a string starting at a given address.
-    def __get_ct_string(rom: bytearray, start_ptr: int) -> bytearray:
+    @classmethod
+    def __get_ct_string(cls, rom: bytearray, start_ptr: int) -> bytearray:
         end_ptr = start_ptr
 
         while(rom[end_ptr] != 0 and end_ptr < len(rom)):

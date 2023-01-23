@@ -1,4 +1,7 @@
 from enum import IntEnum, auto
+from typing import TypeVar, Type
+
+StrIntEnumT = TypeVar('StrIntEnumT', bound='StrIntEnum')
 
 
 class StrIntEnum(IntEnum):
@@ -9,12 +12,12 @@ class StrIntEnum(IntEnum):
         return x
 
     @classmethod
-    def str_dict(cls) -> dict:
-        return dict((x, str(x)) for x in list(cls))
+    def str_dict(cls: Type[StrIntEnumT]) -> dict[StrIntEnumT, str]:
+        return dict((x, str(x)) for x in cls)
 
     @classmethod
-    def inv_str_dict(cls) -> dict:
-        return dict((str(x), x) for x in list(cls))
+    def inv_str_dict(cls: Type[StrIntEnumT]) -> dict[str, StrIntEnumT]:
+        return dict((str(x), x) for x in cls)
 
 
 class CharID(StrIntEnum):
@@ -225,7 +228,7 @@ class LocID(StrIntEnum):
 
     @classmethod
     def get_one_spot_boss_locations(cls):
-        return[
+        return [
             cls.CAVE_OF_MASAMUNE,
             cls.SUNKEN_DESERT_DEVOURER,
             cls.MAGUS_CASTLE_SLASH,
@@ -245,7 +248,7 @@ class LocID(StrIntEnum):
 
     @classmethod
     def get_two_spot_boss_locations(cls):
-        return[
+        return [
             cls.BLACK_OMEN_ELDER_SPAWN,
             cls.ZENAN_BRIDGE_BOSS,
             cls.BLACK_OMEN_GIGA_MUTANT,
@@ -499,6 +502,7 @@ class ItemID(StrIntEnum):
                 cls.PENDANT, cls.JERKY, cls.MOON_STONE,
                 cls.PRISMSHARD, cls.MASAMUNE_2, cls.CLONE,
                 cls.C_TRIGGER, cls.HERO_MEDAL, cls.ROBORIBBON]
+
 
 # Extracted from Anguirel's Chronosanity code
 # Non-Chronosanity chests checked vs frankin's (?) spreadsheet at
@@ -1360,8 +1364,9 @@ class StatusEffect(StrIntEnum):
     POISON = 0x40
     STOP = 0x80
 
-#structure of button bytes at 7e00{f6,f8,fa}, respects player rebound controls
-#order is the order of the array in which the button mappings are stored
+
+# structure of button bytes at 7e00{f6,f8,fa}, respects player rebound controls
+# order is the order of the array in which the button mappings are stored
 class ActionMap(StrIntEnum):
     CONFIRM = 0x80
     CANCEL = 0x08
@@ -1372,7 +1377,9 @@ class ActionMap(StrIntEnum):
     PG_UP = 0x10
     PG_DN = 0x20
 
-#structure of button bytes at 7e00{f0,f2,f4}, does not respect player rebound controls
+
+# structure of button bytes at 7e00{f0,f2,f4}, does not respect player
+# rebound controls
 class InputMap(StrIntEnum):
     A_BUTTON = 0x80
     X_BUTTON = 0x40
@@ -1381,4 +1388,4 @@ class InputMap(StrIntEnum):
     B_BUTTON = 0x08
     Y_BUTTON = 0x04
     SELECT_BUTTON = 0x02
-    #START_BUTTON = 0x01 # Not allowed for rebinding controls
+    # START_BUTTON = 0x01 # Not allowed for rebinding controls
