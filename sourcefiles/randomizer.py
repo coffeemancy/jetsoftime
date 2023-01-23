@@ -122,7 +122,7 @@ class Randomizer:
         tech_db = self.config.tech_db
         # An alternate approach is to build the base config with the pickles
         # provided.  You just have to make sure to redump any time time that
-        # patch.ips or hard.ips change.  Below is how you would use pickles.
+        # base_patch.ips or hard.ips change.  Demo below.
         '''
         with open('./pickles/default_randoconfig.pickle', 'rb') as infile:
             self.config = pickle.load(infile)
@@ -852,7 +852,7 @@ class Randomizer:
         self.out_rom = CTRom(self.base_ctrom.rom_data.getvalue(), True)
 
         # TODO:  Consider working some of the always-applied script changes
-        #        Into patch.ips to improve generation speed.
+        #        Into base_patch.ips to improve generation speed.
         self.__apply_basic_patches(self.out_rom, self.settings)
 
         self.__apply_settings_patches(self.out_rom, self.settings)
@@ -957,7 +957,7 @@ class Randomizer:
                                       ctenums.LocID.PROTO_DOME)
 
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
-        # rolled into patch.ips.
+        # rolled into base_patch.ips.
 
         prismshard.update_prismshard_quest(self.out_rom)
 
@@ -1201,7 +1201,7 @@ class Randomizer:
             self.settings, self.config
         )
         file_object.write(spheres + '\n')
-   
+
     def write_character_spoilers(self, file_object):
         pcstats = self.config.pcstats
         char_assign = self.config.char_assign_dict
@@ -1554,12 +1554,12 @@ class Randomizer:
             settings = rset.Settings.get_race_presets()
 
         # Apply the patches that always are applied for jets
-        # patch.ips makes sure that we have
+        # base_patch.ips makes sure that we have
         #   - Stats/stat growths for characters for CharManager
         #   - Tech data for TechDB
         #   - Item data (including prices) for shops
         # patch_codebase.txt may not be needed
-        rom_data.patch_ips_file('./patch.ips')
+        rom_data.patch_ips_file('./patches/base_patch.ips')
 
         # 99.9% sure this patch is redundant now
         rom_data.patch_txt_file('./patches/patch_codebase.txt')
@@ -1720,7 +1720,7 @@ class Randomizer:
     @classmethod
     def dump_default_config(cls, ct_vanilla: bytearray):
         '''Turn vanilla ct rom into default objects for a config.
-        Should run whenever a big patch (patch.ips, hard.ips) changes.'''
+        Should run whenever a big patch (base_patch.ips, hard.ips) changes.'''
         ct_rom = CTRom(ct_vanilla, ignore_checksum=False)
         cls.__apply_basic_patches(ct_rom)
 
@@ -1751,13 +1751,14 @@ class Randomizer:
           - shop_manager: This shouldn't be strictly needed, but at present
                           ShopManager objects read the initial shop data from
                           the rom.
-          - price_manager: patch.ips changes the default prices.  Potentially
-                           the difficulty patch could too.
-          - char_manager: patch.ips changes character stat growths and base
-                          stats.
-          - tech_db: patch.ips changes the basic techs (i.e. Antilife)
-          - enemy_atk_db: Various enemy techs are changed by patch.ips.
-          - enemy_ai_db: Various enemy attack scripts are changed by patch.ips.
+          - price_manager: base_patch.ips changes the default prices.
+                           Potentially the difficulty patch could too.
+          - char_manager: base_patch.ips changes character stat growths and
+                          base stats.
+          - tech_db: base_patch.ips changes the basic techs (i.e. Antilife)
+          - enemy_atk_db: Various enemy techs are changed by base_patch.ips.
+          - enemy_ai_db: Various enemy attack scripts are changed by
+                         base_patch.ips.
         '''
 
         # It's a little wasteful copying the rom data to partially patch it
@@ -1791,7 +1792,7 @@ class Randomizer:
             van_config.update_from_ct_rom(van_ct_rom)
             config.update_from_ct_rom(ct_rom)
 
-            # patch.ips apparently writes marle into the magus spot with
+            # base_patch.ips apparently writes marle into the magus spot with
             # custom ai to heal and cast ice2.  It's cool, but we want the
             # vanilla north cape magus.
             magus_id = ctenums.EnemyID.MAGUS_NORTH_CAPE
@@ -1875,7 +1876,8 @@ class Randomizer:
             power_byte = tackle_id*tech_db.effect_size + 9
             tech_db.effects[power_byte] = 24
 
-            # Now, the flag keeps tackle effects on (do nothing vs patch.ips)
+            # Now, the flag keeps tackle effects on
+            # (do nothing vs base_patch.ips)
             # If the flag is not present, reset the on-hit byte.
             if rset.GameFlags.TACKLE_EFFECTS_ON not in settings.gameflags:
                 on_hit_byte = tackle_id*tech_db.effect_size + 8
