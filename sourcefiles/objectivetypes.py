@@ -171,6 +171,9 @@ _spot_battle_dict: dict[BSID, BattleLoc] = {
     BSID.ZENAN_BRIDGE: BattleLoc(ctenums.LocID.ZENAN_BRIDGE_BOSS, 1, 0, 1)
 }
 
+def get_battle_loc_from_spot(spot: BSID):
+    return _spot_battle_dict.get(spot, None)
+
 
 class BattleObjective(Objective):
     '''
