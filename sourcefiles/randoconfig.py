@@ -62,8 +62,8 @@ class RandoConfig:
             # stuff that's getting replaced
             shop_manager: shoptypes.ShopManager = None,
             boss_rank_dict: dict[rotypes.BossID, int] = None,
-            key_item_locations: typing.Container[logictypes.Location] = None,
-            objectives: typing.Container[obtypes.Objective] = None
+            key_item_locations: list[logictypes.Location] = None,
+            objectives: list[obtypes.Objective] = None
     ):
         '''
         A RandoConfig consists of the following elements:
