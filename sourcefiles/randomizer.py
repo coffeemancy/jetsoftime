@@ -30,7 +30,6 @@ import cosmetichacks
 import iceage
 import legacyofcyrus
 import mystery
-import vanillarando
 from vanillarando import vanillarando
 import epochfail
 import flashreduce
@@ -119,7 +118,6 @@ class Randomizer:
             self.settings
         )
 
-        tech_db = self.config.tech_db
         # An alternate approach is to build the base config with the pickles
         # provided.  You just have to make sure to redump any time time that
         # base_patch.ips or hard.ips change.  Demo below.
@@ -1237,7 +1235,9 @@ class Randomizer:
                     f" assigned to {pcstats.get_character_assignment(pc_id)}"
                 )
             file_object.write('\n')
-            file_object.write(pcstats.pc_stat_dict[pc_id].__str__(self.config.item_db))
+            file_object.write(
+                pcstats.pc_stat_dict[pc_id].__str__(self.config.item_db)
+            )
 
             file_object.write('Tech Order:\n')
             for tech_num in range(8):
@@ -1455,7 +1455,7 @@ class Randomizer:
         reward_str = "unlock the bucket"
         if bset.objectives_win:
             reward_str = "win the game"
-        file_object.write(f"Complete {bset.num_objectives_needed} to"
+            file_object.write(f"Complete {bset.num_objectives_needed} to "
                           f"{reward_str}.\n")
 
         if bset.disable_other_go_modes:
