@@ -41,7 +41,7 @@ def write_item_prices_to_config(settings: rset.Settings,
         elif settings.shopprices == rset.ShopPrices.FREE:
             price = 0
 
-        config.itemdb[item].price = price
+        config.item_db[item].price = price
 
 
 def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
