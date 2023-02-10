@@ -798,6 +798,8 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
                 elif dup_duals and reassign[i] in set([0, 1, 2, 3, 4, 5]):
                     num_duals = 1
                     to_start_id = new_db.group_sizes[to_mg_ind]
+                    # Note:  We set all three combo techs to avoid issues
+                    #        looping through.  Just set some unlearnable.
                     if reassign[i] == 0:
                         # Cr-Cr X-strike (Crono Cross)
                         x_strike = old_db.get_tech(0x42)
@@ -810,6 +812,8 @@ def update_dual_techs(old_db, new_db, reassign, dup_duals):
 
                         reassign_tech(x_strike, [i, j], reassign)
                         new_db.set_tech(x_strike, to_start_id)
+                        new_db.set_tech(x_strike, to_start_id+1)
+                        new_db.set_tech(x_strike, to_start_id+2)
                     elif reassign[i] == 1:
                         # Ma-Ma Haste all
                         ha = get_mm_haste_all(old_db)
