@@ -450,8 +450,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 
     # Now it's safe to put the boss scaling ranked stats in
     if rset.GameFlags.BOSS_SCALE in settings.gameflags:
-        for boss_id in config.boss_rank:
-            rank = config.boss_rank[boss_id]
+        for boss_id in config.boss_rank_dict:
+            rank = config.boss_rank_dict[boss_id]
             stats = bossscaler.get_ranked_boss_stats(boss_id, rank, config)
             config.enemy_dict.update(stats)
 

@@ -139,15 +139,15 @@ def get_initial_hp_dict(settings: rset.Settings, config: cfg.RandoConfig):
         default_assignment = rotypes.get_default_boss_assignment()
         current_assignment = dict(config.boss_assign_dict)
 
-        for loc_id in default_assignment:
-            current_boss_id = current_assignment[loc_id]
+        for spot in settings.ro_settings.spots:
+            current_boss_id = current_assignment[spot]
 
-            if current_boss_id in config.boss_rank:
-                rank = config.boss_rank[current_boss_id]
+            if current_boss_id in config.boss_rank_dict:
+                rank = config.boss_rank_dict[current_boss_id]
             else:
                 rank = 0
 
-            orig_boss_id = default_assignment[loc_id]
+            orig_boss_id = default_assignment[spot]
             ranked_stats = bossscaler.get_ranked_boss_stats(
                 orig_boss_id, rank, config
             )
