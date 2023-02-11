@@ -254,14 +254,17 @@ def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
             "{line break}"
             "No Power.  Complete the Factory.{null}"
         )
-
-        recruit_anim = (
+        char_lock_func = (
             EF()
             .add_if_else(
                 locked_chars_cmd,
-                recruit_anim,
-                EF().add(EC.auto_text_box(string_ind)).add(EC.return_cmd()))
+                EF(),
+                EF().add(EC.auto_text_box(string_ind)).add(EC.return_cmd())
+            )
         )
+        # do the insertion this way so that the hanging else of
+        # char_lock func will point to the recruit anim
+        recruit_anim.insert_at_index(char_lock_func, 0)
 
     two_pc_recruit = (
         EF()
