@@ -823,7 +823,10 @@ class Randomizer:
         for character in config.char_assign_dict.values():
             character.write_to_ctrom(ctrom)
 
-        charassign.fix_cursed_recruit_spots(config, ctrom)
+        charassign.fix_cursed_recruit_spots(
+            config, ctrom,
+            rset.GameFlags.LOCKED_CHARS in self.settings.gameflags
+        )
 
         # Stats
         config.pcstats.write_to_ctrom(ctrom)
@@ -940,19 +943,11 @@ class Randomizer:
                                       ctenums.LocID.SPEKKIO)
 
         if locked_chars:
+            # Note: Proto Dome's lock is taken care of in charassign now.
             lc_dactyl_upper_event = \
                 Event.from_flux('./flux/lc_dactyl_upper.Flux')
             script_manager.set_script(lc_dactyl_upper_event,
                                       ctenums.LocID.DACTYL_NEST_UPPER)
-
-            # Note: This changes the Proto Dome script, but it does not change
-            #       which objects/functions have the char recruit data, so the
-            #       randomization doesn't break.  If a script does change that
-            #       data then self.config.char_assign_dict would change.
-            # TODO: Just do surgery on the script instead of loading flux.
-            lc_proto_dome_event = Event.from_flux('./flux/lc_proto_dome.Flux')
-            script_manager.set_script(lc_proto_dome_event,
-                                      ctenums.LocID.PROTO_DOME)
 
         # Proto fix, Mystic Mtn fix, and Lavos NG+ are candidates for being
         # rolled into base_patch.ips.

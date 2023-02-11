@@ -192,7 +192,8 @@ def assign_pc_to_manoria(ct_rom: ctrom.CTRom,
 
 
 def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
-                            pc_id: ctenums.CharID):
+                            pc_id: ctenums.CharID,
+                            locked_chars: bool = False):
     '''
     Set the proto dome's recruit to the given pc.
     '''
@@ -245,6 +246,23 @@ def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
     end = script.find_exact_command(last_anim_cmd, start) + len(last_anim_cmd)
     recruit_anim = EF.from_bytearray(script.data[start:end])
 
+    if locked_chars:
+        locked_chars_cmd = EC.if_mem_op_value(
+            0x7F0103, OP.BITWISE_AND_NONZERO, 0x40, 1, 0
+        )
+        string_ind = script.add_py_string(
+            "{line break}"
+            "No Power.  Complete the Factory.{null}"
+        )
+
+        recruit_anim = (
+            EF()
+            .add_if_else(
+                locked_chars_cmd,
+                recruit_anim,
+                EF().add(EC.auto_text_box(string_ind)).add(EC.return_cmd()))
+        )
+
     two_pc_recruit = (
         EF()
         .add(EC.party_follow())
@@ -267,7 +285,7 @@ def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
         .add(EC.set_explore_mode(True))
         .add(EC.switch_pcs())
     )
-    
+
     # Rewrite the actual recruitment part
     recruit_func = EF()
     (
@@ -302,7 +320,8 @@ def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
 
 def fix_cursed_recruit_spots(
         config: cfg.RandoConfig,
-        ct_rom: ctrom.CTRom
+        ct_rom: ctrom.CTRom,
+        locked_chars: bool = False
 ):
     manoria_char = config.char_assign_dict[ctenums.RecruitID.CATHEDRAL]\
         .held_char
@@ -310,4 +329,4 @@ def fix_cursed_recruit_spots(
         .held_char
 
     assign_pc_to_manoria(ct_rom, manoria_char)
-    assign_pc_to_proto_dome(ct_rom, proto_char)
+    assign_pc_to_proto_dome(ct_rom, proto_char, locked_chars)
