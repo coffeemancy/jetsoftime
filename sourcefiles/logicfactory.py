@@ -1323,6 +1323,9 @@ class LostWorldsGameConfig(GameConfig):
         self.charLocations = config.char_assign_dict
         GameConfig.__init__(self, settings, config)
 
+    def resolveExtraKeyItems(self):
+        pass
+
     def initGame(self):
         self.game = Game(self.settings, self.config)
 
