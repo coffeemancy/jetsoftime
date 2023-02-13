@@ -7,9 +7,11 @@ import ctenums
 import ctrom
 import ctstrings
 
-from cttypes import BinaryData, BinaryData, byte_prop, bytes_prop
+from cttypes import SizedBinaryData, byte_prop, bytes_prop
 
-T = typing.TypeVar('T')
+
+T = typing.TypeVar('T', bound=SizedBinaryData)
+
 
 class DamageFormula(ctenums.StrIntEnum):
     NONE = 0
@@ -77,15 +79,15 @@ class EffectType(ctenums.StrIntEnum):
     MULTIHIT = 8
 
 
-class ControlHeader(BinaryData):
+class ControlHeader(SizedBinaryData):
     '''
     A class for representing a tech's control header.
     '''
-    SIZE = 0xB
+    SIZE: int = 0xB
 
     is_physical = byte_prop(3, 0x04, ret_type=bool)
     is_magical = byte_prop(3, 0x02, ret_type=bool)
-    
+
     @classmethod
     def verify_effect_num(cls, eff_num: int):
         if not 0 <= eff_num < 3:
@@ -114,16 +116,18 @@ class ControlHeader(BinaryData):
 
         if bin(elem_byte).count('1') > 1:
             raise ValueError('A tech can only have one element set.')
-        elif bin(elem_byte).count('1') == 0:
+        if bin(elem_byte).count('1') == 0:
             return ctenums.Element.NONELEMENTAL
-        elif elem_byte & 0x80:
+        if elem_byte & 0x80:
             return ctenums.Element.LIGHTNING
-        elif elem_byte & 0x40:
+        if elem_byte & 0x40:
             return ctenums.Element.SHADOW
-        elif elem_byte & 0x20:
+        if elem_byte & 0x20:
             return ctenums.Element.ICE
-        elif elem_byte & 0x10:
+        if elem_byte & 0x10:
             return ctenums.Element.FIRE
+
+        raise ValueError("Invalid Element Byte")
 
     @element.setter
     def element(self, value: ctenums.Element):
@@ -140,7 +144,7 @@ class ControlHeader(BinaryData):
 
 
 class PCTechControlHeader(ControlHeader):
-    
+
     @classmethod
     def from_rom(cls: typing.Type[T], rom: bytes, record_id: int) -> T:
         data_st = int.from_bytes(rom[0x01CBA1:0x01CBA1+3], 'little')
@@ -181,7 +185,7 @@ class PCTechControlHeader(ControlHeader):
     battle_group_id = byte_prop(0, 0x7F)
 
 
-class EffectHeader(BinaryData):
+class EffectHeader(SizedBinaryData):
     '''
     A class for representing an effect header.  Effect headers can be used for
     techs and basic attacks.
@@ -191,14 +195,14 @@ class EffectHeader(BinaryData):
     damage_formula_id = byte_prop(5, 0xFF, ret_type=DamageFormula)
     effect_type = byte_prop(0, 0xFF, ret_type=EffectType)
     power = byte_prop(9, 0xFF)
-    
+
     @property
     def heal_power(self) -> int:
         if self.effect_type == EffectType.HEALING:
             return self[1]
-        elif self.effect_type == EffectType.HEALSTATUS:
+        if self.effect_type == EffectType.HEALSTATUS:
             return self[1] & 0x1F
-        
+
         raise ValueError('Effect Type does not support healing')
 
     @heal_power.setter
@@ -217,8 +221,7 @@ class EffectHeader(BinaryData):
         if self.effect_type == EffectType.HEALSTATUS:
             return bool(self[1] & 0x80)
 
-        else:
-            return False
+        return False
 
     @will_revive.setter
     def will_revive(self, val: bool):
@@ -257,7 +260,7 @@ class PCTechEffectHeader(EffectHeader):
     DATA_PTR = 0x01BF96
 
 
-class TargetData(BinaryData):
+class TargetData(SizedBinaryData):
     SIZE = 2
     pass
 
@@ -266,7 +269,7 @@ class PCTechTargetData(TargetData):
     DATA_PTR = 0x01C25A
 
 
-class TechGfxHeader(BinaryData):
+class TechGfxHeader(SizedBinaryData):
     SIZE = 7
 
     script_id = byte_prop(0, 0xFF)
@@ -277,13 +280,12 @@ class PCTechGfxHeader(TechGfxHeader):
     DATA_PTR = 0x0145BC
 
 
-class PCTechBattleGroup(BinaryData):
+class PCTechBattleGroup(SizedBinaryData):
     SIZE = 3
     DATA_PTR = 0x01CBAE
 
     @classmethod
-    def validate_data(cls, data: bytes) -> bool:
-        print('pctbg here')
+    def validate_data(cls: typing.Type[T], data: T):
         if 0xFF in data:
             last_pos = data.index(0xFF)
         else:
@@ -298,7 +300,7 @@ class PCTechBattleGroup(BinaryData):
                 raise ValueError('PC indices must be in range(8)')
 
     @classmethod
-    def from_charids(cls: typing.Type[T], char_ids: list[ctenums.CharID]):
+    def from_charids(cls, char_ids: list[ctenums.CharID]):
 
         data = cls.char_ids_to_bytes(char_ids)
         return cls(data)
@@ -329,11 +331,11 @@ class PCTechBattleGroup(BinaryData):
         return 3 - self.count(0xFF)
 
 
-class PCTechLearnRequirements(BinaryData):
+class PCTechLearnRequirements(SizedBinaryData):
     SIZE = 3
 
     @classmethod
-    def validate_data(cls, data: bytes) -> bool:
+    def validate_data(cls, data: PCTechLearnRequirements):
         if 0xFF in data:
             last_pos = data.index(0xFF)
         else:
@@ -375,9 +377,9 @@ class PlayerTech:
             self,
             battle_group: PCTechBattleGroup,
             control_header: PCTechControlHeader,
-            effect_headers: typing.Iterable[PCTechEffectHeader],
-            effect_mps: typing.Iterable[int],
-            menu_mp_reqs: typing.Iterable[int],
+            effect_headers: list[PCTechEffectHeader],
+            effect_mps: list[int],
+            menu_mp_reqs: list[int],
             graphics_header: PCTechGfxHeader,
             target_data: PCTechTargetData,
             learn_reqs: PCTechLearnRequirements,
@@ -394,7 +396,7 @@ class PlayerTech:
 
         self.effect_headers = []
         self.effect_mps = []
-        
+
         # Make sure that everything is sized correctly.
         num_pcs = battle_group.number_of_pcs
         if len(effect_headers) != num_pcs:
@@ -424,30 +426,30 @@ class PlayerTech:
         if not self.is_single_tech:
             raise TypeError("Combo techs don't need magic to learn")
 
-        return self.control_header.data[0] & 0x80
+        return self.control_header[0] & 0x80
 
     @needs_magic_to_learn.setter
     def needs_magic_to_learn(self, val: bool):
         if not self.is_single_tech:
             raise TypeError("Combo techs don't need magic to learn")
 
-        self.control_header.data[0] &= 0x7F
-        self.control_header.data[0] |= 0x80*(val is True)
+        self.control_header[0] &= 0x7F
+        self.control_header[0] |= 0x80*(val is True)
 
     @property
     def is_unlearnable(self):
         if self.is_single_tech:
             raise TypeError("Single techs cannot be marked unlearnable.")
 
-        return self.control_header.data[0] & 0x80
+        return self.control_header[0] & 0x80
 
     @is_unlearnable.setter
     def is_unlearnable(self, val: bool):
         if not self.is_single_tech:
             raise TypeError("Single techs cannot be marked unlearnable.")
 
-        self.control_header.data[0] &= 0x7F
-        self.control_header.data[0] |= 0x80*(val is True)
+        self.control_header[0] &= 0x7F
+        self.control_header[0] |= 0x80*(val is True)
 
 
 class PCTechDB:
@@ -476,8 +478,6 @@ class PCTechDB:
 
 def main():
     ct_rom = ctrom.CTRom.from_file('./roms/ct.sfc')
-
-
 
 
 if __name__ == '__main__':
