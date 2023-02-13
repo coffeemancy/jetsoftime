@@ -777,6 +777,9 @@ class ChronosanityLostWorldsGameConfig(GameConfig):
         self.keyItemList = [ItemID.C_TRIGGER, ItemID.CLONE, ItemID.PENDANT,
                             ItemID.DREAMSTONE, ItemID.RUBY_KNIFE]
 
+    def resolveExtraKeyItems(self):
+        pass
+
     def initLocations(self):
 
         # Prehistory
