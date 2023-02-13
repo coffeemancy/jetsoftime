@@ -1463,7 +1463,8 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
             removed_items.append(ItemID.DREAMSTONE)
 
         for item in removed_items:
-            self.keyItemList.remove(item)
+            if item in self.keyItemList:  # In case something else removed RR
+                self.keyItemList.remove(item)
 
     def initLocations(self):
         # We actually need to mostly redo this whole thing to implement the
