@@ -1,11 +1,12 @@
 from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Union, Optional, Type, TypeVar
 
-import ctenums
 import bossrandotypes as rotypes
 import ctoptions
+
+SIE = TypeVar('SIE', bound='StrIntEnum')
 
 
 class StrIntEnum(IntEnum):
@@ -16,12 +17,14 @@ class StrIntEnum(IntEnum):
         return x
 
     @classmethod
-    def str_dict(cls) -> dict:
-        return dict((x, str(x)) for x in list(cls))
+    def str_dict(cls: Type[SIE]) -> dict[SIE, str]:
+        enum_list: list[SIE] = list(cls)
+        return dict((x, str(x)) for x in enum_list)
 
     @classmethod
-    def inv_str_dict(cls) -> dict:
-        return dict((str(x), x) for x in list(cls))
+    def inv_str_dict(cls: Type[SIE]) -> dict[str, SIE]:
+        enum_list: list[SIE] = list(cls)
+        return dict((str(x), x) for x in enum_list)
 
 
 class GameMode(StrIntEnum):
@@ -116,18 +119,25 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.HEALING_ITEM_RANDO: _GF(0),
     _GF.EPOCH_FAIL: _GF(0),
     _GM.STANDARD: _GF(0),
-    _GM.LOST_WORLDS: _GF.BOSS_SCALE | _GF.BUCKET_LIST | _GF.EPOCH_FAIL,
+    _GM.LOST_WORLDS: (
+        _GF.BOSS_SCALE | _GF.BUCKET_LIST | _GF.EPOCH_FAIL |
+        _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT |
+        _GF.ADD_RACELOG_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_JOHNNY_RACE |
+        _GF.SPLIT_ARRIS_DOME | _GF.RESTORE_TOOLS | _GF.UNLOCKED_SKYGATES |
+        _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON
+    ),
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
         _GF.BOSS_SCALE | _GF.BUCKET_LIST
     ),
     _GM.LEGACY_OF_CYRUS: (
         _GF.ZEAL_END |
-        _GF.BUCKET_LIST |
-        _GF.BOSS_RANDO | _GF.BOSS_SCALE | _GF.BOSS_RANDO
+        _GF.BUCKET_LIST | _GF.BOSS_SCALE |
+        _GF.ADD_OZZIE_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_TOOLS |
+        _GF.RESTORE_JOHNNY_RACE | _GF.SPLIT_ARRIS_DOME
     ),
     _GM.VANILLA_RANDO: (
-        _GF.BOSS_SCALE | _GF.BUCKET_LIST
+        _GF.BOSS_SCALE
     )
 }
 
@@ -215,7 +225,7 @@ class ROSettings:
     def from_game_mode(
             cls,
             mode: GameMode,
-            boss_list: list[rotypes.BossID] = None,
+            boss_list: Optional[list[rotypes.BossID]] = None,
             ro_flags: ROFlags = ROFlags(0)
             ) -> ROSettings:
         '''
@@ -249,7 +259,8 @@ class ROSettings:
             boss_list = rotypes.get_assignable_bosses()
 
         return ROSettings(spots, boss_list, ro_flags)
-    
+
+
 @dataclass
 class BucketSettings:
     '''
@@ -333,23 +344,22 @@ class Settings:
         self.mystery_settings = MysterySettings()
 
         self.gameflags = GameFlags(0)
-        self.char_choices = [[i for i in range(7)] for j in range(7)]
+        self.char_choices = [list(range(7)) for j in range(7)]
 
         self.ro_settings = ROSettings.from_game_mode(self.game_mode)
         self.bucket_settings = BucketSettings()
 
         self.tab_settings = TabSettings()
         self.cosmetic_flags = CosmeticFlags(0)
-        
+
         self.ctoptions = ctoptions.CTOpts()
-        
+
         self.seed = ''
 
         self.char_names: list[str] = [
             'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus',
             'Epoch'
         ]
-        
 
     def _jot_json(self):
         return {
@@ -363,6 +373,7 @@ class Settings:
             "cosmetic_flags": self.cosmetic_flags
         }
 
+    @staticmethod
     def get_race_presets():
         ret = Settings()
 
@@ -380,6 +391,7 @@ class Settings:
 
         return ret
 
+    @staticmethod
     def get_new_player_presets():
         ret = Settings()
 
@@ -400,6 +412,7 @@ class Settings:
 
         return ret
 
+    @staticmethod
     def get_lost_worlds_presets():
         ret = Settings()
 
@@ -416,6 +429,7 @@ class Settings:
 
         return ret
 
+    @staticmethod
     def get_hard_presets():
         ret = Settings()
 
@@ -462,6 +476,15 @@ class Settings:
         ret.gameflags &= ~GameFlags.FREE_MENU_GLITCH
 
         return ret
+
+    def fix_flag_conflcits(self):
+
+        mode = self.game_mode
+        forced_off = _forced_off_dict[mode]
+        self.gameflags &= ~forced_off
+
+        if GameFlags.CHRONOSANITY in self.gameflags:
+            self.gameflags &= ~GameFlags.BOSS_SCALE
 
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode
