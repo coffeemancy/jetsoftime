@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import pickle
+import typing
 
 import byteops
 
@@ -13,7 +14,7 @@ class Node:
     def __init__(self):
         self.held_substring = None
         self.held_substring_index = None
-        self.children = dict()
+        self.children = {}
 
     def print_tree(self):
 
@@ -103,13 +104,10 @@ class CTHuffmanTree:
             (substr, match_len) = self.match_r(string,
                                                pos+1,
                                                node.children[string[pos]])
-
             if substr is not None:
                 return substr, match_len + 1
-            else:
-                return node.held_substring_index, 0
-        else:
             return node.held_substring_index, 0
+        return node.held_substring_index, 0
 
 
 # CTString extends bytearray because it is just a bytearray with a few extra
@@ -167,7 +165,7 @@ class CTString(bytearray):
         return ct_str
 
     @classmethod
-    def get_token(cls, string: str, pos: int) -> (bytes, int):
+    def get_token(cls, string: str, pos: int) -> typing.Tuple[bytes, int]:
         '''
         Gets the next byte of data for a ct string.  Returns that byte and the
         position of where the byte after begins.
@@ -229,14 +227,12 @@ class CTString(bytearray):
                 ct_bytes = bytes(vals)
             else:
                 print(keyword.split(' ')[0])
-                print(f"unknown keyword \'{keyword}\'")
-                exit()
+                raise ValueError(f"unknown keyword \'{keyword}\'")
         elif char == '\r' and pos+1 < len(string) and string[pos+1] == '\n':
             length = 2
             ct_char = 5
         else:
-            print(f"unknown symbol \'{char}\'")
-            exit()
+            raise ValueError(f"unknown symbol \'{char}\'")
 
         # print(f"char={char}, pos={pos}, ctchar={ct_char:02X}")
         # returning new position instead of length so that we can do things
@@ -252,7 +248,7 @@ class CTString(bytearray):
         ret_str = CTString()
 
         pos = 0
-        while pos < len(string): 
+        while pos < len(string):
             (ct_bytes, pos) = cls.get_token(string, pos)
             ret_str.extend(ct_bytes)
 
@@ -318,8 +314,7 @@ class CTString(bytearray):
                 ret_str += ' '
             else:
                 ret_str += '[:bad:]'
-                print(f"Bad byte: {cur_byte:02X}")
-                exit()
+                raise ValueError(f"Bad byte: {cur_byte:02X}")
 
             pos += 1
 

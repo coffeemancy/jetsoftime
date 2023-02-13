@@ -893,43 +893,6 @@ class RandoGUI:
 
         return dcframe
 
-    def display_dup_char_settings_window(self):
-
-        self.dc_set = tk.Toplevel(self.main_window)
-        self.dc_set.protocol('WM_DELETE_WINDOW',
-                             self.dc_set_verify_close)
-
-        instruction_frame = tk.Frame(self.dc_set)
-
-        tk.Label(
-            instruction_frame,
-            text='Indicate allowed character assignments.'
-        ).pack(expand=1, fill='both')
-
-        instruction_frame.pack(expand=1, fill='both')
-
-        # self.get_dc_set_char_choices().pack(expand=1, fill='both')
-        # self.get_dc_set_autofill().pack(expand=1, fill='both')
-        # self.get_dc_set_additional_options().pack(expand=1, fill='both')
-
-        # The Return button doesn't get its own function yet
-        dcframe = tk.Frame(
-            self.dc_set,
-            borderwidth=1,
-            highlightbackground='black',
-            highlightthickness=1
-        )
-
-        button = tk.Button(dcframe, text='Return',
-                           command=self.dc_set_verify_close)
-        button.grid()
-
-        dcframe.pack(expand=1, fill='both')
-
-        # Is this the right way to lock focus?
-        self.dc_set.focus_get()
-        self.dc_set.grab_set()
-
     def get_general_options(self, parent):
         frame = tk.Frame(
             parent, borderwidth=1,

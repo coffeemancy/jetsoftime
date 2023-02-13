@@ -38,11 +38,12 @@ class CTRom():
 
     def write_all_scripts_to_rom(self, clear_scripts: bool = True):
         script_dict = self.script_manager.script_dict
-        for loc_id in script_dict.keys():
-            if script_dict[loc_id] is not None:
-                self.script_manager.write_script_to_rom(loc_id)
-                if clear_scripts:
-                    script_dict[loc_id] = None
+        for loc_id in script_dict:
+            self.script_manager.write_script_to_rom(loc_id)
+
+        if clear_scripts:
+            self.script_manager.script_dict = {}
+            self.script_manager.orig_len_dict = {}
 
     @staticmethod
     def validate_ct_rom_file(filename: str) -> bool:

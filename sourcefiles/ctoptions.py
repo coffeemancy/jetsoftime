@@ -1,6 +1,7 @@
 '''
 Module for preconfiguring in-game options at compile time
 '''
+from typing import Optional
 
 import byteops
 from ctenums import ActionMap, InputMap
@@ -50,7 +51,7 @@ class ControllerBinds:
     BUTTONS_OFFSET = 0x02FCA9
     BUTTONS_LENGTH = 8
 
-    def __init__(self, data: bytearray = None):
+    def __init__(self, data: Optional[bytearray] = None):
 
         self.mappings = self.get_vanilla()
         
@@ -118,8 +119,8 @@ class ControllerBinds:
         
         rom.seek(offset)
         data = rom.read(cls.BUTTONS_LENGTH)
-       
-        return cls.to_bytearray(data)
+
+        return cls(bytearray(data))
 
 
     def to_bytearray(self, data = None):
@@ -137,20 +138,20 @@ class ControllerBinds:
                 
         return ret
 
-    def update_from_bytes(self, bytes: bytearray):
+    def update_from_bytes(self, byte_data: bytearray):
         '''
         Updates button bindings in place given bytearray; bytearray assumed to be ordered in the same way as out
         
         '''
-        if not (8 <= len(bytes) <= 11):
+        if not (8 <= len(byte_data) <= 11):
             return
 
-        bytes = bytes[-8:]
+        byte_data = byte_data[-8:]
 
-        for idx, byte in zip(ActionMap, bytes):
-            for input in InputMap:
-                if byte == input:
-                    self.mappings[idx] = input
+        for idx, byte in zip(ActionMap, byte_data):
+            for input_id in InputMap:
+                if byte == input_id:
+                    self.mappings[idx] = input_id
                     break
     
     def reset_to_vanilla(self):
@@ -229,7 +230,7 @@ class CTOpts:
     CONFIG_OFFSET = 0x02FCA6
     CONFIG_LENGTH = 3
     
-    def __init__(self,  data: bytearray = None):
+    def __init__(self,  data: Optional[bytearray] = None):
                 
         self._data = self.get_vanilla()
         self.controller_binds = ControllerBinds()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import math
+from typing import Tuple
 
 from byteops import to_little_endian, get_value_from_bytes
 from enum import Enum, IntEnum, auto
@@ -90,7 +91,7 @@ class EventCommand:
         return self.command == other.command and self.args == other.args
 
     # Returns coordinates in pixels
-    def get_pixel_coordinates(self):
+    def get_pixel_coordinates(self) -> Tuple[int, int]:
         if self.command == 0x8B:
             return (self.args[0]*0x10+8, self.args[1]*0x10+0x10)
 
@@ -224,8 +225,8 @@ class EventCommand:
         offset = (address - 0x7F0200)//2
         if set_bits:
             return EventCommand.generic_two_arg(0x69, bitmask, offset)
-        else:
-            return EventCommand.generic_two_arg(0x67, bitmask, offset)
+
+        return EventCommand.generic_two_arg(0x67, bitmask, offset)
 
     @staticmethod
     def set_reset_bit(address: int, bit: int, set_bit: bool) -> EventCommand:
@@ -480,8 +481,9 @@ class EventCommand:
         if address in range(0x7F0000, 0x7F0200):
             cmd_id = 0x16
             if num_bytes != 1:
-                print('[0x7F0000, 0x7F0200) range requires 1 byte width.')
-                quit()
+                raise ValueError(
+                    '[0x7F0000, 0x7F0200) range requires 1 byte width.'
+                )
 
             # Accessing the upper 0x100 bytes is done by ORing the operation
             # with 0x80
@@ -775,20 +777,20 @@ class EventCommand:
         # match up.
         if x % 16 == 0 and y % 16 == 0 and shift is True:
             return EventCommand.generic_two_arg(0x8B, x >> 4, y >> 4)
-        else:
-            # Two notes on setting commands by pixels:
-            #   (1) You have to multiply pixel number by 16 for the command.
-            #       I think the game gets confused if the low order bits are
-            #       not 0.
-            #   (2) When setting based on pixels, it doesn't seem to match
-            #       tiles.  The pixels seem to need to be shifted by 0x80 to
-            #       match.
-            shift_x, shift_y = 0, 0
-            if shift:
-                shift_x, shift_y = 0x80, 0x100
-            return EventCommand.generic_two_arg(0x8D,
-                                                (x << 4) + shift_x,
-                                                (y << 4) + shift_y)
+
+        # Two notes on setting commands by pixels:
+        #   (1) You have to multiply pixel number by 16 for the command.
+        #       I think the game gets confused if the low order bits are
+        #       not 0.
+        #   (2) When setting based on pixels, it doesn't seem to match
+        #       tiles.  The pixels seem to need to be shifted by 0x80 to
+        #       match.
+        shift_x, shift_y = 0, 0
+        if shift:
+            shift_x, shift_y = 0x80, 0x100
+        return EventCommand.generic_two_arg(0x8D,
+                                            (x << 4) + shift_x,
+                                            (y << 4) + shift_y)
 
     @staticmethod
     def set_string_index(str_ind_rom: int) -> EventCommand:
@@ -820,10 +822,10 @@ class EventCommand:
         else:
             cmd_id = 0xC4
 
-        if first_line not in range(0,4):
+        if first_line not in range(0, 4):
             raise ValueError('First line must be in range(0, 4)')
 
-        if last_line not in range(0,4):
+        if last_line not in range(0, 4):
             raise ValueError('Last line must be in range(0, 4)')
 
         lines_byte = first_line << 2
@@ -834,7 +836,7 @@ class EventCommand:
     @staticmethod
     def if_result_equals(result_val: int, jump_bytes) -> EventCommand:
         return EventCommand.generic_command(0x1A, result_val, jump_bytes)
-    
+
     # TODO: merge these two textbox commands
     @staticmethod
     def auto_text_box(string_id: int) -> EventCommand:
@@ -844,8 +846,8 @@ class EventCommand:
     def text_box(string_id: int, top: bool = True) -> EventCommand:
         if top:
             return EventCommand.generic_one_arg(0xC1, string_id)
-        else:
-            return EventCommand.generic_one_arg(0xC2, string_id)
+
+        return EventCommand.generic_one_arg(0xC2, string_id)
 
     @staticmethod
     def script_speed(speed: int) -> EventCommand:
@@ -856,15 +858,15 @@ class EventCommand:
     def pause(duration_secs: float):
         if duration_secs == 0.25:
             return EventCommand.generic_zero_arg(0xB9)
-        elif duration_secs == 0.5:
+        if duration_secs == 0.5:
             return EventCommand.generic_zero_arg(0xBA)
-        elif duration_secs == 1:
+        if duration_secs == 1:
             return EventCommand.generic_zero_arg(0xBC)
-        elif duration_secs == 2:
+        if duration_secs == 2:
             return EventCommand.generic_zero_arg(0xBD)
-        else:
-            num_ticks = int(duration_secs*0x10)
-            return EventCommand.generic_one_arg(0xAD, num_ticks)
+
+        num_ticks = int(duration_secs*0x10)
+        return EventCommand.generic_one_arg(0xAD, num_ticks)
 
     def copy(self) -> EventCommand:
         ret_command = EventCommand(-1, 0, [], [], '', '')

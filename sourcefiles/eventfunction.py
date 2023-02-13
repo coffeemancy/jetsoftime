@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, replace
+from typing import Optional
 
 from eventcommand import get_command, EventCommand
 
@@ -15,12 +16,12 @@ class EventFunction:
             return EventFunction.JumpRecord(self.from_label, self.to_label)
 
     def __init__(self):
-        self.data = bytearray()
-        self.commands = []
-        self.offsets = []
+        self.data: bytearray = bytearray()
+        self.commands: list[EventCommand] = []
+        self.offsets: list[int] = []
 
-        self.labels = {}
-        self.jumps = []
+        self.labels: dict[str: int] = {}
+        self.jumps: list[EventFunction.JumpRecord] = []
 
         self.pos = 0
 
@@ -29,7 +30,7 @@ class EventFunction:
         ret_ef.data = self.data[:]
         ret_ef.commands = self.commands[:]
         ret_ef.offsets = self.offsets[:]
-        ret_ef.labels = {k: v for k, v in self.labels.items()}
+        ret_ef.labels = dict(self.labels.items())
         ret_ef.jumps = [replace(x) for x in self.jumps]
 
         return ret_ef
@@ -99,7 +100,7 @@ class EventFunction:
             # print(jump)
 
         for ind in sorted(del_inds, reverse=True):
-            del(self.jumps[ind])
+            del self.jumps[ind]
 
     def __shift_labels(self,
                        before_pos: int,
@@ -107,7 +108,7 @@ class EventFunction:
                        shift_magnitude: int):
 
         labels_to_delete = []
-        shifted_label_dict = dict()
+        shifted_label_dict = {}
 
         for label in self.labels:
             if before_pos <= self.labels[label] < after_pos:
@@ -123,14 +124,15 @@ class EventFunction:
                     self.labels[label] = new_pos
 
         for label in labels_to_delete:
-            del(self.labels[label])
+            del self.labels[label]
 
         self.labels.update(shifted_label_dict)
 
     def __get_cmd_index_from_pos(self, pos: int):
         return self.offsets.index(pos)
 
-    def from_bytearray(func_bytes: bytearray):
+    @staticmethod
+    def from_bytearray(func_bytes: bytearray) -> EventFunction:
         ret = EventFunction()
 
         pos = 0
@@ -184,9 +186,9 @@ class EventFunction:
         for i in range(ind+1, len(self.offsets)):
             self.offsets[i] -= cmd_len
 
-        del(self.offsets[ind])
-        del(self.commands[ind])
-        del(self.data[del_pos:del_pos+cmd_len])
+        del self.offsets[ind]
+        del self.commands[ind]
+        del self.data[del_pos:del_pos+cmd_len]
 
         self.pos -= cmd_len
 
@@ -247,7 +249,7 @@ class EventFunction:
         return ret_ind
 
     def find_exact_command(self, event_command: EventCommand,
-                           loose_match_jumps: bool = True) -> int:
+                           loose_match_jumps: bool = True) -> Optional[int]:
 
         for ind, cmd in enumerate(self.commands):
 
@@ -256,8 +258,6 @@ class EventFunction:
                 if event_command.command == cmd.command and \
                    event_command.args[0:-1] == cmd.args[0:-1]:
                     return ind
-                else:
-                    pass
             elif cmd == event_command:
                 return ind
 
@@ -279,7 +279,7 @@ class EventFunction:
                  while_block: EventFunction):
         return EventFunction().add_while(if_command, while_block)
 
-    def __set_label(self, label: str, pos: int = None):
+    def __set_label(self, label: str, pos: Optional[int] = None):
         if label in self.labels and label[0] != '[':
             print(f'Warning: Resetting label {label}.')
 
@@ -290,14 +290,14 @@ class EventFunction:
 
         return self
 
-    def __set_pos_label(self, pos: int = None):
+    def __set_pos_label(self, pos: Optional[int] = None):
         if pos is None:
             pos = self.pos
 
         label = f'[{pos:04X}]'
         self.__set_label(label, pos)
 
-    def __get_label(self, pos: int = None) -> str:
+    def __get_label(self, pos: Optional[int] = None) -> str:
         if pos is None:
             pos = self.pos
 
@@ -305,15 +305,15 @@ class EventFunction:
             label = next(label for label in self.labels
                          if self.labels[label] == pos)
             return label
-        else:
-            label = f'[{pos:04X}]'
-            self.__set_label(label, pos)
-            return label
 
-    def set_label(self, label: str, pos: int = None) -> EventFunction:
+        label = f'[{pos:04X}]'
+        self.__set_label(label, pos)
+        return label
 
-        if not label[0].isalpha:
-            raise SystemExit(
+    def set_label(self, label: str,
+                  pos: Optional[int] = None) -> EventFunction:
+        if not label[0].isalpha():
+            raise ValueError(
                 'Error: User generated labels must begin with a letter.'
             )
 
@@ -326,8 +326,8 @@ class EventFunction:
         )
 
         if event_command.command not in jump_cmds:
-            raise SystemExit(
-                f'Error: {event_command.cmd:02X} is not a jump command'
+            raise ValueError(
+                f'Error: {event_command.command:02X} is not a jump command'
             )
 
         from_label = self.__get_label()
@@ -348,7 +348,7 @@ class EventFunction:
         )
 
         if from_cmd not in jump_cmds:
-            raise SystemExit(
+            raise ValueError(
                 f'Error: {from_cmd:02X} is not a jump command'
             )
 

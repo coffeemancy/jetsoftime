@@ -16,16 +16,37 @@ from eventfunction import EventFunction as EF
 from ctenums import EnemyID
 
 
+class MissingCommandException(Exception):
+    def __init__(self,
+                 message: str = "",
+                 command_id: typing.Optional[int] = None):
+
+        if command_id is not None:
+            command = eventcommand.EventCommand.get_blank_command(command_id)
+            new_message = f'Failed to find {command_id} {command.name}.'
+
+            if message:
+                message = new_message + ' ' + message
+
+        super().__init__(message)
+
+
 # Functions for finding the set coordinate commands in a particular function
-def get_first_coord_cmd_pos(script: ctevent.Event,
-                            obj_id: int, fn_id: int) -> int:
+def get_first_coord_cmd_pos(
+        script: ctevent.Event,
+        obj_id: int, fn_id: int) -> int:
     '''
     Find the offset in script.data of the first set coordinate command in the
     given object and function.
     '''
     start = script.get_function_start(obj_id, fn_id)
     end = script.get_function_end(obj_id, fn_id)
-    return script.find_command([0x8B, 0x8D], start, end)[0]  # ret pos, cmd
+    pos = script.find_command([0x8B, 0x8D], start, end)[0]  # ret pos, cmd
+
+    if pos is None:
+        raise MissingCommandException
+
+    return pos
 
 
 def get_last_coord_cmd_pos(script: ctevent.Event,
@@ -34,6 +55,7 @@ def get_last_coord_cmd_pos(script: ctevent.Event,
     Find the offset in script.data of the last set coordinate command in the
     given object and function.
     '''
+    pos: typing.Optional[int]
     pos = script.get_function_start(obj_id, fn_id)
     end = script.get_function_end(obj_id, fn_id)
     prev_pos = None
@@ -92,6 +114,7 @@ def set_object_coordinates(script: ctevent.Event, obj_id: int,
     force_pixel_coords: If set to True, use direct pixel coordinates even when
                         the coordinates could resolve to a tile coordinate.
     '''
+    cmd_fn: typing.Callable[[int, int], EC]
     if force_pixel_coords:
         cmd_fn = EC.set_object_coordinates_pixels
     else:
@@ -148,22 +171,20 @@ def are_pixel_coords_forced(
         lambda val, item: val and (item & 0xF == 0), y_coords, True
     )
 
-    return not(x_tileable and y_tileable)
+    return not (x_tileable and y_tileable)
 
 
 def fix_bad_animations(
         script: ctevent.Event,
-        obj_id: int = None,
-        fn_id: int = None,
-        start: int = None,
-        end: int = None,
-        static_removals: list[int] = None
+        obj_id: typing.Optional[int] = None,
+        fn_id: typing.Optional[int] = None,
+        start: typing.Optional[int] = None,
+        end: typing.Optional[int] = None,
+        static_removals: typing.Optional[list[int]] = None
         ):
     '''
     Remove all static animaion commands from the given object and function.
     Optionally, the search for static animations can be bound to [start, end).
-
-    By default, 
     '''
     if start is None:
         if obj_id is None:
@@ -186,7 +207,7 @@ def fix_bad_animations(
         else:
             end = script.get_function_end(obj_id, fn_id)
 
-    pos = start
+    pos: typing.Optional[int] = start
     while True:
         pos, cmd = script.find_command([0xAC], pos, end)
 
@@ -206,10 +227,10 @@ def set_generic_one_spot_boss_script(
         script: ctevent.Event,
         boss: rotypes.BossScheme,
         boss_obj: int,
-        show_pos_fn: typing.Callable[[ctevent.Event], int],
+        show_pos_fn: typing.Optional[typing.Callable[[ctevent.Event], int]],
         last_coord_fn: typing.Callable[[ctevent.Event], int],
-        first_x: int = None,
-        first_y: int = None,
+        first_x: typing.Optional[int] = None,
+        first_y: typing.Optional[int] = None,
         pixel_coords: bool = False,
         is_shown: bool = False):
     '''
@@ -270,6 +291,10 @@ def set_generic_one_spot_boss_script(
 
     # Add the show commands if needed
     if not is_shown:
+        if show_pos_fn is None:
+            raise ValueError(
+                "Must Provide show_pos_fn if boss is not intially visible"
+            )
         show_pos = show_pos_fn(script)
         script.insert_commands(show.get_bytearray(), show_pos)
 
@@ -291,14 +316,14 @@ def set_generic_one_spot_boss(
         boss: rotypes.BossScheme,
         loc_id: int,
         boss_obj: int,
-        show_pos_fn: typing.Callable[[ctevent.Event], int],
+        show_pos_fn: typing.Optional[typing.Callable[[ctevent.Event], int]],
         last_coord_fn: typing.Callable[[ctevent.Event], int],
-        first_x: int = None,
-        first_y: int = None,
+        first_x: typing.Optional[int] = None,
+        first_y: typing.Optional[int] = None,
         is_shown: bool = False
 ):
     script_manager = ct_rom.script_manager
-    script = script_manager.get_script(loc_id)
+    script = script_manager.get_script(ctenums.LocID(loc_id))
 
     set_generic_one_spot_boss_script(script, boss, boss_obj,
                                      show_pos_fn, last_coord_fn,
@@ -308,7 +333,8 @@ def set_generic_one_spot_boss(
 # Make a barebones object to make a boss part and hide it.
 def append_boss_object(script: ctevent.Event,
                        boss: rotypes.BossScheme, part_index: int,
-                       first_x_px: int, first_y_px: int,
+                       first_x_px: int,
+                       first_y_px: int,
                        force_pixel_coords: bool = False,
                        is_shown: bool = False) -> int:
 
@@ -348,41 +374,6 @@ def append_boss_object(script: ctevent.Event,
     script.set_function(obj_id, 1, act)
 
     return obj_id
-
-
-# This is exactly like the above except that the user provides the script.
-# This is needed in some cases when there is preprocessing required before
-# Following the general procedure.
-def set_generic_one_spot_boss_script_old(
-        script: ctevent.Event,
-        boss: rotypes.BossScheme,
-        boss_obj: int,
-        show_pos_fn: typing.Callable[[ctevent.Event], int],
-        first_x: int = None,
-        first_y: int = None,
-        is_shown: bool = False
-):
-
-    first_id = boss.parts[0].enemy_id
-    first_slot = boss.parts[0].slot
-
-    set_object_boss(script, boss_obj, first_id, first_slot)
-
-    show = EF()
-
-    for i in range(1, len(boss.parts)):
-        new_obj = append_boss_object(script, boss, i,
-                                     first_x, first_y,
-                                     is_shown)
-        show.add(EC.set_object_drawing_status(new_obj, True))
-
-    # If a boss starts out shown, no need to insert commands
-    if not is_shown:
-        # script.print_fn_starts()
-        show_pos = show_pos_fn(script)
-        # print(f"{show_pos:04X}")
-        # input()
-        script.insert_commands(show.get_bytearray(), show_pos)
 
 
 # Begin list of assignment functions.  They have a loc_id parameter in case
@@ -466,9 +457,9 @@ def set_reptite_lair_boss(
 
 def set_magus_castle_flea_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
-        loc_id: ctenums.LocID =  ctenums.LocID.MAGUS_CASTLE_FLEA):
+        loc_id: ctenums.LocID = ctenums.LocID.MAGUS_CASTLE_FLEA):
     # 0xAD is Flea's map - Castle Magus Throne of Magic
-    #loc_id = 0xAD
+    # loc_id = 0xAD
 
     boss_obj = 0xC
 
@@ -478,10 +469,13 @@ def set_magus_castle_flea_spot_boss(
         Flea's spot has an extra bit for attract mode.  So we have to skip
         over that instead of use the default last coord function.
         '''
+        pos: typing.Optional[int]
         pos = script.get_function_start(boss_obj, 0)
         end = script.get_function_end(boss_obj, 0)
         for i in range(2):
             pos, cmd = script.find_command([0x8B, 0x8D], pos, end)
+            if pos is None:
+                raise MissingCommandException
             if i == 0:
                 pos += len(cmd)
 
@@ -537,16 +531,22 @@ def set_magus_castle_slash_spot_boss(
     # first_x, first_y = 0x80, 0x240
 
     def last_coord_fn(script: ctevent.Event) -> int:
-        return script.find_command([0x8B, 0x8D],
-                                   script.get_function_start(0xB, 1),
-                                   script.get_function_end(0xB, 1))[0]
+        pos, _ = script.find_command([0x8B, 0x8D],
+                                     script.get_function_start(0xB, 1),
+                                     script.get_function_end(0xB, 1))
+        if pos is None:
+            raise MissingCommandException
+
+        return pos
 
     def show_pos_fn(script: ctevent.Event) -> int:
         pos = script.find_exact_command(EC.generic_one_arg(0xE8, 0x8D),
                                         script.get_function_start(0xB, 1))
 
         if pos is None:
-            raise ValueError("Failed to find show pos (slash spot)")
+            raise MissingCommandException(
+                "Failed to find show pos (slash spot)"
+            )
 
         return pos
 
@@ -556,13 +556,14 @@ def set_magus_castle_slash_spot_boss(
     good_anim_ids = (EnemyID.SLASH_SWORD, EnemyID.SUPER_SLASH,
                      EnemyID.ATROPOS_XR)
 
-    if False and boss.parts[0].enemy_id not in good_anim_ids:
+    if boss.parts[0].enemy_id not in good_anim_ids:
+        pos: typing.Optional[int]
         pos = script.get_function_start(0xB, 1)
         end = script.get_function_end(0xB, 1)
 
         while True:
             # Find animation commands and destroy them
-            pos, cmd = script.find_command([0xAC], pos, end)
+            pos, _ = script.find_command([0xAC], pos, end)
 
             if pos is None:
                 break
@@ -693,6 +694,8 @@ def set_tyrano_lair_midboss(
             EC.generic_command(0xAA, 0x07),
             script.get_function_start(8, 0)
         )
+        if anim_pos is None:
+            raise MissingCommandException
         script.data[anim_pos+1] = 1
 
     set_generic_one_spot_boss(
@@ -789,6 +792,8 @@ def set_twin_golem_spot(
     move_cmd = EC.generic_two_arg(0x96, 0x6, 0xE)
     pos = script.find_exact_command(move_cmd,
                                     script.get_function_start(0xA, 3))
+    if pos is None:
+        raise MissingCommandException
 
     first_x = 0x88
     first_y = 0xF0
@@ -1069,9 +1074,9 @@ def set_giga_mutant_spot_boss(
                                     script.get_function_end(0xA, 1))
     if pos is None:
         raise ValueError("Error finding insertion position (giga mutant)")
-    else:
-        # shift to after the found command
-        pos += len(ins_cmd)
+
+    # shift to after the found command
+    pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -1147,8 +1152,7 @@ def set_terra_mutant_spot_boss(
                                     script.get_function_start(8, 1))
     if pos is None:
         raise ValueError("Error finding insertion position (terra mutant)")
-    else:
-        pos += len(ins_cmd)
+    pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -1208,8 +1212,7 @@ def set_elder_spawn_spot_boss(
 
     if pos is None:
         raise ValueError("Error finding insertion point (elder spawn)")
-    else:
-        pos += len(ins_cmd)
+    pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -1227,6 +1230,9 @@ def set_sun_palace_boss(
 
     pos, _ = script.find_command([0x96],
                                  script.get_function_start(0x0B, 4))
+    if pos is None:
+        raise MissingCommandException
+
     script.data[pos+2] = 0x1F
     pos += 3
     cmd = EC.set_object_coordinates(0x100, 0x1FF, False)
@@ -1299,8 +1305,8 @@ def set_sun_palace_boss(
 
     if pos is None:
         raise ValueError("Error: Couldn't find insertion point (SoS)")
-    else:
-        pos += len(ins_cmd)
+
+    pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -1313,6 +1319,8 @@ def set_sun_palace_boss(
             EC.generic_command(0xB7, 7, 3),
             script.get_function_start(0xB, 3)
         )
+        if pos is None:
+            raise MissingCommandException
         script.delete_commands(pos, 2)  # Two animation commands
 
 
@@ -1379,10 +1387,9 @@ def set_desert_boss(
                                     script.get_function_start(0x2, 0))
 
     if pos is None:
-        print("Error: Couldn't find insertion point (SoS)")
-        exit()
-    else:
-        pos -= len(ins_cmd)
+        raise MissingCommandException(
+            "Error: Couldn't find insertion point (SoS)")
+    pos -= len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
@@ -1423,7 +1430,7 @@ def set_mt_woe_boss(
         # Remove unused objects
         for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
-            del(boss_objs[i-1])
+            del boss_objs[i-1]
     elif len(boss.parts) > len(boss_objs):
         # Add new copies of a GG Hand object
         for i in range(len(boss_objs), len(boss.parts)):
@@ -1437,8 +1444,8 @@ def set_mt_woe_boss(
         boss_id = boss.parts[ind].enemy_id
         boss_slot = boss.parts[ind].slot
 
-        set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[ind],
+        set_object_boss(script, obj, boss_id, boss_slot)
+        set_object_coordinates(script, obj,
                                new_x, new_y, force_pixel_coords=True)
 
     # Mt. Woe starts with everything visible so there's no need for anything
@@ -1481,7 +1488,7 @@ def set_geno_dome_boss(
         # Remove unused objects
         for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
-            del(boss_objs[i-1])
+            del boss_objs[i-1]
     elif len(boss.parts) > len(boss_objs):
         # Add new copies of a display object
         ins_cmds = EF()
@@ -1507,8 +1514,8 @@ def set_geno_dome_boss(
         boss_id = boss.parts[ind].enemy_id
         boss_slot = boss.parts[ind].slot
 
-        set_object_boss(script, boss_objs[ind], boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[ind],
+        set_object_boss(script, obj, boss_id, boss_slot)
+        set_object_coordinates(script, obj,
                                new_x, new_y, force_pixel_coords=True)
 
         script.set_function(obj, 3, boss_arb0)
@@ -1517,6 +1524,9 @@ def set_geno_dome_boss(
     end = script.get_function_end(0x1E, 0)
     ins_pos_cmd = EC.call_obj_function(0x1F, 1, 1, FS.CONT)
     ins_pos = script.find_exact_command(ins_pos_cmd, start, end)
+    if ins_pos is None:
+        raise MissingCommandException
+
     ins_pos += len(ins_pos_cmd)
 
     script.insert_commands(ins_cmds.get_bytearray(), ins_pos)
@@ -1529,7 +1539,7 @@ def set_arris_dome_boss(
     if EnemyID.GUARDIAN in [part.enemy_id for part in boss.parts]:
         return
 
-    #loc_id = LocID.ARRIS_DOME_GUARDIAN_CHAMBER
+    # loc_id = LocID.ARRIS_DOME_GUARDIAN_CHAMBER
     script = ct_rom.script_manager.get_script(loc_id)
 
     # Remove the guardian's body because Guardian is not here.
@@ -1542,6 +1552,7 @@ def set_arris_dome_boss(
                                unk_0x20=True,
                                wait_vblank=False)
 
+    pos: typing.Optional[int]
     pos = script.get_function_start(0, 1)
     script.insert_commands(copy_tiles.to_bytearray(), pos)
 
@@ -1582,13 +1593,16 @@ def set_arris_dome_boss(
     start = script.get_function_start(9, 1)
     end = script.get_function_end(9, 1)
     pos = script.find_exact_command(call, start, end)
+    if pos is None:
+        raise MissingCommandException
+
     script.delete_commands(pos, 2)
 
     if len(boss_objs) > len(boss.parts):
         # Remove unused objects
         for i in range(len(boss_objs), len(boss.parts), -1):
             script.remove_object(boss_objs[i-1])
-            del(boss_objs[i-1])
+            del boss_objs[i-1]
     elif len(boss.parts) > len(boss_objs):
         # Add new copies of a bit object (that we cleaned up above)
         for i in range(len(boss_objs), len(boss.parts)):
@@ -1603,7 +1617,7 @@ def set_arris_dome_boss(
         boss_slot = boss.parts[ind].slot
 
         set_object_boss(script, obj, boss_id, boss_slot)
-        set_object_coordinates(script, boss_objs[ind],
+        set_object_coordinates(script, obj,
                                new_x, new_y,
                                force_pixel_coords=True)
 
@@ -1644,6 +1658,7 @@ def set_prison_catwalks_boss(
     # I'm not sure why, but adding a spritepriority command in the tank body
     # startup will fix the layer issues.  This command is not present in the
     # vanilla script (except attract mode), so I'm not sure what's up.
+    pos: typing.Optional[int]
     pos = get_last_coord_cmd_pos(script, 0xE, 0)
     script.insert_commands(EC.generic_command(0x8E, 0x84).to_bytearray(), pos)
 
@@ -1675,7 +1690,12 @@ def set_prison_catwalks_boss(
         .add(EC.return_cmd())
     )
     script.set_function(0xE, 6, func)
+
     pos, cmd = script.find_command([0xD8])
+
+    if pos is None:
+        raise MissingCommandException(command_id=0xD8)
+
     script.insert_commands(
         EC.call_obj_function(0xE, 6, 6, FS.HALT).to_bytearray(),
         pos+len(cmd)
@@ -1727,8 +1747,10 @@ def set_prison_catwalks_boss(
             call_cmds.add(EC.call_obj_function(obj, 3, 6, FS.CONT))
 
     # The only remaining thing is to redo a block of callobjfuncs
-    pos = script.find_exact_command(EC.call_obj_function(0xD, 3, 6, FS.CONT),
-                                    )
+    pos = script.find_exact_command(EC.call_obj_function(0xD, 3, 6, FS.CONT))
+    if pos is None:
+        raise MissingCommandException()
+
     while script.data[pos] in (2, 3, 4):  # call cmds
         script.delete_commands(pos, 1)
 
@@ -1737,7 +1759,7 @@ def set_prison_catwalks_boss(
 
 def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
                      is_vanilla: bool = False):
-    loc_id = 0xE6
+    loc_id = ctenums.LocID(0xE6)
     script = ct_rom.script_manager.get_script(loc_id)
 
     if not is_vanilla:
@@ -1747,7 +1769,9 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
     else:
         boss_objs = [0xA, 0xB, 0xC, 0xD, 0xE, 0xF]
 
+    pos: typing.Optional[int]
     pos = get_first_coord_cmd_pos(script, 0xA, 0)
+
     coord_cmd = eventcommand.get_command(script.data, pos)
     first_x, first_y = coord_cmd.get_pixel_coordinates()
     force_pixel_coords = are_pixel_coords_forced(first_x, first_y, boss)
@@ -1794,6 +1818,8 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         EC.call_obj_function(0xA, 3, 3, FS.CONT),
         start_pos=script.get_object_start(1)
     )
+    if pos is None:
+        raise ValueError("Command not Found")
 
     # call cmds but stop with the obj2 call
     while script.data[pos] in (2, 3, 4) and script.data[pos+1] != 4:

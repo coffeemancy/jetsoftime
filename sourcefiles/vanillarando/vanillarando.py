@@ -127,6 +127,7 @@ def restore_johnny_race(ct_rom: ctrom.CTRom):
     script = ctrom.ctevent.Event.from_flux('./flux/VR_0E1_Lab32_East.Flux')
     ct_rom.script_manager.set_script(script, ctenums.LocID.LAB_32_EAST)
 
+
 def add_check_to_ozzies_fort_in_config(config: cfg.RandoConfig):
     '''
     Add an entry in the config for the Ozzie's Fort KI.
@@ -232,6 +233,7 @@ def update_zeal_throne_door(ct_rom: ctrom.CTRom):
     )
 
     script.set_function(0xC, 2, tyrano_check)
+
 
 def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
     '''
@@ -619,7 +621,7 @@ class BekklerTreasure(treasuretypes.ScriptTreasure):
         script = ct_rom.script_manager.get_script(self.bekkler_location)
 
         start = script.get_function_start(self.bekkler_object_id,
-                                       self.bekkler_function_id)
+                                          self.bekkler_function_id)
         end = script.get_function_end(self.bekkler_object_id,
                                       self.bekkler_function_id)
 

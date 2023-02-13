@@ -44,7 +44,7 @@ class BossSpotID(enum.Enum):
         return _boss_spot_names[self]
 
 
-_boss_spot_names: dict[BossSpotID: str] = {
+_boss_spot_names: dict[BossSpotID, str] = {
     BossSpotID.MANORIA_CATHERDAL: 'Cathedral',
     BossSpotID.HECKRAN_CAVE: 'Heckran\'s Cave',
     BossSpotID.DENADORO_MTS: 'Denadoro Mountains',
@@ -123,14 +123,14 @@ class BossID(enum.Enum):
     def __str__(self):
         if self == BossID.MAGUS_NORTH_CAPE:
             return 'Magus (North Cape)'
-        elif self == BossID.YAKRA_XIII:
+        if self == BossID.YAKRA_XIII:
             return 'Yakra XIII'
-        elif self == BossID.NIZBEL_2:
+        if self == BossID.NIZBEL_2:
             return 'Nizbel II'
-        else:
-            out = self.__repr__().split('.')[1].split(':')[0].lower().title()
-            out = out.replace('_', ' ')
-            return out
+
+        out = self.__repr__().split('.')[1].split(':')[0].lower().title()
+        out = out.replace('_', ' ')
+        return out
 
 
 def get_assignable_bosses():
@@ -152,7 +152,7 @@ def get_assignable_bosses():
 
 def get_one_part_bosses():
     '''
-    Return a list of one-part BossIDs which are eligible for boss rando. 
+    Return a list of one-part BossIDs which are eligible for boss rando.
     Helper for legacy boss placement
     '''
     return [
@@ -166,11 +166,11 @@ def get_one_part_bosses():
 
 def get_one_part_boss_spots():
     '''
-    Return a list of one-part BossSpotIDs which are eilgible for boss rando. 
+    Return a list of one-part BossSpotIDs which are eilgible for boss rando.
     Helper for legacy boss placement
     '''
     BSID = BossSpotID
-    return[
+    return [
         BSID.DENADORO_MTS, BSID.EPOCH_REBORN, BSID.GIANTS_CLAW,
         BSID.HECKRAN_CAVE, BSID.KINGS_TRIAL, BSID.MAGUS_CASTLE_FLEA,
         BSID.MAGUS_CASTLE_SLASH, BSID.MANORIA_CATHERDAL,
@@ -181,11 +181,11 @@ def get_one_part_boss_spots():
 
 def get_two_part_boss_spots():
     '''
-    Return a list of two-part BossSpotIDs which are eilgible for boss rando.  
+    Return a list of two-part BossSpotIDs which are eilgible for boss rando.
     Helper for legacy boss placement.
     '''
     BSID = BossSpotID
-    return[
+    return [
         BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
         BSID.BLACK_OMEN_TERRA_MUTANT, BSID.DEATH_PEAK, BSID.ZENAN_BRIDGE
     ]
@@ -193,7 +193,7 @@ def get_two_part_boss_spots():
 
 def get_two_part_bosses():
     '''
-    Return a list of two-part BossIDs which are eilgible for boss rando.  
+    Return a list of two-part BossIDs which are eilgible for boss rando.
     Helper for legacy boss placement.
     '''
     return [
@@ -280,7 +280,7 @@ _BS = BossScheme
 _BP = BossPart
 _EID = ctenums.EnemyID
 _default_schemes: dict[BossID, BossScheme] = {
-    BossID.ATROPOS_XR:_BS(_BP(_EID.ATROPOS_XR, 3)),
+    BossID.ATROPOS_XR: _BS(_BP(_EID.ATROPOS_XR, 3)),
     BossID.BLACK_TYRANO: _BS(
         _BP(_EID.AZALA, 7),
         _BP(_EID.BLACKTYRANO, 3)  # Not real disp b/c not randomizing
@@ -401,11 +401,10 @@ def get_default_scheme(boss_id: BossID) -> BossScheme:
     return copy.deepcopy(_default_schemes[boss_id])
 
 
-def get_boss_data_dict() -> dict[BossID: BossScheme]:
-    # return {
-    #     boss_id: get_default_scheme(boss_id)
-    #     for boss_id in BossID
-    # }
+def get_boss_data_dict() -> dict[BossID, BossScheme]:
+    '''
+    Return the default BossScheme for each BossID
+    '''
     return copy.deepcopy(_default_schemes)
 
 

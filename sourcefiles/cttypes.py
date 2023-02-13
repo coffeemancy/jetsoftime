@@ -132,7 +132,7 @@ class RomRW(abc.ABC):
     def read_data_from_ctrom(self,
                              ct_rom: ctrom.CTRom,
                              num_bytes: int,
-                             record_num: int = 0) -> bytearray:
+                             record_num: int = 0) -> bytes:
         '''
         Read num_bytes bytes from a ctrom.CTRom.  If the data is arranged in
         records, read record number record_num.
@@ -175,7 +175,7 @@ class AbsPointerRW(RomRW):
 
     def read_data_from_ctrom(self, ct_rom: ctrom.CTRom,
                              num_bytes: int,
-                             record_num: int = 0) -> bytearray:
+                             record_num: int = 0) -> bytes:
         '''
         Use the absolute pointer on the ROM to read data.
         '''
@@ -239,7 +239,7 @@ class LocalPointerRW(RomRW):
 
     def read_data_from_ctrom(self, ct_rom: ctrom.CTRom,
                              num_bytes: int,
-                             record_num: int = 0) -> bytearray:
+                             record_num: int = 0) -> bytes:
         '''
         Use the bank and offset pointers on the rom to read the data.
         '''
@@ -278,8 +278,8 @@ class BinaryData(bytearray):
     Includes methods for getting/setting bytes with a mask applied which are
     used by BytesProp for generating properties.
     '''
-    SIZE = None
-    ROM_RW: RomRW = None
+    SIZE: typing.Optional[int] = None
+    ROM_RW: typing.Optional[RomRW] = None
 
     @classmethod
     def get_bytesprops(cls):

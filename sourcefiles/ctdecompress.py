@@ -1,5 +1,6 @@
 # Copied from Gieger's (Michael Springer, evilpeer@hotmail.com) C version
 from byteops import get_value_from_bytes, to_little_endian
+from typing import ByteString
 
 # ctcompress is the fast C library.  If it's not present, use the python
 # implementation.
@@ -94,7 +95,7 @@ def decompress(rom, start):
 
 
 # Find the length of a compressed packet
-def get_compressed_length(rom, addr):
+def get_compressed_length(rom: ByteString, addr: int):
 
     # First two bytes determine length of main body
     main_length = get_value_from_bytes(rom[addr:addr+2])
@@ -120,7 +121,7 @@ def get_compressed_length(rom, addr):
 
 
 # Just isolate a compressed packet starting at a certain address
-def get_compressed_packet(rom, addr):
+def get_compressed_packet(rom: ByteString, addr):
     return rom[addr:addr+get_compressed_length(rom, addr)]
 
 
