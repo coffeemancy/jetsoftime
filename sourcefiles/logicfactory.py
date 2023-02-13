@@ -1582,7 +1582,7 @@ class IceAgeGameConfig(NormalGameConfig):
 
         def has_go_mode(game: Game):
             return (
-                game.canAccessDactylCharacter and
+                game.canAccessDactylCharacter() and
                 game.hasCharacter(Characters.AYLA) and
                 game.hasKeyItem(ItemID.DREAMSTONE)
             )
@@ -1678,14 +1678,6 @@ class VanillaRandoGameConfig(NormalGameConfig):
     def initKeyItems(self):
         NormalGameConfig.initKeyItems(self)
 
-        # Not needed anyore
-        # self.keyItemList.append(ItemID.TOOLS)
-        # self.keyItemList.append(ItemID.SEED)
-        # self.keyItemList.append(ItemID.BIKE_KEY)
-        # self.keyItemList.append(ItemID.SUN_STONE)
-
-        # self.keyItemList.remove(ItemID.ROBORIBBON)
-
     def initLocations(self):
         NormalGameConfig.initLocations(self)
 
@@ -1698,66 +1690,6 @@ class VanillaRandoGameConfig(NormalGameConfig):
 
         fiona_shrine = self.getLocationGroup('Fionashrine')
         fiona_shrine.accessRule = _canAccessFionasShrineVR
-
-        bekklerKey = LocationGroup(
-            "BekklersLab", 1,
-            lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
-        )
-        bekklerKey.addLocation(
-            BaselineLocation(TID.BEKKLER_KEY, _awesome_gear_dist)
-        )
-        self.locationGroups.append(bekklerKey)
-
-        cyrusKey = LocationGroup(
-            "HerosGrave", 1, _canAccessCyrusGraveVR
-        )
-        cyrusKey.addLocation(
-            BaselineLocation(TID.CYRUS_GRAVE_KEY, _awesome_gear_dist)
-        )
-        self.locationGroups.append(cyrusKey)
-
-        # Get the split Arris Dome Keys right.
-        # Remove Doan from future, add food storage to future
-        # Add Doan to his own group
-        future = self.getLocationGroup("FutureOpen")
-        future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
-        future.addLocation(BaselineLocation(TID.ARRIS_DOME_FOOD_LOCKER_KEY,
-                                            _high_gear_dist))
-
-        doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
-        doanKey.addLocation(BaselineLocation(TID.ARRIS_DOME_DOAN_KEY,
-                                             _high_gear_dist))
-        self.locationGroups.append(doanKey)
-
-        ozzieKey = LocationGroup("Ozzie's Fort", 1,
-                                 lambda game: game.canAccessMtWoe())
-        ozzieKey.addLocation(BaselineLocation(TID.OZZIES_FORT_KEY,
-                                              _high_gear_dist))
-        self.locationGroups.append(ozzieKey)
-
-        lab32Key = LocationGroup(
-            "RaceLog Chest", 1,
-            lambda game: (
-                game.hasKeyItem(ItemID.PENDANT) and
-                game.hasKeyItem(ItemID.BIKE_KEY)
-            )
-        )
-        lab32Key.addLocation(BaselineLocation(TID.LAB_32_RACE_LOG,
-                                              _high_gear_dist))
-        self.locationGroups.append(lab32Key)
-
-        sunstoneKey = LocationGroup(
-            "Sun Keep 2300", 1,
-            lambda game: (
-                game.hasKeyItem(ItemID.GATE_KEY) and
-                game.hasKeyItem(ItemID.PENDANT) and
-                game.hasKeyItem(ItemID.MOON_STONE)
-            )
-        )
-
-        sunstoneKey.addLocation(BaselineLocation(TID.SUN_KEEP_2300,
-                                                 _high_gear_dist))
-        self.locationGroups.append(sunstoneKey)
 
 
 class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
@@ -1778,68 +1710,15 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
     def initLocations(self):
         ChronosanityGameConfig.initLocations(self)
 
-        # In Vanilla, Giant's Claw and King's Trial are endgame areas, so
-        # logically gate them behind EoT access.
+        # Gate Vanilla endgame dungeons behind Mt. Woe access
         giants_claw = self.getLocationGroup('Giantsclaw')
         giants_claw.accessRule = _canAccessGiantsClawVR
 
         kings_trial = self.getLocationGroup('GuardiaTreasury')
         kings_trial.accessRule = _canAccessKingsTrialVR
 
-        # The below should all be implemented in ChronosanityGameConfig now
-        # bekklerKey = LocationGroup(
-        #     "BekklersLab", 2,
-        #     lambda game: game.hasKeyItem(ItemID.C_TRIGGER)
-        # )
-        # bekklerKey.addLocation(Location(TID.BEKKLER_KEY))
-
-        # self.locationGroups.append(bekklerKey)
-
-        # northernRuinsLocations = self.getLocationGroup('NorthernRuins')
-        # northernRuinsLocations.accessRule = _canAccessNorthernRuinsVR
-
-        # northernRuinsFrog = self.getLocationGroup('NorthernRuinsFrogLocked')
-        # northernRuinsFrog.addLocation(Location(TID.CYRUS_GRAVE_KEY))
-        # northernRuinsFrog.accessRule = _canAccessCyrusGraveVR
-
-        # # Get the split Arris Dome Keys right.
-        # # Remove Doan from future, add food storage to future
-        # # Add Doan to his own group
-        # future = self.getLocationGroup("FutureOpen")
-        # future.removeLocationTIDs(TID.ARRIS_DOME_DOAN_KEY)
-        # future.addLocation(Location(TID.ARRIS_DOME_FOOD_LOCKER_KEY))
-
-        # doanKey = LocationGroup("DoanSeed", 1, _canAccessDoanKeyVR)
-        # doanKey.addLocation(Location(TID.ARRIS_DOME_DOAN_KEY))
-        # self.locationGroups.append(doanKey)
-
-        # ozziesFort = self.getLocationGroup("Ozzie's Fort")
-        # ozziesFort.locations.append(Location(TID.OZZIES_FORT_KEY))
-        # self.locationGroups.append(ozziesFort)
-
-        # # Increase Ozzie's Fort weight?
-
-        # lab32Key = LocationGroup(
-        #     "RaceLog Chest", 2,
-        #     lambda game: (
-        #         game.hasKeyItem(ItemID.PENDANT) and
-        #         game.hasKeyItem(ItemID.BIKE_KEY)
-        #     )
-        # )
-        # lab32Key.addLocation(Location(TID.LAB_32_RACE_LOG))
-        # self.locationGroups.append(lab32Key)
-
-        # sunstoneKey = LocationGroup(
-        #     "Sun Keep 2300", 1,
-        #     lambda game: (
-        #         game.hasKeyItem(ItemID.GATE_KEY) and
-        #         game.hasKeyItem(ItemID.PENDANT) and
-        #         game.hasKeyItem(ItemID.MOON_STONE)
-        #     )
-        # )
-
-        # sunstoneKey.addLocation(Location(TID.SUN_KEEP_2300))
-        # self.locationGroups.append(sunstoneKey)
+        fiona_shrine = self.getLocationGroup('Fionashrine')
+        fiona_shrine.accessRule = _canAccessFionasShrineVR
 
 
 #
@@ -1862,6 +1741,8 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
     iceAge = rset.GameMode.ICE_AGE == settings.game_mode
     legacyofcyrus = rset.GameMode.LEGACY_OF_CYRUS == settings.game_mode
     vanilla = rset.GameMode.VANILLA_RANDO == settings.game_mode
+
+    CfgType: typing.Type[GameConfig]
 
     if chronosanity:
         if lostWorlds:

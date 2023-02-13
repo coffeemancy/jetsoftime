@@ -480,8 +480,7 @@ def apply_epoch_fail(ct_rom: ctrom.CTRom, settings: rset.Settings):
 
         # Use the Dark Ages turn-in for Jets in Vanilla or with unlocked
         # skygates.
-        if settings.game_mode == rset.GameMode.VANILLA_RANDO or \
-           rset.GameFlags.UNLOCKED_SKYGATES in settings.gameflags:
+        if rset.GameFlags.UNLOCKED_SKYGATES in settings.gameflags:
             add_jets_turnin_to_blackbird_scaffolding(ct_rom)
         else:
             add_dalton_to_snail_stop(ct_rom)

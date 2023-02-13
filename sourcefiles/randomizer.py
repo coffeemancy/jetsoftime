@@ -110,6 +110,8 @@ class Randomizer:
         if rset.GameFlags.MYSTERY in self.settings.gameflags:
             self.settings = mystery.generate_mystery_settings(self.settings)
 
+        self.settings.fix_flag_conflcits()
+
         # Some of the config defaults (prices, techdb, enemy stats) are
         # read from the rom.  This routine partially patches a copy of the
         # base rom, gets the data, and builds the base config.
@@ -1468,69 +1470,78 @@ class Randomizer:
     @classmethod
     def __apply_logic_tweaks_to_config(cls, settings: rset.Settings,
                                        config: cfg.RandoConfig):
+        '''
+        Applies logic tweaks to the config.  Assumes that the settings are
+        valid (no conflicts w/ game mode)
+        '''
         flags = settings.gameflags
         GF = rset.GameFlags
 
-        if settings.game_mode == rset.GameMode.STANDARD:
-            if GF.ADD_SUNKEEP_SPOT in flags:
-                vanillarando.add_sunstone_spot_to_config(config)
+        if GF.ADD_SUNKEEP_SPOT in flags:
+            vanillarando.add_sunstone_spot_to_config(config)
 
-            if GF.ADD_BEKKLER_SPOT in flags:
-                vanillarando.add_vanilla_clone_check_to_config(config)
+        if GF.ADD_BEKKLER_SPOT in flags:
+            vanillarando.add_vanilla_clone_check_to_config(config)
 
-            if GF.ADD_CYRUS_SPOT in flags:
-                vanillarando.restore_cyrus_grave_check_to_config(config)
+        if GF.ADD_CYRUS_SPOT in flags:
+            vanillarando.restore_cyrus_grave_check_to_config(config)
 
-            if GF.ADD_OZZIE_SPOT in flags:
-                vanillarando.add_check_to_ozzies_fort_in_config(config)
+        if GF.ADD_OZZIE_SPOT in flags:
+            vanillarando.add_check_to_ozzies_fort_in_config(config)
 
-            if GF.SPLIT_ARRIS_DOME in flags:
-                vanillarando.add_arris_food_locker_check_to_config(config)
+        if GF.SPLIT_ARRIS_DOME in flags:
+            vanillarando.add_arris_food_locker_check_to_config(config)
 
-            if GF.ADD_RACELOG_SPOT in flags:
-                vanillarando.add_racelog_chest_to_config(config)
+        if GF.ADD_RACELOG_SPOT in flags:
+            vanillarando.add_racelog_chest_to_config(config)
 
     @classmethod
     def __apply_logic_tweaks_to_ctrom(cls, settings: rset.Settings,
                                       config: cfg.RandoConfig,
                                       ct_rom: CTRom):
+        '''
+        Applies logic tweaks to the scripts.  Assumes that the settings are
+        valid (no conflicts w/ game mode)
+        '''
+
         flags = settings.gameflags
         mode = settings.game_mode
         GF = rset.GameFlags
         GM = rset.GameMode
 
-        if mode == GM.STANDARD:
-            if GF.UNLOCKED_SKYGATES in flags:
-                vanillarando.unlock_skyways(ct_rom)
+        if GF.UNLOCKED_SKYGATES in flags:
+            vanillarando.unlock_skyways(ct_rom)
 
-            if GF.ADD_SUNKEEP_SPOT in flags:
-                vanillarando.split_sunstone_quest(ct_rom)
+        if GF.ADD_SUNKEEP_SPOT in flags:
+            vanillarando.split_sunstone_quest(ct_rom)
 
-            if GF.ADD_BEKKLER_SPOT in flags:
-                vanillarando.add_vanilla_clone_check_scripts(ct_rom)
+        if GF.ADD_BEKKLER_SPOT in flags:
+            vanillarando.add_vanilla_clone_check_scripts(ct_rom)
 
-            if GF.RESTORE_TOOLS in flags:
-                vanillarando.restore_tools_to_carpenter_script(ct_rom)
+        if GF.RESTORE_TOOLS in flags:
+            vanillarando.restore_tools_to_carpenter_script(ct_rom)
 
-            if GF.ADD_CYRUS_SPOT in flags:
-                vanillarando.restore_cyrus_grave_script(ct_rom)
+        if GF.ADD_CYRUS_SPOT in flags:
+            vanillarando.restore_cyrus_grave_script(ct_rom)
 
-            if GF.ADD_OZZIE_SPOT in flags:
-                vanillarando.add_check_to_ozzies_fort_script(ct_rom)
+        if GF.ADD_OZZIE_SPOT in flags:
+            vanillarando.add_check_to_ozzies_fort_script(ct_rom)
 
-            if GF.RESTORE_JOHNNY_RACE in flags:
-                vanillarando.restore_johnny_race(ct_rom)
+        if GF.RESTORE_JOHNNY_RACE in flags:
+            vanillarando.restore_johnny_race(ct_rom)
 
-            if GF.SPLIT_ARRIS_DOME in flags:
-                vanillarando.split_arris_dome(ct_rom)
+        if GF.SPLIT_ARRIS_DOME in flags:
+            vanillarando.split_arris_dome(ct_rom)
 
-            if GF.VANILLA_ROBO_RIBBON in flags:
-                vanillarando.restore_ribbon_boost_atropos(
-                    ct_rom, config.boss_assign_dict
-            )
+        if GF.VANILLA_DESERT in flags:
+            vanillarando.revert_sunken_desert_lock(ct_rom)
 
-            if GF.VANILLA_DESERT in flags:
-                vanillarando.revert_sunken_desert_lock(ct_rom)
+        if GF.VANILLA_ROBO_RIBBON in flags:
+            vanillarando.restore_ribbon_boost_atropos(
+                ct_rom, config.boss_assign_dict
+        )
+
+
 
     # Because switching logic is a feature now, we need a settings object.
     # Ugly.  BETA_LOGIC flag is gone now, but keeping it as-is in case of
