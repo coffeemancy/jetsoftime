@@ -1825,4 +1825,11 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
     while script.data[pos] in (2, 3, 4) and script.data[pos+1] != 4:
         script.delete_commands(pos, 1)
 
+    # I think there's a bug where a prior command to reduce song volume to 0
+    # over some time period does not finish before the song is changed and
+    # the volume is restored.  This only seems to happen when there are fewer
+    # boss objects so the intro animation is faster.  We'll add a brief pause
+    # to make sure that the timing works out.
+    call_cmds.add(EC.pause(0.25))
+
     script.insert_commands(call_cmds.get_bytearray(), pos)
