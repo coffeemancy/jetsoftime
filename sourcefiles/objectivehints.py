@@ -13,8 +13,10 @@ import ctenums
 
 import randosettings as rset
 
+
 class InvalidNameException(Exception):
     pass
+
 
 class WeightException(Exception):
     pass
@@ -195,7 +197,7 @@ def parse_quest_name(name: str):
     
 
 _BossDict = Dict[rotypes.BossSpotID, rotypes.BossID]
-_RecruitDict = Dict[ctenums.RecruitID, ctenums.CharID]
+_RecruitDict = Dict[ctenums.RecruitID, pcrecruit.RecruitSpot]
 def get_go_bosses(boss_assign_dict: _BossDict) -> list[rotypes.BossID]:
     BSID = rotypes.BossSpotID
     go_spots = [BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
@@ -349,8 +351,8 @@ def parse_hint(
             weight = 1
 
         # print(f'******* weight = {weight}')
-        obj_keys =  get_objective_keys(obj_str, settings,
-                                       boss_assign_dict, char_assign_dict)
+        obj_keys = get_objective_keys(obj_str, settings,
+                                      boss_assign_dict, char_assign_dict)
         # print(obj_keys)
         # print('*******')
 

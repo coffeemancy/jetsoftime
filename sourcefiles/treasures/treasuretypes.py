@@ -25,6 +25,7 @@ from eventfunction import EventFunction as EF
 
 RewardType = typing.Union[ctenums.ItemID, int]
 
+
 class Treasure(abc.ABC):
     '''
     ABC representing a place in the game that can hold a treasure.
@@ -59,11 +60,12 @@ class ChestRW(ctt.RomRW):
 
         return first_ptr
 
-    def read_data_from_ctrom(self,
-                             ct_rom: ctrom.CTRom,
-                             num_bytes: int,
-                             record_num: int = 0,
-                             data_start: int = None) -> bytearray:
+    def read_data_from_ctrom(
+            self,
+            ct_rom: ctrom.CTRom,
+            num_bytes: int,
+            record_num: int = 0,
+            data_start: typing.Optional[int] = None) -> bytearray:
 
         if data_start is None:
             data_start = self.get_data_start(ct_rom)
@@ -75,9 +77,9 @@ class ChestRW(ctt.RomRW):
                              ct_rom: ctrom.CTRom,
                              data: bytes,
                              record_num: int = 0,
-                             data_start: int = None):
+                             data_start: typing.Optional[int] = None):
         '''
-        Write data to a ctrom.CTRom.  If the target data is arranged in 
+        Write data to a ctrom.CTRom.  If the target data is arranged in
         records of length len(data), write to record number record_num.
         '''
         if data_start is None:
@@ -90,8 +92,8 @@ class ChestRW(ctt.RomRW):
     def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom,
                             num_bytes: int,
                             record_num: int = 0,
-                            start_addr: int = None,
-                            data_start: int = None):
+                            start_addr: typing.Optional[int] = None,
+                            data_start: typing.Optional[int] = None):
         '''
         Mark the data on the ROM that would be read/written as free
         '''
@@ -154,20 +156,6 @@ class ChestTreasureData(ctt.BinaryData):
 
         return self._held_item
 
-    @property
-    def loc_pointer(self) -> ctenums.LocID:
-        if self.x_coord == 0 and self.x_coord == 0:
-            loc_id = int.from_bytes(self[2:4], 'little')
-            return ctenums.LocID(loc_id)
-
-        return None
-
-    @loc_pointer.setter
-    def loc_pointer(self, loc_id: ctenums.LocID):
-        self.x_coord = 0
-        self.y_coord = 0
-        self[2:4] = int.to_bytes(int(loc_id), 2, 'little')
-
     @held_item.setter
     def held_item(self, item: ctenums.ItemID):
         item = ctenums.ItemID(item)
@@ -180,9 +168,22 @@ class ChestTreasureData(ctt.BinaryData):
         self._is_empty = False
         self._held_item = item
 
+    @property
+    def loc_pointer(self) -> typing.Optional[ctenums.LocID]:
+        if self.x_coord == 0 and self.x_coord == 0:
+            loc_id = int.from_bytes(self[2:4], 'little')
+            return ctenums.LocID(loc_id)
+
+        return None
+
+    @loc_pointer.setter
+    def loc_pointer(self, loc_id: ctenums.LocID):
+        self.x_coord = 0
+        self.y_coord = 0
+        self[2:4] = int.to_bytes(int(loc_id), 2, 'little')
+
     def is_copying_location(self) -> bool:
         return self.x_coord == self.y_coord == 0
-
 
     @property
     def reward(self) -> RewardType:
@@ -226,7 +227,7 @@ class ChestTreasure(Treasure):
         self.chest_index = chest_index
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom,
-                       data_start: int = None):
+                       data_start: typing.Optional[int] = None):
 
         chest_rw = ChestRW(0x00A751)
         if data_start is None:
@@ -268,11 +269,12 @@ class ScriptTreasure(Treasure):
         return x
 
     @staticmethod
-    def update_get_reward_text(script: ctevent.Event,
-                               start: int,
-                               end: int,
-                               reward: RewardType,
-                               orig_gold_amt: int = None) -> int:
+    def update_get_reward_text(
+            script: ctevent.Event,
+            start: int,
+            end: int,
+            reward: RewardType,
+            orig_gold_amt: typing.Optional[int] = None):
 
         if type(reward) == ctenums.ItemID:
             if reward == ctenums.ItemID.NONE:
@@ -282,7 +284,7 @@ class ScriptTreasure(Treasure):
         else:
             repl_str = f'{reward}G'
 
-        pos = start
+        pos: typing.Optional[int] = start
         text_cmds = [0xBB, 0xC1, 0xC2]
         while True:
             pos, cmd = script.find_command(text_cmds, pos, end)
@@ -316,7 +318,7 @@ class ScriptTreasure(Treasure):
         fn_start = script.get_function_start(self.object_id, self.function_id)
         fn_end = script.get_function_end(self.object_id, self.function_id)
 
-        pos = fn_start
+        pos: typing.Optional[int] = fn_start
         num_mem_set_cmds_found = 0
         mem_set_pos = None
 
@@ -424,19 +426,21 @@ class BekklerTreasure(ScriptTreasure):
                                       self.bekkler_function_id)
 
         pos, _ = script.find_command([0x4F], st, end)
-        script.data[pos+1] = int(self.held_item)
+        if pos is None:
+            raise ValueError
 
-            
+        script.data[pos+1] = int(self.reward)
+
 
 def get_base_treasure_dict() -> dict[ctenums.TreasureID, Treasure]:
     '''
     Return a dictionary of all possible TreasureIDs to their corresponding
     treasure objects.
     '''
-    LocID = ctenums.LocID
-    TID = ctenums.TreasureID
+    LocID: typing.TypeAlias = ctenums.LocID
+    TID: typing.TypeAlias = ctenums.TreasureID
 
-    ret_dict: dict[TID, LocID] = {
+    ret_dict: dict[TID, Treasure] = {
         TID.TRUCE_MAYOR_1F: ChestTreasure(0x02),
         TID.TRUCE_MAYOR_2F: ChestTreasure(0x03),
         TID.KINGS_ROOM_1000: ChestTreasure(0x04),

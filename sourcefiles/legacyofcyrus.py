@@ -339,8 +339,6 @@ def insert_recruit_lock(ct_rom: ctrom.CTRom,
     Forces required characters to be active at the given recruit spot.
     '''
 
-    print(recruit_spot)
-
     # The general idea is to do the following
     #   1) Unset any character locks
     #   2) Allow the party shuffle (Y menu)

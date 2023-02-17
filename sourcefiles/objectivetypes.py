@@ -195,6 +195,7 @@ class BattleObjective(Objective):
             bucket_settings: rset.BucketSettings,
             objective_count_addr: int
             ):
+
         num_objectives_needed = bucket_settings.num_objectives_needed
         script = ct_rom.script_manager.get_script(self.battle_loc.loc_id)
         pos = script.get_function_start(self.battle_loc.obj_id,
@@ -1016,7 +1017,7 @@ def get_defeat_boss_obj(
         boss_id: rotypes.BossID,
         settings: rset.Settings,
         boss_assign_dict: dict[rotypes.BossSpotID, rotypes.BossID],
-        item_id: ctenums.ItemID = None
+        item_id: typing.Optional[ctenums.ItemID] = None
         ) -> BattleObjective:
 
     try:
@@ -1125,8 +1126,11 @@ def get_recruit_char_obj(
     desc = f'Recruit {char_id}'
 
     if rid in (ctenums.RecruitID.STARTER_1, ctenums.RecruitID.STARTER_2):
+        if not isinstance(recruit, pcrecruit.StarterChar):
+            raise TypeError
+
         return RecruitStarterObjective(name, desc, recruit, item_id)
-    else:
-        return RecruitSpotObjective(name, desc, recruit, item_id)
+
+    return RecruitSpotObjective(name, desc, recruit, item_id)
 
 

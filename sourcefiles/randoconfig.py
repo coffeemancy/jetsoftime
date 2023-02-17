@@ -53,7 +53,7 @@ class RandoConfig:
                                     enemystats.EnemySpriteData] = None,
             enemy_atk_db: enemytechdb.EnemyAttackDB = None,
             enemy_ai_db: enemyai.EnemyAIDB = None,
-            boss_assign_dict: dict[ctenums.LocID, rotypes.BossID] = None,
+            boss_assign_dict: dict[rotypes.BossSpotID, rotypes.BossID] = None,
             boss_data_dict: dict[rotypes.BossID,
                                  rotypes.BossScheme] = None,
             tab_stats: TabStats = TabStats(1, 1, 1),
