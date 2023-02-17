@@ -1,14 +1,15 @@
 from __future__ import annotations
+import functools
+import typing
 
 import byteops
 # import freespace
 import ctenums
 import ctrom
 import ctstrings
-import cttypes as ctt
 
-import functools
-import typing
+
+WritableBytes = typing.Union[bytearray, memoryview]
 
 
 class DataSizeException(Exception):
@@ -157,7 +158,7 @@ class BinaryData:
     SIZE = 0
     ROM_START = 0
 
-    def __init__(self, data: bytes = None):
+    def __init__(self, data: typing.Optional[bytes] = None):
         default_data = bytes([0 for i in range(self.SIZE)])
 
         if data is None:
@@ -171,7 +172,9 @@ class BinaryData:
 
         self._data = bytearray(data)
 
-    def __eq__(self, other: BinaryData):
+    def __eq__(self, other: object):
+        if not hasattr(other, '_data'):
+            return False
         return self._data == other._data
 
     def get_copy(self):
@@ -197,7 +200,7 @@ class StatBoost(BinaryData):
 
         return cls(bytes(rom[start:end]))
 
-    def write_to_rom(self, rom: bytearray, index: int):
+    def write_to_rom(self, rom: WritableBytes, index: int):
         start = self.ROM_START + self.SIZE*index
         end = start + self.SIZE
 
@@ -277,17 +280,18 @@ class ItemData(BinaryData):
     MAX_ID = 0
 
     @classmethod
-    def _validate_item_id(cls, item_id: int) -> int:
+    def _validate_item_id(cls, item_id: int) -> ctenums.ItemID:
         if item_id > cls.MAX_ID:
             item_id = cls.MAX_ID
             print(f'Warning: item_id exceeds {cls.MAX_ID:02X}, '
                   f'setting to {cls.MAX_ID:02X}')
-        elif item_id < cls.MIN_ID:
+            raise ValueError
+        if item_id < cls.MIN_ID:
             item_id = cls.MIN_ID
             print(f'Warning: item_id is less than {cls.MIN_ID:02X}, '
                   f'setting to {cls.MIN_ID:02X}')
 
-        return item_id
+        return ctenums.ItemID(item_id)
 
     @classmethod
     def from_rom(cls, rom: bytes, item_id: ctenums.ItemID):
@@ -299,7 +303,7 @@ class ItemData(BinaryData):
 
         return cls(bytes(rom[start:end]))
 
-    def write_to_rom(self, rom: bytearray, item_id: ctenums.ItemID):
+    def write_to_rom(self, rom: WritableBytes, item_id: ctenums.ItemID):
         item_id = self._validate_item_id(item_id)
         shifted_id = item_id - self.MIN_ID
 
@@ -339,7 +343,7 @@ class ItemSecondaryData(ItemData):
 
     @property
     def ngplus_carryover(self) -> bool:
-        return not (self._data[0] & 0x10)
+        return not self._data[0] & 0x10
 
     @ngplus_carryover.setter
     def ngplus_carryover(self, val: bool):
@@ -376,7 +380,7 @@ class WeaponStats(ItemData):
     SIZE = 5
     ROM_START = 0x0C0262
     MIN_ID = 0
-    MAX_ID = 0x59
+    MAX_ID = int(ctenums.ItemID.WEAPON_END_5A)
 
     @property
     def attack(self) -> int:
@@ -401,7 +405,7 @@ class WeaponStats(ItemData):
 
     @property
     def effect_id(self) -> WeaponEffects:
-        return self._data[3]
+        return WeaponEffects(self._data[3])
 
     @effect_id.setter
     def effect_id(self, val: WeaponEffects):
@@ -419,15 +423,14 @@ class WeaponStats(ItemData):
     def get_effect_string(self):
         if self.has_effect:
             return _weapon_effect_abbrev_dict[self.effect_id]
-        else:
-            return ''
+        return ''
 
 
 class ArmorStats(ItemData):
     SIZE = 3
     ROM_START = 0x0C047E
-    MIN_ID = 0x5A
-    MAX_ID = 0x93
+    MIN_ID = int(ctenums.ItemID.WEAPON_END_5A)+1
+    MAX_ID = int(ctenums.ItemID.HELM_END_94)-1
 
     @property
     def defense(self) -> int:
@@ -462,8 +465,7 @@ class ArmorStats(ItemData):
     def get_effect_string(self):
         if self.has_effect:
             return _armor_status_abbrev_dict[self.effect_id]
-        else:
-            return ''
+        return ''
 
 
 class Type_09_Buffs(ctenums.StrIntEnum):
@@ -497,6 +499,8 @@ class Type_05_Buffs(ctenums.StrIntEnum):
     def get_abbrev(self) -> str:
         if self == Type_05_Buffs.GREENDREAM:
             return 'Autorev'
+
+        raise ValueError("Undefined Buff Type")
 
 
 class Type_06_Buffs(ctenums.StrIntEnum):
@@ -537,45 +541,47 @@ class Type_08_Buffs(ctenums.StrIntEnum):
         return type_08_abbrev[self]
 
 
+_Buff = typing.Union[Type_05_Buffs, Type_06_Buffs, Type_08_Buffs,
+                     Type_09_Buffs]
+_BuffList = typing.Iterable[_Buff]
+
+
 def get_buff_string(buffs: typing.Union[_Buff,
                                         typing.Iterable[_Buff]]) -> str:
     if isinstance(buffs, typing.Iterable):
         if not buffs:
             return ''
-        else:
-            buff_types = list(set(type(buff) for buff in buffs))
-            buffs = list(set(buffs))
 
-            if len(buff_types) > 1:
-                raise TypeError('Buff list has multiple types.')
+        buff_types = list(set(type(buff) for buff in buffs))
+        buffs = list(set(buffs))
 
-            buff_type = buff_types[0]
-            if buff_type in (Type_05_Buffs, Type_09_Buffs, Type_08_Buffs):
-                buff_str = '/'.join(x.get_abbrev() for x in buffs)
-            elif buff_type == Type_06_Buffs:
-                if len(buffs) == 8:
-                    buff_str = 'P:All'
-                else:
-                    buff_str = 'P:'+'/'.join(x.get_abbrev() for x in buffs)
+        if len(buff_types) > 1:
+            raise TypeError('Buff list has multiple types.')
 
-            return buff_str
+        buff_type = buff_types[0]
+        if buff_type in (Type_05_Buffs, Type_09_Buffs, Type_08_Buffs):
+            buff_str = '/'.join(x.get_abbrev() for x in buffs)
+        elif buff_type == Type_06_Buffs:
+            if len(buffs) == 8:
+                buff_str = 'P:All'
+            else:
+                buff_str = 'P:'+'/'.join(x.get_abbrev() for x in buffs)
 
+        return buff_str
 
-_Buff = typing.Union[Type_05_Buffs, Type_06_Buffs, Type_08_Buffs,
-                     Type_09_Buffs]
-_BuffList = typing.Iterable[_Buff]
+    raise TypeError("Invalid Buff Type")
 
 
 # We are not going to do much with accessories because they are so weird.
 class AccessoryStats(ItemData):
     SIZE = 4
     ROM_START = 0x0C052C
-    MIN_ID = 0x94
-    MAX_ID = 0xBB
+    MIN_ID = int(ctenums.ItemID.HELM_END_94)
+    MAX_ID = int(ctenums.ItemID.ACCESSORY_END_BC)
 
     @property
     def has_battle_buff(self) -> bool:
-        return self._data[1] & 0x80
+        return bool(self._data[1] & 0x80)
 
     @has_battle_buff.setter
     def has_battle_buff(self, val: bool):
@@ -585,28 +591,27 @@ class AccessoryStats(ItemData):
     def _get_buff_type(self):
         if not self.has_battle_buff:
             return None
-        elif self._data[2] == 0x05:
+        if self._data[2] == 0x05:
             return Type_05_Buffs
-        elif self._data[2] == 0x06:
+        if self._data[2] == 0x06:
             return Type_06_Buffs
-        elif self._data[2] == 0x08:
+        if self._data[2] == 0x08:
             return Type_08_Buffs
-        elif self._data[2] == 0x09:
+        if self._data[2] == 0x09:
             return Type_09_Buffs
-        else:
-            raise ValueError('Invalid buff type')
+
+        raise ValueError('Invalid buff type')
 
     def _get_buff_type_index(self, buff: _Buff):
         if isinstance(buff, Type_05_Buffs):
             return 5
-        elif isinstance(buff, Type_06_Buffs):
+        if isinstance(buff, Type_06_Buffs):
             return 6
-        elif isinstance(buff, Type_08_Buffs):
+        if isinstance(buff, Type_08_Buffs):
             return 8
-        elif isinstance(buff, Type_09_Buffs):
+        if isinstance(buff, Type_09_Buffs):
             return 9
-        else:
-            raise ValueError('Invalid buff type')
+        raise ValueError('Invalid buff type')
 
     @property
     def battle_buffs(self):
@@ -652,7 +657,7 @@ class AccessoryStats(ItemData):
 
     @property
     def has_stat_boost(self) -> bool:
-        return self._data[1] & 0x40
+        return bool(self._data[1] & 0x40)
 
     @has_stat_boost.setter
     def has_stat_boost(self, val: bool):
@@ -666,8 +671,7 @@ class AccessoryStats(ItemData):
         if not self.has_stat_boost:
             # raise exception
             return 0
-        else:
-            return self._data[2]
+        return self._data[2]
 
     @stat_boost_index.setter
     def stat_boost_index(self, val: int):
@@ -679,7 +683,7 @@ class AccessoryStats(ItemData):
 
     @property
     def has_counter_effect(self) -> bool:
-        return self._data[0] & 0x40
+        return bool(self._data[0] & 0x40)
 
     @has_counter_effect.setter
     def has_counter_effect(self, val: bool):
@@ -690,7 +694,7 @@ class AccessoryStats(ItemData):
 
     @property
     def has_normal_counter_mode(self) -> bool:
-        return self.has_counter_effect and self._data[2] & 0x80
+        return bool(self.has_counter_effect and self._data[2] & 0x80)
 
     # non-normal = atb counter
     @has_normal_counter_mode.setter
@@ -708,9 +712,8 @@ class AccessoryStats(ItemData):
     def counter_rate(self):
         if self.has_counter_effect:
             return self._data[3]
-        else:
-            # raise exception
-            pass
+
+        raise ValueError("Counter Effect Not Set")
 
     @counter_rate.setter
     def counter_rate(self, val: int):
@@ -724,7 +727,7 @@ class AccessoryStats(ItemData):
 class AccessorySecondaryStats(ItemSecondaryData):
     SIZE = 4
     ROM_START = 0x0C0A1C
-    MIN_ID = 0x94
+    MIN_ID = ctenums.ItemID.HELM_END_94
     MAX_ID = 0xBB
 
 
@@ -798,8 +801,8 @@ class GearSecondaryStats(ItemSecondaryData):
 
         if mag == 0 or not elems:
             return ''
-        else:
-            return f'R:{elem_str} {mag}%'
+
+        return f'R:{elem_str} {mag}%'
 
     def get_protected_elements(self) -> list[ctenums.Element]:
 
@@ -832,21 +835,17 @@ class ConsumableKeySecondaryStats(ItemSecondaryData):
     MIN_ID = 0xBC
     MAX_ID = 0xF1
 
-    @property
     def get_equipable_by(self):
-        # raise exception
-        pass
+        raise TypeError("Consumables are not Equippable")
 
-    @get_equipable_by.setter
-    def get_equipable_by(self, val):
-        # raise exception
-        pass
+    def set_equipable_by(self, chars):
+        raise TypeError("Consumables are not Equippable")
 
 
 class ConsumableKeyEffect(ItemData):
     SIZE = 4
     ROM_START = 0x0C05CC
-    MIN_ID = 0xBC
+    MIN_ID = int(ctenums.ItemID.ACCESSORY_END_BC)+1
     MAX_ID = 0xF1
 
     @property
@@ -857,7 +856,7 @@ class ConsumableKeyEffect(ItemData):
     def heals_in_menu(self, val: bool):
         self._data[0] &= 0x7F
         self._data[0] |= (0x80 * val)
-    
+
     @property
     def heals_in_battle_only(self):
         return self._data[0] == 0x04
@@ -925,13 +924,13 @@ class ConsumableKeyEffect(ItemData):
         return self.base_healing*self.heal_multiplier
 
 
-Stats = typing.TypeVar('Stats',
-                       WeaponStats, ArmorStats,
-                       AccessoryStats, ConsumableKeyEffect)
+Stats = typing.Union[
+    WeaponStats, ArmorStats, AccessoryStats, ConsumableKeyEffect
+]
 
-SecStats = typing.TypeVar('SecStats',
-                          GearSecondaryStats, AccessorySecondaryStats,
-                          ConsumableKeySecondaryStats)
+SecStats = typing.Union[
+    GearSecondaryStats, AccessorySecondaryStats, ConsumableKeySecondaryStats
+]
 
 
 class Item:
@@ -983,31 +982,40 @@ class Item:
     def get_stat_boost_ind(self):
         if isinstance(self.secondary_stats, GearSecondaryStats):
             return self.secondary_stats.stat_boost_index
-        elif isinstance(self.stats, AccessoryStats):
+        if isinstance(self.stats, AccessoryStats):
             if self.stats.has_stat_boost:
                 return self.stats.stat_boost_index
-            else:
-                return None
-        else:
             return None
+        return None
 
     @classmethod
     def _determine_types(
             cls,
-            item_id: ctenums.ItemID) -> typing.Tuple[Stats, SecStats]:
-        stat_types = (WeaponStats, ArmorStats, AccessoryStats,
-                      ConsumableKeyEffect)
-        secondary_types = (GearSecondaryStats, AccessorySecondaryStats,
-                           ConsumableKeySecondaryStats)
+            item_id: ctenums.ItemID
+    ) -> typing.Tuple[typing.Type[Stats], typing.Type[SecStats]]:
+
+        S = typing.Type[Stats]
+        stat_types: typing.Tuple[S, S, S, S] = (
+            WeaponStats, ArmorStats, AccessoryStats, ConsumableKeyEffect
+        )
+
+        SS = typing.Type[SecStats]
+        secondary_types: typing.Tuple[SS, SS, SS] = (
+            GearSecondaryStats, AccessorySecondaryStats,
+            ConsumableKeySecondaryStats
+        )
+
+        primary_stat_type: S
+        secondary_stat_type: SS
 
         for stat_type in stat_types:
             if stat_type.MIN_ID <= item_id <= stat_type.MAX_ID:
                 primary_stat_type = stat_type
                 break
 
-        for stat_type in secondary_types:
-            if stat_type.MIN_ID <= item_id <= stat_type.MAX_ID:
-                secondary_stat_type = stat_type
+        for sec_stat_type in secondary_types:
+            if sec_stat_type.MIN_ID <= item_id <= sec_stat_type.MAX_ID:
+                secondary_stat_type = sec_stat_type
                 break
 
         return primary_stat_type, secondary_stat_type
@@ -1022,7 +1030,7 @@ class Item:
         name_b = bytes(rom[name_st:name_end])
         return name_b
 
-    def write_name_to_rom(self, rom: bytearray, item_id: ctenums.ItemID):
+    def write_name_to_rom(self, rom: WritableBytes, item_id: ctenums.ItemID):
         names_start_addr = 0x0C0B5E
         name_size = 0xB
         name_st = names_start_addr + item_id*name_size
@@ -1332,12 +1340,15 @@ class ItemDB:
 
         # fs = freespace.FreeSpace(0x600000, True)
 
-        for item_id in range(0xF2):
-            ptr_st = desc_ptr_st + 2*item_id
+        for item_index in range(0xF2):
+            ptr_st = desc_ptr_st + 2*item_index
             ptr = int.from_bytes(rom[ptr_st:ptr_st+2], 'little')
 
             desc_st = bank + ptr
-            desc_len = len(Item.get_desc_from_rom(rom, item_id))
+            desc_len = len(
+                Item.get_desc_from_rom(rom, ctenums.ItemID(item_index))
+            )
+
             desc_end = desc_st + desc_len
             lower_bound = min(lower_bound, desc_st)
             upper_bound = max(upper_bound, desc_end)
@@ -1345,7 +1356,7 @@ class ItemDB:
             # used = freespace.FSWriteType.MARK_USED
             # fs.mark_block((desc_st, desc_end), used)
 
-        del(rom)  # Have to delete reference to MemoryView for other writes
+        del rom  # Have to delete reference to MemoryView for other writes
 
         desc_ptr_space = 0xF2*2
         desc_space = sum(len(self.item_dict[x].desc)
