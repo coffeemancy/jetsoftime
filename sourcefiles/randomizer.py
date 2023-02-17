@@ -1537,6 +1537,10 @@ class Randomizer:
             vanillarando.revert_sunken_desert_lock(ct_rom)
 
         if GF.VANILLA_ROBO_RIBBON in flags:
+            if rotypes.BossSpotID.EPOCH_REBORN in config.boss_assign_dict:
+                print(settings.game_mode)
+                print(settings.gameflags)
+                raise ValueError
             vanillarando.restore_ribbon_boost_atropos(
                 ct_rom, config.boss_assign_dict
         )
@@ -1738,7 +1742,6 @@ class Randomizer:
         with open('./pickles/default_randoconfig.pickle', 'wb') as outfile:
             pickle.dump(config, outfile)
 
-
     @classmethod
     def fill_default_config_entries(cls, config: cfg.RandoConfig):
         config.boss_assign_dict = rotypes.get_default_boss_assignment()
@@ -1779,19 +1782,22 @@ class Randomizer:
         config = cfg.RandoConfig()
         cls.fill_default_config_entries(config)
 
-        # Be sure to remove the Epoch boss spot when EF is not set
-        if rset.GameFlags.EPOCH_FAIL not in settings.gameflags:
-            del config.boss_assign_dict[rotypes.BossSpotID.EPOCH_REBORN]
-            if rotypes.BossSpotID.EPOCH_REBORN in settings.ro_settings.spots:
-                settings.ro_settings.spots.remove(
-                    rotypes.BossSpotID.EPOCH_REBORN
-                )
+        spots = bossrando.get_assignable_spots(settings.game_mode,
+                                               settings.gameflags)
+        config.boss_assign_dict = {
+            spot: config.boss_assign_dict[spot]
+            for spot in spots
+        }
 
         config.boss_data_dict = rotypes.get_boss_data_dict()
 
         if settings.game_mode == rset.GameMode.VANILLA_RANDO:
             config.update_from_ct_rom(van_ct_rom)
             vanillarando.fix_config(config)
+
+            # Apply the experimental logic tweaks in the config
+            # This is new, it used to be automatic in vanilla mode.
+            cls.__apply_logic_tweaks_to_config(settings, config)
 
         else:
             van_config = cfg.RandoConfig()

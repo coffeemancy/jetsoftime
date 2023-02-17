@@ -22,6 +22,47 @@ import randoconfig as cfg
 class InsufficientSpotsException(Exception):
     pass
 
+def get_assignable_spots(
+        mode: rset.GameMode,
+        flags: rset.GameFlags) -> list[bt.BossSpotID]:
+
+    GM = rset.GameMode
+    GF = rset.GameFlags
+    BSID = bt.BossSpotID
+    spots = list(BSID)
+
+    removed_spots = []
+    if mode == GM.LOST_WORLDS:
+        spots = [BSID.ARRIS_DOME, BSID.GENO_DOME, BSID.REPTITE_LAIR,
+                 BSID.SUN_PALACE, BSID.DEATH_PEAK, BSID.ZEAL_PALACE,
+                 BSID.MT_WOE,
+                 BSID.OCEAN_PALACE_TWIN_GOLEM, BSID.BLACK_OMEN_ELDER_SPAWN,
+                 BSID.BLACK_OMEN_GIGA_MUTANT, BSID.BLACK_OMEN_TERRA_MUTANT]
+
+    elif mode == GM.ICE_AGE:
+        removed_spots = [
+            BSID.DEATH_PEAK, BSID.BLACK_OMEN_ELDER_SPAWN,
+            BSID.BLACK_OMEN_GIGA_MUTANT, BSID.BLACK_OMEN_TERRA_MUTANT,
+            BSID.ZEAL_PALACE, BSID.OCEAN_PALACE_TWIN_GOLEM
+        ]
+    elif mode == GM.LEGACY_OF_CYRUS:
+        removed_spots = [
+            BSID.PRISON_CATWALKS,
+            BSID.ARRIS_DOME, BSID.GENO_DOME, BSID.SUN_PALACE,
+            BSID.DEATH_PEAK, BSID.BLACK_OMEN_ELDER_SPAWN,
+            BSID.BLACK_OMEN_GIGA_MUTANT, BSID.BLACK_OMEN_TERRA_MUTANT,
+            BSID.ZEAL_PALACE, BSID.OCEAN_PALACE_TWIN_GOLEM
+        ]
+
+    if GF.EPOCH_FAIL not in flags and BSID.EPOCH_REBORN in spots:
+        spots.remove(BSID.EPOCH_REBORN)
+
+    for spot in removed_spots:
+        if spot in spots:
+            spots.remove(spot)
+
+    return spots
+
 
 def get_alt_twin_slot(config: cfg.RandoConfig,
                       one_spot_boss: bt.BossID) -> int:
@@ -61,6 +102,10 @@ def update_twin_boss(settings: rset.Settings,
     Use the assignment made in config.boss_assign_dict to update the twin
     boss's data (ai, animations, graphics, stats)
     '''
+
+    if bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM not in config.boss_assign_dict:
+        return
+
     twin_type = config.boss_assign_dict[bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM]
     set_twin_boss_data_in_config(twin_type, settings, config)
 
@@ -211,14 +256,15 @@ def write_assignment_to_config(settings: rset.Settings,
 
     # Restrict default assignment to the provided spots.
     boss_assignment = bt.get_default_boss_assignment()
-    # boss_assignment = {
-    #     spot: boss for (spot, boss) in boss_assignment.items()
-    #     if spot in settings.ro_settings.spots
-    # }
+    boss_assignment = {
+        spot: boss for (spot, boss) in boss_assignment.items()
+        if spot in config.boss_assign_dict
+        and spot in settings.ro_settings.spots
+    }
 
     # Use fixed order.  Ordering in the ROSettings won't change assignment.
     available_spots = [spot for spot in bt.BossSpotID
-                       if spot in settings.ro_settings.spots]
+                       if spot in boss_assignment]
     available_bosses = bt.get_assignable_bosses()
     available_bosses = [boss for boss in available_bosses
                         if boss in settings.ro_settings.bosses]
@@ -299,7 +345,7 @@ def change_enemy_sprite(
 
 def make_boss_rando_sprite_fixes(
         assign_dict: dict[bt.BossSpotID, bt.BossID],
-        sprite_dict: dict[EnemyID, enemystats.EnemyStats]
+        sprite_dict: dict[EnemyID, enemystats.EnemySpriteData]
         ):
     '''
     Make sprite edits depending on boss assignments,
@@ -308,14 +354,17 @@ def make_boss_rando_sprite_fixes(
     - Make Giga Gaia/Rust Tyrano not affect layer1 outside of vanilla spots.
     '''
 
-    if assign_dict[bt.BossSpotID.ARRIS_DOME] != bt.BossID.GUARDIAN:
+    arris_boss = assign_dict.get(bt.BossSpotID.ARRIS_DOME, None)
+    if arris_boss != bt.BossID.GUARDIAN:
         change_enemy_sprite(EnemyID.GUARDIAN, EnemyID.NU, sprite_dict)
 
-    if assign_dict[bt.BossSpotID.MT_WOE] != bt.BossID.GIGA_GAIA:
+    woe_boss = assign_dict.get(bt.BossSpotID.MT_WOE, None)
+    if woe_boss != bt.BossID.GIGA_GAIA:
         gg_data = sprite_dict[EnemyID.GIGA_GAIA_HEAD]
         gg_data.set_affect_layer_1(False)
 
-    if assign_dict[bt.BossSpotID.GIANTS_CLAW] != bt.BossID.RUST_TYRANO:
+    claw_boss = assign_dict.get(bt.BossSpotID.GIANTS_CLAW, None)
+    if claw_boss != bt.BossID.RUST_TYRANO:
         rusty_data = sprite_dict[EnemyID.RUST_TYRANO]
         rusty_data.set_affect_layer_1(False)
 
@@ -326,7 +375,7 @@ def make_boss_rando_sprite_fixes(
     )
 
     bad_spots_assigned_bosses = [
-        assign_dict[spot] for spot in bad_mud_imp_spots
+        assign_dict.get(spot, None) for spot in bad_mud_imp_spots
     ]
 
     if bt.BossID.MUD_IMP in bad_spots_assigned_bosses:
@@ -459,7 +508,8 @@ def scale_bosses_given_assignment(settings: rset.Settings,
 
     # Store the scaled stats in a new dict which then gets merged into config.
     scaled_stat_dict = {}
-    for spot in settings.ro_settings.spots:
+    # for spot in settings.ro_settings.spots:
+    for spot in config.boss_assign_dict:
         if spot == bt.BossSpotID.OCEAN_PALACE_TWIN_GOLEM:
             # This is handled by update_twin_boss() above
             continue
@@ -892,7 +942,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
         assign_fn(ctrom, boss_scheme)
 
     # Zombor animation fix
-    zenan_boss = config.boss_assign_dict[bt.BossSpotID.ZENAN_BRIDGE]
+    zenan_boss = config.boss_assign_dict.get(bt.BossSpotID.ZENAN_BRIDGE,
+                                             None)
     if zenan_boss != bt.BossID.ZOMBOR:
         ctrom.rom_data.seek(0x0DC087)
         ctrom.rom_data.write(b'\x10')  # Straight line to coords command
