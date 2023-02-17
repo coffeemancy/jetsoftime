@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import functools
 
+import bossrandotypes as rotypes
 import ctenums
 import ctevent
 import ctrom
@@ -39,13 +40,12 @@ def write_config(settings: rset.Settings,
     if settings.game_mode != rset.GameMode.ICE_AGE:
         return
 
-    BossID = ctenums.BossID
-    LocID = ctenums.LocID
+    BossID = rotypes.BossID
+    BSID = rotypes.BossSpotID
     boss_dict = config.boss_assign_dict
 
-    if boss_dict[LocID.MT_WOE_SUMMIT] != BossID.GIGA_GAIA:
-        print('Error: Ice Age and GG not on Woe.')
-        exit()
+    if boss_dict[BSID.MT_WOE] != BossID.GIGA_GAIA:
+        raise ValuerError('Error: Ice Age and GG not on Woe.')
 
     EnemyID = ctenums.EnemyID
 
@@ -361,40 +361,7 @@ def insert_char_lock(script: ctevent.Event,
         )
     func.add(EC.assign_val_to_mem(char_lock_bytes, 0x7F01DF, 1))
 
-    start = script.get_object_start(obj_id)
-    end = script.get_object_end(obj_id)
-
-    # Find the Add to reserve command
-    pos, cmd = script.find_command([0xD0], start, end)
-
-    # There should be a jump immediately before.  This jump jumps over the
-    # add to reserve command when there are only 2 PCs
-    jump_cmd_pos = pos - 2
-
-    # Make sure it's really the forward jump
-    if script.data[jump_cmd_pos] != 0x10:
-        # This happens in castle because castle *always* has 3+ PCs.
-        # print('Warning: No jump prior to add reserve.  Castle?')
-        jump_pos = None
-    else:
-        # store the location of the jump for later.
-        jump_pos = jump_cmd_pos + 1
-
-    pos += len(cmd)
-
-    if script.data[pos] != EC.replace_characters().command:
-        print('Failed to find replace characters')
-        quit()
-
+    switch_pos = script.find_exact_command(EC.replace_characters())
     script.modified_strings = True
-    script.delete_commands(pos)
-    script.insert_commands(func.get_bytearray(), pos)
-
-    # Now fix that jump to jump over everything we just added.
-    # If it needs fixing anyway.
-    if jump_pos is not None:
-        after_pos = pos + len(func)
-        script.data[jump_pos] = after_pos - jump_pos
-
-    # for string in script.strings:
-    #     print(ctstrings.CTString.ct_bytes_to_ascii(string))
+    script.insert_commands(func.get_bytearray(), switch_pos)
+    script.delete_commands(switch_pos+len(func))
