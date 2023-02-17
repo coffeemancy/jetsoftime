@@ -16,6 +16,8 @@ from treasures import treasuredata, treasuretypes
 
 import randoconfig as cfg
 
+from eventcommand import EventCommand as EC, FuncSync as FS
+from eventfunction import EventFunction as EF
 
 def add_sunstone_spot_to_config(config: cfg.RandoConfig):
     '''
@@ -501,6 +503,20 @@ def restore_ribbon_boost_atropos(
         battle_loc = obtypes.get_battle_loc_from_spot(spot)
 
         script = ct_rom.script_manager.get_script(battle_loc.loc_id)
+
+        str_id = script.add_py_string(
+            'Found AtroposXR\'s ribbon!{line break}'
+            '{robo}\'s Speed+3 and Mdef+10{null}'
+        )
+
+        ribbon_func = get_robo_ribbon_boost_function(str_id)
+        obj_id = script.append_empty_object()
+        script.set_function(
+            obj_id, 0,
+            EF().add(EC.return_cmd()).add(EC.end_cmd())
+        )
+        script.set_function(obj_id, 1, ribbon_func)
+
         pos = script.get_function_start(battle_loc.obj_id, battle_loc.fn_id)
         end = script.get_function_end(battle_loc.obj_id, battle_loc.fn_id)
 
@@ -508,13 +524,8 @@ def restore_ribbon_boost_atropos(
             pos, cmd = script.find_command([0xD8], pos, end)
             pos += len(cmd)
 
-        str_id = script.add_py_string(
-            'Found AtroposXR\'s ribbon!{line break}'
-            '{robo}\'s Speed+3 and Mdef+10{null}'
-        )
-
-        func = get_robo_ribbon_boost_function(str_id)
-        script.insert_commands(func.get_bytearray(), pos)
+        call_cmd = EC.call_obj_function(obj_id, 1, 3, FS.HALT)
+        script.insert_commands(call_cmd.to_bytearray() , pos)
     else:
         restore_ribbon_boost_geno(ct_rom)
 
