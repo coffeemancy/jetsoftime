@@ -318,6 +318,7 @@ class ItemID(StrIntEnum):
     GIGA_ARM = 0x37
     TERRA_ARM = 0x38
     CRISIS_ARM = 0x39
+    UNUSED_3A = 0x3A
     BRONZEEDGE = 0x3B
     IRON_SWORD = 0x3C
     MASAMUNE_1 = 0x3D
@@ -332,6 +333,8 @@ class ItemID(StrIntEnum):
     FIST_3 = 0x46
     IRON_FIST = 0x47
     BRONZEFIST = 0x48
+    UNUSED_49 = 0x49
+    UNUSED_4A = 0x4A
     DARKSCYTHE = 0x4B
     HURRICANE = 0x4C
     STARSCYTHE = 0x4D
@@ -347,6 +350,7 @@ class ItemID(StrIntEnum):
     UNUSED_57 = 0x57
     UNUSED_58 = 0x58
     UNUSED_59 = 0x59
+    WEAPON_END_5A = 0x5A
     HIDE_TUNIC = 0x5B
     KARATE_GI = 0x5C
     BRONZEMAIL = 0x5D
@@ -379,6 +383,7 @@ class ItemID(StrIntEnum):
     RED_VEST = 0x78
     TABAN_VEST = 0x79
     TABAN_SUIT = 0x7A
+    ARMOR_END_7B = 0x7B
     HIDE_CAP = 0x7C
     BRONZEHELM = 0x7D
     IRON_HELM = 0x7E
@@ -403,6 +408,7 @@ class ItemID(StrIntEnum):
     HASTE_HELM = 0x91
     RBOW_HELM = 0x92
     MERMAIDCAP = 0x93
+    HELM_END_94 = 0x94
     BANDANA = 0x95
     RIBBON = 0x96
     POWERGLOVE = 0x97
@@ -442,6 +448,7 @@ class ItemID(StrIntEnum):
     SERAPHSONG = 0xB9
     SUN_SHADES = 0xBA
     PRISMSPECS = 0xBB
+    ACCESSORY_END_BC = 0xBC
     TONIC = 0xBD
     MID_TONIC = 0xBE
     FULL_TONIC = 0xBF
