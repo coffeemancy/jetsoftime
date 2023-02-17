@@ -1289,11 +1289,7 @@ class NormalGameConfig(GameConfig):
         
         if GF.ADD_RACELOG_SPOT in flags:
             lab32Key = LocationGroup(
-            "RaceLog Chest", 1,
-                lambda game: (
-                game.hasKeyItem(ItemID.PENDANT) and
-                game.hasKeyItem(ItemID.BIKE_KEY)
-                )
+                "RaceLog Chest", 1, _canAccessRaceLog
             )
             lab32Key.addLocation(BaselineLocation(TID.LAB_32_RACE_LOG,
                                                   _high_gear_dist))
@@ -1667,6 +1663,16 @@ def _canAccessCyrusGraveVR(game: Game):
 def _canAccessDoanKeyVR(game: Game):
     return game.canAccessFuture() and game.hasKeyItem(ItemID.SEED)
 
+
+def _canAccessRaceLog(game: Game):
+    has_johnny = \
+        rset.GameFlags.RESTORE_JOHNNY_RACE in game.settings.gameflags
+    return (
+        game.hasKeyItem(ItemID.PENDANT) and
+        (
+            game.hasKeyItem(ItemID.BIKE_KEY) or not has_johnny
+        )
+    )
 
 _awesome_gear_dist = td.TreasureDist(
     (1, td.get_item_list(td.ItemTier.AWESOME_GEAR))
