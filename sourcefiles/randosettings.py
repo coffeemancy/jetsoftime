@@ -478,13 +478,51 @@ class Settings:
         return ret
 
     def fix_flag_conflcits(self):
-
+        '''
+        The gui should prevent bad flag choices.  In the event that it somehow
+        does not, this method will silently make changes to the flags to fix
+        things.
+        '''
         mode = self.game_mode
         forced_off = _forced_off_dict[mode]
         self.gameflags &= ~forced_off
 
         if GameFlags.CHRONOSANITY in self.gameflags:
             self.gameflags &= ~GameFlags.BOSS_SCALE
+
+        add_ki_flags = [
+            GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS,
+            GameFlags.EPOCH_FAIL
+        ]
+        added_kis = sum(flag in self.gameflags
+                        for flag in add_ki_flags)
+
+        add_spot_flags = [
+            GameFlags.ADD_BEKKLER_SPOT, GameFlags.ADD_CYRUS_SPOT,
+            GameFlags.ADD_OZZIE_SPOT, GameFlags.ADD_RACELOG_SPOT,
+            GameFlags.VANILLA_ROBO_RIBBON
+        ]
+        added_spots = sum(flag in self.gameflags
+                          for flag in add_spot_flags)
+
+        # We need to make changes that the user will not get tripped up by.
+        # For example, we don't want to add a spot that they wouldn't know to
+        # check.
+        while added_kis > added_spots + 1:
+
+            if GameFlags.VANILLA_ROBO_RIBBON not in self.gameflags:
+                # Making Robo's Ribbon vanilla is least intrusive.  The player
+                # gets to play as they intend but may become puzzled by the
+                # stat boost after atropos.
+                self.gameflags |= GameFlags.VANILLA_ROBO_RIBBON
+                added_spots += 1
+            elif GameFlags.EPOCH_FAIL in self.gameflags:
+                # Just remove epoch fail and the player will immediately
+                # realize something is wrong.
+                self.gameflags &= ~GameFlags.EPOCH_FAIL
+                added_kis -= 1
+            else:
+                raise ValueError
 
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode
