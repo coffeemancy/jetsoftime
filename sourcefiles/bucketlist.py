@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-from enum import Enum, auto
-import random
 import typing
 
 import bossrandotypes as rotypes
@@ -11,7 +9,6 @@ import bucketfragment
 
 from common import distribution
 import ctenums
-import ctevent
 import ctrom
 
 import eventcommand
@@ -19,8 +16,6 @@ from eventcommand import EventCommand as EC, Operation as OP, FuncSync as FS
 
 import eventfunction
 from eventfunction import EventFunction as EF
-
-import itemdata
 
 from maps import locationtypes
 
@@ -142,8 +137,11 @@ def add_objectives_to_config(settings: rset.Settings,
     needed_objs = settings.bucket_settings.num_objectives_needed
     hints = list(settings.bucket_settings.hints)
 
+    KeyType = typing.Union[oty.QuestID, ctenums.RecruitID,
+                           rotypes.BossID, str]
+
     # Quest Keys
-    obj_pool = list(oty.QuestID)
+    obj_pool: list[KeyType] = list(oty.QuestID)
     obj_pool.remove(oty.QuestID.DEFEAT_JOHNNY)
     obj_pool.remove(oty.QuestID.WIN_RACE_BET)
     obj_pool.remove(oty.QuestID.GIVE_SEED_TO_DOAN)
@@ -165,7 +163,7 @@ def add_objectives_to_config(settings: rset.Settings,
     obj_pool.extend(['rocks', 'fragments', 'recruits'])
 
     objectives = []
-    used_keys = []
+    used_keys: list[KeyType] = []
     default_hint = '50:quest_gated, 30:boss_nogo, 20:recruit_gated'
     for ind in range(len(hints), num_objs):
         hints.append(default_hint)
@@ -228,13 +226,12 @@ def clean_distribution(dist: distribution.Distribution,
                     items.remove(key)
             elif key in items:
                 items.remove(key)
-                
         if items:
             new_wo_pairs.append((weight, items))
-                    
+
     dist = distribution.Distribution(*new_wo_pairs)
     return dist
-        
+
 
 def get_obj_from_key(key, settings: rset.Settings,
                      config: cfg.RandoConfig,
@@ -432,7 +429,7 @@ def write_objectives_to_ctrom(
 
     if rset.GameFlags.BUCKET_LIST not in settings.gameflags:
         return
-    
+
     bucket_settings = settings.bucket_settings
     modify_bucket_activation(
         ct_rom, bucket_settings.num_objectives_needed, 0x7F003F
