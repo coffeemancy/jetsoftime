@@ -331,6 +331,7 @@ def update_reborn_epoch_script(ct_rom: ctrom.CTRom):
         .add(EC.assign_val_to_mem(0x01C0, 0x7E0292, 2))
         .add(EC.assign_val_to_mem(0x02, 0x7E027E, 1))
         .add(EC.assign_val_to_mem(0x02, 0x7E028F, 1))
+        .add(EC.assign_val_to_mem(0x00, 0x7F00D2, 1))  # Ending bug prevention
         .add(get_command(b'\xEA\x13'))
         .add(EC.darken(1))
         .add(EC.fade_screen())
