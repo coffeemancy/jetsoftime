@@ -31,7 +31,7 @@ class Objective(typing.Protocol):
     Protocol class for an objective.  Has methods for adding to config and to
     the rom itself.
     '''
-    item_id: ctenums.ItemID
+    item_id: typing.Optional[ctenums.ItemID]
     name: str
     desc: str
 
@@ -184,7 +184,8 @@ class BattleObjective(Objective):
     is lost.
     '''
     def __init__(self, battle_loc: BattleLoc,
-                 name: str, desc: str, item_id: ctenums.ItemID):
+                 name: str, desc: str,
+                 item_id: typing.Optional[ctenums.ItemID]):
         self.name = name
         self.desc = desc
         self.battle_loc = battle_loc
@@ -523,6 +524,8 @@ class DefeatMagusObjective(QuestObjective):
             EC.if_mem_op_value(0x7F0232, OP.EQUALS, 0, 1, 0)
 
         pos = script.find_exact_command(battle_result_cmd, start, end)
+        if pos is None:
+            raise ValueError
         pos += len(battle_result_cmd)
 
         add_obj_complete(script, pos, self, num_objectives_needed,
@@ -547,6 +550,8 @@ class DrinkSodaObjective(QuestObjective):
 
         pos = script.find_exact_command(
             hook_cmd, script.get_function_start(0x1B, 1))
+        if pos is None:
+            raise ValueError
         pos += len(hook_cmd)
 
         func = (
@@ -595,6 +600,8 @@ class RecruitStarterObjective(Objective):
             ):
         num_objectives_needed = bucket_settings.num_objectives_needed
         script = ct_rom.script_manager.get_script(self.loc_id)
+
+        pos: typing.Optional[int]
         pos = script.get_object_start(0)
 
         name_pc_cmd = EC.name_pc(0)
@@ -643,6 +650,8 @@ class RecruitSpotObjective(Objective):
             ):
         num_objectives_needed = bucket_settings.num_objectives_needed
         script = ct_rom.script_manager.get_script(self.loc_id)
+
+        pos: typing.Optional[int]
         pos = script.get_object_start(0)
 
         name_pc_cmd = EC.name_pc(0)
@@ -742,6 +751,7 @@ class RecruitNCharactersObjective(Objective):
                 self.num_recruits, bucket_settings,
                 objective_count_addr)
 
+            pos: typing.Optional[int]
             pos = script.get_object_start(0)
             name_cmd = EC.name_pc(0)
             while True:
@@ -835,15 +845,20 @@ def add_script_treasure_count(
                                  objective_count_addr)
 
     # Find the correct gain item command
+    pos: typing.Optional[int]
     pos = script.get_function_start(treasure.object_id, treasure.function_id)
     end = script.get_function_end(treasure.object_id, treasure.function_id)
 
     for _ in range(treasure.item_num+1):
         pos, _ = script.find_command([0xCA], pos, end)
+        if pos is None:
+            raise ValueError
         pos += 2
 
     # Find the next textbox command
     pos, _ = script.find_command([0xBB, 0xC1, 0xC2], pos, end)
+    if pos is None:
+        raise ValueError
     pos += 2
 
     script.insert_commands(
@@ -899,6 +914,9 @@ class ObtainNRocksObjective(Objective):
         treasure_dict = treasuretypes.get_base_treasure_dict()
         for tid in tids:
             treasure = treasure_dict[tid]
+            if not isinstance(treasure, treasuretypes.ScriptTreasure):
+                raise TypeError
+
             add_script_treasure_count(
                 ct_rom, treasure, self,
                 self.num_rocks_addr, self.num_rocks_needed,
