@@ -45,7 +45,7 @@ def write_config(settings: rset.Settings,
     boss_dict = config.boss_assign_dict
 
     if boss_dict[BSID.MT_WOE] != BossID.GIGA_GAIA:
-        raise ValuerError('Error: Ice Age and GG not on Woe.')
+        raise ValueError('Error: Ice Age and GG not on Woe.')
 
     EnemyID = ctenums.EnemyID
 
