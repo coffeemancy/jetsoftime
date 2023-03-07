@@ -577,7 +577,7 @@ class AccessoryStats(ItemData):
     SIZE = 4
     ROM_START = 0x0C052C
     MIN_ID = int(ctenums.ItemID.HELM_END_94)
-    MAX_ID = int(ctenums.ItemID.ACCESSORY_END_BC)
+    MAX_ID = int(ctenums.ItemID.PRISMSPECS)
 
     @property
     def has_battle_buff(self) -> bool:
@@ -727,15 +727,15 @@ class AccessoryStats(ItemData):
 class AccessorySecondaryStats(ItemSecondaryData):
     SIZE = 4
     ROM_START = 0x0C0A1C
-    MIN_ID = ctenums.ItemID.HELM_END_94
-    MAX_ID = 0xBB
+    MIN_ID = int(ctenums.ItemID.HELM_END_94)
+    MAX_ID = int(ctenums.ItemID.PRISMSPECS)
 
 
 class GearSecondaryStats(ItemSecondaryData):
     SIZE = 6
     ROM_START = 0x0C06A4
     MIN_ID = 0
-    MAX_ID = 0x93
+    MAX_ID = int(ctenums.ItemID.MERMAIDCAP)
 
     elem_bit_dict = {
             ctenums.Element.LIGHTNING: 0x80,
@@ -845,7 +845,7 @@ class ConsumableKeySecondaryStats(ItemSecondaryData):
 class ConsumableKeyEffect(ItemData):
     SIZE = 4
     ROM_START = 0x0C05CC
-    MIN_ID = int(ctenums.ItemID.ACCESSORY_END_BC)+1
+    MIN_ID = int(ctenums.ItemID.ACCESSORY_END_BC)
     MAX_ID = 0xF1
 
     @property
