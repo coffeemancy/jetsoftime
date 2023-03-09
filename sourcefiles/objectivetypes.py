@@ -1038,13 +1038,20 @@ def get_defeat_boss_obj(
         item_id: typing.Optional[ctenums.ItemID] = None
         ) -> BattleObjective:
 
-    try:
-        spots = (spot_id for spot_id, val
-                 in boss_assign_dict.items()
-                 if boss_id == val)
-        spot = next(spots)
-    except StopIteration as exc:
-        raise ValueError('boss_id not found') from exc
+    # BossID.TWIN_BOSS will not be found in the assignment dictionary.  The
+    # one-spot boss to be duplicated will be there.
+    twin_spot = rotypes.BossSpotID.OCEAN_PALACE_TWIN_GOLEM
+
+    if boss_id == rotypes.BossID.TWIN_BOSS:
+        spot = twin_spot
+    else:
+        try:
+            spots = (spot_id for spot_id, val
+                     in boss_assign_dict.items()
+                     if boss_id == val and spot_id != twin_spot)
+            spot = next(spots)
+        except StopIteration as exc:
+            raise ValueError('boss_id not found') from exc
 
     battle_loc = _spot_battle_dict[spot]
     boss_abbrev = _boss_abbrev[boss_id]
