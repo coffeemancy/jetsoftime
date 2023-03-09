@@ -5,7 +5,6 @@ Module to implement some functions for scaling bosses.
 from __future__ import annotations
 
 import math
-import random
 
 import bossrandotypes as rotypes
 

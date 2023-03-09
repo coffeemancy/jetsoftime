@@ -1,5 +1,7 @@
+'''Module for Reading and Manipulating Enemy AI Scripts.'''
+
 from __future__ import annotations
-import typing
+from typing import Optional, Union
 
 import byteops
 from ctenums import EnemyID
@@ -11,12 +13,22 @@ _action_lens = [
     10, 16, 12
 ]
 
+WritableBytes = Union[bytearray, memoryview]
 
-def print_bytes(data: bytes, pos: int = None, length: int = None):
+
+class AISpaceException(Exception):
+    '''Exception to raise when the AI Scripts overflow their space.'''
+
+
+def print_bytes(data: bytes, pos: Optional[int] = None,
+                length: Optional[int] = None):
+    '''Helper function for printing bytes in hex.'''
     print(bytes_to_str(data, pos, length))
 
 
-def bytes_to_str(data: bytes, pos: int = None, length: int = None):
+def bytes_to_str(data: bytes, pos: Optional[int] = None,
+                 length: Optional[int] = None):
+    '''Convert bytes to a hex string.'''
     if pos is None:
         start = 0
     else:
@@ -31,14 +43,15 @@ def bytes_to_str(data: bytes, pos: int = None, length: int = None):
 
 
 class BattleMessages:
-
+    '''Class to store messages that appear during battle.'''
     PTR_TABLE_LOCAL_PTR = 0x0D0299
     PTR_TABLE_ROM_BANK_PTR = 0x0D02A0
 
-    def __init__(self, strings: dict[int, ctstrings.CTString] = None):
+    def __init__(self,
+                 strings: Optional[dict[int, ctstrings.CTString]] = None):
 
         if strings is None:
-            strings = dict()
+            strings = {}
 
         str_dict = {
             x: strings[x] for x in range(0x100)
@@ -54,9 +67,11 @@ class BattleMessages:
         self._strings[index] = ctstrings.CTString(string)
 
     def get_msg_as_str(self, index):
+        '''Convert the battle message at index to a string.'''
         return self._strings[index].to_ascii()
 
     def set_msg_from_str(self, index: int, value: str):
+        '''Converts the given string to a CTString and sets it at index.'''
         ct_str = ctstrings.CTString.from_str(value)
         if ct_str[-1] != 0:
             ct_str.append(0)
@@ -65,6 +80,7 @@ class BattleMessages:
 
     @classmethod
     def get_ptr_table_file_ptr_from_rom(cls, rom: bytes) -> int:
+        '''Find where the battle message pointer table is on the rom.'''
         # ASM Writes 0xCCCBC9 (start of battle msg pointer table) to memory
         # $CD/0298 A2 C9 CB    LDX #$CBC9
         # $CD/029B 8E 0D 02    STX $020D  [$7E:020D]
@@ -80,8 +96,8 @@ class BattleMessages:
         return abs_file_ptr
 
     @classmethod
-    def set_ptr_table_ptr(cls, rom: bytes, new_file_ptr):
-
+    def set_ptr_table_ptr(cls, rom: WritableBytes, new_file_ptr: int):
+        '''Update the location of the battle message pointer table on rom.'''
         local_ptr = new_file_ptr & 0x00FFFF
         bank = byteops.to_rom_ptr(new_file_ptr) >> 16
 
@@ -90,8 +106,8 @@ class BattleMessages:
         rom[cls.PTR_TABLE_ROM_BANK_PTR] = bank
 
     @classmethod
-    def from_rom(cls, rom: bytes, aidb: EnemyAIDB = None):
-
+    def from_rom(cls, rom: bytes, aidb: Optional[EnemyAIDB] = None):
+        '''Read the battle messages from the rom as a BattleMessages object.'''
         # The only reliable way to determine how many strings there are is
         # to scan through the enemy AI.
         if aidb is None:
@@ -101,7 +117,7 @@ class BattleMessages:
 
         abs_file_ptr = cls.get_ptr_table_file_ptr_from_rom(rom)
         bank = abs_file_ptr & 0xFF0000
-        str_dict = dict()
+        str_dict = {}
 
         for ind in sorted(used_msg_ids):
             ptr_loc = abs_file_ptr + 2*ind
@@ -118,6 +134,7 @@ class BattleMessages:
         return cls(str_dict)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        '''Write the battle messages back to the rom.'''
         max_ptr_ind = max(self._strings.keys())
         total_str_len = sum(len(x) for x in self._strings.values())
         total_space_needed = 2*(max_ptr_ind+1) + total_str_len
@@ -231,14 +248,14 @@ _target_str = {
 #           called during parsing.
 #       Probably (1).
 class AIScript:
-
+    ''' Class to store an AI Script.'''
     def __init__(self,
                  script_bytes: bytes = b'\xFF\xFF',
                  start_pos: int = 0):
         self.uses_secondary_atk = False
-        self.tech_usage = []
-        self.battle_msg_usage = []
-        self._data = None
+        self.tech_usage: list[int] = []
+        self.battle_msg_usage: list[int] = []
+        self._data = bytearray()
 
         # Actually sets the above.  In its own function because it may need
         # to be called outside of object construction.
@@ -246,6 +263,7 @@ class AIScript:
 
     @classmethod
     def find_command(cls, cmd_bytes: bytes, cmd_id: int) -> list[int]:
+        ''' Find a given command in the AI Script.'''
         pos = 0
         cmd_inds = []
         for block in range(2):
@@ -262,15 +280,15 @@ class AIScript:
 
                     if action_id == 0xFF:
                         break
-                    else:
-                        size = _action_lens[action_id]
-                        pos += size
+                    size = _action_lens[action_id]
+                    pos += size
                 pos += 1  # Skip terminal 0xFE
             pos += 1  # Skip terminal 0xFF
 
         return cmd_inds
 
     def get_copy(self) -> AIScript:
+        '''Returns a deep copy of self.'''
         new_script = AIScript()
         new_script._data = bytearray(self._data)
         new_script.tech_usage = list(self.tech_usage)
@@ -311,9 +329,9 @@ class AIScript:
 
                     if action_id == 0xFF:
                         break
-                    else:
-                        size = _action_lens[action_id]
-                        pos += size
+
+                    size = _action_lens[action_id]
+                    pos += size
                 pos += 1  # Skip terminal 0xFE
             pos += 1  # Skip terminal 0xFF
 
@@ -328,15 +346,20 @@ class AIScript:
         return num_changes
 
     def get_as_bytearray(self):
+        '''Returns the script's data as a bytearray.'''
         return bytearray(self._data)
 
     def _parse_bytes(self, data: bytes, start_pos: int = 0):
+        '''
+        Determine the tech usage, message usage, and secondary attack usage.
+        Will insert missing 0xFE terminators if needed.
+        '''
         pos = start_pos
-        tech_usage = list()
-        msg_usage = list()
+        tech_usage = []
+        msg_usage = []
         uses_secondary_atk = False
 
-        FE_ins_pos = []
+        FE_ins_pos: list[int] = []
 
         for block in range(2):
             while data[pos] != 0xFF:
@@ -364,9 +387,8 @@ class AIScript:
                         # insert at start so list is in reverse order
                         FE_ins_pos.insert(0, pos)
                         break
-                    else:
-                        size = _action_lens[action_id]
-                        pos += size
+                    size = _action_lens[action_id]
+                    pos += size
                 pos += 1  # Skip terminal 0xFE
             pos += 1  # Skip terminal 0xFF
 
@@ -405,12 +427,12 @@ class AIScript:
                     action_id = self._data[pos]
                     if action_id == 0xFF:
                         break
-                    else:
-                        size = _action_lens[action_id]
-                        ret_str += '\t'
-                        ret_str += bytes_to_str(self._data[pos:pos+size])
-                        ret_str += '\n'
-                        pos += size
+
+                    size = _action_lens[action_id]
+                    ret_str += '\t'
+                    ret_str += bytes_to_str(self._data[pos:pos+size])
+                    ret_str += '\n'
+                    pos += size
                 pos += 1  # Skip terminal 0xFE
             pos += 1  # Skip terminal 0xFF
 
@@ -418,6 +440,7 @@ class AIScript:
 
 
 class EnemyAIDB:
+    '''Class to store all AI Scripts along with battle messages.'''
     PTR_TO_AI_PTRS = 0x01AFD7
 
     unused_enemies = (
@@ -440,7 +463,7 @@ class EnemyAIDB:
 
     def __init__(self,
                  scripts: dict[EnemyID, AIScript],
-                 msgs: BattleMessages = None):
+                 msgs: Optional[BattleMessages] = None):
 
         self.scripts = {x: AIScript() for x in list(EnemyID)}
         for enemy_id in scripts:
@@ -448,14 +471,15 @@ class EnemyAIDB:
 
         self.battle_msgs = msgs
 
-        self.tech_to_enemy_usage = {x: [] for x in range(0x100)}
+        self.tech_to_enemy_usage: dict[int, list[int]] = \
+            {x: [] for x in range(0x100)}
         self._build_usage()
 
     def _build_usage(self):
         used_enemy_ids = (x for x in self.scripts
                           if x not in self.unused_enemies)
 
-        used_msg_ids = list()
+        used_msg_ids = []
 
         for enemy_id in used_enemy_ids:
             script = self.scripts[enemy_id]
@@ -477,9 +501,13 @@ class EnemyAIDB:
                           enemy_id: int,
                           from_tech_id: int,
                           to_tech_id: int):
+        '''
+        Change all instances of using tech from_tech_id to to_tech_id
+        '''
+
         # print(f'Changing {enemy_id} tech {from_tech_id:02X} '
         #       f'to {to_tech_id:02X}')
-        script = self.scripts[enemy_id]
+        script = self.scripts[EnemyID(enemy_id)]
         num_changes = script.change_tech_usage(from_tech_id, to_tech_id)
 
         if num_changes > 0:
@@ -491,6 +519,7 @@ class EnemyAIDB:
                 self.tech_to_enemy_usage[to_tech_id].append(enemy_id)
 
     def change_enemy_ai(self, changed_enemy_id, copied_enemy_id):
+        '''Copy one enemy's AI to another spot.  Update usage stats.'''
         new_script = self.scripts[copied_enemy_id].get_copy()
         orig_script = self.scripts[changed_enemy_id]
 
@@ -507,6 +536,7 @@ class EnemyAIDB:
             self.tech_to_enemy_usage[tech_id].append(changed_enemy_id)
 
     def get_total_length(self):
+        ''' Get the total space requirements of the AI Scripts.'''
         length = 0
         for enemy_id in list(EnemyID):
             if enemy_id not in self.unused_enemies:
@@ -518,13 +548,14 @@ class EnemyAIDB:
     #       next script.  No pointers go to the same script.
     @classmethod
     def from_rom(cls, rom: bytes, restrict_enemies: bool = True):
+        '''Read the AI data from the given CTRom.'''
         ai_ptr_start = int.from_bytes(
             rom[cls.PTR_TO_AI_PTRS:cls.PTR_TO_AI_PTRS+3],
             'little'
         )
         ai_ptr_start = byteops.to_file_ptr(ai_ptr_start)
 
-        scripts = dict()
+        scripts = {}
         for enemy_id in list(EnemyID):
             if enemy_id not in cls.unused_enemies:
                 ptr_st = ai_ptr_start + 2*enemy_id
@@ -540,9 +571,11 @@ class EnemyAIDB:
 
     @classmethod
     def from_ctrom(cls, ct_rom: ctrom.CTRom):
+        '''Read the AI data from the given CTRom.'''
         return cls.from_rom(ct_rom.rom_data.getbuffer())
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        '''Writes out new AI data to the given CTRom.'''
         # For now, we are confident that removing the unused enemies will
         # leave space for whatever we do.
 
@@ -561,8 +594,7 @@ class EnemyAIDB:
         # This should never be an issue with the removed enemies
         write_length = self.get_total_length()
         if write_length > ai_data_end - ai_data_pos:
-            print('Error: No room for AI')
-            exit()
+            raise AISpaceException
 
         for i in range(0x100):
             enemy_id = EnemyID(i)

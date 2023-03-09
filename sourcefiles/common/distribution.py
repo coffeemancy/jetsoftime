@@ -1,3 +1,11 @@
+'''
+Implement Distribution objects.
+
+A Distributuion is just a collection of (weight, value_list) pairs.
+When generating a random item from the distribution, pick a pair based on
+the weights, then return a random element of the pair's value_list.
+'''
+
 from __future__ import annotations
 
 import random
@@ -10,7 +18,6 @@ ObjType = typing.Union[T, typing.Sequence[T]]
 
 class ZeroWeightException(ValueError):
     '''Raised when an entry in a distributuion is given zero weight.'''
-    pass
 
 
 class Distribution(typing.Generic[T]):
@@ -35,7 +42,7 @@ class Distribution(typing.Generic[T]):
         '''
 
         self.__total_weight = 0
-        self.weight_object_pairs: list[ObjType] = None
+        self.weight_object_pairs: list[typing.Tuple[int, ObjType]] = []
 
         new_pairs = self._handle_weight_object_pairs(weight_object_pairs)
         self.set_weight_object_pairs(new_pairs)
@@ -86,11 +93,14 @@ class Distribution(typing.Generic[T]):
         raise ValueError('No choice made.')
 
     def get_weight_object_pairs(self):
+        '''Returns list of (weight, object_list) pairs in the Distribution.'''
         return list(self.weight_object_pairs)
 
     def set_weight_object_pairs(
             self,
             new_pairs: list[typing.Tuple[int, ObjType]]):
+        '''
+        Sets the Distributuion to have the given (int, object_list) pairs.
+        '''
         self.weight_object_pairs = new_pairs
         self.__total_weight = sum(x[0] for x in new_pairs)
-
