@@ -13,6 +13,7 @@ import ctenums
 
 
 class BossSpotID(enum.Enum):
+    '''Enum for Boss Spots.'''
     MANORIA_CATHERDAL = enum.auto()
     HECKRAN_CAVE = enum.auto()
     DENADORO_MTS = enum.auto()
@@ -75,6 +76,7 @@ _boss_spot_names: dict[BossSpotID, str] = {
 
 
 class BossID(enum.Enum):
+    '''Enum for bosses.'''
     ATROPOS_XR = enum.auto()
     DALTON_PLUS = enum.auto()
     ELDER_SPAWN = enum.auto()
@@ -133,7 +135,10 @@ class BossID(enum.Enum):
         return out
 
 
-def get_assignable_bosses():
+def get_assignable_bosses() -> list[BossID]:
+    '''
+    Returns a list of bosses that boss rando can assign to.
+    '''
     boss_list = [
         BossID.ATROPOS_XR, BossID.DALTON_PLUS, BossID.FLEA, BossID.FLEA_PLUS,
         BossID.GOLEM, BossID.GOLEM_BOSS, BossID.HECKRAN,
@@ -143,7 +148,7 @@ def get_assignable_bosses():
         BossID.ZOMBOR, BossID.LAVOS_SPAWN, BossID.ELDER_SPAWN,
         BossID.MEGA_MUTANT, BossID.GIGA_MUTANT, BossID.TERRA_MUTANT,
         BossID.RETINITE, BossID.SON_OF_SUN, BossID.MOTHER_BRAIN,
-        BossID.GUARDIAN, BossID.MUD_IMP, BossID.R_SERIES,
+        BossID.GUARDIAN, BossID.GIGA_GAIA, BossID.MUD_IMP, BossID.R_SERIES,
         BossID.DRAGON_TANK
     ]
 
@@ -430,7 +435,7 @@ def get_default_boss_assignment() -> dict[BossSpotID, BossID]:
         BSID.MAGUS_CASTLE_SLASH: BossID.SLASH_SWORD,
         BSID.MANORIA_CATHERDAL: BossID.YAKRA,
         BSID.MT_WOE: BossID.GIGA_GAIA,
-        BSID.OCEAN_PALACE_TWIN_GOLEM: BossID.TWIN_BOSS,
+        BSID.OCEAN_PALACE_TWIN_GOLEM: BossID.GOLEM,
         BSID.OZZIES_FORT_FLEA_PLUS: BossID.FLEA_PLUS,
         BSID.OZZIES_FORT_SUPER_SLASH: BossID.SUPER_SLASH,
         BSID.PRISON_CATWALKS: BossID.DRAGON_TANK,
