@@ -27,7 +27,6 @@ def get_forced_bosses(hint: str) -> list[rotypes.BossID]:
     parts = hint.split(',')
 
     boss_list = []
-    
     for part in parts:
         if ':' in part:
             part = part.split(':')[1]
@@ -215,36 +214,47 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
                        boss_assign_dict: _BossDict,
                        char_assign_dict: _RecruitDict
                        ) -> list:
+
+    BSID = rotypes.BossSpotID
+    BossID = rotypes.BossID
+
     obj_parts = obj_str.split('_')
     obj_type = obj_parts[0]
 
     epoch_fail = rset.GameFlags.EPOCH_FAIL in settings.gameflags
 
     if obj_type == 'boss':
+        # At some point, the one-spot BossID was put in the boss_assign_dict
+        # instead of BossID.TWIN_BOSS.  We need to undo this here to get the
+        # correct keys.
+        modified_assign_dict = dict(boss_assign_dict)
+        twin_spot = BSID.OCEAN_PALACE_TWIN_GOLEM
+        if twin_spot in modified_assign_dict:
+            modified_assign_dict[twin_spot] = BossID.TWIN_BOSS
+
         boss_type = obj_parts[1]
         if boss_type == 'any':
-            return list(boss_assign_dict.values())
-        elif boss_type == 'go':
-            return get_go_bosses(boss_assign_dict)
-        elif boss_type == 'nogo':
-            go_bosses = get_go_bosses(boss_assign_dict)
-            all_bosses = list(boss_assign_dict.values())
-            return([boss_id for boss_id in all_bosses
-                    if boss_id not in go_bosses])
-        else:
-            return [parse_boss_name(boss_type)]
+            return list(modified_assign_dict.values())
+        if boss_type == 'go':
+            return get_go_bosses(modified_assign_dict)
+        if boss_type == 'nogo':
+            go_bosses = get_go_bosses(modified_assign_dict)
+            all_bosses = list(modified_assign_dict.values())
+            return [boss_id for boss_id in all_bosses
+                    if boss_id not in go_bosses]
+        return [parse_boss_name(boss_type)]
     elif obj_type == 'quest':
         QID = objectivetypes.QuestID
         quest_type = obj_parts[1]
         if quest_type == 'free':
             return [QID.CLEAR_CATHEDRAL, QID.CLEAR_HECKRANS_CAVE,
                     QID.CLEAR_DENADORO, QID.CLEAR_ZENAN_BRIDGE]
-        elif quest_type == 'gated':
+        if quest_type == 'gated':
             gated_quests = [
                 QID.CHARGE_MOONSTONE, QID.GIVE_JERKY_TO_MAYOR,
                 QID.CLEAR_ARRIS_DOME, QID.GAIN_EPOCH_FLIGHT,
                 QID.CLEAR_FACTORY_RUINS, QID.CLEAR_GIANTS_CLAW,
-                QID.CLEAR_OZZIES_FORT,
+                QID.CLEAR_OZZIES_FORT, QID.CLEAR_TYRANO_MIDBOSS,
                 QID.CLEAR_KINGS_TRIAL,
                 QID.CLEAR_PENDANT_TRIAL, QID.CLEAR_REPTITE_LAIR,
                 QID.CLEAR_SUN_PALACE, QID.CLEAR_SUNKEN_DESERT,
@@ -254,18 +264,18 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
                 gated_quests.remove(QID.GAIN_EPOCH_FLIGHT)
 
             return gated_quests
-        elif quest_type == 'late':
-            late_quests = [QID.CLEAR_MT_WOE, QID.CLEAR_GENO_DOME]
+        if quest_type == 'late':
+            late_quests = [QID.CLEAR_MT_WOE, QID.CLEAR_GENO_DOME,
+                           QID.CLEAR_BLACK_TYRANO]
             return late_quests
-        elif quest_type == 'go':
+        if quest_type == 'go':
             go_quests = [QID.CLEAR_ZEAL_PALACE, QID.CLEAR_TWINBOSS_SPOT,
-                         QID.CLEAR_DEATH_PEAK, # QID.CLEAR_BLACK_TYRANO,
+                         QID.CLEAR_DEATH_PEAK,
                          QID.CLEAR_OMEN_GIGASPOT, QID.CLEAR_OMEN_TERRASPOT,
-                         QID.CLEAR_OMEN_ELDERSPOT, QID.CLEAR_MAGUS_CASTLE] 
+                         QID.CLEAR_OMEN_ELDERSPOT, QID.CLEAR_MAGUS_CASTLE]
 
             return go_quests
-        else:
-            return [parse_quest_name(quest_type)]
+        return [parse_quest_name(quest_type)]
     elif obj_type == 'recruit':
         chars = ['crono', 'marle', 'lucca', 'robo', 'frog', 'ayla', 'magus']
         spots = ['castle', 'dactyl', 'proto', 'burrow']
