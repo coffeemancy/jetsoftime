@@ -6,22 +6,42 @@ DataPoint = typing.Tuple[float, float]
 class PiecewiseLinear:
 
     def __init__(self, *args: DataPoint):
-        self.points = list(args)
+        points = sorted(
+            args,
+            key=lambda x: x[0]
+        )
+
+        del_inds: list[int] = []
+        for ind, point  in enumerate(points):
+            if ind == 0:
+                continue
+
+            prev_point = points[ind-1]
+            if point[0] == prev_point[0]:
+                if point[1] != prev_point[1]:
+                    raise ValueError(f"Inconsistent Definition at {point[0]}")
+
+                del_inds.insert(0, ind)
+
+        points = [point for ind, point in enumerate(points)
+                  if ind not in del_inds]
+
+        self.points = points
 
     def __call__(self, in_val: float) -> float:
         for ind, point in enumerate(self.points):
             if point[0] > in_val:
                 if ind == 0:
                     return point[0]
-                else:
-                    x0 = self.points[ind-1][0]
-                    x1 = point[0]
 
-                    t = (in_val-x0)/(x1-x0)
+                x_init = self.points[ind-1][0]
+                x_final = point[0]
 
-                    y0 = self.points[ind-1][1]
-                    y1 = point[1]
-                    return y0 + t*(y1-y0)
+                t = (in_val-x_init)/(x_final-x_init)
+
+                y_init = self.points[ind-1][1]
+                y_final = point[1]
+                return y_init + t*(y_final-y_init)
 
         return self.points[-1][1]
 
@@ -30,7 +50,7 @@ class PiecewiseLinear:
 
         for ind, point in enumerate(self.points):
             if point[0] == new_x:
-                self.points[ind] = new_y
+                self.points[ind] = (point[0], new_y)
                 has_inserted = True
                 break
             elif point[0] > new_x:
