@@ -54,12 +54,11 @@ def get_assignable_spots(
             BSID.ZEAL_PALACE, BSID.OCEAN_PALACE_TWIN_GOLEM
         ]
 
-    if GF.EPOCH_FAIL not in flags and BSID.EPOCH_REBORN in spots:
-        spots.remove(BSID.EPOCH_REBORN)
+    if BSID.EPOCH_REBORN in spots:
+        if GF.EPOCH_FAIL not in flags or GF.UNLOCKED_SKYGATES not in flags:
+            spots.remove(BSID.EPOCH_REBORN)
 
-    for spot in removed_spots:
-        if spot in spots:
-            spots.remove(spot)
+    spots = [spot for spot in spots if spot not in removed_spots]
 
     return spots
 
