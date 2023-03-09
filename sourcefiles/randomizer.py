@@ -1294,16 +1294,13 @@ class Randomizer:
         file_object.write("--------------\n")
 
         boss_dict = self.config.boss_assign_dict
-        boss_data_dict = self.config.boss_data_dict
-        twin_type = boss_data_dict[rotypes.BossID.TWIN_BOSS].parts[0].enemy_id
-        twin_name = self.config.enemy_dict[twin_type].name
         width = max(len(str(x)) for x in boss_dict.keys()) + 8
 
         for location in boss_dict.keys():
-            if boss_dict[location] == rotypes.BossID.TWIN_BOSS:
-                boss_name = 'Twin ' + str(twin_name)
-            else:
-                boss_name = str(boss_dict[location])
+            boss_name = str(boss_dict[location])
+
+            if location == rotypes.BossSpotID.OCEAN_PALACE_TWIN_GOLEM:
+                boss_name = 'Twin ' + boss_name
 
             file_object.write(
                 str.ljust(str(location), width) +
