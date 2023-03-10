@@ -158,11 +158,7 @@ def set_twin_boss_data_in_config(one_spot_boss: bt.BossID,
     )[EnemyID.TWIN_BOSS]
 
     if rset.GameFlags.BOSS_SPOT_HP in settings.gameflags:
-        twin_hp = twin_stats.hp
-        new_hp = bossspot.get_part_new_hps(
-            base_boss, config.enemy_dict, twin_hp
-        )[base_id]
-        scaled_stats.hp = new_hp
+        scaled_stats.hp = twin_stats.hp
 
     config.enemy_dict[EnemyID.TWIN_BOSS] = scaled_stats
 
@@ -228,10 +224,10 @@ def get_legacy_assignment(
     try:
         boss_assignment = get_random_assignment(one_part_spots,
                                                 one_part_bosses)
-    except InsufficientSpotsException as e:
+    except InsufficientSpotsException as exc:
         raise InsufficientSpotsException(
             'Error in one spot legacy assignment.'
-        ) from e
+        ) from exc
 
     try:
         two_part_assignment = get_random_assignment(two_part_spots,
@@ -429,7 +425,7 @@ def reassign_charms_drops(settings: rset.Settings,
         reward_group = spot_rgs[spot]
 
         part_ids = list(set(part.enemy_id for part in scheme.parts))
-        
+
         for part_id in part_ids:
             stats = config.enemy_dict[part_id]
             enemyrewards.set_enemy_charm_drop(stats, reward_group,
