@@ -22,14 +22,13 @@ class ImpossibleConfigurationException(Exception):
 
 class KeyItemFiller(typing.Protocol):
 
-    def get_key_item_locations(
+    def fill_key_item_locations(
             self,
             game_config: logicfactory.GameConfig
     ) -> list[_LocType]:
         '''
         Return a key item assignment for the given GameConfig
         '''
-        pass
 
 
 class RandomRejectionFiller:
@@ -47,10 +46,11 @@ class RandomRejectionFiller:
         '''
         Randomly fill in the key items until a valid configuration is reached.
         '''
-        key_items_list = list(set(game_config.keyItemList))
+        key_items_set = set(game_config.keyItemList)
+        key_items_list = list(key_items_set)
         max_game = logictypes.Game(game_config.settings,
                                    game_config.config)
-        max_game.keyItems = list(key_items_list)
+        max_game.keyItems = key_items_set
 
         num_attempts = 0
 
@@ -121,7 +121,7 @@ class ALTTPRWeightedFiller:
             assumed_key_items = unassigned_key_items + collectable_key_items
 
             max_game = logictypes.Game(settings, config)
-            max_game.keyItems = assumed_key_items
+            max_game.keyItems = set(assumed_key_items)
             max_game.updateAvailableCharacters()
 
             avail_groups = get_available_location_groups(
@@ -177,6 +177,8 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
     ]
     for name in early_dungeons:
         group = game_config.getLocationGroup(name)
+        if group is None:
+            raise ValueError(f"Invalid group name {name}")
         group.weight = EARLY_DUNGEON_WEIGHT
         group.weightDecay = lambda x: int(x*0.2)
 
@@ -185,6 +187,9 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
     ]
     for name in early_non_dungeon_zones:
         group = game_config.getLocationGroup(name)
+        if group is None:
+            raise ValueError(f"Invalid group name {name}")
+
         num_boxes = len(group.locations)
         group.weight = num_boxes*EARLY_WEIGHT_PER_BOX
         group.weightDecay = lambda x: int(x*0.2)
@@ -196,24 +201,28 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
     ]
     for name in non_dungeon_zones:
         group = game_config.getLocationGroup(name)
+        if group is None:
+            raise ValueError(f"Invalid group name {name}")
+
         num_boxes = len(group.locations)
         group.weight = num_boxes*WEIGHT_PER_BOX
         if name == 'FutureOpen':
             group.weight = 2*WEIGHT_PER_KI + 2*WEIGHT_PER_BOX
         group.weightDecay = lambda x: int(x*0.2)
-            
 
     early_ki_spots = [
         'Fionashrine', 'OpenKeys',
     ]
     for name in early_ki_spots:
         group = game_config.getLocationGroup(name)
+        if group is None:
+            raise ValueError(f"Invalid group name {name}")
         num_kis = len(group.locations)
         group.weight = num_kis*EARLY_WEIGHT_PER_KI
         group.weightDecay = lambda x: int(x*0.2)
 
     ki_spots = [
-        'BekklersLab', 'FrogsBurrowLocation', 
+        'BekklersLab', 'FrogsBurrowLocation',
         'MelchiorRefinements'
     ]
     for name in ki_spots:
@@ -229,6 +238,8 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
 
     for name in unknown:
         group = game_config.getLocationGroup(name)
+        if group is None:
+            raise ValueError(f"Invalid group name {name}")
         num_boxes = len(group.locations)
         group.weight = num_boxes*WEIGHT_PER_BOX
         group.weightDecay = lambda x: int(x*0.2)
@@ -240,6 +251,8 @@ def reweigh_location_groups(game_config: logicfactory.GameConfig):
 
     for name in normal_dungeons:
         group = game_config.getLocationGroup(name)
+        if group is None:
+            raise ValueError(f"Invalid group name {name}")
         group.weight = DUNGEON_WEIGHT
         group.weightDecay = lambda x: int(x*0.2)
 
@@ -279,7 +292,7 @@ class ALTTPRFiller:
             assumed_key_items = unassigned_key_items + collectable_key_items
 
             max_game = logictypes.Game(settings, config)
-            max_game.keyItems = assumed_key_items
+            max_game.keyItems = set(assumed_key_items)
             max_game.updateAvailableCharacters()
 
             avail_locs = get_available_locations(
@@ -389,6 +402,9 @@ class ChronosanityFiller:
                 chosenGroup = group
                 break
 
+        if chosenGroup is None:
+            raise ValueError("Weighted choice failed")
+
         # Select a random location from the chosen location group.
         location = random.choice(chosenGroup.getLocations())
         return chosenGroup, location
@@ -404,10 +420,12 @@ class ChronosanityFiller:
     # return: A list of locations with key items assigned.
     #
     # Raises ImpossibleConfigurationException if not successful.
-    def fill_key_item_locations(self, gameConfig: logicfactory.GameConfig):
+    def fill_key_item_locations(
+            self,
+            gameConfig: logicfactory.GameConfig) -> list[_LocType]:
         self.locationGroups = gameConfig.getLocations()
         remainingKeyItems = gameConfig.getKeyItemList()
-        chosenLocations = []
+        chosenLocations: list[_LocType] = []
         success, key_item_locations = self.determineKeyItemPlacement_impl(
             chosenLocations, remainingKeyItems, gameConfig
         )
@@ -436,7 +454,7 @@ class ChronosanityFiller:
     #     Loop through the key item list, trying each one in the chosen
     #     location
     #       Recurse and try the next location/key item
-    #     
+    #
     #
     # param: chosenLocations - List of locations already chosen for key items
     # param: remainingKeyItems - List of key items remaining to be placed
@@ -506,8 +524,8 @@ class ChronosanityFiller:
                         # We're unwinding the recursion here,
                         # all key items are placed.
                         return keyItemConfirmed, returnedChosenLocations
-                    else:
-                        gameConfig.getGame().removeKeyItem(keyItem)
+
+                    gameConfig.getGame().removeKeyItem(keyItem)
                 # end keyItem loop
 
                 # If we get here, we failed to place an item.
@@ -582,7 +600,7 @@ def get_available_locations(
 
 def get_collectable_key_items(
         game_config: logicfactory.GameConfig
-) -> typing.Iterable[ctenums.ItemID]:
+) -> list[ctenums.ItemID]:
     '''
     Traverse the game config to determine what can be collected.
     '''
@@ -591,7 +609,7 @@ def get_collectable_key_items(
     config = game_config.config
 
     cur_game = logictypes.Game(settings, config)
-    cur_game.keyItems = []
+    cur_game.keyItems = set()
     cur_game.updateAvailableCharacters()
 
     key_items = set(list(game_config.getKeyItemList()))
@@ -612,15 +630,16 @@ def get_collectable_key_items(
             groups.remove(group)
 
         if new_keys:
-            cur_game.keyItems.extend(new_keys)
+            cur_game.keyItems.update(new_keys)
             cur_game.updateAvailableCharacters()
         else:
             break
 
-    return cur_game.keyItems
+    return list(cur_game.keyItems)
 
 
 def getFiller(settings: rset.Settings) -> KeyItemFiller:
+    filler: KeyItemFiller
     if rset.GameFlags.CHRONOSANITY in settings.gameflags:
         filler = ChronosanityFiller()
     else:
@@ -648,7 +667,7 @@ def commitKeyItems(settings: rset.Settings,
     for location in chosenLocations:
         location.writeKeyItem(config)
 
-    additional_locs = []
+    additional_locs: list[_LocType] = []
 
     for locationGroup in gameConfig.locationGroups:
         for location in locationGroup.getLocations():
@@ -699,7 +718,7 @@ def get_proof_string(
         has_pendant = game.hasKeyItem(IID.PENDANT)
         epoch_fail = rset.GameFlags.EPOCH_FAIL in game.settings.gameflags
         return (
-            (game.hasKeyItem(IID.JETSOFTIME) or not epoch_fail) and 
+            (game.hasKeyItem(IID.JETSOFTIME) or not epoch_fail) and
             (has_pendant or game.lostWorlds) and
             game.hasKeyItem(IID.CLONE) and
             game.hasKeyItem(IID.C_TRIGGER)
@@ -721,8 +740,7 @@ def get_proof_string(
         if unlocked_skygates:
             return (game.hasKeyItem(IID.JETSOFTIME) and
                     game.canAccessEndOfTime())
-        else:
-            return game.hasKeyItem(IID.JETSOFTIME)
+        return game.hasKeyItem(IID.JETSOFTIME)
 
     settings = game_config.settings
     config = game_config.config
@@ -735,7 +753,7 @@ def get_proof_string(
     }
 
     cur_game = logictypes.Game(settings, config)
-    cur_game.keyItems = []
+    cur_game.keyItems = set()
 
     key_items = set(list(game_config.keyItemList))
     groups = list(game_config.locationGroups)
@@ -774,7 +792,7 @@ def get_proof_string(
 
         if new_locs or new_chars:
             new_keys = [loc.getKeyItem() for loc in new_locs]
-            cur_game.keyItems.extend(new_keys)
+            cur_game.keyItems.update(new_keys)
 
             for char in new_chars:
                 spot = inv_char_dict[char]
@@ -786,7 +804,7 @@ def get_proof_string(
                 ret_str += f'{sphere}: Obtain {item} from {spot}\n'
 
             if not unlocked_flight and can_unlock_flight(cur_game):
-                ret_str += f'Unlock Flight\n'
+                ret_str += 'Unlock Flight\n'
                 unlocked_flight = True
 
             if not found_tyrano_go and has_tyrano_go(cur_game):
