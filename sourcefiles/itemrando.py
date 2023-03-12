@@ -1,8 +1,11 @@
+'''Module to randomize properties of items.'''
 from __future__ import annotations  # 3.8 compatability
 
 import math
 import random
+from typing import Union, TypeAlias, Optional
 
+from common.distribution import Distribution as Dist
 import itemdata
 import ctenums
 import ctstrings
@@ -14,13 +17,21 @@ import randosettings as rset
 
 
 def getRandomPrice():
+    '''
+    Get a random price that's weighted towards lower prices.
+    '''
     r1 = random.uniform(0, 1)
     r2 = random.uniform(0, 1)
+
+    # E[|X-Y|] = 1/3 for X,Y Uniform on [0,1].
     return math.floor(abs(r1 - r2) * 65000 + 1)
 
 
 def write_item_prices_to_config(settings: rset.Settings,
                                 config: cfg.RandoConfig):
+    '''
+    Apply the item price setting to the config.
+    '''
     ItemID = ctenums.ItemID
     items_to_modify = list(ItemID)
 
@@ -44,8 +55,11 @@ def write_item_prices_to_config(settings: rset.Settings,
         config.item_db[item].price = price
 
 
+# TODO: Separate settings check from the randomization itself.
 def randomize_healing(settings: rset.Settings, config: cfg.RandoConfig):
-
+    '''
+    Randomize healing items.
+    '''
     if rset.GameFlags.HEALING_ITEM_RANDO not in settings.gameflags:
         return
 
@@ -119,9 +133,9 @@ class _BoostID(ctenums.StrIntEnum):
     MDEF_9 = 0x15
 
 
-_BID = _BoostID
-_WE = cfg.itemdata.WeaponEffects
-_AE = cfg.itemdata.ArmorEffects
+_BID: TypeAlias = _BoostID
+_WE: TypeAlias = cfg.itemdata.WeaponEffects
+_AE: TypeAlias = cfg.itemdata.ArmorEffects
 
 _low_boosts = (
     _BID.SPEED_1,  _BID.HIT_2, _BID.STAMINA_2, _BID.POWER_2, _BID.MAGIC_2
@@ -142,9 +156,11 @@ _high_boosts = (
 
 
 def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
+    '''
+    Get a dict[ItemTier, Dist[_BoostID] for assigning random stat boosts.
+    '''
     # Potentially change depending on item difficulty
-    Dist = treasuredata.TreasureDist
-    ret_dist = dict()
+    ret_dist: dict[treasuredata.ItemTier, Dist[_BoostID]] = {}
     # Low gear has no weapons/armor with stat boosts, but does have some
     # accessories with various low boosts
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
@@ -206,11 +222,13 @@ def get_boost_dict(settings: rset.Settings, config: cfg.RandoConfig):
 
 
 def get_weapon_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
+    '''
+    Get a dict[ItemTier, Dist[_WE] of weapon effects for randomization.
+    '''
     # Potentially change depending on item difficulty
     # Consider whether low gear might still have decent effects
-    Dist = treasuredata.TreasureDist
     WE = itemdata.WeaponEffects
-    ret_dist = dict()
+    ret_dist: dict[treasuredata.ItemTier, Dist[_WE]] = {}
 
     # Low gear has no effects.
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
@@ -264,11 +282,13 @@ def get_weapon_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
 
 
 def get_armor_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
+    '''
+    Get a dict[ItemTier, Dist[_AE] for assigning random stat boosts.
+    '''
     # Potentially change depending on item difficulty
     # Consider whether low gear might still have decent effects
-    Dist = treasuredata.TreasureDist
-    AE = itemdata.ArmorEffects
-    ret_dist = dict()
+    AE: TypeAlias = itemdata.ArmorEffects
+    ret_dist: dict[treasuredata.ItemTier, Dist[AE]] = {}
 
     # Low gear has no effects.
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
@@ -290,8 +310,6 @@ def get_armor_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
         (1, [AE.NONE]),
     )
 
-    # High gear gets all sorts of status protection, shield, and we might as
-    # 
     # We aren't randomizing the safe helm or weak status hats.  This leaves
     # only gloom helm, zodiaccape, ruby armor, gloom cape
     # Consider adding elem absorb in this group.
@@ -337,8 +355,6 @@ _stat_price_dict: dict[int, int] = {
     _BID.MDEF_15: 8000,
 }
 
-_AE = itemdata.ArmorEffects
-_WE = itemdata.WeaponEffects
 _effect_price_dict: dict[int, int] = {
     _AE.NONE: 0,
     _AE.BARRIER: 20000,
@@ -372,11 +388,15 @@ _effect_price_dict: dict[int, int] = {
 }
 
 
-def randomize_weapon_armor(item_id: ctenums.ItemID,
-                           item_db: itemdata.ItemDB,
-                           settings: rset.Settings,
-                           stat_dist: treasuredata.TreasureDist = None,
-                           effect_dist: treasuredata.TreasureDist = None):
+def randomize_weapon_armor(
+        item_id: ctenums.ItemID,
+        item_db: itemdata.ItemDB,
+        settings: rset.Settings,
+        stat_dist: Optional[Dist[_BID]] = None,
+        effect_dist: Optional[Union[Dist[_AE], Dist[_WE]]] = None):
+    '''
+    Randomize the item with given item_id. This is the old-style algorithm.
+    '''
     item = item_db[item_id]
 
     orig_stats = item.stats.get_copy()
@@ -492,7 +512,9 @@ def randomize_weapon_armor(item_id: ctenums.ItemID,
 
 def randomize_weapon_armor_stats(settings: rset.Settings,
                                  config: cfg.RandoConfig):
-
+    '''
+    Randomize all weapons and armors.  Old-Style algorithm.
+    '''
     if rset.GameFlags.GEAR_RANDO not in settings.gameflags:
         return
 
@@ -525,7 +547,7 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
     #     IID.CRISIS_ARM
     # )
 
-    ignored_ids = []
+    ignored_ids: list[ctenums.ItemID] = []
 
     for tier in gear_tiers:
         gear_in_tier[tier] = [x for x in gear_in_tier[tier] if x < 0x94
@@ -653,10 +675,10 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
         (_BID.NOTHING, _BID.NOTHING, _BID.NOTHING)
     )
 
-    mode = random.choice(modes)
+    fist_mode = random.choice(modes)
     for ind, fist_id in enumerate(ayla_fists):
         fist = config.item_db[fist_id]
-        boost_id = mode[ind]
+        boost_id = fist_mode[ind]
         boost = config.item_db.stat_boosts[boost_id]
         boost_str = boost.stat_string()
         if boost_str == '':
@@ -666,12 +688,11 @@ def randomize_weapon_armor_stats(settings: rset.Settings,
 
 
 def append_to_item_name(item: itemdata.Item, append_str: str):
-
+    '''Helper function to add +/- or whatever suffix to item names.'''
     def ctstr_used_len(ctstr: bytearray) -> int:
         if 0xEF in ctstr:
             return ctstr.index(0xEF)
-        else:
-            return len(ctstr)
+        return len(ctstr)
 
     append_ctstr = ctstrings.CTNameString.from_string(append_str)
     append_size = ctstr_used_len(append_ctstr)
@@ -687,7 +708,9 @@ def append_to_item_name(item: itemdata.Item, append_str: str):
 # their name says what they do.
 def randomize_accessories(settings: rset.Settings,
                           config: cfg.RandoConfig):
-
+    '''
+    Randomize the accessories.
+    '''
     if rset.GameFlags.GEAR_RANDO not in settings.gameflags:
         return
 
@@ -742,8 +765,7 @@ def randomize_accessories(settings: rset.Settings,
         elif rock_bonus < 0.8:
             rock.stats.has_battle_buff = True
             rock.stats.has_stat_boost = False
-            buffs = list(rock_buff_dist.keys())
-            weights = (rock_buff_dist[buff] for buff in buffs)
+            buffs, weights = zip(*rock_buff_dist.items())
             battle_buffs = random.choices(
                 buffs,
                 weights=weights,
@@ -754,8 +776,7 @@ def randomize_accessories(settings: rset.Settings,
 
     # randomize specs as specs or haste charm
     item_id = IID.PRISMSPECS
-    x = random.random()
-    if x < 0.25:
+    if random.random() < 0.25:
         item = config.item_db[item_id]
         item.stats.battle_buffs = [T8.HASTE]
         item.name = ctstrings.CTNameString.from_string(
@@ -790,8 +811,9 @@ def randomize_accessories(settings: rset.Settings,
         elif medal_bonus < 0.9:
             medal.stats.has_battle_buff = True
             medal.stats.has_stat_boost = False
-            buffs = list(medal_buff_dist.keys())
-            weights = (medal_buff_dist[buff] for buff in buffs)
+            buffs, weights = zip(*medal_buff_dist.items())
+            # buffs = list(medal_buff_dist.keys())
+            # weights = (medal_buff_dist[buff] for buff in buffs)
             battle_buffs = random.choices(
                 buffs, weights=weights, k=1
             )[0]
@@ -817,7 +839,9 @@ _boost_tracks = [
 
 def restrict_gear(settings: rset.Settings,
                   config: cfg.RandoConfig):
-
+    '''
+    Restrict each character to have about one weapon per tier in a seed.
+    '''
     IID = ctenums.ItemID
     item_pools = [
         # Crono tiers
@@ -852,7 +876,8 @@ def restrict_gear(settings: rset.Settings,
         pool: random.choice(pool) for pool in item_pools
     }
 
-    def get_replacement(item_id: ctenums.ItemID):
+    # Take Union b/c of possible gold assignment
+    def get_replacement(item_id: Union[ctenums.ItemID, int]):
 
         if not isinstance(item_id, ctenums.ItemID):
             return item_id
@@ -883,14 +908,16 @@ def restrict_gear(settings: rset.Settings,
                    reverse=True)
 
     for char_id in ctenums.CharID:
-        stats = config.pcstats.pc_stat_dict[char_id].stat_block
-        stats.equipped_armor = get_replacement(stats.equipped_armor)
-        stats.equipped_helm = get_replacement(stats.equipped_helm)
-        stats.equipped_weapon = get_replacement(stats.equipped_weapon)
+        pcstats = config.pcstats.pc_stat_dict[char_id].stat_block
+        pcstats.equipped_armor = get_replacement(pcstats.equipped_armor)
+        pcstats.equipped_helm = get_replacement(pcstats.equipped_helm)
+        pcstats.equipped_weapon = get_replacement(pcstats.equipped_weapon)
 
 
 def apply_plus_minus(item: itemdata.Item, mod: int):
-
+    '''
+    Apply an effect from -5 to +5 to an item.
+    '''
     suffix = '+' if mod > 0 else ''
     if mod != 0:
         suffix = suffix + str(mod)
@@ -904,9 +931,14 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
     if mod < 0:
         stat_mod = 1/stat_mod
 
-    item_name = item.get_name_as_str()
+    WS: TypeAlias = itemdata.WeaponStats
+    GSS: TypeAlias = itemdata.GearSecondaryStats
+    AS: TypeAlias = itemdata.ArmorStats
 
-    if item.is_weapon():
+    cur_effect: Union[itemdata.WeaponEffects, itemdata.ArmorEffects]
+
+    # is weapon
+    if isinstance(item.stats, WS) and isinstance(item.secondary_stats, GSS):
         item.stats.attack = min(int(item.stats.attack*stat_mod), 255)
         item.stats.critical_rate = \
             min(int(item.stats.critical_rate*stat_mod), 100)
@@ -922,7 +954,7 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
                                      WE.DOOMSICKLE, WE.WONDERSHOT):
                     item.stats.effect_id = WE.NONE
         elif mod >= 3:
-            dist = treasuredata.TreasureDist(
+            dist: Dist[_WE] = Dist(
                 (70, [WE.NONE]),
                 (15, [WE.CRIT_4X, WE.STOP_60]),
                 (15, [WE.SLOW_60, WE.CHAOS_60, WE.DMG_MAG_150])
@@ -930,7 +962,8 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
 
             item.stats.effect_id = dist.get_random_item()
 
-    elif item.is_armor():
+    # is armor
+    elif isinstance(item.stats, AS) and isinstance(item.secondary_stats, GSS):
         item.stats.defense = min(int(item.stats.defense*stat_mod), 255)
 
         cur_effect = item.stats.effect_id
@@ -982,6 +1015,9 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
                 # Skip adding/upgrading effects for now.
                 pass
 
+    if not isinstance(item.secondary_stats, GSS):
+        raise TypeError("Expected Gear")
+
     # modify stat boost
     shift = 0
     if mod >= 4:
@@ -999,7 +1035,7 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
 
     if cur_boost == _BoostID.NOTHING:
         # If nothing, promote to a lv1 boost but add an extra demotion
-        track_dist = treasuredata.TreasureDist(
+        track_dist: Dist[_BoostID] = Dist(
             (5, [_BoostID.POWER_2]),
             (5, [_BoostID.MAGIC_2]),
             (5, [_BoostID.STAMINA_2]),
@@ -1070,7 +1106,7 @@ def randomize_unique_gear(settings: rset.Settings,
         IID.DOOMSICKLE: '{scythe}Doomsickle'
     }
 
-    boost_dist = treasuredata.TreasureDist(
+    boost_dist: Dist[_BoostID] = Dist(
         (1, [_BID.HIT_10]),
         (1, [_BID.MAGIC_6]),
         (1, [_BID.POWER_6]),
@@ -1082,7 +1118,7 @@ def randomize_unique_gear(settings: rset.Settings,
     AE = itemdata.ArmorEffects
     WE = itemdata.WeaponEffects
     # random.choice is ok, but maybe we want to bias away from haste?
-    armor_effect_dist = treasuredata.TreasureDist(
+    armor_effect_dist: Dist[itemdata.ArmorEffects] = Dist(
         (1, [AE.SHIELD]),
         (1, [AE.BARRIER]),
         (1, [AE.IMMUNE_ALL]),
@@ -1144,10 +1180,10 @@ def randomize_unique_gear(settings: rset.Settings,
         (_BID.NOTHING, _BID.NOTHING, _BID.NOTHING)
     )
 
-    mode = random.choice(modes)
+    fist_mode = random.choice(modes)
     for ind, fist_id in enumerate(ayla_fists):
         fist = config.item_db[fist_id]
-        boost_id = mode[ind]
+        boost_id = fist_mode[ind]
         boost = config.item_db.stat_boosts[boost_id]
         boost_str = boost.stat_string()
         if boost_str == '':
@@ -1205,7 +1241,7 @@ def randomize_unique_gear(settings: rset.Settings,
 
     # Masa1 gets a chance at weak effect and weak boost
     item = config.item_db[IID.MASAMUNE_1]
-    masa_eff_dist = treasuredata.TreasureDist(
+    masa_eff_dist: Dist[itemdata.WeaponEffects] = Dist(
         (50, [WE.NONE]),
         (40, [WE.CRIT_4X, WE.STOP_60]),
         (10, [WE.DOOMSICKLE, WE.CRISIS, WE.WONDERSHOT, WE.DMG_125])
@@ -1219,16 +1255,19 @@ def randomize_unique_gear(settings: rset.Settings,
 
 def alt_gear_rando(settings: rset.Settings,
                    config: cfg.RandoConfig):
-
+    '''
+    New algorithm for gear rando that does -5 to +5 instead of +/-/?.
+    '''
     if rset.GameFlags.GEAR_RANDO not in settings.gameflags:
         return
 
     randomize_unique_gear(settings, config)
 
-    Tier = treasuredata.ItemTier
+    Tier: TypeAlias = treasuredata.ItemTier
+
     gear_tiers = (Tier.LOW_GEAR, Tier.PASSABLE_GEAR, Tier.MID_GEAR,
                   Tier.GOOD_GEAR, Tier.HIGH_GEAR, Tier.AWESOME_GEAR)
-    gear_in_tier = {
+    gear_in_tier: dict[Union[Tier, str], list[ctenums.ItemID]] = {
         tier: treasuredata.get_item_list(tier)
         for tier in gear_tiers
     }
@@ -1246,7 +1285,7 @@ def alt_gear_rando(settings: rset.Settings,
     # We'll do 5 flips with prob = binom_param and then 50/50 to be +/-
     binom_param = 0.3
 
-    for tier, gear_list in gear_in_tier.items():
+    for gear_list in gear_in_tier.values():
         for item_id in gear_list:
             # whatever plusminus dist is good
             mod = sum(random.random() < binom_param for i in range(5))
@@ -1254,5 +1293,5 @@ def alt_gear_rando(settings: rset.Settings,
 
             item = config.item_db[item_id]
             apply_plus_minus(item, mod)
-    
+
     restrict_gear(settings, config)
