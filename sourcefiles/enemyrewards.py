@@ -1,6 +1,8 @@
 from __future__ import annotations
 from enum import Enum, auto
 import random
+import typing
+from typing import Optional
 
 import enemystats
 from ctenums import ItemID, EnemyID
@@ -50,15 +52,13 @@ class RewardGroup(Enum):
 #   2) if charm_dist is None, charm=drop else get charm from charm_dist
 #   3) Set drop to 0 (ItemID.NONE) with probability 1-drop_rate
 # So get_distributions returns drop_dist, charm_dist, drop_rate
-def get_distributions(enemy_group: RewardGroup,
-                      difficulty: rset.Difficulty) -> (td.TreasureDist,
-                                                       td.TreasureDist,
-                                                       float):
+def get_distributions(
+        enemy_group: RewardGroup,
+        difficulty: rset.Difficulty
+) -> typing.Tuple[td.TreasureDist, Optional[td.TreasureDist], float]:
 
     if enemy_group == RewardGroup.COMMON_ENEMY:
-        if difficulty == rset.Difficulty.NORMAL or \
-           difficulty == rset.Difficulty.EASY:
-
+        if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
             drop_dist = td.TreasureDist(
                 (2, _pass_gear + _low_gear),
                 (8, _low_cons + _pass_cons),
@@ -70,7 +70,7 @@ def get_distributions(enemy_group: RewardGroup,
             charm_dist = drop_dist
             drop_rate = 0
         else:
-            exit()
+            raise ValueError(f"Invalid Difficulty: {difficulty}")
     elif enemy_group == RewardGroup.UNCOMMON_ENEMY:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
             drop_dist = td.TreasureDist(
@@ -180,7 +180,7 @@ def get_distributions(enemy_group: RewardGroup,
             )
             drop_rate = 1.0
         else:
-            exit()
+            raise ValueError(f"Invalid Difficulty {difficulty}.")
     elif enemy_group == RewardGroup.LATE_BOSS:
         if difficulty in (rset.Difficulty.NORMAL, rset.Difficulty.EASY):
             drop_dist = td.TreasureDist(
@@ -190,7 +190,7 @@ def get_distributions(enemy_group: RewardGroup,
             )
             charm_dist = td.TreasureDist(
                 (5, _awe_gear),
-                (95, _good_gear, _high_gear)
+                (95, _good_gear + _high_gear)
             )
             drop_rate = 1.0
         elif difficulty == rset.Difficulty.HARD:
@@ -201,11 +201,11 @@ def get_distributions(enemy_group: RewardGroup,
             )
             charm_dist = td.TreasureDist(
                 (5, _awe_gear),
-                (95, _good_gear, _high_gear)
+                (95, _good_gear + _high_gear)
             )
             drop_rate = 1.0
         else:
-            exit()
+            raise ValueError(f"Invalid Difficulty {difficulty}.")
 
     return drop_dist, charm_dist, drop_rate
 
