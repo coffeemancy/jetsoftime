@@ -12,7 +12,16 @@ from eventfunction import EventFunction as EF
 from freespace import FSRom, FSWriteType
 
 
-def get_compressed_script(rom, event_id):
+class CommandNotFoundException(Exception):
+    '''Raise when a find_command call fails.'''
+
+
+def get_compressed_script(rom: ByteString, event_id: int):
+    '''
+    Gets the compressed event packet for the given event_id.
+
+    Note: event_id is not the same as location id.
+    '''
     # Location events pointers are located on the rom starting at 0x3CF9F0
     # Each location has (I think) an index into this list of pointers.  The
     # pointers definitely do not occur in the same order as the locations.
@@ -26,12 +35,11 @@ def get_compressed_script(rom, event_id):
         get_value_from_bytes(rom[start:start+3])
     event_ptr = to_file_ptr(event_ptr)
 
-    # print(f"ptr: {event_ptr:06X}")
-
     return get_compressed_packet(rom, event_ptr)
 
 
-def get_loc_event_ptr(rom, loc_id):
+def get_loc_event_ptr(rom: ByteString, loc_id: int) -> int:
+    '''Get a the address of a location's event packet.'''
     # Location data begins at 0x360000.
     # Each record is 14 bytes.  Bytes 8 and 9 (0-indexed) hold an index into
     # the pointer table for event scripts.
@@ -915,9 +923,33 @@ class Event:
         # returning colorcrash so mypy doesn't want Optional[Event]
         return (None, EC.get_blank_command(1))
 
+    # TODO: Get rid of normal find_command in favor of find_command_always.
+    def find_command_always(
+            self, cmd_ids: list[int],
+            start_pos: Optional[int] = None,
+            end_pos: Optional[int] = None
+    ) -> Tuple[int, EC]:
+        '''
+        A version of find_command that will always return a position and
+        command.  Will raise CommandNotFoundException if the command can not
+        be found.
+        '''
+        ret_pos, ret_cmd = self.find_command(cmd_ids, start_pos, end_pos)
+
+        if ret_pos is None:
+            raise CommandNotFoundException
+
+        return ret_pos, ret_cmd
+
+
     def find_exact_command(self, find_cmd: EC,
                            start_pos: Optional[int] = None,
-                           end_pos: Optional[int] = None) -> Optional[int]:
+                           end_pos: Optional[int] = None) -> int:
+        '''
+        Finds the command given.  Does not match the exact bytes jumped if
+        given a jump command.  Raises CommandNotFoundException if the command
+        is not found.
+        '''
 
         if start_pos is None or start_pos < 0:
             start_pos = self.get_object_start(0)
@@ -942,7 +974,7 @@ class Event:
 
             pos += len(cmd)
 
-        return None
+        raise CommandNotFoundException
 
     # Helper method to shift all jumps by a given amount.  Typically this
     # is called for removals/insertions.
