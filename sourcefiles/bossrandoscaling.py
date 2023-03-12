@@ -195,8 +195,7 @@ def progressive_scale_stats(
         if from_power*to_power == 0:
             add_speed = 0
         else:
-            add_speed = math.log(to_power/from_power, 2)
-            add_speed = round(add_speed)
+            add_speed = round(math.log(to_power/from_power, 2))
             # print(f'{enemy_id}: adding {add_speed} speed')
 
         new_stats.speed = min(new_stats.speed + add_speed, 16)
@@ -228,7 +227,10 @@ def scale_enemy_techs(enemy_id: ctenums.EnemyID,
                       mag_scale_factor: float,
                       atk_db: enemytechdb.EnemyAttackDB,
                       ai_db: enemyai.EnemyAIDB):
-
+    '''
+    If the scale factor is too high, just setting magic/offense is not enough.
+    Scale the tech power individually to reach the correct damage numbers.
+    '''
     # Need to copy the list.  Otherwise duplicated techs get readded to
     # the list and scaled twice.
     enemy_techs = list(ai_db.scripts[enemy_id].tech_usage)
@@ -351,15 +353,15 @@ _standard_powers: dict[rotypes.BossID, int] = {
     rotypes.BossID.YAKRA_XIII: 12,
     rotypes.BossID.ZOMBOR: 5,
     # Midbosses
-    rotypes.BossID.MAGUS: None,
-    rotypes.BossID.BLACK_TYRANO: None,
+    # rotypes.BossID.MAGUS: None,
+    # rotypes.BossID.BLACK_TYRANO: None,
     # End Bosses
-    rotypes.BossID.MAMMON_M: None,
-    rotypes.BossID.LAVOS_SHELL: None,
-    rotypes.BossID.INNER_LAVOS: None,
-    rotypes.BossID.LAVOS_CORE: None,
-    rotypes.BossID.ZEAL: None,
-    rotypes.BossID.ZEAL_2: None,
+    # rotypes.BossID.MAMMON_M: None,
+    # rotypes.BossID.LAVOS_SHELL: None,
+    # rotypes.BossID.INNER_LAVOS: None,
+    # rotypes.BossID.LAVOS_CORE: None,
+    # rotypes.BossID.ZEAL: None,
+    # rotypes.BossID.ZEAL_2: None,
 }
 
 _vr_boss_power_dict = {
@@ -373,7 +375,7 @@ _vr_boss_power_dict = {
     rotypes.BossID.GIGA_MUTANT: 45,
     rotypes.BossID.GUARDIAN: 8,
     rotypes.BossID.GOLEM: 25,
-    rotypes.BossID.GOLEM_BOSS: 25,  # Power is only for hp setting 
+    rotypes.BossID.GOLEM_BOSS: 25,  # Power is only for hp setting
     rotypes.BossID.HECKRAN: 10,
     rotypes.BossID.LAVOS_SPAWN: 25,
     rotypes.BossID.MAGUS_NORTH_CAPE: 30,  # Unsure
@@ -395,15 +397,15 @@ _vr_boss_power_dict = {
     rotypes.BossID.YAKRA_XIII: 40,
     rotypes.BossID.ZOMBOR: 10,
     # Midbosses
-    rotypes.BossID.MAGUS: None,
-    rotypes.BossID.BLACK_TYRANO: None,
+    # rotypes.BossID.MAGUS: None,
+    # rotypes.BossID.BLACK_TYRANO: None,
     # End Bosses
-    rotypes.BossID.MAMMON_M: None,
-    rotypes.BossID.LAVOS_SHELL: None,
-    rotypes.BossID.INNER_LAVOS: None,
-    rotypes.BossID.LAVOS_CORE: None,
-    rotypes.BossID.ZEAL: None,
-    rotypes.BossID.ZEAL_2: None,
+    # rotypes.BossID.MAMMON_M: None,
+    # rotypes.BossID.LAVOS_SHELL: None,
+    # rotypes.BossID.INNER_LAVOS: None,
+    # rotypes.BossID.LAVOS_CORE: None,
+    # rotypes.BossID.ZEAL: None,
+    # rotypes.BossID.ZEAL_2: None,
 }
 
 
@@ -424,6 +426,10 @@ def get_spot_power(spot_id: rotypes.BossSpotID,
         return epoch_spot_power
 
     return get_base_boss_power(default_assignment[spot_id], settings)
+
+
+def get_standard_boss_power(boss_id: rotypes.BossID) -> int:
+    return _standard_powers[boss_id]
 
 
 def get_base_boss_power(boss_id: rotypes.BossID,

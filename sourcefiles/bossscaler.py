@@ -1,7 +1,9 @@
 from __future__ import annotations
 import copy
+from typing import Union, Literal
 
 from bossrandotypes import BossID, BossSpotID
+import bossrandoscaling
 from ctenums import EnemyID, TreasureID as TID, ItemID, RecruitID, CharID
 
 from enemystats import EnemyStats
@@ -13,7 +15,7 @@ import randosettings as rset
 # Order of stats:
 # HP, Level, Magic, Magic Def, Off, Def, XP, GP, TP
 # Sometimes xp, gp, tp are omitted at the end.
-_scaling_data = {
+_scaling_data: dict[EnemyID, list[list[Union[int, Literal[""]]]]] = {
     EnemyID.RUST_TYRANO: [[6000, 16, 16, 50, 160, 127, 3000, 4000, 50],
                           [7000, 20, 20, 50, 170, 127, 3500, 6000, 60],
                           [8000, 30, 30, 50, 180, 127, 4000, 8000, 70]],
@@ -103,7 +105,7 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
                      if config.treasure_assign_dict[loc].reward
                      in key_item_list}
 
-    boss_rank = dict()
+    boss_rank: dict[BossID, int] = {}
     boss_assign = config.boss_assign_dict
 
     # Treasure --> Location of Boss
@@ -248,7 +250,7 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
         elif proto_char in [CharID.CRONO, CharID.MAGUS]:
             boss_rank[factoryboss] = 2
 
-    config.boss_rank = boss_rank
+    config.boss_rank_dict = boss_rank
 
 
 # Perhaps replace config with the parts actually used: enemy, ai, atk data
@@ -276,13 +278,11 @@ def get_ranked_boss_stats(
             for part in boss.parts
         }
     else:
-        cur_level = boss.power
+        cur_level = bossrandoscaling.get_standard_boss_power(boss_id)
         new_level = cur_level + 4*rank
-        scaled_stats = boss.scale_to_power(
-            new_level,
-            config.enemy_dict,
-            config.enemy_atkdb,
-            config.enemy_aidb
+        scaled_stats = bossrandoscaling.scale_boss_scheme_progessive(
+            boss, cur_level, new_level, config.enemy_dict,
+            config.enemy_atk_db, config.enemy_ai_db
         )
 
     return scaled_stats
