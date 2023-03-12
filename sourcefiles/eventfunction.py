@@ -1,8 +1,15 @@
+'''
+Module with classes for manipulating snippets of event scripts.
+'''
 from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Optional
 
 from eventcommand import get_command, EventCommand
+
+
+class CommandNotFoundException(Exception):
+    '''Raise when a find_exact_command call fails.'''
 
 
 class EventFunction:
@@ -249,7 +256,7 @@ class EventFunction:
         return ret_ind
 
     def find_exact_command(self, event_command: EventCommand,
-                           loose_match_jumps: bool = True) -> Optional[int]:
+                           loose_match_jumps: bool = True) -> int:
 
         for ind, cmd in enumerate(self.commands):
 
@@ -261,7 +268,7 @@ class EventFunction:
             elif cmd == event_command:
                 return ind
 
-        return None
+        raise CommandNotFoundException
 
     @classmethod
     def if_do(cls, if_command: EventCommand,
@@ -540,6 +547,6 @@ class EventFunction:
                 pass
 
     def get_bytearray(self):
-
+        '''Get this function in a bytearray as it would appear in a script.'''
         self.resolve_jumps()
         return self.data
