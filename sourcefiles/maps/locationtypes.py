@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Optional, Union
 
 import byteops
 import freespace
@@ -34,22 +35,27 @@ class LocationData:
     right: int = 0
     bottom: int = 0
 
-    def from_rom(rom: bytearray, loc_id: int) -> LocationData:
+    @classmethod
+    def from_rom(cls, rom: bytes, loc_id: int) -> LocationData:
         ptr_st = 0x360000 + loc_id*14
+        return cls.from_bytes(rom[ptr_st:ptr_st+14])
 
-        music = rom[ptr_st]
-        tile_l12 = rom[ptr_st+1]
-        tile_l3 = rom[ptr_st+2]
-        palette = rom[ptr_st+3]
+    @classmethod
+    def from_bytes(cls, data: bytes) -> LocationData:
 
-        map_id = byteops.get_value_from_bytes(rom[ptr_st+4: ptr_st+6])
+        music = data[0]
+        tile_l12 = data[1]
+        tile_l3 = data[2]
+        palette = data[3]
+
+        map_id = byteops.get_value_from_bytes(data[4:6])
         # bytes 6,7 ignored
-        event_id = byteops.get_value_from_bytes(rom[ptr_st+8: ptr_st+0xA])
+        event_id = byteops.get_value_from_bytes(data[8:0xA])
 
-        left = rom[ptr_st+0xA]
-        top = rom[ptr_st+0xB]
-        right = rom[ptr_st+0xC]
-        bottom = rom[ptr_st+0xD]
+        left = data[0xA]
+        top = data[0xB]
+        right = data[0xC]
+        bottom = data[0xD]
 
         return LocationData(music, tile_l12, tile_l3, palette, map_id,
                             event_id, left, top, right, bottom)
@@ -69,7 +75,7 @@ class LocationData:
 
         return x
 
-    def write_to_rom(self, rom: bytearray, loc_id: int):
+    def write_to_rom(self, rom: Union[bytearray, memoryview], loc_id: int):
         ptr_st = 0x360000 + loc_id*14
         rom[ptr_st:ptr_st+14] = self.to_bytearray()
 
@@ -117,6 +123,7 @@ class LocationExit:
 
         return ret
 
+    @staticmethod
     def from_rom(rom: bytearray, ptr: int) -> LocationExit:
         x_coord = rom[ptr]
         y_coord = rom[ptr+1]
@@ -129,8 +136,8 @@ class LocationExit:
 
         byte4 = rom[ptr+4]
         facing = byte4 & 0x06
-        half_left = byte4 & 0x08
-        half_top = byte4 & 0x10
+        half_left = bool(byte4 & 0x08)
+        half_top = bool(byte4 & 0x10)
 
         dest_x = rom[ptr+5]
         dest_y = rom[ptr+6]
@@ -142,9 +149,15 @@ class LocationExit:
 class LocExits:
     LOC_SIZE = 7
 
-    def __init__(self, ptrs: list[int] = [], data: bytearray = b''):
+    def __init__(
+            self,
+            ptrs: Optional[list[int]] = None, data: bytes = b''):
+
+        if ptrs is None:
+            ptrs = []
+
         self.ptrs = ptrs
-        self.data = data
+        self.data = bytearray(data)
 
         # should probably check for integer here...
         self.num_records = len(data) // LocExits.LOC_SIZE
@@ -172,13 +185,13 @@ class LocExits:
         num_loc_exits = self.__num_loc_exits(loc_id)
 
         if exit_id == num_loc_exits:
-            self.add_exit(loc_id, exit_data)
+            loc_exit = LocationExit.from_rom(exit_data, 0)
+            self.add_exit(loc_id, loc_exit)
         elif 0 <= exit_id < num_loc_exits:
             ptr = self.ptrs[loc_id] + 7*exit_id
             self.data[ptr:ptr+7] = exit_data[:]
         else:
-            print("Invalid exit id")
-            exit()
+            raise ValueError("Invalid exit id")
 
     def delete_exit(self, loc_id: int, exit_index: int):
         st = self.ptrs[loc_id] + 7*exit_index
@@ -196,7 +209,7 @@ class LocExits:
         st = self.ptrs[loc_id]
         end = self.ptrs[loc_id+1]
 
-        del(self.data[st:end])
+        del self.data[st:end]
 
         for i in range(loc_id+1, len(self.ptrs)):
             self.ptrs[i] -= (end-st)
@@ -212,6 +225,7 @@ class LocExits:
 
         return ret
 
+    @staticmethod
     def from_rom(fsrom: freespace.FSRom) -> LocExits:
         # get the ptr from the rom
 
@@ -273,11 +287,11 @@ class LocExits:
         num_exits = (last_ptr-first_ptr) / 7
 
         if not num_exits.is_integer():
-            print(f"{first_ptr:04X} {last_ptr:04X}")
-            print("Error: non-integer number of records")
-            raise SystemExit
-        else:
-            num_exits = int(num_exits)
+            raise ValueError(
+                f"[{first_ptr:04X}:{last_ptr:04X}): "
+                "non-integer number of records"
+            )
+        num_exits = int(num_exits)
 
         if num_exits >= self.num_records:
             # Can overwrite without checking with fsrom
@@ -356,7 +370,7 @@ class LocExits:
 
         # annoying part of dealing with getbuffer().  Have to do this or else
         # an existing MemoryView blocks writes.
-        del(rom)
+        del rom
 
         fsrom.seek(out_ptr_st)
         fsrom.write(ptr_bytes, freespace.FSWriteType.MARK_USED)
