@@ -6,6 +6,7 @@ import pickle
 import sys
 import json
 import typing
+from typing import Optional
 
 import charassign
 import enemystats
@@ -55,24 +56,29 @@ import randosettings as rset
 from jotjson import JOTJSONEncoder
 
 
-class NoSettingsException(Exception):
-    pass
+class GenerationFailedException(Exception):
+    '''Exception to raise when generating the randomized rom fails.'''
 
 
-class NoConfigException(Exception):
-    pass
+class NoSettingsException(GenerationFailedException):
+    '''Raise when trying to generate a config or rom with no settings.'''
+
+
+class NoConfigException(GenerationFailedException):
+    '''Raise when trying to generate a rom with no config set.'''
+
 
 
 class Randomizer:
 
     def __init__(self, rom: bytearray, is_vanilla: bool = True,
-                 settings: rset.Settings = None,
-                 config: cfg.RandoConfig = None):
+                 settings: Optional[rset.Settings] = None,
+                 config: Optional[cfg.RandoConfig] = None):
 
         # We want to keep a copy of the base rom around so that we can
         # generate many seeds from it.
         self.base_ctrom = CTRom(rom, ignore_checksum=not is_vanilla)
-        self.out_rom = None
+        self.out_rom: Optional[CTRom] = None
         self.has_generated = False
 
         self.settings = settings
@@ -231,13 +237,12 @@ class Randomizer:
         top_loc_cmd = EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
                                          0x0A, 0x26,
                                          3, 1, False)
-        new_top_loc_cmd =EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
-                                            0x0A, 0xE,
-                                            3, 1, False)
+        new_top_loc_cmd = EC.change_location(ctenums.LocID.ZEAL_TELEPORTERS,
+                                             0x0A, 0xE,
+                                             3, 1, False)
 
         pos = script.find_exact_command(top_loc_cmd)
         script.data[pos:pos+len(bot_loc_cmd)] = new_top_loc_cmd.to_bytearray()
-
 
     @classmethod
     def __set_bike_champions(
@@ -310,19 +315,18 @@ class Randomizer:
         pos += len(cmd)
         script.delete_commands(pos, 5)
 
-
     @classmethod
-    def __set_active_wait_song(cls, ct_rom: CTRom, song_id = 3):
+    def __set_active_wait_song(cls, ct_rom: CTRom, song_id=3):
         '''
         Put a song (corridors of time default) at the active/wait screen.
         '''
         script = ct_rom.script_manager.get_script(
             ctenums.LocID.LOAD_SCREEN)
 
-        pos = script.get_object_start(0)
+        pos: Optional[int] = script.get_object_start(0)
 
         while True:
-            pos, cmd = script.find_command([0xC8], pos)
+            pos, cmd = script.find_command_always([0xC8], pos)
             if cmd.args[0] in range(0xC0, 0xC7):  # name cmd_args
                 break
 
@@ -330,7 +334,6 @@ class Randomizer:
 
         song_cmd = ctevent.EC.generic_one_arg(0xEA, song_id)
         script.insert_commands(song_cmd.to_bytearray(), pos)
-
 
     @classmethod
     def __set_fast_magus_castle(cls, ct_rom: CTRom):
@@ -495,10 +498,7 @@ class Randomizer:
             .add(EC.set_bit(0x7F019F, 0x04))
             .add(EC.set_bit(0x7F019F, 0x08))
         )
-
-
         script.insert_commands(func.get_bytearray(), hook_pos)
-
 
     def __fix_northern_ruins_sealed(self, ct_rom: CTRom):
         # In Vanilla 0x7F01A3 & 0x10 is set for 600AD ruins
@@ -561,7 +561,7 @@ class Randomizer:
                     TID.TRADING_POST_ARMOR,
                     TID.TRADING_POST_HELM)
 
-        tp_name_dict = dict()
+        tp_name_dict = {}
 
         item_db = config.item_db
         CTName = ctstrings.CTNameString
@@ -646,7 +646,7 @@ class Randomizer:
         # determine whether a fight occurs.
         pos = start
         for i in range(3):
-            pos, cmd = script.find_command([0x7F], pos, end)
+            pos, cmd = script.find_command_always([0x7F], pos, end)
             offset = cmd.args[0]
 
             # Get a val to local mem command
@@ -677,11 +677,15 @@ class Randomizer:
         loc_ids = [ctenums.LocID.BLACK_OMEN_ELEVATOR_DOWN,
                    ctenums.LocID.BLACK_OMEN_ELEVATOR_UP]
 
-        for x in list(zip(loc_ids, fights)):
-            elev_fights = x[1]
-            elev_loc_id = x[0]
+        self.__set_omen_elevator_ctrom(
+            ctrom, config.omen_elevator_fights_down,
+            ctenums.LocID.BLACK_OMEN_ELEVATOR_DOWN
+        )
 
-            self.__set_omen_elevator_ctrom(ctrom, elev_fights, elev_loc_id)
+        self.__set_omen_elevator_ctrom(
+            ctrom, config.omen_elevator_fights_up,
+            ctenums.LocID.BLACK_OMEN_ELEVATOR_UP
+        )
 
     def __lavos_ngplus(self):
         '''Removes a check for dead Mammon Machine on Lavos NG+'''
@@ -1056,10 +1060,12 @@ class Randomizer:
         self.out_rom.fix_snes_checksum()
         self.has_generated = True
 
-    def get_generated_rom(self) -> bytearray:
+    def get_generated_rom(self) -> bytes:
         if not self.has_generated:
             self.generate_rom()
 
+        if self.out_rom is None:
+            raise GenerationFailedException("Failed to generate rom.")
         return self.out_rom.rom_data.getvalue()
 
     def write_spoiler_log(self, outfile):
@@ -1166,9 +1172,9 @@ class Randomizer:
         ]
 
         tab_magnitudes = [
-            self.config.power_tab_amt,
-            self.config.magic_tab_amt,
-            self.config.speed_tab_amt
+            self.config.tab_stats.power_tab_amt,
+            self.config.tab_stats.magic_tab_amt,
+            self.config.tab_stats.speed_tab_amt
         ]
 
         for name, magnitude in zip(tab_names, tab_magnitudes):
@@ -1233,7 +1239,9 @@ class Randomizer:
                 )
             file_object.write('\n')
             file_object.write(
-                pcstats.pc_stat_dict[pc_id].__str__(self.config.item_db)
+                pcstats.pc_stat_dict[pc_id].get_spoiler_string(
+                    self.config.item_db
+                )
             )
 
             file_object.write('Tech Order:\n')
@@ -1267,7 +1275,7 @@ class Randomizer:
         file_object.write("Shop Assigmment\n")
         file_object.write("---------------\n")
         file_object.write(
-            self.config.shop_manager.__str__(self.config.item_db)
+            self.config.shop_manager.get_spoiler_string(self.config.item_db)
         )
         file_object.write('\n')
 
@@ -1326,6 +1334,10 @@ class Randomizer:
         boss_ids = list(self.config.boss_assign_dict.values()) + \
             [BossID.MAGUS, BossID.BLACK_TYRANO] + endboss_ids
 
+        if rotypes.BossSpotID.OCEAN_PALACE_TWIN_GOLEM in \
+           self.config.boss_assign_dict:
+            boss_ids.append(rotypes.BossID.TWIN_BOSS)
+
         for boss_id in boss_ids:
             file_object.write(str(boss_id)+':')
             if boss_id in scale_dict.keys():
@@ -1375,9 +1387,8 @@ class Randomizer:
             for part_id in part_ids:
                 if len(part_ids) > 1:
                     file_object.write(f"Part: {part_id}\n")
-                part_str = self.config.enemy_dict[part_id].__str__(
-                    self.config.item_db
-                )
+                part = self.config.enemy_dict[part_id]
+                part_str = part.get_spoiler_string(self.config.item_db)
                 # put the string one tab out
                 part_str = '\t' + str.replace(part_str, '\n', '\n\t')
                 file_object.write(part_str+'\n')
@@ -1502,9 +1513,7 @@ class Randomizer:
         '''
 
         flags = settings.gameflags
-        mode = settings.game_mode
         GF = rset.GameFlags
-        GM = rset.GameMode
 
         if GF.UNLOCKED_SKYGATES in flags:
             vanillarando.unlock_skyways(ct_rom)
@@ -1549,7 +1558,7 @@ class Randomizer:
     # logic changes to test.
     @classmethod
     def __apply_basic_patches(cls, ctrom: CTRom,
-                              settings: rset.Settings = None):
+                              settings: Optional[rset.Settings] = None):
         '''Apply patches that are always applied to a jets rom.'''
         rom_data = ctrom.rom_data
 
@@ -1618,7 +1627,7 @@ class Randomizer:
                         rset.GameMode.LEGACY_OF_CYRUS):
                 # Game modes where there is no pendant trial need to enforce
                 # fast pendant by changing scripts.
-                fastpendant.apply_fast_pendant_script(ctrom, settings)
+                fastpendant.apply_fast_pendant_script(ctrom)
             else:
                 rom_data.patch_txt_file('./patches/fast_charge_pendant.txt')
 
@@ -1629,19 +1638,10 @@ class Randomizer:
         if settings.item_difficulty == rset.Difficulty.HARD:
             cls.__set_initial_gold(ctrom, 10000)
 
-        if rset.GameFlags.VISIBLE_HEALTH in flags:
-            qolhacks.force_sightscope_on(ctrom, settings)
-
-        qolhacks.set_guaranteed_drops(ctrom)
-
-        if rset.GameFlags.FREE_MENU_GLITCH in flags:
-            qolhacks.set_free_menu_glitch(ctrom, settings)
+        qolhacks.attempt_all_qol_hacks(ctrom, settings)
 
         if rset.GameFlags.UNLOCKED_MAGIC in flags:
             fastmagic.write_ctrom(ctrom, settings)
-
-        if rset.GameFlags.FAST_TABS in flags:
-            qolhacks.fast_tab_pickup(ctrom, settings)
 
     @classmethod
     def __apply_zeal_end(cls, ct_rom: CTRom):
@@ -1661,6 +1661,8 @@ class Randomizer:
             script.get_function_start(obj_id, func_id),
             script.get_function_end(obj_id, func_id)
         )
+        if pos is None:
+            raise ctevent.CommandNotFoundException
 
         EC = ctevent.EC
         EF = ctevent.EF
@@ -2004,7 +2006,7 @@ class Randomizer:
     @classmethod
     def get_randmomized_rom(cls,
                             rom: bytearray,
-                            settings: rset.Settings) -> bytearray:
+                            settings: rset.Settings) -> bytes:
         '''
         Generate a random rom from the given (maybe not vanilla) rom.
         Uses the seed in settings.seed.
@@ -2068,7 +2070,7 @@ def generate_from_command_line():
     print(f"generated: {out_path}")
 
 
-def get_input_file_from_command_line() -> (str, str):
+def get_input_file_from_command_line() -> typing.Tuple[str, str]:
     sourcefile = input("Please enter ROM name or drag it onto the screen.")
 
     # When dragging, bash puts \' around the path.  Remove if present.
@@ -2081,7 +2083,7 @@ def get_input_file_from_command_line() -> (str, str):
 
     if not os.path.isfile(sourcefile):
         input("Error: File does not exist.")
-        exit()
+        sys.exit()
 
     print(extension)
     if extension not in ('.sfc', '.smc'):
@@ -2090,7 +2092,7 @@ def get_input_file_from_command_line() -> (str, str):
             "Try placing the ROM in the same folder as the randomizer. "
             "Also, try writing the extension(.sfc/smc)."
         )
-        exit()
+        sys.exit()
 
     # In theory ask for alternate output folder, but for now just place in
     # the same one.
