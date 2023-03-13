@@ -5,6 +5,7 @@
 from __future__ import annotations
 import dataclasses
 import typing
+from typing import Optional, Union
 
 from treasures import treasuretypes
 from characters import ctpcstats, pcrecruit
@@ -40,30 +41,39 @@ class RandoConfig:
     '''
     def __init__(
             self,
-            treasure_assign_dict: dict[ctenums.TreasureID,
-                                       treasuretypes.Treasure] = None,
-            char_assign_dict: dict[ctenums.RecruitID,
-                                   pcrecruit.RecruitSpot] = None,
-            pcstats: ctpcstats.PCStatsManager = None,
-            tech_db: techdb.TechDB = None,
-            item_db: itemdata.ItemDB = None,
-            enemy_dict: dict[ctenums.EnemyID,
-                             enemystats.EnemyStats] = None,
-            enemy_sprite_dict: dict[ctenums.EnemyID,
-                                    enemystats.EnemySpriteData] = None,
-            enemy_atk_db: enemytechdb.EnemyAttackDB = None,
-            enemy_ai_db: enemyai.EnemyAIDB = None,
-            boss_assign_dict: dict[rotypes.BossSpotID, rotypes.BossID] = None,
-            boss_data_dict: dict[rotypes.BossID,
-                                 rotypes.BossScheme] = None,
-            tab_stats: TabStats = TabStats(1, 1, 1),
-            omen_elevator_fights_up: typing.Container[int] = None,  # 0,1,2
-            omen_elevator_fights_down: typing.Container[int] = None,
+            treasure_assign_dict: Optional[
+                dict[ctenums.TreasureID, treasuretypes.Treasure]
+            ] = None,
+            char_assign_dict: Optional[
+                dict[ctenums.RecruitID, pcrecruit.RecruitSpot]
+            ] = None,
+            pcstats: Optional[ctpcstats.PCStatsManager] = None,
+            tech_db: Optional[techdb.TechDB] = None,
+            item_db: Optional[itemdata.ItemDB] = None,
+            enemy_dict: Optional[
+                dict[ctenums.EnemyID, enemystats.EnemyStats]
+            ] = None,
+            enemy_sprite_dict: Optional[
+                dict[ctenums.EnemyID, enemystats.EnemySpriteData]
+            ] = None,
+            enemy_atk_db: Optional[enemytechdb.EnemyAttackDB] = None,
+            enemy_ai_db: Optional[enemyai.EnemyAIDB] = None,
+            boss_assign_dict: Optional[
+                dict[rotypes.BossSpotID, rotypes.BossID]
+            ] = None,
+            boss_data_dict: Optional[
+                dict[rotypes.BossID, rotypes.BossScheme]
+            ] = None,
+            tab_stats: Optional[TabStats] = None,
+            omen_elevator_fights_up: Optional[list[int]] = None,  # 0,1,2
+            omen_elevator_fights_down: Optional[list[int]] = None,
             # stuff that's getting replaced
-            shop_manager: shoptypes.ShopManager = None,
-            boss_rank_dict: dict[rotypes.BossID, int] = None,
-            key_item_locations: list[logictypes.Location] = None,
-            objectives: list[obtypes.Objective] = None
+            shop_manager: Optional[shoptypes.ShopManager] = None,
+            boss_rank_dict: Optional[dict[rotypes.BossID, int]] = None,
+            key_item_locations: Optional[
+                list[Union[logictypes.Location, logictypes.LinkedLocation]]
+            ] = None,
+            objectives: Optional[list[obtypes.Objective]] = None
     ):
         '''
         A RandoConfig consists of the following elements:
@@ -102,24 +112,79 @@ class RandoConfig:
           So once pcstats has been used to compute the tech_db, then you can
           not make changes to the DC assignment.
         '''
+
+        # Parameters are all optional now, so we need to assign defaults.
+        if treasure_assign_dict is None:
+            treasure_assign_dict = {}
         self.treasure_assign_dict = treasure_assign_dict
+
+        if char_assign_dict is None:
+            char_assign_dict = {}
         self.char_assign_dict = char_assign_dict
+
+        if pcstats is None:
+            pcstats = ctpcstats.PCStatsManager()
         self.pcstats = pcstats
+
+        if tech_db is None:
+            tech_db = techdb.TechDB()
         self.tech_db = tech_db
+
+        if item_db is None:
+            item_db = itemdata.ItemDB()
         self.item_db = item_db
+
+        if enemy_dict is None:
+            enemy_dict = {}
         self.enemy_dict = enemy_dict
+
+        if enemy_sprite_dict is None:
+            enemy_sprite_dict = {}
         self.enemy_sprite_dict = enemy_sprite_dict
+
+        if enemy_atk_db is None:
+            enemy_atk_db = enemytechdb.EnemyAttackDB()
         self.enemy_atk_db = enemy_atk_db
+
+        if enemy_ai_db is None:
+            enemy_ai_db = enemyai.EnemyAIDB()
         self.enemy_ai_db = enemy_ai_db
+
+        if boss_assign_dict is None:
+            boss_assign_dict = {}
         self.boss_assign_dict = boss_assign_dict
+
+        if boss_data_dict is None:
+            boss_data_dict = {}
         self.boss_data_dict = boss_data_dict
+
+        if tab_stats is None:
+            tab_stats = TabStats(1, 1, 1)
         self.tab_stats = tab_stats
-        self.omen_elevator_fights_up = omen_elevator_fights_up
+
+        if omen_elevator_fights_down is None:
+            omen_elevator_fights_down = []
         self.omen_elevator_fights_down = omen_elevator_fights_down
+
+        if omen_elevator_fights_up is None:
+            omen_elevator_fights_up = []
+        self.omen_elevator_fights_up = omen_elevator_fights_up
+
         # stuff that's getting replaced possibly
+        if shop_manager is None:
+            shop_manager = shoptypes.ShopManager()
         self.shop_manager = shop_manager
+
+        if boss_rank_dict is None:
+            boss_rank_dict = {}
         self.boss_rank_dict = boss_rank_dict
+
+        if key_item_locations is None:
+            key_item_locations = []
         self.key_item_locations = key_item_locations
+
+        if objectives is None:
+            objectives = []
         self.objectives = objectives
 
     def _jot_json(self):
