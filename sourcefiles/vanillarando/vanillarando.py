@@ -1,6 +1,10 @@
+'''
+Module for modifying a standard JoT rom back into a more vanilla experience.
+'''
 from __future__ import annotations
 
 import random
+from typing import Optional
 
 import bossassign
 import bossrandotypes as rotypes
@@ -16,8 +20,9 @@ from treasures import treasuredata, treasuretypes
 
 import randoconfig as cfg
 
-from eventcommand import EventCommand as EC, FuncSync as FS
+from eventcommand import EventCommand as EC, FuncSync as FS, Operation as OP
 from eventfunction import EventFunction as EF
+
 
 def add_sunstone_spot_to_config(config: cfg.RandoConfig):
     '''
@@ -38,9 +43,6 @@ def split_sunstone_quest(ct_rom: ctrom.CTRom):
     '''Have the Moonstone charge into a random item.'''
 
     script = ct_rom.script_manager.get_script(ctenums.LocID.SUN_KEEP_2300)
-
-    EC = ctrom.ctevent.EC
-    EF = ctrom.ctevent.EF
 
     start = script.get_function_start(8, 1)
     explore_off_pos = script.find_exact_command(EC.set_explore_mode(False),
@@ -107,10 +109,13 @@ def split_sunstone_quest(ct_rom: ctrom.CTRom):
 
 
 def add_racelog_chest_to_config(config: cfg.RandoConfig):
+    '''
+    Add a treasure in the config for the Race Log chest.
+    '''
     td = treasuredata
     assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
     config.treasure_assign_dict[ctenums.TreasureID.LAB_32_RACE_LOG]\
-          .held_item = assigned_item
+          .reward = assigned_item
 
 
 def restore_johnny_race(ct_rom: ctrom.CTRom):
@@ -158,9 +163,6 @@ def add_check_to_ozzies_fort_script(ct_rom: ctrom.CTRom):
     new_ind = script.add_py_string(
         '{line break}            Got 1 {item}!{null}'
     )
-
-    EC = eventcommand.EventCommand
-    EF = ctrom.ctevent.EF
 
     start = script.get_function_start(8, 2)
     hook_loc = script.find_exact_command(EC.party_follow(), start)
@@ -210,9 +212,6 @@ def update_zeal_throne_door(ct_rom: ctrom.CTRom):
     )
 
     func = script.get_function(0xC, 2)
-    EF = ctrom.ctevent.EF
-    EC = ctrom.ctevent.EC
-    OP = eventcommand.Operation
 
     new_ind = script.add_py_string(
         "The Ocean Palace is guarded by magic.{full break}"
@@ -248,8 +247,6 @@ def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
 
     # The Sunken Desert is available exactly when 0x7F00F7 & 0x02 is set.
     # This is done in the Telepod Exhibit Script
-    EC = ctrom.ctevent.EC
-    EF = ctrom.ctevent.EF
 
     desert_set_cmd = EC.assign_val_to_mem(0x02, 0x7F00F7, 1)
 
@@ -295,6 +292,9 @@ def revert_sunken_desert_lock(ct_rom: ctrom.CTRom):
 
 
 def add_arris_food_locker_check(ct_rom: ctrom.CTRom):
+    '''
+    Modify Arris Dome Food Storage to have the dead guy give a KI.
+    '''
     # Maybe these should be parameters if we want to be dynamic about it?
     flag_addr = 0x7F00A4
     flag_bit = 0x02
@@ -302,10 +302,6 @@ def add_arris_food_locker_check(ct_rom: ctrom.CTRom):
     script = ct_rom.script_manager.get_script(
         ctenums.LocID.ARRIS_DOME_FOOD_LOCKER
     )
-
-    EF = ctrom.ctevent.EF
-    EC = ctrom.ctevent.EC
-    OP = eventcommand.Operation
 
     new_str = '{line break}            Got 1 {item}!{null}'
     new_ctstr = ctstrings.CTString.from_str(new_str)
@@ -339,6 +335,9 @@ def add_arris_food_locker_check(ct_rom: ctrom.CTRom):
 
 
 def add_arris_food_locker_check_to_config(config: cfg.RandoConfig):
+    '''
+    Adds a treasure for the dead guy in Arris Dome food locker.
+    '''
     td = treasuredata
     assigned_item = random.choice(td.get_item_list(td.ItemTier.HIGH_GEAR))
 
@@ -351,15 +350,14 @@ def add_arris_food_locker_check_to_config(config: cfg.RandoConfig):
 
 
 def add_arris_dome_seed_turn_in(ct_rom: ctrom.CTRom):
+    '''
+    Update Arris Dome script so that the seed can be turned into Doan after
+    checking the Arris dome computer.
+    '''
 
     script = ct_rom.script_manager.get_script(
         ctenums.LocID.ARRIS_DOME
     )
-
-    EF = ctrom.ctevent.EF
-    EC = ctrom.ctevent.EC
-    OP = eventcommand.Operation
-    FS = eventcommand.FuncSync
 
     # The normal item reward is given by an invisible trigger on the ladder.
     # This is object 0xF, touch
@@ -501,6 +499,8 @@ def restore_ribbon_boost_atropos(
     if atropos_spots:
         spot = atropos_spots[0][0]
         battle_loc = obtypes.get_battle_loc_from_spot(spot)
+        if battle_loc is None:
+            raise ValueError("Spot not found.")
 
         script = ct_rom.script_manager.get_script(battle_loc.loc_id)
 
@@ -517,24 +517,24 @@ def restore_ribbon_boost_atropos(
         )
         script.set_function(obj_id, 1, ribbon_func)
 
+        pos: Optional[int]
         pos = script.get_function_start(battle_loc.obj_id, battle_loc.fn_id)
         end = script.get_function_end(battle_loc.obj_id, battle_loc.fn_id)
 
         for _ in range(battle_loc.battle_num+1):
-            pos, cmd = script.find_command([0xD8], pos, end)
+            pos, cmd = script.find_command_always([0xD8], pos, end)
             pos += len(cmd)
 
         call_cmd = EC.call_obj_function(obj_id, 1, 3, FS.HALT)
-        script.insert_commands(call_cmd.to_bytearray() , pos)
+        script.insert_commands(call_cmd.to_bytearray(), pos)
     else:
         restore_ribbon_boost_geno(ct_rom)
 
 
 def get_robo_ribbon_boost_function(ribbon_str_id: int) -> ctrom.ctevent.EF:
-    EC = ctrom.ctevent.EC
-    EF = ctrom.ctevent.EF
-    OP = eventcommand.Operation
-
+    '''
+    Return a function which boosts Robo's Speed and MDef.
+    '''
     func = EF()
     (
         func
@@ -582,7 +582,7 @@ def restore_ribbon_boost_geno(ct_rom: ctrom.CTRom):
     st = script.get_function_start(1, 4)
     end = script.get_function_end(1, 4)
 
-    pos, _ = script.find_command([0xBB], st, end)
+    pos, _ = script.find_command_always([0xBB], st, end)
     script.insert_commands(func.get_bytearray(), pos)
 
 
@@ -636,15 +636,18 @@ class BekklerTreasure(treasuretypes.ScriptTreasure):
         end = script.get_function_end(self.bekkler_object_id,
                                       self.bekkler_function_id)
 
-        pos, _ = script.find_command([0x4F], start, end)
+        pos, _ = script.find_command_always([0x4F], start, end)
 
         # TODO: Handle gold being placed at this spot.
-        # TODO: Fix "The clone will be at Crono's house." text to have theen
+        # TODO: Fix "The clone will be at Crono's house." text to have the
         #       correct reward text.
         script.data[pos+1] = int(self.reward)
 
 
 def add_vanilla_clone_check_to_config(config: cfg.RandoConfig):
+    '''
+    Add a treasure to the config for checking the clone game.
+    '''
     td = treasuredata
     assigned_item = random.choice(
         td.get_item_list(td.ItemTier.AWESOME_GEAR)
@@ -660,6 +663,9 @@ def add_vanilla_clone_check_to_config(config: cfg.RandoConfig):
 
 
 def add_vanilla_clone_check_scripts(ct_rom: ctrom.CTRom):
+    '''
+    Change Crono's Room and Bekkler Lab to allow a KI from the clone game.
+    '''
     script = ctrom.ctevent.Event.from_flux('./flux/VR_002_Crono_Room.Flux')
     ct_rom.script_manager.set_script(script, ctenums.LocID.CRONOS_ROOM)
 
@@ -668,6 +674,9 @@ def add_vanilla_clone_check_scripts(ct_rom: ctrom.CTRom):
 
 
 def restore_cyrus_grave_script(ct_rom: ctrom.CTRom):
+    '''
+    Restores an item pickup (vanilla GrandLeon) to Cyrus's grave.
+    '''
     script = ctrom.ctevent.Event.from_flux(
         './flux/VR_049_Northern_Ruins_Heros_Grave.Flux'
     )
@@ -689,7 +698,9 @@ def restore_magus_castle_decedents(config: cfg.RandoConfig):
 
 
 def restore_cyrus_grave_check_to_config(config: cfg.RandoConfig):
-
+    '''
+    Put a TID into the config for Cyrus's Grave.
+    '''
     td = treasuredata
     assigned_item = random.choice(
         td.get_item_list(td.ItemTier.AWESOME_GEAR)
@@ -704,7 +715,9 @@ def restore_cyrus_grave_check_to_config(config: cfg.RandoConfig):
 
 
 def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
-
+    '''
+    Restore SoS to have five flames in the normal positions.
+    '''
     if config.boss_assign_dict[rotypes.BossSpotID.SUN_PALACE] == \
        rotypes.BossID.SON_OF_SUN:
 
@@ -715,7 +728,9 @@ def restore_sos(ct_rom: ctrom.CTRom, config: cfg.RandoConfig):
 
 
 def fix_item_data(config: cfg.RandoConfig):
-
+    '''
+    Restore price/sellability for items that lack it in vanilla.
+    '''
     item_db = config.item_db
     IID = ctenums.ItemID
 
@@ -767,10 +782,13 @@ def fix_item_data(config: cfg.RandoConfig):
     # Make things sellable
 
 
+# TODO: Fix name.  This no longer changes enemies but rather PC thresholds.
 def scale_enemy_xp_tp(config: cfg.RandoConfig,
                       xp_scale_factor: float = 4.0,
                       tp_scale_factor: float = 2.0):
-
+    '''
+    Reduce PC XP/TP thresholds to simulate boosted XP/TP.
+    '''
     xp_thresh = config.pcstats.xp_thresholds
     for ind, x in enumerate(xp_thresh):
         xp_thresh[ind] = round(x/xp_scale_factor)
@@ -788,7 +806,9 @@ def scale_enemy_xp_tp(config: cfg.RandoConfig,
 
 
 def fix_required_tp(config: cfg.RandoConfig):
-
+    '''
+    Fill in gaps in vanilla TP requirements.
+    '''
     CharID = ctenums.CharID
 
     # Crono, Lucca, Marle, and Frog have no TP for 3rd tech
@@ -810,6 +830,9 @@ def fix_required_tp(config: cfg.RandoConfig):
 
 
 def fix_magic_learning(config: cfg.RandoConfig):
+    '''
+    Change so that the first three techs are learnable without magic.
+    '''
     CharID = ctenums.CharID
     magic_learners = (CharID.CRONO, CharID.MARLE, CharID.LUCCA, CharID.FROG)
     for char_id in magic_learners:
@@ -884,182 +907,14 @@ def rebalance_nizbel(config: cfg.RandoConfig):
 
 
 def use_easy_lavos(ct_rom: ctrom.CTRom):
-
-    EC = ctrom.ctevent.EC
-
+    '''
+    Use the easy Lavos AI (not vanilla ocean palace) for all Lavos1 fights.
+    '''
     load_lavos = EC.load_enemy(int(ctenums.EnemyID.LAVOS_OCEAN_PALACE),
                                3, True)
     script = ct_rom.script_manager.get_script(ctenums.LocID.LAVOS)
     pos = script.find_exact_command(load_lavos)
     script.data[pos+1] = int(ctenums.EnemyID.LAVOS_1)
-
-
-def get_vanilla_treasure_tiers() -> dict[treasuredata.TreasureLocTier,
-                                         ctenums.TreasureID]:
-
-    TID = ctenums.TreasureID
-    td = treasuredata
-
-    ret_dict = {
-        tier: None
-        for tier in td.TreasureLocTier
-    }
-
-    # Recall Progression is Cath, Trial, Early Future, Heckran,
-    # Denadoro, Reptite, Magus, Tyrano, Woe, Ocean Palace, Sidequests, Omen
-
-    # Low = Open, Cath
-    # LowMid = Trial, Early Future, Heckran
-    # Mid = Denadoro, Repite, Magus, Tyrano
-    # MidHigh = Woe, Ocean Palace, SideQuests
-    # HighAwe = Omen
-
-    ret_dict[td.TreasureLocTier.LOW] = [
-        TID.TRUCE_MAYOR_1F, TID.TRUCE_MAYOR_2F, TID.KINGS_ROOM_1000,
-        TID.QUEENS_ROOM_1000, TID.FOREST_RUINS, TID.PORRE_MAYOR_2F,
-        TID.TRUCE_CANYON_1, TID.TRUCE_CANYON_2, TID.KINGS_ROOM_600,
-        TID.QUEENS_ROOM_600, TID.ROYAL_KITCHEN, TID.CURSED_WOODS_1,
-        TID.CURSED_WOODS_2, TID.FROGS_BURROW_RIGHT, TID.FIONAS_HOUSE_1,
-        TID.FIONAS_HOUSE_2, TID.QUEENS_TOWER_600, TID.KINGS_TOWER_600,
-        TID.KINGS_TOWER_1000, TID.QUEENS_TOWER_1000, TID.GUARDIA_COURT_TOWER,
-        # Manoria Cathedral
-        TID.MANORIA_CATHEDRAL_1, TID.MANORIA_CATHEDRAL_2,
-        TID.MANORIA_CATHEDRAL_3,
-        TID.MANORIA_INTERIOR_1, TID.MANORIA_INTERIOR_2,
-        TID.MANORIA_INTERIOR_3, TID.MANORIA_INTERIOR_4,
-        TID.MANORIA_SHRINE_SIDEROOM_1, TID.MANORIA_SHRINE_SIDEROOM_2,
-        TID.MANORIA_BROMIDE_1, TID.MANORIA_BROMIDE_2,
-        TID.MANORIA_BROMIDE_3,
-    ]
-
-    # TID.YAKRAS_ROOM to mid.  Vanilla mid ether
-    # In standard jets TID.MANORIA_INTERIOR_3 is tiered mid
-
-    ret_dict[td.TreasureLocTier.LOW_MID] = [
-        # Magus's shrine has a speed belt (!) in vanilla.  Boost tier?
-        TID.MANORIA_SHRINE_MAGUS_1, TID.MANORIA_SHRINE_MAGUS_2,
-        # Heckran's Cave
-        TID.HECKRAN_CAVE_SIDETRACK, TID.HECKRAN_CAVE_ENTRANCE,
-        TID.HECKRAN_CAVE_1, TID.HECKRAN_CAVE_2,
-        # Guardia Prison
-        # Consider improving out-of-the-way chests.
-        TID.PRISON_TOWER_1000, TID.GUARDIA_JAIL_FRITZ,
-        TID.GUARDIA_JAIL_FRITZ_STORAGE, TID.GUARDIA_JAIL_CELL,
-        TID.GUARDIA_JAIL_OMNICRONE_1, TID.GUARDIA_JAIL_OMNICRONE_2,
-        TID.GUARDIA_JAIL_OMNICRONE_3, TID.GUARDIA_JAIL_HOLE_1,
-        TID.GUARDIA_JAIL_HOLE_2, TID.GUARDIA_JAIL_OUTER_WALL,
-        TID.GUARDIA_JAIL_OMNICRONE_4, TID.GIANTS_CLAW_KINO_CELL,
-        # Early Future
-        TID.ARRIS_DOME_FOOD_STORE, TID.ARRIS_DOME_RATS,
-        TID.LAB_16_1, TID.LAB_16_2, TID.LAB_16_3, TID.LAB_16_4,
-        TID.LAB_32_1, TID.LAB_32_RACE_LOG,
-        TID.SEWERS_1, TID.SEWERS_2, TID.SEWERS_3,
-        TID.FACTORY_LEFT_AUX_CONSOLE, TID.FACTORY_LEFT_SECURITY_LEFT,
-        TID.FACTORY_LEFT_SECURITY_RIGHT, TID.FACTORY_RIGHT_CRANE_LOWER,
-        TID.FACTORY_RIGHT_CRANE_UPPER, TID.FACTORY_RIGHT_DATA_CORE_1,
-        TID.FACTORY_RIGHT_DATA_CORE_2, TID.FACTORY_RIGHT_FLOOR_BOTTOM,
-        TID.FACTORY_RIGHT_FLOOR_LEFT, TID.FACTORY_RIGHT_FLOOR_SECRET,
-        TID.FACTORY_RIGHT_FLOOR_TOP, TID.FACTORY_RIGHT_INFO_ARCHIVE,
-        TID.FACTORY_RUINS_GENERATOR
-    ]
-
-    ret_dict[td.TreasureLocTier.MID] = [
-        # Denadoro
-        TID.DENADORO_MTS_SCREEN2_1, TID.DENADORO_MTS_SCREEN2_2,
-        TID.DENADORO_MTS_SCREEN2_3, TID.DENADORO_MTS_FINAL_1,
-        TID.DENADORO_MTS_FINAL_2, TID.DENADORO_MTS_FINAL_3,
-        TID.DENADORO_MTS_WATERFALL_TOP_3, TID.DENADORO_MTS_WATERFALL_TOP_4,
-        TID.DENADORO_MTS_WATERFALL_TOP_5, TID.DENADORO_MTS_ENTRANCE_1,
-        TID.DENADORO_MTS_ENTRANCE_2, TID.DENADORO_MTS_SCREEN3_1,
-        TID.DENADORO_MTS_SCREEN3_2, TID.DENADORO_MTS_SCREEN3_3,
-        TID.DENADORO_MTS_SCREEN3_4, TID.DENADORO_MTS_AMBUSH,
-        TID.DENADORO_MTS_SAVE_PT,
-        # Castle Magus
-        TID.MAGUS_CASTLE_RIGHT_HALL, TID.MAGUS_CASTLE_GUILLOTINE_1,
-        TID.MAGUS_CASTLE_GUILLOTINE_2, TID.MAGUS_CASTLE_SLASH_ROOM_1,
-        TID.MAGUS_CASTLE_SLASH_ROOM_2, TID.MAGUS_CASTLE_STATUE_HALL,
-        TID.MAGUS_CASTLE_FOUR_KIDS, TID.MAGUS_CASTLE_OZZIE_1,
-        TID.MAGUS_CASTLE_OZZIE_2, TID.MAGUS_CASTLE_ENEMY_ELEVATOR,
-        # Tyrano Lair
-        TID.TYRANO_LAIR_TRAPDOOR, TID.TYRANO_LAIR_MAZE_1,
-        TID.TYRANO_LAIR_MAZE_2, TID.TYRANO_LAIR_MAZE_3,
-        TID.TYRANO_LAIR_MAZE_4,
-        TID.MAGUS_CASTLE_LEFT_HALL, TID.MAGUS_CASTLE_UNSKIPPABLES,
-        TID.MAGUS_CASTLE_PIT_E, TID.MAGUS_CASTLE_PIT_NE,
-        TID.MAGUS_CASTLE_PIT_NW, TID.MAGUS_CASTLE_PIT_W,
-    ]
-
-    ret_dict[td.TreasureLocTier.MID_HIGH] = [
-        # Higher Tier for
-        TID.DENADORO_MTS_WATERFALL_TOP_1, TID.DENADORO_MTS_WATERFALL_TOP_2,
-        # Prismshard quest
-        TID.GUARDIA_BASEMENT_1, TID.GUARDIA_BASEMENT_2, TID.GUARDIA_BASEMENT_3,
-        TID.GUARDIA_TREASURY_1, TID.GUARDIA_TREASURY_2, TID.GUARDIA_TREASURY_3,
-        # Desert
-        TID.SUNKEN_DESERT_B1_NW, TID.SUNKEN_DESERT_B1_NE,
-        TID.SUNKEN_DESERT_B1_SE, TID.SUNKEN_DESERT_B1_SW,
-        TID.SUNKEN_DESERT_B2_NW, TID.SUNKEN_DESERT_B2_N,
-        TID.SUNKEN_DESERT_B2_W,  TID.SUNKEN_DESERT_B2_SW,
-        TID.SUNKEN_DESERT_B2_SE, TID.SUNKEN_DESERT_B2_E,
-        TID.SUNKEN_DESERT_B2_CENTER,
-        # Ozzie's Fort
-        TID.OZZIES_FORT_GUILLOTINES_1, TID.OZZIES_FORT_GUILLOTINES_2,
-        TID.OZZIES_FORT_GUILLOTINES_3, TID.OZZIES_FORT_GUILLOTINES_4,
-        TID.OZZIES_FORT_FINAL_1, TID.OZZIES_FORT_FINAL_2,
-        # Giant's Claw
-        TID.GIANTS_CLAW_CAVES_1, TID.GIANTS_CLAW_CAVES_2,
-        TID.GIANTS_CLAW_CAVES_3, TID.GIANTS_CLAW_CAVES_4,
-        TID.GIANTS_CLAW_CAVES_5,
-        # Free sealed Rooms
-        TID.BANGOR_DOME_SEAL_1, TID.BANGOR_DOME_SEAL_2, TID.BANGOR_DOME_SEAL_3,
-        TID.TRANN_DOME_SEAL_1, TID.TRANN_DOME_SEAL_2,
-        # Death Peak
-        TID.DEATH_PEAK_SOUTH_FACE_SPAWN_SAVE, TID.DEATH_PEAK_SOUTH_FACE_SUMMIT,
-        TID.DEATH_PEAK_FIELD, TID.DEATH_PEAK_CAVES_LEFT,
-        TID.DEATH_PEAK_CAVES_CENTER, TID.DEATH_PEAK_CAVES_RIGHT,
-        TID.DEATH_PEAK_KRAKKER_PARADE,
-        # Geno Dome
-        TID.GENO_DOME_1F_1, TID.GENO_DOME_1F_2, TID.GENO_DOME_1F_3,
-        TID.GENO_DOME_1F_4, TID.GENO_DOME_ROOM_1, TID.GENO_DOME_ROOM_2,
-        TID.GENO_DOME_PROTO4_1, TID.GENO_DOME_PROTO4_2, TID.GENO_DOME_2F_1,
-        TID.GENO_DOME_2F_2, TID.GENO_DOME_2F_3, TID.GENO_DOME_2F_4,
-        # Most of Ocean Palace
-        TID.OCEAN_PALACE_MAIN_S,
-        TID.OCEAN_PALACE_MAIN_N, TID.OCEAN_PALACE_E_ROOM,
-        TID.OCEAN_PALACE_W_ROOM, TID.OCEAN_PALACE_SWITCH_NW,
-        TID.OCEAN_PALACE_SWITCH_SW, TID.OCEAN_PALACE_SWITCH_NE,
-        # Mt. Woe
-        TID.MT_WOE_2ND_SCREEN_1, TID.MT_WOE_2ND_SCREEN_2,
-        TID.MT_WOE_2ND_SCREEN_3, TID.MT_WOE_2ND_SCREEN_4,
-        TID.MT_WOE_2ND_SCREEN_5, TID.MT_WOE_3RD_SCREEN_1,
-        TID.MT_WOE_3RD_SCREEN_2, TID.MT_WOE_3RD_SCREEN_3,
-        TID.MT_WOE_3RD_SCREEN_4, TID.MT_WOE_3RD_SCREEN_5,
-        TID.MT_WOE_1ST_SCREEN, TID.MT_WOE_FINAL_1,
-        TID.MT_WOE_FINAL_2,
-    ]
-
-    ret_dict[td.TreasureLocTier.HIGH_AWESOME] = [
-        TID.ARRIS_DOME_SEAL_1, TID.ARRIS_DOME_SEAL_2,
-        TID.ARRIS_DOME_SEAL_3, TID.ARRIS_DOME_SEAL_4,
-        TID.REPTITE_LAIR_SECRET_B2_NE_RIGHT, TID.REPTITE_LAIR_SECRET_B1_SW,
-        TID.REPTITE_LAIR_SECRET_B1_NE, TID.REPTITE_LAIR_SECRET_B1_SE,
-        TID.REPTITE_LAIR_SECRET_B2_SE_RIGHT,
-        TID.REPTITE_LAIR_SECRET_B2_NE_OR_SE_LEFT,
-        TID.REPTITE_LAIR_SECRET_B2_SW,
-        TID.BLACK_OMEN_AUX_COMMAND_MID,
-        TID.BLACK_OMEN_AUX_COMMAND_NE, TID.BLACK_OMEN_GRAND_HALL,
-        TID.BLACK_OMEN_NU_HALL_NW, TID.BLACK_OMEN_NU_HALL_W,
-        TID.BLACK_OMEN_NU_HALL_SW, TID.BLACK_OMEN_NU_HALL_NE,
-        TID.BLACK_OMEN_NU_HALL_E, TID.BLACK_OMEN_NU_HALL_SE,
-        TID.BLACK_OMEN_ROYAL_PATH, TID.BLACK_OMEN_RUMINATOR_PARADE,
-        TID.BLACK_OMEN_EYEBALL_HALL, TID.BLACK_OMEN_TUBSTER_FLY,
-        TID.BLACK_OMEN_MARTELLO, TID.BLACK_OMEN_ALIEN_SW,
-        TID.BLACK_OMEN_ALIEN_NE, TID.BLACK_OMEN_ALIEN_NW,
-        TID.BLACK_OMEN_TERRA_W, TID.BLACK_OMEN_TERRA_NE,
-        # Copying standard for these two ocean palace chests
-        TID.OCEAN_PALACE_SWITCH_SECRET, TID.OCEAN_PALACE_FINAL,
-    ]
-    return ret_dict
 
 
 def fix_config(config: cfg.RandoConfig):
