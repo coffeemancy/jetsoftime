@@ -1,4 +1,7 @@
+'''Module providing classes for manipulating shops.'''
+
 from __future__ import annotations
+from typing import Optional
 
 import byteops
 import ctenums
@@ -7,11 +10,20 @@ import itemdata
 
 
 class ShopManager:
-
+    '''Class to handle reading/writing of shop data to rom.'''
     shop_ptr = 0x02DAFD
     shop_data_bank_ptr = 0x02DB09
 
-    def __init__(self, rom: bytearray):
+    # TODO: Change constructor to take dict[ShopID, list[int]] and use a
+    #       Separate from_rom method.
+    def __init__(self, rom: Optional[bytes] = None):
+
+        self.shop_dict: dict[ctenums.ShopID, list[ctenums.ItemID]]
+        if rom is None:
+            self.shop_dict = {
+                shop_id: [] for shop_id in sorted(list(ctenums.ShopID))
+            }
+            return
 
         shop_data_bank, shop_ptr_start = ShopManager.__get_shop_pointers(rom)
 
@@ -23,7 +35,7 @@ class ShopManager:
         #  2) ctenums.ShopID contains all values from 0x00 to N-1 where N is
         #     the number of shops.
 
-        self.shop_dict = dict()
+        self.shop_dict = {}
 
         # The sort shouldn't be necessary, but be explicit.
         for shop in sorted(list(ctenums.ShopID)):
@@ -45,7 +57,7 @@ class ShopManager:
 
     # Returns start of shop pointers, start of bank of shop data
     @classmethod
-    def __get_shop_pointers(cls, rom: bytearray):
+    def __get_shop_pointers(cls, rom: bytes):
         shop_data_bank = byteops.to_file_ptr(rom[cls.shop_data_bank_ptr] << 16)
         shop_ptr_start = \
             byteops.to_file_ptr(
@@ -54,6 +66,7 @@ class ShopManager:
         return shop_data_bank, shop_ptr_start
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        '''Write all shops out to the CTRom.'''
         # The space used/freed by TF isn't available to me.  I just have to
         # assume that the space currently allotted is enough.
 
@@ -85,11 +98,13 @@ class ShopManager:
 
     def set_shop_items(self, shop: ctenums.ShopID,
                        items: list[ctenums.ItemID]):
+        '''Sets the items of a shop.'''
         self.shop_dict[shop] = items[:]
 
     def print_with_prices(self,
                           item_db: itemdata.ItemDB):
-        print(self.__str__(item_db))
+        '''Print out all shops with prices from item_db.'''
+        print(self.get_spoiler_string(item_db))
 
     def _jot_json(self):
         shops_ignored = [
@@ -97,10 +112,16 @@ class ShopManager:
             ctenums.ShopID.LAST_VILLAGE_UPDATED
         ]
         return {str(k): [str(i) for i in v]
-                for (k,v) in self.shop_dict.items()
-                if k not in shops_ignored }
+                for (k, v) in self.shop_dict.items()
+                if k not in shops_ignored}
 
-    def __str__(self, item_db: itemdata.ItemDB):
+    def get_spoiler_string(
+            self,
+            item_db: Optional[itemdata.ItemDB] = None) -> str:
+        '''
+        Return a string of all shops and items.  If an ItemDB is provided,
+        include real names and prices.
+        '''
         ret = ''
         for shop in sorted(self.shop_dict.keys()):
             if shop in [ctenums.ShopID.EMPTY_12, ctenums.ShopID.EMPTY_14,
@@ -119,3 +140,7 @@ class ShopManager:
                 ret += '\n'
 
         return ret
+
+    def __str__(self):
+        '''Returns a spoiler string without prices or names (just IDs).'''
+        return self.get_spoiler_string(None)
