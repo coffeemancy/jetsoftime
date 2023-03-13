@@ -134,7 +134,6 @@ def add_objectives_to_config(settings: rset.Settings,
     rem_objs.secondary_stats.is_key_item = True
 
     num_objs = settings.bucket_settings.num_objectives
-    needed_objs = settings.bucket_settings.num_objectives_needed
     hints = list(settings.bucket_settings.hints)
 
     KeyType = typing.Union[oty.QuestID, ctenums.RecruitID,
@@ -255,9 +254,7 @@ def get_obj_from_key(key, settings: rset.Settings,
         if parts[0] == 'fragments':
             num_fragments = int(parts[1])
             total_fragments = int(parts[2])
-
-            if total_fragments < num_fragments:
-                total_fragments = num_fragments
+            total_fragments = max(num_fragments, total_fragments)
 
             return oty.CollectNFragmentsObjective(
                 num_fragments, total_fragments-num_fragments, item_id
@@ -359,8 +356,6 @@ def modify_bucket_activation(
     jump_offset = ins_pos + offset + 1
     script.data[jump_offset] = jump_target-jump_offset
 
-    return
-
 
 def disable_non_bucket_go(ct_rom: ctrom.CTRom):
     '''
@@ -447,7 +442,10 @@ def write_objectives_to_ctrom(
         add_objs_fn.add(EC.add_item(ctenums.ItemID.OBJ_COUNT))
 
     for obj in objs:
-        add_objs_fn.add(EC.add_item(obj.item_id))
+        item_id = obj.item_id
+        if item_id is None:
+            raise ValueError("No item assigned to objective \'{obj.name}\'")
+        add_objs_fn.add(EC.add_item(int(item_id)))
 
     script.set_function(
         obj_id, 0,
@@ -458,7 +456,7 @@ def write_objectives_to_ctrom(
 
     pos = script.get_object_start(0)
     while True:
-        pos, cmd = script.find_command([0xC8], pos)
+        pos, cmd = script.find_command_always([0xC8], pos)
 
         if cmd.args[0] in range(0xC0, 0xC7):
             break
@@ -497,7 +495,7 @@ def write_objectives_to_ctrom(
         warning_str = 'Other go modes are disabled!{linebreak+0}'
     else:
         warning_str = 'Other go modes are enabled!{linebreak+0}'
- 
+
     obj_str = f'{reward_str}: Complete {count_str} {obj_str}'
     dec_str = \
         warning_str + \

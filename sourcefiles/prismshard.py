@@ -2,7 +2,7 @@
 This module is dedicated to manipluating the prismshard quest, especially
 removing cutscenes which eat up time.
 '''
-
+from typing import Optional
 
 import ctenums
 import ctrom
@@ -136,9 +136,11 @@ def fix_basement_music(ct_rom: ctrom.CTRom):
 
 
 def alter_shard_spot_pickup(ct_rom: ctrom.CTRom):
-        # Finally, change the activation of the rainbow shell to
-    #  1) Lock down the castle if the boss hasn't been beaten,
-    #  2) Don't cut away to the trial,
+    '''
+    Finally, change the activation of the rainbow shell to
+      1) Lock down the castle if the boss hasn't been beaten,
+      2) Don't cut away to the trial,
+    '''
     script = ct_rom.script_manager.get_script(
         ctenums.LocID.GUARDIA_REAR_STORAGE
     )
@@ -203,7 +205,7 @@ def accelerate_end_scene(ct_rom: ctrom.CTRom):
         ctenums.LocID.KINGS_TRIAL_NEW
     )
 
-    pos = script.get_function_start(2, 6)
+    pos: Optional[int] = script.get_function_start(2, 6)
     while True:
         pos, cmd = script.find_command([0xAD, 0xB7, 0xF0, 0xEB], pos,
                                        script.get_function_end(2, 6))

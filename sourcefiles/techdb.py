@@ -109,6 +109,7 @@ class TechDB:
             rom = bytearray(infile.read())
             return TechDB.get_default_db(rom)
 
+    @staticmethod
     def get_default_db(vanilla_rom):
         db = TechDB.db_from_rom(vanilla_rom,
                                 0x0C1BEB, 0x7C,

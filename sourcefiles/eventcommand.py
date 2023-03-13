@@ -8,12 +8,14 @@ from enum import Enum, IntEnum, auto
 
 # Small enum to store the synchronization scheme when a function is called
 class FuncSync(Enum):
+    '''Enum of synchronization schemes for event object function calls.'''
     HALT = auto()
     CONT = auto()
     SYNC = auto()
 
 
 class Operation(IntEnum):
+    '''Enum of operations permitted in event commands'''
     EQUALS = 0
     NOT_EQUALS = 1
     GREATER_THAN = 2
@@ -24,11 +26,13 @@ class Operation(IntEnum):
     BITWISE_OR_NONZERO = 7
 
 
-def is_script_mem(addr: int):
+def is_script_mem(addr: int) -> bool:
+    '''Whether an address is in the local script memory.'''
     return 0x7F0200 <= addr < 0x7F0400
 
 
 def is_local_mem(addr: int):
+    '''Whether the address is in the flag memory [0x7F0000,0x7F0200).'''
     return (
         not is_script_mem(addr) and
         0x7F0000 <= addr < 0x7F0200
@@ -2534,7 +2538,7 @@ event_commands[0xFF] = \
                  'Mode 7 Scene.')
 
 
-def get_command(buf: bytearray, offset: int = 0) -> EventCommand:
+def get_command(buf: bytes, offset: int = 0) -> EventCommand:
 
     command_id = buf[offset]
     command = event_commands[command_id].copy()

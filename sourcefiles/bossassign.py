@@ -1758,8 +1758,8 @@ def set_prison_catwalks_boss(
 
 
 def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
+                     loc_id: ctenums.LocID = ctenums.LocID(0xE6),
                      is_vanilla: bool = False):
-    loc_id = ctenums.LocID(0xE6)
     script = ct_rom.script_manager.get_script(loc_id)
 
     if not is_vanilla:

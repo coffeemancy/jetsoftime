@@ -11,10 +11,9 @@ import ctrom
 import ctstrings
 import eventfunction
 import eventcommand
-from treasures import treasuredata
 
 import randoconfig as cfg
-import randosettings as rset
+
 
 
 def get_character_assignment() -> dict[ctenums.RecruitID, ctenums.CharID]:
@@ -42,9 +41,7 @@ def get_character_assignment() -> dict[ctenums.RecruitID, ctenums.CharID]:
     avail_spots.remove(RID.PROTO_DOME)
 
     random.shuffle(avail_chars)
-    remaining_assignments = {
-        rid: char_id for rid, char_id in zip(avail_spots, avail_chars)
-    }
+    remaining_assignments = dict(zip(avail_spots, avail_chars))
 
     # Add the remaining assignments to the main dict
     assign_dict.update(remaining_assignments)
@@ -245,9 +242,6 @@ def force_castle_before_ozzies_fort(ct_rom: ctrom.CTRom):
         0x7F01FF, OP.BITWISE_AND_NONZERO, 0x04, 1, 0
     )
 
-    crystal_anim = EC.get_blank_command(0xAA)
-    crystal_anim.args[0] = 0x05
-
     crystal_anim = EF()
     crystal_anim.add(EC.generic_one_arg(0xAB, 0xA))
     crystal_anim.add(EC.generic_one_arg(0xAA, 0xE))
@@ -345,9 +339,11 @@ def insert_recruit_lock(ct_rom: ctrom.CTRom,
     #   3) Kick the user back to party shuffle if required characters
     #      are missing
     #   4) Set the character locks
-    loc_id = config.char_assign_dict[recruit_spot].loc_id
+    recruit = config.char_assign_dict[recruit_spot]
+    if not isinstance(recruit, cfg.pcrecruit.CharRecruit):
+        raise TypeError("Recruit Spot has the wrong type (StarterChar?)")
+    loc_id = recruit.loc_id
     script = ct_rom.script_manager.get_script(loc_id)
-    obj_id = config.char_assign_dict[recruit_spot].recruit_obj_id
 
     chars = list(required_chars)
     char_lock_bytes = functools.reduce(

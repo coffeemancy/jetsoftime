@@ -1,3 +1,8 @@
+'''
+Give the Robo's Ribbon key item +3 speed and various effects.
+'''
+
+
 # Robo's Rbn is item 0xB8
 # Accessories start at 0x94, so it is accessory 0x24
 # Accessories start at 0x0C052C
@@ -8,6 +13,7 @@
 # The plan is to set 0x80 and 0x40 bits (0xC0) for Rbn so that the data is
 # 00 C0 09 42.  Then stat boost 7 (+3 spd) will be swapped with stat boost
 # 9 (+6 pow).
+from typing import Optional, Union
 
 import randoconfig as cfg
 
@@ -49,7 +55,8 @@ def set_robo_ribbon_in_config(config: cfg.RandoConfig):
     for item_id in equippable_items:
 
         item = item_db[item_id]
-        stat_obj = None
+        stat_obj: Optional[Union[cfg.itemdata.GearSecondaryStats,
+                                 cfg.itemdata.AccessoryStats]] = None
         if isinstance(item.secondary_stats, cfg.itemdata.GearSecondaryStats):
             stat_obj = item.secondary_stats
         elif (isinstance(item.stats, cfg.itemdata.AccessoryStats) and

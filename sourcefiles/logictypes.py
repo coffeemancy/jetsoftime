@@ -21,8 +21,8 @@ import randoconfig as cfg
 class Game:
     def __init__(self, settings: rset.Settings,
                  config: cfg.RandoConfig):
-        self.characters = set()
-        self.keyItems = set()
+        self.characters: typing.Set[CharID] = set()
+        self.keyItems: typing.Set[ItemID] = set()
         self.earlyPendant = rset.GameFlags.FAST_PENDANT in settings.gameflags
         self.lockedChars = rset.GameFlags.LOCKED_CHARS in settings.gameflags
         self.lostWorlds = rset.GameMode.LOST_WORLDS == settings.game_mode
@@ -365,7 +365,7 @@ class Game:
 class Location:
     def __init__(self, treasure_id: TreasureID):
         self.treasure_id = treasure_id
-        self.keyItem = None
+        self.keyItem: ItemID = ItemID.NONE
 
     def _jot_json(self):
         return {self.getName(): str(self.getKeyItem())}
@@ -422,7 +422,12 @@ class Location:
     #                 treasure assignment dictionary
     #
     def lookupKeyItem(self, config: cfg.RandoConfig) -> ItemID:
-        return config.treasure_assign_dict[self.treasure_id].reward
+        reward = config.treasure_assign_dict[self.treasure_id].reward
+
+        if not isinstance(reward, ItemID):
+            raise ValueError
+
+        return reward
 
 # End Location class
 

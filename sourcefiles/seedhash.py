@@ -1,12 +1,12 @@
+'''Module for putting a seed hash on the Active/Wait screen.'''
 import hashlib
-import random
 
 import ctrom
 import ctstrings
-import randosettings as rset
 
 
 def write_hash_string(ct_rom: ctrom.CTRom):
+    ''' Puts a hash string on the active/wait screen of this ctrom.'''
     rom = ct_rom.rom_data
 
     rom.seek(0)
@@ -15,25 +15,20 @@ def write_hash_string(ct_rom: ctrom.CTRom):
     hasher = hashlib.md5()
     hasher.update(seed)
     hex_str = hasher.hexdigest()
-    
-    # rng = random.Random(seed)
 
     symbols = [0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,
                0x2E, 0x2F]
 
-    # hash_string = bytes(rng.choices(symbols, k=8))
-
-
-    num_symbols = 8
+    num_symbols = 8  # Num symbols to put in hash string, not len(symbols)
     hash_string = []
     num = int(hex_str, base=16)
-    for i in range(num_symbols):
-       num, rem = divmod(num, len(symbols))
-       hash_string.append(symbols[rem])
+    for _ in range(num_symbols):
+        num, rem = divmod(num, len(symbols))
+        hash_string.append(symbols[rem])
 
-    hash_string = bytes(hash_string)
+    hash_string_b = bytes(hash_string)
 
-    x = ctstrings.CTString.from_str('Seed:')
+    seed_ctstr = ctstrings.CTString.from_str('Seed:')
 
     # There's a script for laying out layer1 tiles.
     new_menu_script = bytes.fromhex(
@@ -41,9 +36,9 @@ def write_hash_string(ct_rom: ctrom.CTRom):
         '80 81 82 83 84 85 86 87 88 89 8A 8B'  # BattleMode top
         '01'  # next line
         '8C 8D 8E 8F 90 91 92 93 94 95 96 97'  # BattleMode mid
-        '01' # next line
+        '01'  # next line
         '98 99 9A 9B 9C 9D 9E 9F A0 A1 A2 A3'  # BattleMode bot
-        '01' # next line
+        '01'  # next line
         '0A 01'  # Change to page 0x01
         '02 9A 01'  # Change to location 0x019A
         'A4 A5 A6 A7 A8 A9'  # Active Time
@@ -56,7 +51,7 @@ def write_hash_string(ct_rom: ctrom.CTRom):
         '01'  # next line x 2
         'FF B6 A0 A8 B3'  # (space)Wait
         '02 42 00'  # 2nd line 2nd tile
-        + x.hex() + hash_string.hex() +  # Seed string
+        + seed_ctstr.hex() + hash_string_b.hex() +  # Seed string
         '0A 03'  # Change to page 0x03 (menu stuff)
         '02 00 00'  # Top left
         'AC'  # grey square
@@ -91,11 +86,3 @@ def write_hash_string(ct_rom: ctrom.CTRom):
 
     rom.seek(new_hdma_loc)
     rom.write(new_hdma)
-
-
-def main():
-    pass
-
-
-if __name__ == '__main__':
-    main()

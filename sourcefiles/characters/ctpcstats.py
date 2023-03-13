@@ -3,6 +3,7 @@ Module that re-implements statcompute and
 '''
 from __future__ import annotations
 from enum import auto
+from typing import Optional
 
 import itemdata
 
@@ -10,6 +11,7 @@ import ctenums
 import ctrom
 import cttypes as ctt
 import ctstrings
+
 
 class PCStat(ctenums.StrIntEnum):
     POWER = auto()
@@ -72,6 +74,7 @@ class StatBlock(ctt.BinaryData):
     char_id = ctt.byte_prop(0, ret_type=ctenums.CharID)
     # Note that the resisted element is resisted at 20%.
     _element_resisted = ctt.byte_prop(1, 0xF0)
+
     @property
     def innate_element_resisted(self) -> ctenums.Element:
         elems = (elem for elem in _elem_bit_dict
@@ -153,6 +156,7 @@ class StatBlock(ctt.BinaryData):
     # Computed HP in 0x3F - 0x41
     # The rest might be animation related... or memory cursor?
 
+
 class _HPMPGrowth(ctt.BinaryData):
     SIZE = 8
 
@@ -161,6 +165,7 @@ class _HPMPGrowth(ctt.BinaryData):
             max_level = self[2*ind]
             if level <= max_level:
                 return self[2*ind + 1]
+        raise ValueError(f"Couldn't find {level} in growth data")
 
     def cumulative_growth_at_level(self, level: int):
         total_growth = 0
@@ -350,7 +355,6 @@ class PCStatData:
         self.tech_level = TechLevel(tech_level)
         self.tp_threshholds = TPThresholds(tp_threshholds)
 
-
     def _jot_json(self):
         # Copying from the old statcompute.py
         stats = {
@@ -359,7 +363,7 @@ class PCStatData:
             'level': self.stat_block.level
         }
         stat_ids = [PCStat.POWER, PCStat.STAMINA, PCStat.SPEED, PCStat.HIT,
-                     PCStat.EVADE, PCStat.MAGIC, PCStat.MAGIC_DEFENSE]
+                    PCStat.EVADE, PCStat.MAGIC, PCStat.MAGIC_DEFENSE]
         stat_names = ['pow', 'stm', 'spd', 'hit', 'evd', 'mag', 'mdf']
 
         for stat_id, name in zip(stat_ids, stat_names):
@@ -376,7 +380,7 @@ class PCStatData:
     @classmethod
     def read_from_ctrom(cls, ct_rom: ctrom.CTRom,
                         pc_id: ctenums.CharID) -> PCStatData:
-        pc_id = int(pc_id)
+        # pc_id = int(pc_id)
         stat_block = StatBlock.read_from_ctrom(ct_rom, pc_id)
         stat_growth = StatGrowth.read_from_ctrom(ct_rom, pc_id)
         hp_growth = HPGrowth.read_from_ctrom(ct_rom, pc_id)
@@ -388,7 +392,7 @@ class PCStatData:
                           tech_level, tp_threshholds)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom, pc_id: ctenums.CharID):
-        pc_id = int(pc_id)
+        # pc_id = int(pc_id)
         self.stat_block.write_to_ctrom(ct_rom, pc_id)
         self.stat_growth.write_to_ctrom(ct_rom, pc_id)
         self.hp_growth.write_to_ctrom(ct_rom, pc_id)
@@ -396,7 +400,9 @@ class PCStatData:
         self.tech_level.write_to_ctrom(ct_rom, pc_id)
         self.tp_threshholds.write_to_ctrom(ct_rom, pc_id)
 
-    def __str__(self, item_db: itemdata.ItemDB = None):
+    def get_spoiler_string(
+            self,
+            item_db: Optional[itemdata.ItemDB] = None) -> str:
         '''
         Returns a formatted multi-line string of the the stats in this object.
 
@@ -423,7 +429,6 @@ class PCStatData:
         )
         growths_str = ' '.join(str(x).rjust(3) for x in growths)
 
-
         if item_db is None:
             wpn_str = str(sb.equipped_weapon)
             helm_str = str(sb.equipped_helm)
@@ -446,20 +451,23 @@ class PCStatData:
 
         return ret
 
+    def __str__(self):
+        return self.get_spoiler_string(None)
+
+
 class PCStatsManager:
     '''
     A class for managing each character's stats.  Also includes data that
     influences all characters, such as XP required to gain levels.
     '''
-    def __init__(self,
-                 pc_stat_dict: dict[ctenums.CharID, PCStatData] = None,
-                 xp_thresholds: XPThreshholds = None):
+    def __init__(
+            self,
+            pc_stat_dict: Optional[dict[ctenums.CharID, PCStatData]] = None,
+            xp_thresholds: Optional[XPThreshholds] = None):
 
-        self.pc_stat_dict: dict[ctenums.CharID, PCStatData] = {
-            pc_id: None for pc_id in list(ctenums.CharID)
-        }
+        self.pc_stat_dict: dict[ctenums.CharID, PCStatData] = {}
 
-        # Overwrite self.pc_stat_dict with entries from the parameter's dict.
+        # Copy over entries from parameter pc_stat_dict
         if pc_stat_dict is not None:
             for pc_id in list(ctenums.CharID):
                 if pc_id in pc_stat_dict:
@@ -484,7 +492,7 @@ class PCStatsManager:
         return {
             str(k): self.pc_stat_dict[k]._jot_json() for k in ctenums.CharID
         }
-            
+
     @classmethod
     def from_ctrom(cls, ct_rom: ctrom.CTRom) -> PCStatsManager:
         xp_thresholds = XPThreshholds.read_from_ctrom(ct_rom)
@@ -557,13 +565,13 @@ class PCStatsManager:
         sb.set_current_stat(stat, new_value)
         self._update_stat(pc_id, stat)  # Will undo the change except for SPD
 
-    def get_character_assignment(self, pc_id: ctenums.CharID) -> ctenums.CharID:
+    def get_character_assignment(
+            self, pc_id: ctenums.CharID) -> ctenums.CharID:
         sb = self.pc_stat_dict[pc_id].stat_block
 
         if sb.is_reassigned:
             return sb.assigned_char
-        else:
-            return sb.char_id
+        return sb.char_id
 
     def set_character_assignment(self, pc_id: ctenums.CharID,
                                  assigned_pc_id: ctenums.CharID):
@@ -677,4 +685,3 @@ class PCStatsManager:
             stat_block.all_techs_learned = False
             stat_block.tp_to_next_level = \
                 stat_data.tp_threshholds.get_threshold(new_tech_level)
-

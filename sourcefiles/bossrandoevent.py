@@ -1,5 +1,7 @@
 from __future__ import annotations
 import random
+import typing
+from typing import Optional
 
 # from ctdecompress import compress, decompress, get_compressed_length
 import bossscaler
@@ -187,7 +189,7 @@ def get_random_assignment(
     random.shuffle(bosses)
 
     # Zip only goes through the smaller of the two.
-    return {spot: boss for spot, boss in zip(spots, bosses)}
+    return dict(zip(spots, bosses))
 
 
 def get_legacy_assignment(
@@ -232,10 +234,10 @@ def get_legacy_assignment(
     try:
         two_part_assignment = get_random_assignment(two_part_spots,
                                                     two_part_bosses)
-    except InsufficientSpotsException as e:
+    except InsufficientSpotsException as exc:
         raise InsufficientSpotsException(
             'Error in two spot legacy assignment.'
-        ) from e
+        ) from exc
 
     boss_assignment.update(two_part_assignment)
     return boss_assignment
@@ -409,7 +411,7 @@ def reassign_charms_drops(settings: rset.Settings,
         BSID.ZEAL_PALACE: RG.LATE_BOSS,
         BSID.DEATH_PEAK: RG.LATE_BOSS,
         BSID.BLACK_OMEN_GIGA_MUTANT: RG.LATE_BOSS,
-        BSID.BLACK_OMEN_TERRA_MUTANT: RG.LATE_BOSS, 
+        BSID.BLACK_OMEN_TERRA_MUTANT: RG.LATE_BOSS,
         BSID.BLACK_OMEN_ELDER_SPAWN: RG.LATE_BOSS,
         BSID.OCEAN_PALACE_TWIN_GOLEM: RG.LATE_BOSS,
         BSID.GENO_DOME: RG.LATE_BOSS,
@@ -421,7 +423,7 @@ def reassign_charms_drops(settings: rset.Settings,
         spot_rgs[BSID.SUNKEN_DESERT] = RG.LATE_BOSS
 
     for spot, boss_id in config.boss_assign_dict.items():
-        scheme =  config.boss_data_dict[boss_id]
+        scheme = config.boss_data_dict[boss_id]
         reward_group = spot_rgs[spot]
 
         part_ids = list(set(part.enemy_id for part in scheme.parts))
@@ -464,7 +466,7 @@ def make_weak_obstacle_copies(config: cfg.RandoConfig):
         new_status = random.choice(
             (StatusEffect.LOCK, StatusEffect.SLOW)
         )
-        new_obstacle.effect.status_effect = new_status
+        new_obstacle.effect.status_effect = new_status  # type: ignore
 
         new_id = enemy_ai_db.unused_techs[-1]
         atk_db.set_tech(new_obstacle, new_id)
@@ -481,7 +483,12 @@ def make_weak_obstacle_copies(config: cfg.RandoConfig):
 # scales based on the key item assignment.
 def scale_bosses_given_assignment(settings: rset.Settings,
                                   config: cfg.RandoConfig):
+    '''
+    Scales the bosses given the settings and current assignment of the bosses.
 
+    This is different from boss scaling (b-flag) which scales based on the
+    key item distributuion.
+    '''
     make_boss_rando_sprite_fixes(config.boss_assign_dict,
                                  config.enemy_sprite_dict)
     update_twin_boss(settings, config)
@@ -553,7 +560,12 @@ def scale_bosses_given_assignment(settings: rset.Settings,
     set_yakra_xiii_offense_boost(EnemyID.YAKRA_XIII, config)
 
 
-def get_obstacle_id(enemy_id: EnemyID, config: cfg.RandoConfig) -> int:
+def get_obstacle_id(enemy_id: EnemyID,
+                    config: cfg.RandoConfig) -> Optional[int]:
+    '''
+    Given an EnemyID, determines the index of the obstacle tech used by that
+    enemy.  Returns None if obstacle can not be found in the ai script.
+    '''
     obstacle_msg_ids = (0xBA, 0x92)  # Only covers Terra, Mega
 
     ai_script = config.enemy_ai_db.scripts[enemy_id]
@@ -867,7 +879,7 @@ def randomize_midbosses(settings: rset.Settings, config: cfg.RandoConfig):
         status_effect = random.choice([SE.CHAOS, SE.STOP])     # Chaos, Stop
 
     obstacle = config.enemy_atk_db.get_tech(0x58)
-    obstacle.effect.status_effect = status_effect
+    obstacle.effect.status_effect = status_effect  # type: ignore
     config.enemy_atk_db.set_tech(obstacle, 0x58)
 
 
@@ -880,7 +892,8 @@ def write_bosses_to_ctrom(ctrom: CTRom, config: cfg.RandoConfig):
     # location's boss.
     ba = bossassign
     BSID = bt.BossSpotID
-    assign_fn_dict = {
+    assign_fn_dict: dict[bt.BossSpotID,
+                         typing.Callable[[CTRom, bt.BossScheme], None]] = {
         BSID.MANORIA_CATHERDAL: ba.set_manoria_boss,
         BSID.DENADORO_MTS: ba.set_denadoro_boss,
         BSID.REPTITE_LAIR: ba.set_reptite_lair_boss,

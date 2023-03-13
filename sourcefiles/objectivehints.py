@@ -3,7 +3,7 @@ Module for turning text expressions into objective choices.
 '''
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 import bossrandotypes as rotypes
 import objectivetypes
@@ -53,150 +53,152 @@ def parse_boss_name(name: str):
     '''
     if name in ('atropos', 'atroposxr'):
         return rotypes.BossID.ATROPOS_XR
-    elif name in ('dalton', 'daltonplus', 'dalton+'):
+    if name in ('dalton', 'daltonplus', 'dalton+'):
         return rotypes.BossID.DALTON_PLUS
-    elif name in ('dragontank', 'dtank'):
+    if name in ('dragontank', 'dtank'):
         return rotypes.BossID.DRAGON_TANK
-    elif name in ('elderspawn', 'elder'):
+    if name in ('elderspawn', 'elder'):
         return rotypes.BossID.ELDER_SPAWN
-    elif name  == 'flea':
+    if name == 'flea':
         return rotypes.BossID.FLEA
-    elif name in ('fleaplus', 'flea+'):
+    if name in ('fleaplus', 'flea+'):
         return rotypes.BossID.FLEA_PLUS
-    elif name in ('gigagaia', 'gg'):
+    if name in ('gigagaia', 'gg'):
         return rotypes.BossID.GIGA_GAIA
-    elif name == 'gigamutant':
+    if name == 'gigamutant':
         return rotypes.BossID.GIGA_MUTANT
-    elif name == 'golem':
+    if name == 'golem':
         return rotypes.BossID.GOLEM
-    elif name in ('bossgolem', 'golemboss'):
+    if name in ('bossgolem', 'golemboss'):
         return rotypes.BossID.GOLEM_BOSS
-    elif name == 'guardian':
+    if name == 'guardian':
         return rotypes.BossID.GUARDIAN
-    elif name == 'heckran':
+    if name == 'heckran':
         return rotypes.BossID.HECKRAN
-    elif name == 'lavosspawn':
+    if name == 'lavosspawn':
         return rotypes.BossID.LAVOS_SPAWN
-    elif name in ('magusnc', 'ncmagus'):
+    if name in ('magusnc', 'ncmagus'):
         return rotypes.BossID.MAGUS_NORTH_CAPE
-    elif name in ('masamune', 'masa&mune'):
+    if name in ('masamune', 'masa&mune'):
         return rotypes.BossID.MASA_MUNE
-    elif name == 'megamutant':
+    if name == 'megamutant':
         return rotypes.BossID.MEGA_MUTANT
-    elif name == 'motherbrain':
+    if name == 'motherbrain':
         return rotypes.BossID.MOTHER_BRAIN
-    elif name == 'mudimp':
+    if name == 'mudimp':
         return rotypes.BossID.MUD_IMP
-    elif name == 'nizbel':
+    if name == 'nizbel':
         return rotypes.BossID.NIZBEL
-    elif name in ('nizbel2', 'nizbelii'):
+    if name in ('nizbel2', 'nizbelii'):
         return rotypes.BossID.NIZBEL_2
-    elif name == 'rseries':
+    if name == 'rseries':
         return rotypes.BossID.R_SERIES
-    elif name == 'retinite':
+    if name == 'retinite':
         return rotypes.BossID.RETINITE
-    elif name in ('rusty', 'rusttyrano'):
+    if name in ('rusty', 'rusttyrano'):
         return rotypes.BossID.RUST_TYRANO
-    elif name == 'slash':
+    if name == 'slash':
         return rotypes.BossID.SLASH_SWORD
-    elif name in ('sos', 'sonofsun'):
+    if name in ('sos', 'sonofsun'):
         return rotypes.BossID.SON_OF_SUN
-    elif name == 'superslash':
+    if name == 'superslash':
         return rotypes.BossID.SUPER_SLASH
-    elif name == 'terramutant':
+    if name == 'terramutant':
         return rotypes.BossID.TERRA_MUTANT
-    elif name == 'twinboss':
+    if name == 'twinboss':
         return rotypes.BossID.TWIN_BOSS
-    elif name == 'yakra':
+    if name == 'yakra':
         return rotypes.BossID.YAKRA
-    elif name in ('yakraxiii', 'yakra13'):
+    if name in ('yakraxiii', 'yakra13'):
         return rotypes.BossID.YAKRA_XIII
-    elif name == 'zombor':
+    if name == 'zombor':
         return rotypes.BossID.ZOMBOR
-    else:
-        raise InvalidNameException(name)
+
+    raise InvalidNameException(name)
 
 
 def parse_quest_name(name: str):
-    
+    '''Turn a quest name into a QuestID.'''
     QID = objectivetypes.QuestID
 
     if name in ('repairmasamune', 'masamune', 'masa', 'forge'):
         return QID.FORGE_MASAMUNE
-    elif name in ('chargemoon', 'moon', 'moonstone'):
+    if name in ('chargemoon', 'moon', 'moonstone'):
         return QID.CHARGE_MOONSTONE
-    elif name == "arris":
+    if name == "arris":
         return QID.CLEAR_ARRIS_DOME
-    elif name == 'jerky':
+    if name == 'jerky':
         return QID.GIVE_JERKY_TO_MAYOR
-    elif name in ('deathpeak', 'death'):
+    if name in ('deathpeak', 'death'):
         return QID.CLEAR_DEATH_PEAK
-    elif name == 'denadoro':
+    if name == 'denadoro':
         return QID.CLEAR_DENADORO
-    elif name in ('epoch', 'flight', 'epochflight'):
+    if name in ('epoch', 'flight', 'epochflight'):
         return QID.GAIN_EPOCH_FLIGHT
-    elif name in ('factory', 'factoryruins'):
+    if name in ('factory', 'factoryruins'):
         return QID.CLEAR_FACTORY_RUINS
-    elif name in ('geno', 'genodome'):
+    if name in ('geno', 'genodome'):
         return QID.CLEAR_GENO_DOME
-    elif name in ('claw', 'giantsclaw'):
+    if name in ('claw', 'giantsclaw'):
         return QID.CLEAR_GIANTS_CLAW
-    elif name in ('heckran', 'heckranscave', 'heckrancave'):
+    if name in ('heckran', 'heckranscave', 'heckrancave'):
         return QID.CLEAR_HECKRANS_CAVE
-    elif name in ('kingstrial', 'shard', 'shardtrial', 'prismshard'):
+    if name in ('kingstrial', 'shard', 'shardtrial', 'prismshard'):
         return QID.CLEAR_KINGS_TRIAL
-    elif name in ('cathedral', 'cath', 'manoria'):
+    if name in ('cathedral', 'cath', 'manoria'):
         return QID.CLEAR_CATHEDRAL
-    elif name in ('woe', 'mtwoe'):
+    if name in ('woe', 'mtwoe'):
         return QID.CLEAR_MT_WOE
-    elif name in ('ocean', 'oceanpalace'):
+    if name in ('ocean', 'oceanpalace'):
         return QID.CLEAR_OCEAN_PALACE
-    elif name in ('ozzie', 'fort', 'ozziefort', 'ozziesfort'):
+    if name in ('ozzie', 'fort', 'ozziefort', 'ozziesfort'):
         return QID.CLEAR_OZZIES_FORT
-    elif name in ('pendant', 'pendanttrial'):
+    if name in ('pendant', 'pendanttrial'):
         return QID.CLEAR_PENDANT_TRIAL
-    elif name in ('reptite', 'reptitelair'):
+    if name in ('reptite', 'reptitelair'):
         return QID.CLEAR_REPTITE_LAIR
-    elif name in ('sunpalace', 'sun'):
+    if name in ('sunpalace', 'sun'):
         return QID.CLEAR_SUN_PALACE
-    elif name in ('desert', 'sunkendesert'):
+    if name in ('desert', 'sunkendesert'):
         return QID.CLEAR_SUNKEN_DESERT
-    elif name in ('zealthrone', 'zealpalace', 'golemspot'):
+    if name in ('zealthrone', 'zealpalace', 'golemspot'):
         return QID.CLEAR_ZEAL_PALACE
-    elif name in ('zenan', 'bridge', 'zenanbridge'):
+    if name in ('zenan', 'bridge', 'zenanbridge'):
         return QID.CLEAR_ZENAN_BRIDGE
-    elif name in ('tyrano', 'blacktyrano', 'azala'):
+    if name in ('tyrano', 'blacktyrano', 'azala'):
         return QID.CLEAR_BLACK_TYRANO
-    elif name in ('tyranomid', 'nizbel2spot'):
+    if name in ('tyranomid', 'nizbel2spot'):
         return QID.CLEAR_TYRANO_MIDBOSS
-    elif name in ('magus', 'maguscastle'):
+    if name in ('magus', 'maguscastle'):
         return QID.CLEAR_MAGUS_CASTLE
-    elif name in ('omengiga', 'gigamutant', 'gigaspot'):
+    if name in ('omengiga', 'gigamutant', 'gigaspot'):
         return QID.CLEAR_OMEN_GIGASPOT
-    elif name in ('omenterra', 'terramutant', 'terraspot'):
+    if name in ('omenterra', 'terramutant', 'terraspot'):
         return QID.CLEAR_OMEN_TERRASPOT
-    elif name in ('flea', 'magusflea'):
+    if name in ('flea', 'magusflea'):
         return QID.CLEAR_MAGUS_FLEA_SPOT
-    elif name in ('slash', 'magusslash'):
+    if name in ('slash', 'magusslash'):
         return QID.CLEAR_MAGUS_SLASH_SPOT
-    elif name in ('omenelder', 'elderspawn', 'elderspot'):
+    if name in ('omenelder', 'elderspawn', 'elderspot'):
         return QID.CLEAR_OMEN_ELDERSPOT
-    elif name in ('twinboss', 'twingolem', 'twinspot'):
+    if name in ('twinboss', 'twingolem', 'twinspot'):
         return QID.CLEAR_TWINBOSS_SPOT
-    elif name in ('cyrus', 'nr', 'northernruins'):
+    if name in ('cyrus', 'nr', 'northernruins'):
         return QID.VISIT_CYRUS_GRAVE
-    elif name in ('johnny', 'johnnyrace'):
+    if name in ('johnny', 'johnnyrace'):
         return QID.DEFEAT_JOHNNY
-    elif name in ('fairrace', 'fairbet'):
+    if name in ('fairrace', 'fairbet'):
         return QID.WIN_RACE_BET
-    elif name in ('soda', 'drink'):
+    if name in ('soda', 'drink'):
         return QID.DRINK_SODA
-    else:
-        raise InvalidNameException(name)
-    
+
+    raise InvalidNameException(name)
+
 
 _BossDict = Dict[rotypes.BossSpotID, rotypes.BossID]
 _RecruitDict = Dict[ctenums.RecruitID, pcrecruit.RecruitSpot]
+
+
 def get_go_bosses(boss_assign_dict: _BossDict) -> list[rotypes.BossID]:
     BSID = rotypes.BossSpotID
     go_spots = [BSID.BLACK_OMEN_ELDER_SPAWN, BSID.BLACK_OMEN_GIGA_MUTANT,
@@ -208,13 +210,15 @@ def get_go_bosses(boss_assign_dict: _BossDict) -> list[rotypes.BossID]:
         boss_id for spot, boss_id in boss_assign_dict.items()
         if spot in go_spots
     ]
-    
+
 
 def get_objective_keys(obj_str: str, settings: rset.Settings,
                        boss_assign_dict: _BossDict,
                        char_assign_dict: _RecruitDict
                        ) -> list:
-
+    '''
+    Turn a part of an objective hint into a list of objective keys.
+    '''
     BSID = rotypes.BossSpotID
     BossID = rotypes.BossID
 
@@ -243,7 +247,8 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
             return [boss_id for boss_id in all_bosses
                     if boss_id not in go_bosses]
         return [parse_boss_name(boss_type)]
-    elif obj_type == 'quest':
+
+    if obj_type == 'quest':
         QID = objectivetypes.QuestID
         quest_type = obj_parts[1]
         if quest_type == 'free':
@@ -276,7 +281,8 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
 
             return go_quests
         return [parse_quest_name(quest_type)]
-    elif obj_type == 'recruit':
+
+    if obj_type == 'recruit':
         chars = ['crono', 'marle', 'lucca', 'robo', 'frog', 'ayla', 'magus']
         spots = ['castle', 'dactyl', 'proto', 'burrow']
         RID = ctenums.RecruitID
@@ -293,27 +299,30 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
         if char_choice in chars:
             char_id = ctenums.CharID(chars.index(char_choice))
             return [char_id]
-        elif char_choice in spots:
+        if char_choice in spots:
             index = spots.index(char_choice)
             return [spot_ids[index]]
-        else:
-            num_recruits = int(char_choice)
-            return ['recruits_' + char_choice]
-    elif obj_type == 'collect':
-        num_collect = int(obj_parts[1])
+
+        # num_recruits = int(char_choice)
+        return ['recruits_' + char_choice]
+    if obj_type == 'collect':
+        # num_collect = int(obj_parts[1])
         collect_type = obj_parts[2]
         if collect_type == 'rocks':
             return ['_'.join(('rocks', obj_parts[1]))]
-        elif collect_type == 'fragments':
-            total_fragments = int(obj_parts[3])
+        if collect_type == 'fragments':
+            # total_fragments = int(obj_parts[3])
             return ['_'.join(('fragments', obj_parts[1], obj_parts[3]))]
-        else:
-            raise InvalidNameException(collect_type)
-    else:
-        raise InvalidNameException(obj_type)
+        raise InvalidNameException(collect_type)
+
+    raise InvalidNameException(obj_type)
 
 
-def is_hint_valid(hint: str):
+def is_hint_valid(hint: str) -> Tuple[bool, str]:
+    '''
+    Determine whether the given objective hint has a valid format.
+    Returns a tuple of the validity (bool) and an error message (str).
+    '''
     if hint == '':
         return True, ''
 
@@ -332,16 +341,17 @@ def is_hint_valid(hint: str):
 
     return True, ''
 
+
 def parse_hint(
         hint: str, settings: rset.Settings,
         boss_assign_dict: _BossDict,
         char_assign_dict: _RecruitDict
         ) -> distribution.Distribution:
+    '''
+    Turn an objective hint into a distribution which generates
+    '''
     hint = ''.join(hint.lower().split())  # Remove whitespace
     obj_strs = hint.split(',')
-
-    weights = []
-    obj_keys = []
 
     weight_obj_pairs = []
 
@@ -353,10 +363,8 @@ def parse_hint(
             raise WeightException('Some but not all categories have weights.')
 
         if has_weight:
-            weight, obj_str = obj_str.split(':')
-            weight = int(weight)
-
-            weights.append(weight)
+            weight_str, obj_str = obj_str.split(':')
+            weight = int(weight_str)
         else:
             weight = 1
 
@@ -369,10 +377,3 @@ def parse_hint(
         weight_obj_pairs.append((weight, obj_keys))
 
     return distribution.Distribution(*weight_obj_pairs)
-
-def main():
-    pass
-
-
-if __name__ == '__main__':
-    main()

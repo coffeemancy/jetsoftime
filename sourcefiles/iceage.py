@@ -72,10 +72,11 @@ def set_ending_after_woe(ct_rom: ctrom.CTRom):
     )
 
     # find battle (with GG)
+    # TODO: What is the purpose of this?  Should the next find start from pos?
     pos, _ = script.find_command([0xD9])
 
     # Wait for silence
-    pos, cmd = script.find_command([0xED])
+    pos, cmd = script.find_command_always([0xED])
     pos += len(cmd)
 
     EC = eventcommand.EventCommand
@@ -202,7 +203,7 @@ def lock_magic_cave(ct_rom: ctrom.CTRom):
 
     EC = eventcommand.EventCommand
     frog_active = EC.check_active_pc(int(ctenums.CharID.FROG), 0).command
-    pos, if_frog_active_cmd = script.find_command([frog_active])
+    pos, if_frog_active_cmd = script.find_command_always([frog_active])
 
     new_string = ctstrings.CTString.from_str(
         '{frog}: We must make haste to the{line break}'
@@ -220,7 +221,7 @@ def lock_magic_cave(ct_rom: ctrom.CTRom):
     after_text_pos = pos + len(EC.text_box(0))
 
     # the jump has changed after our insertion, so refetch command
-    pos, if_frog_active_cmd = script.find_command([frog_active])
+    pos, if_frog_active_cmd = script.find_command_always([frog_active])
 
     jump_length = if_frog_active_cmd.args[-1]
     jump_target = pos + len(if_frog_active_cmd) + jump_length - 1
@@ -303,6 +304,10 @@ def set_ice_age_recruit_locks(ct_rom: ctrom.CTRom,
 
     for recruit_id in recruit_ids_to_lock:
         recruit = config.char_assign_dict[recruit_id]
+
+        if not isinstance(recruit, cfg.pcrecruit.CharRecruit):
+            raise TypeError("Expected CharRecruit.")
+
         loc_id = recruit.loc_id
         recruit_obj = recruit.recruit_obj_id
         script = ct_rom.script_manager.get_script(loc_id)
@@ -310,11 +315,12 @@ def set_ice_age_recruit_locks(ct_rom: ctrom.CTRom,
         insert_char_lock(script, recruit_obj, key_chars)
 
 
-def insert_char_lock(script: ctevent.Event,
-                     obj_id: int,
-                     char_set: set[ctenums.CharID]) -> eventfunction:
+def insert_char_lock(
+        script: ctevent.Event,
+        obj_id: int,
+        char_set: set[ctenums.CharID]):
     '''
-    Generate some script to enforce a character lock after recruitment.
+    Modify a script to enforce a character lock after recruitment.
     '''
 
     # The general idea is to do the following

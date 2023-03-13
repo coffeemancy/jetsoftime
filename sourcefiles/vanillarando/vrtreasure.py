@@ -1,16 +1,20 @@
+'''Describes how treasures in vanilla mode differ from standard mode.'''
 from __future__ import annotations
 
 import ctenums
 from treasures import treasuredata
 
-def get_vanilla_treasure_tiers() -> dict[treasuredata.TreasureLocTier,
-                                         ctenums.TreasureID]:
 
+def get_vanilla_treasure_tiers() -> dict[treasuredata.TreasureLocTier,
+                                         list[ctenums.TreasureID]]:
+    '''
+    Return a dictionary associating tier with a list of treasures in that tier.
+    '''
     TID = ctenums.TreasureID
     td = treasuredata
 
-    ret_dict = {
-        tier: None
+    ret_dict: dict[td.TreasureLocTier, list[ctenums.TreasureID]] = {
+        tier: []
         for tier in td.TreasureLocTier
     }
 

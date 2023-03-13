@@ -1,12 +1,12 @@
 '''
 Module for hacks that just change looks/sounds without changing gameplay.
 '''
+from typing import Optional
 import ctenums
 
 from ctrom import CTRom
 # import randoconfig as cfg
 
-import byteops
 import ctevent
 import ctstrings
 from maps import locationtypes
@@ -15,14 +15,14 @@ import randosettings as rset
 
 def set_pc_names(
         ct_rom: CTRom,
-        crono_name: str = None,
-        marle_name: str = None,
-        lucca_name: str = None,
-        robo_name: str = None,
-        frog_name: str = None,
-        ayla_name: str = None,
-        magus_name: str = None,
-        epoch_name: str = None
+        crono_name: Optional[str] = None,
+        marle_name: Optional[str] = None,
+        lucca_name: Optional[str] = None,
+        robo_name: Optional[str] = None,
+        frog_name: Optional[str] = None,
+        ayla_name: Optional[str] = None,
+        magus_name: Optional[str] = None,
+        epoch_name: Optional[str] = None
 ):
     '''
     Provide names to be used for characters and epoch.

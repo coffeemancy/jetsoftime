@@ -91,7 +91,7 @@ _treasure_loc_tier_list[TreasureLocTier.MID] = [
     TID.GUARDIA_JAIL_OMNICRONE_1, TID.GUARDIA_JAIL_OMNICRONE_2,
     TID.GUARDIA_JAIL_OMNICRONE_3, TID.GUARDIA_JAIL_HOLE_1,
     TID.GUARDIA_JAIL_HOLE_2, TID.GUARDIA_JAIL_OUTER_WALL,
-    TID.GUARDIA_JAIL_OMNICRONE_4, # TID.GIANTS_CLAW_KINO_CELL,
+    TID.GUARDIA_JAIL_OMNICRONE_4,  # TID.GIANTS_CLAW_KINO_CELL,
     TID.GIANTS_CLAW_TRAPS, TID.MANORIA_INTERIOR_3,
     TID.DENADORO_MTS_WATERFALL_TOP_1, TID.DENADORO_MTS_WATERFALL_TOP_2,
     TID.SUNKEN_DESERT_B1_NW, TID.SUNKEN_DESERT_B1_NE,
@@ -213,7 +213,9 @@ def get_treasures_in_tier(tier: TreasureLocTier):
     return _treasure_loc_tier_list[tier].copy()
 
 
-_item_tier_list: list[ItemID] = [[] for i in list(ItemTier)]
+_item_tier_list: dict[ItemTier, list[ItemID]] = {
+    tier: [] for tier in list(ItemTier)
+}
 
 _item_tier_list[ItemTier.LOW_GEAR] = [
     ItemID.BANDANA, ItemID.DEFENDER, ItemID.MAGICSCARF, ItemID.POWERGLOVE,
@@ -405,8 +407,7 @@ class TreasureDist:
             if value > target:
                 return random.choice(x[1])
 
-        print("Error, no selection")
-        exit()
+        raise ValueError("No selection")
 
     @property
     def weight_item_pairs(self):
@@ -437,14 +438,18 @@ _awe_cons = _itl[_ITier.AWESOME_CONSUMABLE]
 # Lookup for treasure distributions that change based on difficulty
 LTier = TreasureLocTier
 
-# Set up an empty lookup table.
+# Set up a dummy lookup table.
 #   1st level: Difficulty Easy, Norm, Hard
 #   2nd level: low, lowmid, mid, midhigh, highawe tiers
-_treas_dists: list[TreasureDist] = [
-    [None for tier in list(TreasureLocTier)
-     if tier in [LTier.LOW, LTier.LOW_MID, LTier.MID, LTier.MID_HIGH,
-                 LTier.HIGH_AWESOME]]
-    for i in list(rset.Difficulty)]
+_treas_dists: list[list[TreasureDist]] = [
+    [
+        TreasureDist((1, [ItemID.MOP]))
+        for tier in list(TreasureLocTier)
+        if tier in [LTier.LOW, LTier.LOW_MID, LTier.MID, LTier.MID_HIGH,
+                    LTier.HIGH_AWESOME]
+    ]
+    for i in list(rset.Difficulty)
+]
 
 # Total weight 11
 _treas_dists[rset.Difficulty.EASY][TreasureLocTier.LOW] = \
@@ -565,17 +570,15 @@ _sealed_dist = TreasureDist(
 def get_treasure_distribution(settings: rset.Settings,
                               treasure_tier: TreasureLocTier):
     """Get a treasure distribution given the game settings and a tier."""
-    LTier = TreasureLocTier
     difficulty = settings.item_difficulty
     tab_treasures = rset.GameFlags.TAB_TREASURES in settings.gameflags
 
     if tab_treasures:
         return _tab_dist
-    elif treasure_tier in [LTier.LOW, LTier.LOW_MID, LTier.MID,
-                           LTier.MID_HIGH, LTier.HIGH_AWESOME]:
+    if treasure_tier in [LTier.LOW, LTier.LOW_MID, LTier.MID,
+                         LTier.MID_HIGH, LTier.HIGH_AWESOME]:
         return _treas_dists[difficulty][treasure_tier]
-    elif treasure_tier == LTier.SEALED:
+    if treasure_tier == LTier.SEALED:
         return _sealed_dist
-    else:
-        print(f"{treasure_tier} is not a valid TreasureLocTier")
-        exit()
+
+    raise ValueError(f"{treasure_tier} is not a valid TreasureLocTier")

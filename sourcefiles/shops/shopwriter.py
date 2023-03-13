@@ -3,11 +3,8 @@ from __future__ import annotations
 import math
 import random as rand
 
-import byteops
 from ctenums import ItemID, ShopID
-import ctrom
 from treasures import treasuredata as td
-import itemdata
 
 import randoconfig as cfg
 import randosettings as rset
@@ -60,7 +57,7 @@ def write_shops_to_config(settings: rset.Settings,
         (6, low_cons + pass_cons),
         (4, pass_gear + mid_gear)
     )
-    regular_guaranteed = []
+    regular_guaranteed: list[ItemID] = []
 
     # Good Shop Setup.  Fiona and Fritz have lapis guaranteed.
     good_shop_ids = [
@@ -77,7 +74,7 @@ def write_shops_to_config(settings: rset.Settings,
         (5, pass_cons + mid_cons),
         (5, mid_gear + good_gear)
     )
-    good_guaranteed = []
+    good_guaranteed: list[ItemID] = []
     good_lapis_guaranteed = [ItemID.LAPIS]
 
     # Best Shop Setup

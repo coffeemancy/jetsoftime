@@ -71,14 +71,15 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
             force_enabled_flags |= rset.get_forced_on(flag)
             ret_flags |= flag
 
-    extra_flags = functools.reduce(
+    # Switching from lits[GF] to just GF
+    extra_flags_obj = functools.reduce(
         lambda x, y: x | y,
         extra_flags,
         GF(0)
     )
 
     # Note that GF.MYSTERY is in extra flags
-    ret_flags |= extra_flags
+    ret_flags |= extra_flags_obj
     ret_settings.gameflags = ret_flags
 
     return ret_settings

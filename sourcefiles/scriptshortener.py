@@ -1,10 +1,13 @@
 '''Module for shortening various event scripts for the randomizer.'''
+from typing import Optional
+
 import ctrom
 import ctenums
 
 import eventcommand
 import eventfunction
 
+from ctevent import CommandNotFoundException
 from eventcommand import EventCommand as EC, FuncSync as FS, Operation as OP
 from eventfunction import EventFunction as EF
 
@@ -15,6 +18,7 @@ def shorten_fritz_script(ct_rom: ctrom.CTRom):
     '''
     script = ct_rom.script_manager.get_script(ctenums.LocID.TRUCE_MARKET)
 
+    pos: Optional[int]
     pos = script.find_exact_command(
         EC.call_obj_function(8, 3, 5, FS.HALT),  # Dad entering
         script.get_function_start(0, 3),
@@ -27,9 +31,10 @@ def shorten_fritz_script(ct_rom: ctrom.CTRom):
     # 2) Crono, I owe you one.
     # 3) I was up the creek .... <--- Remove this one
     # 4) Hope my dad never hears about this.
-    pos, cmd = script.find_command([0xBB], script.get_function_start(9, 2))
-    pos, cmd = script.find_command([0xBB], pos+len(cmd))
-    pos, _ = script.find_command([0xBB], pos+len(cmd))
+    pos, cmd = script.find_command_always([0xBB],
+                                          script.get_function_start(9, 2))
+    pos, cmd = script.find_command_always([0xBB], pos+len(cmd))
+    pos, _ = script.find_command_always([0xBB], pos+len(cmd))
     script.delete_commands(pos, 1)
 
 
@@ -46,7 +51,7 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
     start = script.get_function_start(0, 0)
     end = script.get_function_end(0, 0)
 
-    pos = start
+    pos: Optional[int] = start
 
     # First, remove all pauses
     while True:
@@ -62,7 +67,7 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
     ) + 2
 
     script.insert_commands(EC.pause(3.0).to_bytearray(), pos)
-    pos, _ = script.find_command([0xEB], pos)
+    pos, _ = script.find_command_always([0xEB], pos)
 
     script.delete_commands(pos, 5)  # Delete a second scream and wind song
 
@@ -75,7 +80,8 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
     script.insert_commands(EC.pause(1.75).to_bytearray(), pos)
 
     # Add the missing function call to make the 3rd sparke move away.
-    pos, _ = script.find_command([2], pos)
+    pos, _ = script.find_command_always([2], pos)
+
     script.insert_commands(
         EC.call_obj_function(1, 4, 3, FS.CONT).to_bytearray(),
         pos
@@ -94,8 +100,8 @@ def shorten_pop_turnin(ct_rom: ctrom.CTRom):
     toma_obj = 9
 
     string_id = script.add_py_string(
-        "TOMA: You know where that is, right?{line break}"\
-        "   Yes{line break}"\
+        "TOMA: You know where that is, right?{line break}"
+        "   Yes{line break}"
         "   No{null}"
     )
 
@@ -107,7 +113,7 @@ def shorten_pop_turnin(ct_rom: ctrom.CTRom):
     block_end = script.find_exact_command(EC.return_cmd(), block_st, end)
 
     warp_func = EF.from_bytearray(script.data[block_st: block_end])
-    script.delete_commands_range(block_st, block_end)  # Leave the return intact
+    script.delete_commands_range(block_st, block_end)  # Leave the return
 
     warp_choice_func = (
         EF()
@@ -128,6 +134,7 @@ def shorten_pop_turnin(ct_rom: ctrom.CTRom):
 
     # Inserting at the end of a block is always weird.  Do the insert first
     # so that the if bounds don't shorten.
+    pos: Optional[int]
     pos = script.find_exact_command(orig_call_cmd, st, end)
     new_calls = EF().add(orig_call_cmd).add(extra_call_cmd)
     script.insert_commands(new_calls.get_bytearray(), pos)
@@ -137,10 +144,10 @@ def shorten_pop_turnin(ct_rom: ctrom.CTRom):
 
     # Now, speed up some of the movement and pauses.
     st = script.get_function_start(1, 3)
-    pos, _ = script.find_command([0x89], st)
+    pos, _ = script.find_command_always([0x89], st)
     script.data[pos+1] = 0x20  # speed command
 
-    def reduce_pause(pos: int, end: int):
+    def reduce_pause(pos: Optional[int], end: int):
         while True:
             pos, cmd = script.find_command([0xBA, 0xBD], pos, end)
 

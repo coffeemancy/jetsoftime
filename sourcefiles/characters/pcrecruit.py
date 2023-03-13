@@ -1,16 +1,19 @@
+'''Class for setting pc recruit spots.'''
 from __future__ import annotations
 
 import typing
+from typing import Optional
 
 import ctenums
 import ctrom
 
 
 class ScriptParseException(Exception):
-    pass
+    '''Raise when the script does not follow the expected pattern.'''
 
 
 class RecruitSpot(typing.Protocol):
+    '''Protocol for recruit spots.  Has PC and a way to write to rom.'''
     held_char: ctenums.CharID
 
     # Still explicitly defining this in implementing classes
@@ -18,8 +21,8 @@ class RecruitSpot(typing.Protocol):
         return str(self.held_char)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
-        pass
-    
+        '''Write the held_char to the recruitment spot on the CTRom.'''
+
 
 # All CharRecruits are script-based
 # Parameters are self explanatory except for load_obj_id and recruit_obj_id
@@ -27,7 +30,9 @@ class RecruitSpot(typing.Protocol):
 # which actually adds the character to the team.  So the sprite's object is
 # load_obj_id and the code that adds the character is recruit_obj_id
 class CharRecruit(RecruitSpot):
-
+    '''
+    Class for a normal (non-starter) recruitment spot.
+    '''
     # Indexed by ctenums.CharID, so load_cmds[ctenums.CharID.Crono]
     # is Crono's load cmd
     load_cmds = [0x57, 0x5C, 0x62, 0x6A, 0x68, 0x6C, 0x6D]
@@ -106,14 +111,13 @@ class CharRecruit(RecruitSpot):
                 script.data[pos] = target_load_cmd
 
             else:
-                print(f"Error, uncaught command ({cmd.command:02X})")
-                exit()
+                raise ValueError(f"Uncaught command ({cmd.command:02X})")
 
             pos += len(cmd)
 
 
 class StarterChar:
-
+    '''Class for setting a starter character.'''
     def __init__(self,
                  loc_id: ctenums.LocID = ctenums.LocID.LOAD_SCREEN,
                  object_id: int = 0,
@@ -130,6 +134,7 @@ class StarterChar:
         return str(self.held_char)
 
     def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        '''Write this starter to the CTRom.'''
         script_manager = ct_rom.script_manager
         script = script_manager.get_script(self.loc_id)
 
@@ -139,7 +144,7 @@ class StarterChar:
         num_name_char = 0
         num_add_party = 0
 
-        pos = start
+        pos: Optional[int] = start
         while (num_name_char < self.starter_num+1 or
                num_add_party < self.starter_num+1):
 
@@ -148,10 +153,10 @@ class StarterChar:
             pos, cmd = script.find_command([0xD3, 0xC8], pos, end)
 
             if pos is None:
-                print(f"{self.loc_id} {self.object_id} {self.function_id}")
-                print("Error: Hit end of function before finding character.")
-                input()
-                exit()
+                raise ScriptParseException(
+                    f"{self.loc_id} {self.object_id} {self.function_id}"
+                    "Error: Hit end of function before finding character."
+                )
 
             if cmd.command == 0xD3:
                 # print("Found add party")
@@ -172,12 +177,16 @@ class StarterChar:
 
 
 def get_base_recruit_dict() -> dict[ctenums.RecruitID, RecruitSpot]:
+    '''
+    Get a dict RecruitID -> RecruitSpot which has the standard JoT recruits.
+    '''
+
     CharID = ctenums.CharID
     RecruitID = ctenums.RecruitID
     LocID = ctenums.LocID
 
     # char assignments are completely arbitrary here
-    char_assign_dict = {
+    char_assign_dict: dict[ctenums.RecruitID, RecruitSpot] = {
             RecruitID.STARTER_1: StarterChar(
                 held_char=CharID.CRONO,
                 starter_num=0  # A little bothered by the 0 vs 1 here
@@ -219,4 +228,3 @@ def get_base_recruit_dict() -> dict[ctenums.RecruitID, RecruitSpot]:
         }
 
     return char_assign_dict
-

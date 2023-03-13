@@ -2,6 +2,7 @@
 from __future__ import annotations
 import functools
 import typing
+from typing import Optional
 
 import byteops
 import ctenums
@@ -480,7 +481,7 @@ class ArmorStats(ItemData):
         self._data[0] = val
 
     @property
-    def effect_id(self) -> int:
+    def effect_id(self) -> ArmorEffects:
         '''ArmorEffects of this armor.'''
         return ArmorEffects(self._data[1])
 
@@ -1250,9 +1251,14 @@ class Item:
 
 class ItemDB:
     def __init__(self,
-                 item_dict: dict[ctenums.ItemID, Item],
-                 stat_boosts: typing.Iterable[StatBoost]):
+                 item_dict: Optional[dict[ctenums.ItemID, Item]] = None,
+                 stat_boosts: Optional[typing.Iterable[StatBoost]] = None):
+        if item_dict is None:
+            item_dict = {}
         self.item_dict = dict(item_dict)
+
+        if stat_boosts is None:
+            stat_boosts = []
         self.stat_boosts = list(stat_boosts)
 
     def __getitem__(self, index):

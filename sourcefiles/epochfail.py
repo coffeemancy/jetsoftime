@@ -1,3 +1,5 @@
+from typing import Optional
+
 import eventcommand
 
 import ctenums
@@ -6,6 +8,7 @@ import ctrom
 
 import randoconfig as cfg
 import randosettings as rset
+
 
 # I think vanilla coords are 0x0270, 0x258
 def ground_epoch(ct_rom: ctrom.CTRom):
@@ -31,6 +34,7 @@ def ground_epoch(ct_rom: ctrom.CTRom):
     ow_move_type_cmd2 = EC.assign_val_to_mem(0x02, ow_move_type_byte2, 1)
     new_move_type_cmd2 = EC.assign_val_to_mem(0x00, ow_move_type_byte2, 1)
 
+    pos: Optional[int]
     pos = script.find_exact_command(ow_move_type_cmd1)
     script.data[pos: pos+len(ow_move_type_cmd1)] = \
         new_move_type_cmd1.to_bytearray()
@@ -84,7 +88,8 @@ def ground_epoch(ct_rom: ctrom.CTRom):
                                     script.get_function_start(0xE, 4))
     script.insert_commands(EC.darken(1).to_bytearray(), pos)
 
-    pos, cmd = script.find_command([0xE0], pos)
+    pos, _ = script.find_command_always([0xE0], pos)
+
     script.delete_commands(pos, 1)
     script.insert_commands(new_loc_cmd.to_bytearray(), pos)
 
@@ -92,16 +97,15 @@ def ground_epoch(ct_rom: ctrom.CTRom):
         'AD20'  # Pause
         'EC854080'  # Slow to half speed
         'BCBC'  # Pause Pause
-        'ECF00000' # Fade out song
-        'EC850000' # Reset speed
+        'ECF00000'  # Fade out song
+        'EC850000'  # Reset speed
     )
 
     # Remove Epoch sfx
     st = script.get_function_start(0x0E, 4)
 
-    pos, _ = script.find_command([0xEA], st)
-    # script.delete_commands(pos, 1)
-    pos, cmd = script.find_command([0xEC], pos)
+    pos, _ = script.find_command_always([0xEA], st)
+    pos, _ = script.find_command_always([0xEC], pos)
     script.delete_commands(pos, 5)
     script.insert_commands(song_slow, pos)
 
@@ -144,7 +148,7 @@ def restore_dactyls(ct_rom: ctrom.CTRom):
         ctenums.LocID.DACTYL_NEST_SUMMIT
     )
 
-    pos, _ = script.find_command([0xE0])
+    pos, _ = script.find_command_always([0xE0])
     script.delete_commands(pos, 1)
 
     EF = ctevent.EF
@@ -206,6 +210,7 @@ def undo_epoch_relocation(ct_rom: ctrom.CTRom):
     for loc in locations:
         script = ct_rom.script_manager.get_script(loc)
 
+        pos: Optional[int]
         pos = script.get_function_start(0, 0)
         found = False
 
@@ -223,21 +228,16 @@ def undo_epoch_relocation(ct_rom: ctrom.CTRom):
             pos, cmd = script.find_command([0x4B], pos)
             if pos is None:
                 break
-            elif cmd.args[0] == 0x7E0290:
+            if cmd.args[0] == 0x7E0290:
                 found = True
                 script.insert_commands(jmp.to_bytearray(), pos)
 
             pos += len(cmd)
 
         if not found:
-            print(f'Error: {loc}')
-
-
-def update_johnny_race(ct_rom):
-    '''
-    Lock Lab32 Access behind the Bike Key
-    '''
-    pass
+            raise ctevent.CommandNotFoundException(
+                f"Couldn't find Epoch location commands in {loc}"
+            )
 
 
 def update_reborn_epoch_script(ct_rom: ctrom.CTRom):
@@ -391,7 +391,7 @@ def add_jets_turnin_to_blackbird_scaffolding(ct_rom: ctrom.CTRom):
     script.replace_command(get_command(bytes.fromhex('8B0820'), 0),
                            get_command(bytes.fromhex('8B0112'), 0))
 
-    del ct_rom.script_manager.script_dict[0x16B]
+    del ct_rom.script_manager.script_dict[ctenums.LocID(0x16B)]
 
     # Just to see what happens, make talking to the Basher throw you to the
     # Reborn Epoch map.
@@ -405,7 +405,7 @@ def add_jets_turnin_to_blackbird_scaffolding(ct_rom: ctrom.CTRom):
     new_ind = script.add_py_string(new_str)
 
     for obj_id in basher_ids:
-        ins_pos = script.get_function_end(obj_id, 1) - 2
+        # ins_pos = script.get_function_end(obj_id, 1) - 2
         orig_func = script.get_function(obj_id, 1)
 
         turnin_block = (

@@ -462,13 +462,18 @@ class EnemyAIDB:
         EnemyID.UNUSED_FD, EnemyID.UNUSED_FE, EnemyID.UNUSED_FF)
 
     def __init__(self,
-                 scripts: dict[EnemyID, AIScript],
+                 scripts: Optional[dict[EnemyID, AIScript]] = None,
                  msgs: Optional[BattleMessages] = None):
+
+        if scripts is None:
+            scripts = {}
 
         self.scripts = {x: AIScript() for x in list(EnemyID)}
         for enemy_id in scripts:
             self.scripts[enemy_id] = scripts[enemy_id].get_copy()
 
+        if msgs is None:
+            msgs = BattleMessages()
         self.battle_msgs = msgs
 
         self.tech_to_enemy_usage: dict[int, list[int]] = \

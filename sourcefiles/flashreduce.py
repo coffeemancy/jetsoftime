@@ -1,3 +1,5 @@
+from typing import Optional
+
 import byteops
 import ctenums
 import ctevent
@@ -39,7 +41,7 @@ def remove_effect_cmd_C9_flashes(ct_rom: ctrom.CTRom):
     '''
     Disable effect command 0xC9 which allows effects to do color math.
     '''
-    
+
     # Effect command 0xC9 will just be disabled.  There's no safe way to keep
     # it unless every script is parsed and altered... which we're doing now.
 
@@ -64,8 +66,6 @@ def remove_effect_cmd_E8_flashes(ct_rom: ctrom.CTRom):
     '''
     Disable some modes of command 0x8E which are used to flash the screen.
     '''
-
-    FSE = ctrom.freespace.FreeSpaceError
     FSW = ctrom.freespace.FSWriteType
 
     rt = bytearray.fromhex(
@@ -163,7 +163,7 @@ def disable_ow_color_math(ct_rom: ctrom.CTRom):
     # Next we're editing the routine where the ppu registers are written.
     # On a value of 0x3C, we'll write 0xE0 (no addition).  Otherwise, we'll
     # use the original routine.
-    
+
     # The original routine reads the B, G, and R components from $47-$49 and
     # writes them to the color data register.
     # We add a jump back to where the original routine would have ended.
@@ -219,7 +219,7 @@ def disable_epoch_flash(ct_rom: ctrom.CTRom):
     rom = ct_rom.rom_data
 
     rom.seek(0x024B0E)
-    for ind in range(15):  # Alters all palette but 1 (epoch?)
+    for _ in range(15):  # Alters all palette but 1 (epoch?)
         rom.write(b'\x01')
         rom.seek(5, 1)
 
@@ -227,7 +227,7 @@ def disable_epoch_flash(ct_rom: ctrom.CTRom):
 def remove_event_script_flashes(ct_rom: ctrom.CTRom):
 
     def remove_script_flashes(script: ctrom.ctevent.Event):
-        pos = script.get_function_start(0, 0)
+        pos: Optional[int] = script.get_function_start(0, 0)
 
         # Any instantaneous flash is replaced with a return to no addition.
         # This is represented by 'F1 E0 00'

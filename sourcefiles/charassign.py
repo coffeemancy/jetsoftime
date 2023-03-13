@@ -49,7 +49,6 @@ def _build_recruit_function(pc_id: ctenums.CharID,
                             recruited_flag_addr: int,
                             recruited_flag_bit: int,
                             pc2_index_addr: int):
-    pc_id = int(pc_id)
 
     two_pc_recruit = (
         EF()
@@ -59,7 +58,7 @@ def _build_recruit_function(pc_id: ctenums.CharID,
         .add(EC.add_pc_to_active(pc_id))
         .add(EC.load_pc_in_party(pc_id))
         .add(EC.set_bit(recruited_flag_addr, recruited_flag_bit))
-        .add(EC.name_pc(pc_id))
+        .add(EC.name_pc(int(pc_id)))
     )
 
     three_pc_recruit = (
@@ -197,7 +196,6 @@ def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
     '''
     Set the proto dome's recruit to the given pc.
     '''
-    pc_id = int(pc_id)
     script = ct_rom.script_manager.get_script(ctenums.LocID.PROTO_DOME)
     
     # When the recruit is the 3rd pc (lost worlds or psychopaths) there is no
@@ -275,7 +273,6 @@ def assign_pc_to_proto_dome(ct_rom: ctrom.CTRom,
         .add(EC.load_pc_in_party(pc_id))
         .add(EC.set_bit(0x7F00F3, 0x02))
         .add(EC.name_pc(pc_id))
-        #.add(EC.set_controllable_infinite())  # Is this needed?
     )
 
     three_pc_recruit = (

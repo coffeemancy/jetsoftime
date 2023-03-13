@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from collections.abc import Iterable
 import typing
 
 import byteops
@@ -156,8 +155,8 @@ class EnemyEffectHeader(_FixedLengthRecord):
     @status_effect.setter
     def status_effect(
             self,
-            statuses: typing.Union(typing.Iterable[ctenums.StatusEffect],
-                                   ctenums.StatusEffect)
+            statuses: typing.Union[typing.Iterable[ctenums.StatusEffect],
+                                   ctenums.StatusEffect]
     ):
         if isinstance(statuses, ctenums.StatusEffect):
             status_byte = int(statuses)
@@ -271,23 +270,23 @@ class EnemyAttackDB:
     atk_effect_refs = [RomRef(0x01D946, 0x00)]
 
     def __init__(self,
-                 tech_controls: bytes,
-                 tech_effects: bytes,
-                 tech_gfx: bytes,
-                 tech_targets: bytes,
-                 atk_controls: bytes,
-                 atk_effects: bytes,
-                 atk_gfx_1: bytes,
-                 atk_gfx_2: bytes,):
-        self._tech_controls = tech_controls
-        self._tech_effects = tech_effects
-        self._tech_gfx = tech_gfx
-        self._tech_targets = tech_targets
+                 tech_controls: bytes = b'',
+                 tech_effects: bytes = b'',
+                 tech_gfx: bytes = b'',
+                 tech_targets: bytes = b'',
+                 atk_controls: bytes = b'',
+                 atk_effects: bytes = b'',
+                 atk_gfx_1: bytes = b'',
+                 atk_gfx_2: bytes = b'',):
+        self._tech_controls = bytearray(tech_controls)
+        self._tech_effects = bytearray(tech_effects)
+        self._tech_gfx = bytearray(tech_gfx)
+        self._tech_targets = bytearray(tech_targets)
 
-        self._atk_controls = atk_controls
-        self._atk_effects = atk_effects
-        self._atk_gfx_1 = atk_gfx_1
-        self._atk_gfx_2 = atk_gfx_2
+        self._atk_controls = bytearray(atk_controls)
+        self._atk_effects = bytearray(atk_effects)
+        self._atk_gfx_1 = bytearray(atk_gfx_1)
+        self._atk_gfx_2 = bytearray(atk_gfx_2)
 
     def get_tech_control(self, tech_id: int) -> EnemyControlHeader:
         return EnemyControlHeader(self._tech_controls,
@@ -406,7 +405,7 @@ class EnemyAttackDB:
     def _repoint_data(cls,
                       base_rom_ptr: int,
                       refs: list[RomRef],
-                      rom: bytearray):
+                      rom: typing.Union[bytearray, memoryview]):
         for ref in refs:
             ptr = ref.file_loc
             offset = ref.offset
@@ -417,7 +416,8 @@ class EnemyAttackDB:
     def _get_num_atks_from_rom(cls, rom: bytes):
         max_atk_id = 0
         for enemy_id in range(0x100):
-            stats = enemystats.EnemyStats.from_rom(rom, enemy_id)
+            stats = enemystats.EnemyStats.from_rom(
+                rom, ctenums.EnemyID(enemy_id))
             max_atk_id = max(stats.secondary_attack_id, max_atk_id)
 
         return max_atk_id
@@ -463,7 +463,8 @@ class EnemyAttackDB:
         # First, read the rom to see how many attacks there are.
         max_atk_id = 0
         for enemy_id in range(0x100):
-            stats = enemystats.EnemyStats.from_rom(rom, enemy_id)
+            stats = enemystats.EnemyStats.from_rom(
+                rom, ctenums.EnemyID(enemy_id))
             max_atk_id = max(stats.secondary_attack_id, max_atk_id)
 
         # print(f'Found 0x{max_atk_id:02X} attacks')

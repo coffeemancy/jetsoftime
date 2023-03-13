@@ -1,8 +1,10 @@
+'''Contains classes for handling various objective types.'''
 from __future__ import annotations
 
 import dataclasses
 import enum
 import typing
+from typing import Optional
 
 import bossrandotypes as rotypes
 from bossrandotypes import BossSpotID as BSID
@@ -10,14 +12,10 @@ from bossrandotypes import BossSpotID as BSID
 import ctenums
 import ctevent
 import ctrom
-import ctstrings
 
 from characters import pcrecruit
 
-import eventcommand
 from eventcommand import EventCommand as EC, Operation as OP, FuncSync as FS
-
-import eventfunction
 from eventfunction import EventFunction as EF
 
 import itemdata
@@ -67,6 +65,9 @@ def add_obj_complete(script: ctevent.Event, pos: int,
         f'{objective.desc}{{null}}'
     )
 
+    if objective.item_id is None:
+        raise ValueError("Objective ItemID is not set.")
+
     if win_game:
         reward_id = script.add_py_string(
             'You Win!{null}'
@@ -95,7 +96,7 @@ def add_obj_complete(script: ctevent.Event, pos: int,
         .add(EC.assign_mem_to_mem(obj_count_addr, 0x7F0202, 1))
         .add(EC.increment_mem(0x7F0202, 1))
         .add(EC.assign_mem_to_mem(0x7F0202, obj_count_addr, 1))
-        .add(EC.remove_item(objective.item_id))
+        .add(EC.remove_item(int(objective.item_id)))
         .add(EC.remove_item(ctenums.ItemID.OBJ_COUNT))
         .add(EC.auto_text_box(obj_complete_id))
         .add_if(
@@ -171,7 +172,9 @@ _spot_battle_dict: dict[BSID, BattleLoc] = {
     BSID.ZENAN_BRIDGE: BattleLoc(ctenums.LocID.ZENAN_BRIDGE_BOSS, 1, 0, 1)
 }
 
-def get_battle_loc_from_spot(spot: BSID):
+
+def get_battle_loc_from_spot(spot: BSID) -> Optional[BattleLoc]:
+    '''Gets a BattleLoc corresponding to a BossSpotID.'''
     return _spot_battle_dict.get(spot, None)
 
 
@@ -199,6 +202,7 @@ class BattleObjective(Objective):
 
         num_objectives_needed = bucket_settings.num_objectives_needed
         script = ct_rom.script_manager.get_script(self.battle_loc.loc_id)
+        pos: Optional[int]
         pos = script.get_function_start(self.battle_loc.obj_id,
                                         self.battle_loc.fn_id)
         end = script.get_function_end(self.battle_loc.obj_id,
@@ -208,7 +212,7 @@ class BattleObjective(Objective):
         battle_cmd_len = len(EC.get_blank_command(battle_cmd_id))
 
         for _ in range(self.battle_loc.battle_num+1):
-            pos, _ = script.find_command([battle_cmd_id], pos, end)
+            pos, _ = script.find_command_always([battle_cmd_id], pos, end)
             pos += battle_cmd_len
 
         add_obj_complete(script, pos, self, num_objectives_needed,
@@ -218,10 +222,13 @@ class BattleObjective(Objective):
 
 @dataclasses.dataclass(frozen=True)
 class QuestData:
+    '''Simple dataclass for holding quest name and description.'''
     name: str
     desc: str
 
+
 class QuestID(enum.Enum):
+    '''Enum for quests that can be objectives.'''
     FORGE_MASAMUNE = QuestData('*Forge Masa', 'Forge the Masamune')
     CHARGE_MOONSTONE = QuestData('*ChargeMoon', 'Charge the Moonstone')
     GIVE_JERKY_TO_MAYOR = QuestData('*Give Jerky', 'Trade away the Jerky')
@@ -359,9 +366,11 @@ class ForgeMasaMuneObjective(QuestObjective):
         pos = script.find_exact_command(
             EC.party_follow(),
             script.get_function_start(8, 1))
+
         add_obj_complete(script, pos, self, num_objectives_needed,
                          bucket_settings.objectives_win,
                          objective_count_addr)
+
 
 class JerkyRewardObjective(QuestObjective):
     '''Class for the turn jerky in objective.'''
@@ -377,15 +386,17 @@ class JerkyRewardObjective(QuestObjective):
         script = ct_rom.script_manager.get_script(
             ctenums.LocID.PORRE_MAYOR_1F)
         # Stop exploration upon receiving the item.
-        pos, _ = script.find_command(
+        pos, _ = script.find_command_always(
             [0xCA],
             script.get_function_start(8, 1))
+
         script.insert_commands(
             EC.set_explore_mode(False).to_bytearray(), pos
         )
 
         # Turn exploration back on before jumping on.
         pos = script.find_exact_command(EC.generic_command(0x10, 0), pos)
+
         script.insert_commands(
             EC.set_explore_mode(True).to_bytearray(), pos)
         # Add the objective hook
@@ -524,8 +535,6 @@ class DefeatMagusObjective(QuestObjective):
             EC.if_mem_op_value(0x7F0232, OP.EQUALS, 0, 1, 0)
 
         pos = script.find_exact_command(battle_result_cmd, start, end)
-        if pos is None:
-            raise ValueError
         pos += len(battle_result_cmd)
 
         add_obj_complete(script, pos, self, num_objectives_needed,
@@ -550,8 +559,6 @@ class DrinkSodaObjective(QuestObjective):
 
         pos = script.find_exact_command(
             hook_cmd, script.get_function_start(0x1B, 1))
-        if pos is None:
-            raise ValueError
         pos += len(hook_cmd)
 
         func = (
@@ -589,7 +596,6 @@ class RecruitStarterObjective(Objective):
         self.name = name
         self.desc = desc
         self.item_id = item_id
-        
         self.loc_id = recruit.loc_id
         self.starter_num = recruit.starter_num
 
@@ -619,8 +625,8 @@ class RecruitStarterObjective(Objective):
                                      bucket_settings.objectives_win,
                                      objective_count_addr)
                     break
-                else:
-                    num_name_cmds_found += 1
+
+                num_name_cmds_found += 1
 
         if num_name_cmds_found != self.starter_num:
             raise ValueError('Unable to find starter')
@@ -713,6 +719,7 @@ def add_counting_object(script: ctevent.Event,
 
 
 class RecruitNCharactersObjective(Objective):
+    '''Objective for recruiting some number of characters.'''
     def __init__(self,
                  num_recruits: int,
                  num_recruits_addr: int,
@@ -734,7 +741,6 @@ class RecruitNCharactersObjective(Objective):
         '''Add counting hooks to each recruit spot.  Give the objective when
         enough have been accumulated.'''
 
-        num_objectives_needed = bucket_settings.num_objectives_needed
         # Put a count on each name char command in the following locations
         recruit_locs = [
             ctenums.LocID.MANORIA_SANCTUARY,
@@ -837,7 +843,10 @@ def add_script_treasure_count(
         accum_target: int,
         bucket_settings: rset.BucketSettings,
         objective_count_addr: int):
-
+    '''
+    Adds an object to a script that increments a certain address when the
+    specified ScriptTreasure is obtained.
+    '''
     script = ct_rom.script_manager.get_script(treasure.location)
 
     obj_id = add_counting_object(script, objective, accum_addr,
@@ -944,7 +953,6 @@ class CollectNFragmentsObjective(Objective):
         script = ct_rom.script_manager.get_script(ctenums.LocID.END_OF_TIME)
 
         gaspar_id = 0x1C
-
 
         succ_id = script.add_py_string(
             'Hey.{full break}'
@@ -1109,7 +1117,7 @@ def get_quest_obj(qid: QuestID,
 def get_recruit_spot_obj(
         spot: ctenums.RecruitID,
         settings: rset.Settings,
-        char_assign_dict: dict[ctenums.RecruitID, pcrecruit.CharRecruit],
+        char_assign_dict: dict[ctenums.RecruitID, pcrecruit.RecruitSpot],
         item_id: ctenums.ItemID
 ):
     '''Create an objective for recruiting from a particular spot.  The char
@@ -1131,13 +1139,16 @@ def get_recruit_spot_obj(
         raise ValueError('Invalid Spot')
 
     recruit = char_assign_dict[spot]
+    if not isinstance(recruit, pcrecruit.CharRecruit):
+        raise ValueError('Invalid Spot (Starter?)')
+
     return RecruitSpotObjective(name, desc, recruit, item_id)
 
 
 def get_recruit_char_obj(
         char_id: ctenums.CharID,
         settings: rset.Settings,
-        char_assign_dict: dict[ctenums.RecruitID, pcrecruit.CharRecruit],
+        char_assign_dict: dict[ctenums.RecruitID, pcrecruit.RecruitSpot],
         item_id: ctenums.ItemID
 ) -> Objective:
     '''Create an objective for recruiting the given character given an
@@ -1156,6 +1167,7 @@ def get_recruit_char_obj(
 
         return RecruitStarterObjective(name, desc, recruit, item_id)
 
-    return RecruitSpotObjective(name, desc, recruit, item_id)
+    if isinstance(recruit, pcrecruit.CharRecruit):
+        return RecruitSpotObjective(name, desc, recruit, item_id)
 
-
+    raise TypeError("Invalid recruit type.")

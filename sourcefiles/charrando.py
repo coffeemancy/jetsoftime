@@ -90,13 +90,13 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
             pcstats.set_character_assignment(pc_id, reassign_id)
 
         # Turn choices back into a list for the rest of the stuff
-        choices = [choices[CharID(i)] for i in range(7)]
+        choices_list = [choices[CharID(i)] for i in range(7)]
     else:
-        choices = [i for i in range(7)]
+        choices_list = list(range(7))
 
     dup_duals = rset.GameFlags.DUPLICATE_TECHS in settings.gameflags
     config.tech_db = get_reassign_techdb(config.tech_db,
-                                         choices,
+                                         choices_list,
                                          dup_duals)
 
 

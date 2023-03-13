@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Union
 
 import ctenums
 from ctenums import Element
@@ -35,7 +36,7 @@ _target_str_dict = {
     0xD: 'AoE',  # Arnd. En',
     0xE: '1',  # '1 EnE',
     0xF: 'Hori Ln',
-    0x10: '1',  #'1 En10',
+    0x10: '1',  # '1 En10',
     0x11: 'AoE Self',  # 'Arnd self',
     0x12: 'AoE',  # 'Arnd En',
     0x13: 'AoE-Ro',  # 'Arnd Robo13',
@@ -64,8 +65,7 @@ def get_elem_str(control: cttechtypes.ControlHeader):
     element = control.element
     if control.is_physical and element == Element.NONELEMENTAL:
         return 'Ph'
-    else:
-        return _elem_str_abbrev[element]
+    return _elem_str_abbrev[element]
 
 
 _status_abbrev_dict = {
@@ -80,31 +80,32 @@ _status_abbrev_dict = {
 
 
 def parse_status_effect(status_type: int, status_bits: int) -> str:
+
+    buffs: Union[list[ctenums.StatusEffect], list[itemdata.Type_08_Buffs],
+                 list[itemdata.Type_09_Buffs], list[itemdata.Type_05_Buffs]]
     if status_type == 1:
-        buff_type = ctenums.StatusEffect
-        buffs = [x for x in list(buff_type) if status_bits & x]
+        buffs = [
+            x for x in list(ctenums.StatusEffect) if status_bits & x
+        ]
         return '/'.join(_status_abbrev_dict[x] for x in buffs)
-    elif status_type == 3:
-        buff_type = itemdata.Type_08_Buffs
-        buffs = [x for x in list(buff_type) if status_bits & x]
+    if status_type == 3:
+        buffs = [x for x in list(itemdata.Type_08_Buffs) if status_bits & x]
         return '/'.join(x.get_abbrev() for x in buffs)
-    elif status_type == 4:
-        buff_type = itemdata.Type_09_Buffs
-        buffs = [x for x in list(buff_type) if status_bits & x]
+    if status_type == 4:
+        buffs = [x for x in list(itemdata.Type_09_Buffs) if status_bits & x]
         return '/'.join(x.get_abbrev() for x in buffs)
-    elif status_type == 5:
-        buff_type = itemdata.Type_05_Buffs
-        buffs = [x for x in list(buff_type) if status_bits & x]
+    if status_type == 5:
+        buffs = [x for x in list(itemdata.Type_05_Buffs) if status_bits & x]
         return '/'.join(x.get_abbrev() for x in buffs)
-    else:
-        # print(status_type)
-        raise ValueError('Buff type error')
+
+    raise ValueError(f'Buff type error: {status_type}')
 
 
 def get_effect_string(effect: cttechtypes.EffectHeader):
     eff_type = effect.effect_type
     ET = cttechtypes.EffectType
 
+    heal_pow: Union[int, str]
     if eff_type == ET.HEALING:
         heal_pow = effect.heal_power
         if heal_pow == 0xF:
@@ -112,7 +113,7 @@ def get_effect_string(effect: cttechtypes.EffectHeader):
         else:
             heal_pow = f'Mg({heal_pow})'
         return f'Heals {heal_pow} HP'
-    elif eff_type == ET.HEALSTATUS:
+    if eff_type == ET.HEALSTATUS:
         heal_pow = effect.heal_power
         if heal_pow == 0xF:
             heal_pow = 'All'
@@ -121,20 +122,17 @@ def get_effect_string(effect: cttechtypes.EffectHeader):
 
         if effect.will_revive:
             return f'Revive with {heal_pow} HP'
-        else:
-            return f'Heal Status and {heal_pow} HP'
-
-    elif eff_type == ET.STATUS:
+        return f'Heal Status and {heal_pow} HP'
+    if eff_type == ET.STATUS:
         status_type = effect[1]
         status_bits = effect[2]
         return parse_status_effect(status_type, status_bits)
-    elif eff_type in (ET.DAMAGE, ET.MULTIHIT):
+    if eff_type in (ET.DAMAGE, ET.MULTIHIT):
         dmg_formula = effect.damage_formula_id
 
         DF = cttechtypes.DamageFormula
         power = effect.power
         ignore_def = effect.defense_byte not in (0x3C, 0x3E)
-        EM = cttechtypes.EffectMod
 
         if dmg_formula == DF.MAGIC:
             if ignore_def:
@@ -156,10 +154,12 @@ def get_effect_string(effect: cttechtypes.EffectHeader):
             dmg_str += ' (NoDef)'
 
         return dmg_str
-    elif eff_type == ET.STEAL:
+    if eff_type == ET.STEAL:
         steal_chance = effect[1]
         desc_str = f'Steal ({steal_chance}%)'
         return desc_str
+
+    raise ValueError(f"Invalid effect type: {eff_type}")
 
 
 def get_single_tech_desc(
@@ -168,13 +168,14 @@ def get_single_tech_desc(
         target: cttechtypes.PCTechTargetData
         ) -> str:
     '''
-    Get a description string for a tech that accurately describes its 
+    Get a description string for a tech that accurately describes its
     effect (dmg, element, target).
     '''
 
     eff_type = effect.effect_type
     ET = cttechtypes.EffectType
     target_str = get_target_str(target)
+    heal_pow: Union[int, str]
     if eff_type == ET.HEALING:
         heal_pow = effect.heal_power
         if heal_pow == 0xF:
@@ -182,7 +183,7 @@ def get_single_tech_desc(
         else:
             heal_pow = f'Mg({heal_pow})'
         return f'Heals {heal_pow} HP to {target_str}'
-    elif eff_type == ET.HEALSTATUS:
+    if eff_type == ET.HEALSTATUS:
         heal_pow = effect.heal_power
         if heal_pow == 0xF:
             heal_pow = 'All'
@@ -191,14 +192,13 @@ def get_single_tech_desc(
 
         if effect.will_revive:
             return f'Revive with {heal_pow} HP to {target_str}'
-        else:
-            return f'Heal Status and {heal_pow} HP to {target_str}'
+        return f'Heal Status and {heal_pow} HP to {target_str}'
 
-    elif eff_type == ET.STATUS:
+    if eff_type == ET.STATUS:
         status_type = effect[1]
         status_bits = effect[2]
         return parse_status_effect(status_type, status_bits)
-    elif eff_type in (ET.DAMAGE, ET.MULTIHIT):
+    if eff_type in (ET.DAMAGE, ET.MULTIHIT):
         dmg_formula = effect.damage_formula_id
         elem_str = get_elem_str(control)
         elem_str = f'{elem_str:}'
@@ -235,7 +235,7 @@ def get_single_tech_desc(
         target_str = get_target_str(target)
 
         return elem_str+': '+dmg_str+', '+target_str
-    elif eff_type == ET.STEAL:
+    if eff_type == ET.STEAL:
         steal_chance = effect[1]
         desc_str = f'Steal ({steal_chance}%)'
         return desc_str

@@ -1,4 +1,5 @@
 import typing
+from typing import Optional
 from math import ceil
 
 from logictypes import BaselineLocation, Location, LocationGroup,\
@@ -38,11 +39,11 @@ class GameConfig:
     def __init__(self,
                  settings: rset.Settings,
                  config: cfg.RandoConfig):
-        self.keyItemList = []
+        self.keyItemList: list[ItemID] = []
         self.locationGroups: list[LocationGroup] = []
         self.settings = settings
         self.config = config
-        self.game = None
+        self.game: Game
         self.initLocations()
         self.initKeyItems()
         self.resolveExtraKeyItems()
@@ -102,7 +103,7 @@ class GameConfig:
     #
     # return: The LocationGroup object with the given name
     #
-    def getLocationGroup(self, name: str) -> LocationGroup:
+    def getLocationGroup(self, name: str) -> Optional[LocationGroup]:
         try:
             return next(x for x in self.locationGroups
                         if x.name == name)
