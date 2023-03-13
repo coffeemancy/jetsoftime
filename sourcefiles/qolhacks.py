@@ -1,5 +1,5 @@
-# File for quality of life hacks
-
+'''Module for quality of life hacks'''
+from typing import Optional, Callable
 import bossrandotypes as rotypes
 
 import ctevent
@@ -25,7 +25,7 @@ class ScriptTabTreasure(ttypes.ScriptTreasure):
         start = script.get_function_start(self.object_id, self.function_id)
         end = script.get_function_end(self.object_id, self.function_id)
 
-        pos = start
+        pos: Optional[int] = start
         num_removed = 0
         while True:
             # exploremode toggle commands are 0xE3.  We're nuking them
@@ -37,14 +37,6 @@ class ScriptTabTreasure(ttypes.ScriptTreasure):
             script.delete_commands(pos, 1)
             num_removed += 1
 
-        # print(f"Num removed: {num_removed}")
-        if num_removed % 2 != 0:
-            # This is not a reliable indicator.  The 'PartyFollow' command can
-            # also undo 'ExploreMode Off' as in the Magus Castle Dungeons.
-            # print("Warning: Removed an odd number of exploremode commands")
-            # input()
-            pass
-
         # Now make sure that the flag set is after the textbox.  Otherwise
         # it's possible to pick the same tab up multiple times.
 
@@ -52,19 +44,20 @@ class ScriptTabTreasure(ttypes.ScriptTreasure):
         pos_flag, flag_cmd = script.find_command([0x65], start, end)
 
         # 0xBB, 0xC1, 0xC2 are the basic textbox commands
-        pos_text, text_cmd = script.find_command([0xBB, 0xC1, 0xC2],
-                                                 start, end)
+        pos_text, _ = script.find_command([0xBB, 0xC1, 0xC2],
+                                          start, end)
 
         if pos_flag is None or pos_text is None:
-            print(f'Error finding flag set or text box in {self.location}')
-            raise SystemExit
+            raise ctevent.CommandNotFoundException(
+                f'Error finding flag set or text box in {self.location}'
+            )
 
         # If the item looted flag is set after the texbox, then the player
         # can keep the textbox up, leave the screen, and avoid setting the
         # flag, so the tab can be picked up again.
         if pos_flag > pos_text:
             # In this case, put the flag right before the item is added.
-            pos_add_item, _ = script.find_command([0xCA], start, end)
+            pos_add_item, _ = script.find_command_always([0xCA], start, end)
 
             script.delete_commands(pos_flag, 1)
             script.insert_commands(flag_cmd.to_bytearray(), pos_add_item)
@@ -77,6 +70,12 @@ class ScriptTabTreasure(ttypes.ScriptTreasure):
 #  2) Add an exploremode on command after checking for pop, etc
 #  3) Pray calling exploremode on when it's already on doesn't break things.
 class TomasGraveTreasure(ScriptTabTreasure):
+    '''
+    Special class to handle the tab behind Toma's grave.
+
+    Since this tab is tied to the activate function of the grave, we have to
+    ensure that the normal activation of the grave works.
+    '''
 
     def remove_pause(self, ctrom: CTRom):
 
@@ -90,8 +89,9 @@ class TomasGraveTreasure(ScriptTabTreasure):
         if script.data[pos] == 0xE3:
             script.delete_commands(pos, 1)
         else:
-            print("Error: Couldn't find initial exploremode command.")
-            exit()
+            raise ctevent.CommandNotFoundException(
+                "Couldn't find initial exploremode command."
+            )
 
         # insert an exploremode off after checks for pop
         # marker is scrollscreen (0xE7) 00 00
@@ -99,30 +99,32 @@ class TomasGraveTreasure(ScriptTabTreasure):
         pos = script.find_exact_command(scroll_screen, pos, end)
 
         if pos is None:
-            print("Error: couldn't find scroll screen")
-            exit()
+            raise ctevent.CommandNotFoundException(
+                "Couldn't find scroll screen"
+            )
 
         explore_off = ctevent.EC.generic_one_arg(0xE3, 0)
         script.insert_commands(explore_off.to_bytearray(), pos)
 
 
-# Trick the game into thinking P1 has the SightScope equipped, for enemy health
-# to always be visible.
-def force_sightscope_on(ctrom: CTRom, settings: rset.Settings):
-    if rset.GameFlags.VISIBLE_HEALTH in settings.gameflags:
-        # Seek to the location in the ROM after the game checks if P1's
-        # accessory is a SightScope
-        ctrom.rom_data.seek(0x0CF039)
-        # Ignore the result of that comparison and evaluate to always true, by
-        # overwriting the BEQ (branch-if-equal) to BRA (branch-always)
-        ctrom.rom_data.write(bytes([0x80]))
+def force_sightscope_on(ctrom: CTRom):
+    '''
+    Trick the game into thinking P1 has the SightScope equipped, for enemy
+    health to always be visible.
+    '''
+
+    # Seek to the location in the ROM after the game checks if P1's
+    # accessory is a SightScope
+    ctrom.rom_data.seek(0x0CF039)
+    # Ignore the result of that comparison and evaluate to always true, by
+    # overwriting the BEQ (branch-if-equal) to BRA (branch-always)
+    ctrom.rom_data.write(bytes([0x80]))
 
 
-def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
-
-    if rset.GameFlags.FAST_TABS not in settings.gameflags:
-        return
-
+def fast_tab_pickup(ctrom: CTRom):
+    '''
+    Remove pauses from all tabs except death peak swag tab.
+    '''
     TID = ctenums.TreasureID
     LocID = ctenums.LocID
     ItemID = ctenums.ItemID
@@ -230,6 +232,9 @@ def fast_tab_pickup(ctrom: CTRom, settings: rset.Settings):
 
 
 def enable_boss_sightscope(config: cfg.RandoConfig):
+    '''
+    Make all bosses able to be sightscoped.
+    '''
     for boss in list(rotypes.BossID):
         boss_data = config.boss_data_dict[boss]
         for part in set(boss_data.parts):
@@ -237,8 +242,12 @@ def enable_boss_sightscope(config: cfg.RandoConfig):
 
 
 def set_guaranteed_drops(ctrom: CTRom):
-    # If charm == drop, item drops are guaranteed.  However, when the
-    # charm and drop are different, there is a chance of no drop.
+    '''
+    If charm == drop, item drops are guaranteed.  However, when the charm and
+    drop are different, there is a chance of no drop.  This function makes the
+    drop always happen regardless of the charm.
+    '''
+
     # It looks like CT checks (random_num % 100) < 90
     # The check is:
     # $FD/AC27 C9 5A       CMP #$5A
@@ -255,10 +264,11 @@ def set_guaranteed_drops(ctrom: CTRom):
     rom.write(bytes([0xFF]))
 
 
-def set_free_menu_glitch(ct_rom: CTRom, settings: rset.Settings):
-    if rset.GameFlags.FREE_MENU_GLITCH not in settings.gameflags:
-        return
-
+def set_free_menu_glitch(ct_rom: CTRom):
+    '''
+    Adds a few seconds of pause to allow menu access when transitioning from
+    (1) Zeal1 to Mammon M and (2) Lavos2 to Lavos3.
+    '''
     EF = ctevent.EF
     EC = ctevent.EC
 
@@ -273,7 +283,7 @@ def set_free_menu_glitch(ct_rom: CTRom, settings: rset.Settings):
     script = ct_rom.script_manager.get_script(ctenums.LocID.BLACK_OMEN_ZEAL)
     st = script.get_function_start(8, 0)
     end = script.get_function_end(8, 0)
-    pos, _ = script.find_command([0xDF], st, end)
+    pos, _ = script.find_command_always([0xDF], st, end)
 
     script.insert_commands(func.get_bytearray(), pos)
 
@@ -282,11 +292,9 @@ def set_free_menu_glitch(ct_rom: CTRom, settings: rset.Settings):
     end = script.get_function_end(8, 0)
 
     while True:
-        pos, cmd = script.find_command([0xDF], pos, end)
+        pos, cmd = script.find_command_always([0xDF], pos, end)
 
-        if pos is None:
-            raise ValueError
-        elif cmd.args[0] & 0x1FF == 0x1DF:
+        if cmd.args[0] & 0x1FF == 0x1DF:
             break
 
         pos += len(cmd)
@@ -296,8 +304,19 @@ def set_free_menu_glitch(ct_rom: CTRom, settings: rset.Settings):
 
 # After writing additional hacks, put them here. Based on the settings, they
 # will or will not modify the ROM.
-def attempt_all_qol_hacks(ctrom: CTRom, settings: rset.Settings):
-    force_sightscope_on(ctrom, settings)
-    fast_tab_pickup(ctrom, settings)
-    set_guaranteed_drops(ctrom)
-    set_free_menu_glitch(ctrom, settings)
+def attempt_all_qol_hacks(ct_rom: CTRom, settings: rset.Settings):
+    '''
+    Apply all qol hacks permitted by the settings.
+    '''
+    set_guaranteed_drops(ct_rom)
+
+    GF = rset.GameFlags
+    flag_fn_dict: dict[rset.GameFlags, Callable[[CTRom], None]] = {
+        GF.VISIBLE_HEALTH: force_sightscope_on,
+        GF.FAST_TABS: fast_tab_pickup,
+        GF.FREE_MENU_GLITCH: set_free_menu_glitch
+    }
+
+    for flag, func in flag_fn_dict.items():
+        if flag in settings.gameflags:
+            func(ct_rom)
