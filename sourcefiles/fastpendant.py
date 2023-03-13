@@ -1,23 +1,27 @@
+'''Module to remove pendant charge by altering scripts of objects.'''
+
 from dataclasses import dataclass
+from typing import Optional
 
 import ctenums
 import ctevent
 from ctrom import CTRom
 from treasures import treasuretypes
-import randosettings as rset
-import randoconfig as cfg
 
 
 @dataclass
 class ObjectRef:
-    loc_id: int = 0
+    '''Dataclass to store references to a particular object/function.'''
+    loc_id: ctenums.LocID = ctenums.LocID(0)
     obj_id: int = 0
     func_id: int = 0
 
 
-def apply_fast_pendant_script(ctrom: CTRom,
-                              settings: rset.Settings):
-
+def apply_fast_pendant_script(ctrom: CTRom):
+    '''
+    Update every script with an object that activates with the charged pendant
+    to only require the pendant.
+    '''
     # The strategy is just to change every 'if pendant charged' to
     # 'if has pendant' since there's no well-defined event to add a scene
     # to charge the pendant.  Especially in chronosanity.
@@ -40,6 +44,10 @@ def apply_fast_pendant_script(ctrom: CTRom,
     obj_refs = []
     for tid in sealed_tids:
         treasure_obj = treasure_dict[tid]
+
+        if not isinstance(treasure_obj, treasuretypes.ScriptTreasure):
+            raise TypeError("TreasureID {tid} is not a script treasure.")
+
         obj_refs.append(
             ObjectRef(treasure_obj.location,
                       treasure_obj.object_id,
@@ -71,7 +79,7 @@ def apply_fast_pendant_script(ctrom: CTRom,
         start = script.get_function_start(obj_id, func_id)
         end = script.get_function_end(obj_id, func_id)
 
-        pos = start
+        pos: Optional[int] = start
 
         while True:
             pos, cmd = script.find_command([0x16], pos, end)
