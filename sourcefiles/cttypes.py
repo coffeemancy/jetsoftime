@@ -144,7 +144,6 @@ class RomRW(abc.ABC):
         Read num_bytes bytes from a ctrom.CTRom.  If the data is arranged in
         records, read record number record_num.
         '''
-        pass
 
     @abc.abstractmethod
     def write_data_to_ct_rom(self,
@@ -158,7 +157,8 @@ class RomRW(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def free_data_on_ct_rom(self, ct_rom, num_bytes, record_num: int = 0):
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom,
+                            num_bytes: int, record_num: int = 0):
         '''
         Mark the data on the ROM that would be read/written as free
         '''
@@ -311,28 +311,45 @@ class BinaryData(bytearray):
     @classmethod
     def read_from_ctrom(cls: typing.Type[T],
                         ct_rom: ctrom.CTRom,
-                        record_num: int = 0) -> T:
-        if cls.SIZE is None:
-            raise ValueError("Cannot read with unknown (None) size")
+                        record_num: int = 0,
+                        num_bytes: typing.Optional[int] = None,
+                        rom_rw: typing.Optional[RomRW] = None) -> T:
+        if num_bytes is None:
+            if cls.SIZE is None:
+                raise ValueError("Cannot read with unknown (None) size")
+            num_bytes = cls.SIZE
 
-        if cls.ROM_RW is None:
-            raise ValueError("No ROM_RW set")
+        if rom_rw is None:
+            if cls.ROM_RW is None:
+                raise ValueError("No RomRW specified.")
+            rom_rw = cls.ROM_RW
 
         return cls(
-            cls.ROM_RW.read_data_from_ctrom(ct_rom, cls.SIZE, record_num)
+            rom_rw.read_data_from_ctrom(ct_rom, num_bytes, record_num)
         )
 
-    def write_to_ctrom(self, ct_rom: ctrom.CTRom, record_num: int = 0):
-        if self.ROM_RW is None:
-            raise ValueError("No ROM_RW set")
+    def write_to_ctrom(
+            self, ct_rom: ctrom.CTRom,
+            record_num: int = 0,
+            rom_rw: typing.Optional[RomRW] = None):
 
-        self.ROM_RW.write_data_to_ct_rom(ct_rom, self, record_num)
+        if rom_rw is None:
+            if self.ROM_RW is None:
+                raise ValueError("No ROM_RW set")
+            rom_rw = self.ROM_RW
 
-    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom, record_num: int = 0):
-        if self.ROM_RW is None:
-            raise ValueError("No ROM_RW set")
+        rom_rw.write_data_to_ct_rom(ct_rom, self, record_num)
 
-        self.ROM_RW.free_data_on_ct_rom(ct_rom, len(self), record_num)
+    def free_data_on_ct_rom(
+            self, ct_rom: ctrom.CTRom,
+            record_num: int = 0,
+            rom_rw: typing.Optional[RomRW] = None):
+        if rom_rw is None:
+            if self.ROM_RW is None:
+                raise ValueError("No ROM_RW set")
+            rom_rw = self.ROM_RW
+
+        rom_rw.free_data_on_ct_rom(ct_rom, len(self), record_num)
 
     def __init__(self, *args, **kwargs):
         bytearray.__init__(self, *args, **kwargs)
@@ -348,7 +365,7 @@ class BinaryData(bytearray):
             )
 
     def get_copy(self: T) -> T:
-        return self.__class__.__init__(self)
+        return type(self)(self)
 
     def __str__(self):
         ret_str = f'{self.__class__.__name__}: '
