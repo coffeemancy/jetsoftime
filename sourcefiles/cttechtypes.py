@@ -7,6 +7,9 @@ import ctenums
 import ctrom
 import ctstrings
 
+from freespace import FSWriteType as FSW
+
+import cttypes as ctt
 from cttypes import SizedBinaryData, byte_prop, bytes_prop
 
 
@@ -14,6 +17,9 @@ T = typing.TypeVar('T', bound=SizedBinaryData)
 
 
 class DamageFormula(ctenums.StrIntEnum):
+    '''
+    Enum for different damage formualas.
+    '''
     NONE = 0
     PC_MELEE = 1
     PC_RANGED = 2
@@ -27,7 +33,11 @@ class DamageFormula(ctenums.StrIntEnum):
     UNKNOWN_0A = 0xA
 
 
+# TODO: This coincides with itemdata.WeaponEffects.  Pick one place for it.
 class EffectMod(ctenums.StrIntEnum):
+    '''
+    Enum for possible effects on a tech.
+    '''
     NONE = 0x00
     CRIT_X2 = 0x01
     WONDERSHOT = 0x02
@@ -71,6 +81,9 @@ class EffectMod(ctenums.StrIntEnum):
 
 
 class EffectType(ctenums.StrIntEnum):
+    '''
+    Enum for the different effect modes an effect header can have.
+    '''
     HEALING = 0
     HEALSTATUS = 1
     STATUS = 2
@@ -82,6 +95,9 @@ class EffectType(ctenums.StrIntEnum):
 class ControlHeader(SizedBinaryData):
     '''
     A class for representing a tech's control header.
+
+    In theory this class will work for enemy atacks, enemy techs, and player
+    techs as well.
     '''
     SIZE: int = 0xB
 
@@ -110,7 +126,7 @@ class ControlHeader(SizedBinaryData):
         self[8+eff_num] = eff_mod
 
     @property
-    def element(self):
+    def element(self) -> ctenums.Element:
         elem_byte = self[3]
         elem_byte &= 0xF0
 
@@ -144,14 +160,7 @@ class ControlHeader(SizedBinaryData):
 
 
 class PCTechControlHeader(ControlHeader):
-
-    @classmethod
-    def from_rom(cls: typing.Type[T], rom: bytes, record_id: int) -> T:
-        data_st = int.from_bytes(rom[0x01CBA1:0x01CBA1+3], 'little')
-        data_st = byteops.to_file_ptr(data_st)
-        record_st = data_st + record_id*cls.SIZE
-
-        return cls(rom, record_st)
+    ROM_RW = ctt.AbsPointerRW(0x01CBA1)
 
     # PC control headers have special behavior for effect indices.
     # If the 0x80 bit of the index is set, then the effect is ignored and only
@@ -257,16 +266,15 @@ class EffectHeader(SizedBinaryData):
 
 
 class PCTechEffectHeader(EffectHeader):
-    DATA_PTR = 0x01BF96
+    ROM_RW = ctt.AbsPointerRW(0x01BF96)
 
 
 class TargetData(SizedBinaryData):
     SIZE = 2
-    pass
 
 
 class PCTechTargetData(TargetData):
-    DATA_PTR = 0x01C25A
+    ROM_RW = ctt.AbsPointerRW(0x01C25A)
 
 
 class TechGfxHeader(SizedBinaryData):
@@ -277,12 +285,12 @@ class TechGfxHeader(SizedBinaryData):
 
 
 class PCTechGfxHeader(TechGfxHeader):
-    DATA_PTR = 0x0145BC
+    ROM_RW = ctt.AbsPointerRW(0x0145BC)
 
 
 class PCTechBattleGroup(SizedBinaryData):
     SIZE = 3
-    DATA_PTR = 0x01CBAE
+    ROM_RW = ctt.AbsPointerRW(0x01CBAE)
 
     @classmethod
     def validate_data(cls: typing.Type[T], data: T):
@@ -331,7 +339,85 @@ class PCTechBattleGroup(SizedBinaryData):
         return 3 - self.count(0xFF)
 
 
+class PCTechLearnRW(ctt.RomRW):
+
+    def __init__(self):
+        '''Do Nothing'''
+        self.stuff = None
+
+    @staticmethod
+    def get_learn_requirment_start(rom: bytes) -> int:
+        ref_local_ptr = int.from_bytes(rom[0x01F261:0x01F261+2], 'little')
+        ref_bank = rom[0x01F26A+3] * 0x10000
+
+        lrn_ref_ptr = ref_bank + ref_local_ptr
+        lrn_ref_ptr = byteops.to_file_ptr(lrn_ref_ptr)
+
+        # Assume lrn refs are in order
+        lrn_req_local_ptr = int.from_bytes(rom[lrn_ref_ptr+3:lrn_ref_ptr+5],
+                                           'little')
+        lrn_req_bank = rom[0x01F595+3] * 0x10000
+        lrn_req_ptr = lrn_req_bank + lrn_req_local_ptr
+        lrn_req_ptr = byteops.to_file_ptr(lrn_req_ptr)
+
+        return lrn_req_ptr
+
+    @staticmethod
+    def get_record_start(rom: bytes,
+                         record_size: int = 3,
+                         record_num: int = 0) -> int:
+        block_start = PCTechLearnRW.get_learn_requirment_start(rom)
+        record_start = block_start + record_num*record_size
+        return record_start
+
+    def read_data_from_ctrom(self,
+                             ct_rom: ctrom.CTRom,
+                             num_bytes: int,
+                             record_num: int = 0) -> bytes:
+        '''
+        Read num_bytes bytes from a ctrom.CTRom.  If the data is arranged in
+        records, read record number record_num.
+        '''
+        rom = ct_rom.rom_data.getbuffer()
+        record_start = PCTechLearnRW.get_record_start(
+            rom, num_bytes, record_num)
+        return bytes(rom[record_start:record_start+num_bytes])
+
+    def write_data_to_ct_rom(self,
+                             ct_rom: ctrom.CTRom,
+                             data: bytes,
+                             record_num: int = 0):
+        '''
+        Write data to a ctrom.CTRom.  If the target data is arranged in
+        records of length len(data), write to record number record_num.
+        '''
+        record_start = PCTechLearnRW.get_record_start(
+            ct_rom.rom_data.getbuffer(), len(data), record_num)
+        ct_rom.rom_data.seek(record_start)
+        ct_rom.rom_data.write(data, ctrom.freespace.FSWriteType.MARK_USED)
+
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom,
+                            num_bytes: int, record_num: int = 0):
+        '''
+        Mark the data on the ROM that would be read/written as free
+        '''
+        rom = ct_rom.rom_data.getbuffer()
+        record_start = PCTechLearnRW.get_record_start(
+            rom, num_bytes, record_num)
+
+        ct_rom.rom_data.space_manager.mark_block(
+            (record_start, record_start+num_bytes),
+            ctrom.freespace.FSWriteType.MARK_FREE
+        )
+
+
+def get_learn_req_romrw(rom: bytes) -> ctt.AbsPointerRW:
+    learn_req_start = PCTechLearnRW.get_learn_requirment_start(rom)
+    return ctt.AbsPointerRW(learn_req_start)
+
+
 class PCTechLearnRequirements(SizedBinaryData):
+    ROM_RW = PCTechLearnRW()
     SIZE = 3
 
     @classmethod
@@ -366,31 +452,382 @@ class PCTechLearnRequirements(SizedBinaryData):
 
         return lrn_req_ptr
 
+
+class PCEffectMP(ctt.BinaryData):
+    SIZE = 1
+    ROM_RW = ctt.AbsPointerRW(0x02BC4E)
+
+def get_total_tech_count(ct_rom: ctrom.CTRom) -> int:
+    # Control count is based on the control index of Magus' basic attack.
+    # It should be the last control header, so count is that + 1.
+    magus_atk_id = ct_rom.rom_data.getbuffer()[0x0C2589]
+    control_count = magus_atk_id + 1
+    num_techs = control_count - 7
+    return num_techs
+
+
+def get_pc_control_header_count(
+        ct_rom: ctrom.CTRom,
+        num_techs: typing.Optional[int] = None
+        ) -> int:
+
+    if num_techs is None:
+        num_techs = get_total_tech_count(ct_rom)
+
+    return num_techs + 7  # 7 basic attacksk + all tech controls
+
+
+def get_dual_tech_count(ct_rom: ctrom.CTRom):
+    # $FF/F910 C9 0F       CMP #$0F
+    # A count of the dual groups.  Multiply by 3 for the number of dual techs.
+    num_dual_groups = ct_rom.rom_data.getbuffer()[0x3FF911]
+    num_dual_techs = 3*num_dual_groups
+    return num_dual_techs
+
+
+def get_triple_tech_count(ct_rom: ctrom.CTRom):
+    # $FF/F936 C9 0F       CMP #$0F
+    # This is the same but for triple techs.  It's hard but not impossible
+    num_trip_techs = ct_rom.rom_data.getbuffer()[0x3FF937]
+    return num_trip_techs
+
+
+def get_rock_tech_count(ct_rom: ctrom.CTRom) -> int:
+    return ct_rom.rom_data.getbuffer()[0x3FF9B5]
+
+class MenuMPReqRW(ctt.RomRW):
+    DATA_PTR = 0x3FF8F7
+    
+    def __init__(self):
+        pass
+
     @classmethod
-    def from_rom(cls, rom: bytes, record_id: int):
-        lrn_req_ptr = cls.get_learn_requirment_start(rom)
-        return cls(rom, lrn_req_ptr+cls.SIZE*record_id)
+    def _get_data_start(cls, ct_rom: ctrom.CTRom) -> int:
+        rom = ct_rom.rom_data
+        rom.seek(cls.DATA_PTR)
+        ptr_b = rom.read(3)
+        rom_ptr = int.from_bytes(ptr_b, 'little')
+        ptr = byteops.to_file_ptr(rom_ptr)
+        return ptr
+
+    def _get_ptr_and_size(self, ct_rom: ctrom.CTRom,
+                          record_num: int) -> typing.Tuple[int, int]:
+        if record_num < 0x39:
+            raise ValueError(
+                f"No Menu Reqs for single techs {record_num:02X}"
+            )
+
+        num_techs = get_total_tech_count(ct_rom)
+        if record_num >= num_techs:
+            raise ValueError(
+                f"Tech number {record_num:02X} exceeds the maximum "
+                f"{num_techs-1:02X}."
+            )
+
+        num_duals = get_dual_tech_count(ct_rom)
+        num_techs = get_total_tech_count(ct_rom)
+        data_start = self._get_data_start(ct_rom)
+
+        if record_num < 0x39 + num_duals:
+            record_start = data_start + (record_num - 0x39)*2
+            record_size = 2
+            return record_start, record_size
+
+        # Otherwise it's a triple tech
+        triple_start = data_start + 2*num_duals
+        triple_index = record_num - (0x39 + num_duals)
+
+        record_start = triple_start + 3*triple_index
+        record_size = 3
+        
+        return record_start, record_size
 
 
-class PlayerTech:
+    def read_data_from_ctrom(self,
+                             ct_rom: ctrom.CTRom,
+                             num_bytes: int,
+                             record_num: int = 0) -> bytes:
+        '''
+        Read num_bytes bytes from a ctrom.CTRom.  If the data is arranged in
+        records, read record number record_num.
+        '''
+        start, size = self._get_ptr_and_size(ct_rom, record_num)
+
+        if size != num_bytes:
+            raise ValueError(
+                f"Computed size of record ({size}) does not match given "
+                f"size ({num_bytes})"
+            )
+
+        rom = ct_rom.rom_data
+        rom.seek(start)
+        return rom.read(size)
+
+    def write_data_to_ct_rom(self,
+                             ct_rom: ctrom.CTRom,
+                             data: bytes,
+                             record_num: int = 0):
+        '''
+        Write data to a ctrom.CTRom.  If the target data is arranged in
+        records of length len(data), write to record number record_num.
+        '''
+        start, size = self._get_ptr_and_size(ct_rom, record_num)
+
+        if size != len(data):
+            raise ValueError(
+                f"Computed size of record ({size}) does not match given "
+                f"size ({len(data)})"
+            )
+
+        rom = ct_rom.rom_data
+        rom.seek(start)
+        rom.write(data, FSW.MARK_USED)
+
+
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom,
+                            num_bytes: int, record_num: int = 0):
+        '''
+        Mark the data on the ROM that would be read/written as free
+        '''
+        start, size = self._get_ptr_and_size(ct_rom, record_num)
+
+        if size != num_bytes:
+            raise ValueError(
+                f"Computed size of record ({size}) does not match given "
+                f"size ({num_bytes})"
+            )
+
+        rom = ct_rom.rom_data
+        rom.seek(start)
+        rom.space_manager.mark_block((start, start+size), FSW.MARK_FREE)
+
+
+class PCTechMenuMPReq(ctt.BinaryData):
+    SIZE = None
+    ROM_RW = MenuMPReqRW()
+
+
+def get_tech_name_romrw():
+    return ctt.LocalPointerRW(0x010B75, 0x010B6A)
+
+def get_desc_ptr_romrw():
+    return ctt.LocalPointerRW(0x02BE6A, 0x0D0323)
+
+_tech_name_rw = ctt.LocalPointerRW(0x010B75, 0x010B6A)
+def read_tech_name_from_ctrom(
+        ct_rom: ctrom.CTRom, tech_id: int) -> ctstrings.CTNameString:
+    name_b = _tech_name_rw.read_data_from_ctrom(ct_rom, 0x0B, tech_id)
+    return ctstrings.CTNameString(name_b)
+
+
+_desc_ptr_rw = ctt.LocalPointerRW(0x02BE6A, 0x0D0323)
+def read_tech_desc_from_ctrom_address(
+        ct_rom: ctrom.CTRom, address: int
+        ) -> ctstrings.CTString:
+
+    rom = ct_rom.rom_data
+
+    chunk_size = 0x100
+    num_chunks = 0
+    rom.seek(address)
+    while True:
+        chunk = rom.read(chunk_size)
+        if 0 in chunk:
+            desc_size = chunk.index(0) + chunk_size*num_chunks + 1
+            break
+
+        if len(chunk) < chunk_size:
+            raise ValueError("Unterminated description")
+
+        num_chunks += 1
+
+    rom.seek(address)
+    desc_b = rom.read(desc_size)
+    return ctstrings.CTString(desc_b)
+
+
+def read_tech_desc_from_ctrom(
+        ct_rom: ctrom.CTRom, tech_id: int) -> ctstrings.CTString:
+
+    rom = ct_rom.rom_data
+    start = _desc_ptr_rw.get_data_start_from_ctrom(ct_rom)
+    bank = start & 0xFF0000
+
+    local_ptr_b = _desc_ptr_rw.read_data_from_ctrom(ct_rom, 2, tech_id)
+    ptr = bank + int.from_bytes(local_ptr_b, 'little')
+
+    chunk_size = 0x100
+    num_chunks = 0
+    rom.seek(ptr)
+    while True:
+        chunk = rom.read(chunk_size)
+        if 0 in chunk:
+            desc_size = chunk.index(0) + chunk_size*num_chunks + 1
+            break
+
+        num_chunks += 1
+
+    rom.seek(ptr)
+    desc_b = rom.read(desc_size)
+    return ctstrings.CTString(desc_b)
+
+
+class PCTechDescriptionPointer(SizedBinaryData):
+    SIZE = 2
+    ROM_RW = ctt.LocalPointerRW(0x02BE6A, 0x0D0323)
+
+    pointer = bytes_prop(0, 2, 0xFFFF, 'little', int)
+
+
+class PCTechATBPenaltyRW(ctt.AbsPointerRW):
+
+    def __init__(self, abs_file_ptr: int,
+                 num_dual_techs: int,
+                 num_triple_techs: int):
+        ctt.AbsPointerRW.__init__(self, abs_file_ptr)
+        self.num_dual_techs = num_dual_techs
+        self.num_triple_techs = num_triple_techs
+
+    def _get_real_size(
+            self, num_bytes: typing.Optional[int], record_num: int
+    ) -> int:
+        first_triple_id = 0x39 + self.num_dual_techs
+        if record_num >= first_triple_id:
+            if num_bytes is None:
+                num_bytes = 2
+            elif num_bytes != 2:
+                raise ValueError(f"Tech {record_num} is a triple tech "
+                                 f"(2 bytes) but {num_bytes} bytes was "
+                                 "requested")
+        else:
+            if num_bytes is None:
+                num_bytes = 1
+            elif num_bytes != 1:
+                raise ValueError(f"Tech {record_num} is not a triple tech "
+                                 f"(1 byte) but {num_bytes} bytes was "
+                                 "requested")
+
+        return num_bytes
+
+    def read_data_from_ctrom(self,
+                             ct_rom: ctrom.CTRom,
+                             num_bytes: typing.Optional[int],
+                             record_num: int = 0) -> bytes:
+
+        num_bytes = self._get_real_size(num_bytes, record_num)
+
+        data_start = self.get_data_start_from_ctrom(ct_rom)
+        record_start = data_start + record_num
+
+        rom = ct_rom.rom_data
+        rom.seek(record_start)
+        ret_b = rom.read(1)
+
+        if num_bytes == 2:
+            rom.seek(record_start + self.num_triple_techs)
+            byte_2 = rom.read(1)
+            ret_b += byte_2
+
+        return ret_b
+
+    def write_data_to_ct_rom(self, ct_rom: ctrom.CTRom,
+                             data: bytes,
+                             record_num: int = 0):
+        num_bytes = self._get_real_size(len(data), record_num)
+
+        data_start = self.get_data_start_from_ctrom(ct_rom)
+        record_start = data_start + record_num
+
+        rom = ct_rom.rom_data
+        rom.seek(record_start)
+        rom.write(data[0:1], FSW.MARK_USED)
+
+        if num_bytes == 2:
+            rom.seek(record_start + self.num_triple_techs)
+            rom.write(data[1:2], FSW.MARK_USED)
+
+    def free_data_on_ct_rom(self, ct_rom: ctrom.CTRom, num_bytes,
+                            record_num: int = 0):
+        num_bytes = self._get_real_size(num_bytes, record_num)
+
+        data_start = self.get_data_start_from_ctrom(ct_rom)
+        record_start = data_start + record_num
+
+        space_man = ct_rom.rom_data.space_manager
+        space_man.mark_block((record_start, record_start+1), FSW.MARK_FREE)
+
+        if num_bytes == 2:
+            extra_start = record_start + self.num_triple_techs
+            space_man.mark_block((extra_start, extra_start+1), FSW.MARK_FREE)
+
+
+class PCTechATBPenalty(ctt.BinaryData):
+
+    def get_pc_penalty(self, battle_group_pc_index: int) -> int:
+        if battle_group_pc_index == 0:
+            return (self[0] & 0xF0) >> 4
+
+        if battle_group_pc_index == 1:
+            return self[0] & 0x0F
+
+        if battle_group_pc_index == 2:
+            if len(self) != 2:
+                raise ValueError("No entry for pc index 2")
+            return self[1] & 0x0F
+
+        raise ValueError("battle_group_pc_index may not exceed 2")
+
+    def set_pc_penalty(self, battle_group_pc_index: int, value: int):
+        if value not in range(0x10):
+            raise ValueError(f"Value ({value:02X}) must be in range(0, 0x10)")
+
+        if battle_group_pc_index == 0:
+            self[0] &= 0x0F
+            self[0] &= (value << 4)
+
+        if battle_group_pc_index == 1:
+            self[0] &= 0xF0
+            self[0] &= value
+
+        if battle_group_pc_index == 2:
+            if len(self) != 2:
+                raise ValueError("No entry for pc index 2")
+            self[1] = value
+
+
+class PCTech:
     def __init__(
             self,
             battle_group: PCTechBattleGroup,
             control_header: PCTechControlHeader,
             effect_headers: list[PCTechEffectHeader],
             effect_mps: list[int],
-            menu_mp_reqs: list[int],
+            menu_mp_reqs: typing.Optional[PCTechMenuMPReq],
             graphics_header: PCTechGfxHeader,
             target_data: PCTechTargetData,
-            learn_reqs: PCTechLearnRequirements,
+            learn_reqs: typing.Optional[PCTechLearnRequirements],
             name: ctstrings.CTNameString,
-            desc: ctstrings.CTString
+            desc: ctstrings.CTString,
+            atb_penalty: PCTechATBPenalty
     ):
         self.battle_group = battle_group.get_copy()
         self.control_header = control_header.get_copy()
         self.graphics_header = graphics_header.get_copy()
         self.target_data = target_data.get_copy()
-        self.learn_reqs = learn_reqs.get_copy()
+        self.learn_reqs: typing.Optional[PCTechLearnRequirements]
+        self.atb_penalty = atb_penalty.get_copy()
+
+        if learn_reqs is not None:
+            self.learn_reqs = learn_reqs.get_copy()
+        else:
+            self.learn_reqs = None
+
+        self.menu_mp_reqs: typing.Optional[PCTechMenuMPReq]
+        if menu_mp_reqs is not None:
+            self.menu_mp_reqs = menu_mp_reqs.get_copy()
+        else:
+            self.menu_mp_reqs = None
+
         self.name = ctstrings.CTNameString(name)
         self.desc = ctstrings.CTString(desc)
 
@@ -405,21 +842,31 @@ class PlayerTech:
         if len(effect_mps) != num_pcs:
             raise ValueError('Number of PCs and mps differs')
 
-        if num_pcs > 1 and len(menu_mp_reqs) != num_pcs:
+        if len(atb_penalty) == 1 and num_pcs not in (1, 2):
+            raise ValueError("Number of PCs and atb penalties differs.")
+        if len(atb_penalty) == 2 and num_pcs != 3:
+            raise ValueError("Number of PCs and atb penalties differs.")
+
+        if menu_mp_reqs is None and num_pcs != 1:
+            raise ValueError('Number of PCs and menu mp requirements differs')
+        if menu_mp_reqs is not None and len(menu_mp_reqs) != num_pcs:
             raise ValueError('Number of PCs and menu mp requirements differs')
 
         for effect_header, mp in zip(effect_headers, effect_mps):
             self.effect_headers.append(effect_header)
             self.effect_mps.append(mp)
 
-        if len(self.effect_headers) != len(self.battle_group):
-            raise ValueError(
-                'Number of PCs and effect headers differ.'
-            )
-
     @property
     def is_single_tech(self) -> bool:
         return self.battle_group.number_of_pcs == 1
+
+    @property
+    def is_dual_tech(self) -> bool:
+        return self.battle_group.number_of_pcs == 2
+
+    @property
+    def is_triple_tech(self) -> bool:
+        return self.battle_group.number_of_pcs == 3
 
     @property
     def needs_magic_to_learn(self):
@@ -451,29 +898,140 @@ class PlayerTech:
         self.control_header[0] &= 0x7F
         self.control_header[0] |= 0x80*(val is True)
 
+    @classmethod
+    def read_from_ctrom(
+            cls, ct_rom: ctrom.CTRom, tech_id: int,
+            lrn_req_rw: typing.Optional[ctt.RomRW] = None,
+            atb_pen_rw: typing.Optional[ctt.RomRW] = None
+            ) -> PCTech:
+        control_header = PCTechControlHeader.read_from_ctrom(
+            ct_rom, tech_id)
 
-class PCTechDB:
+        battle_group_index = control_header.battle_group_id
+        battle_group = PCTechBattleGroup.read_from_ctrom(
+            ct_rom, battle_group_index)
 
-    def __init__(self):
-        # Make all possible bitmasks
-        menu_groups = PCTechDB.get_menu_groups()
-        self.menu_dict = {menu_group: [] for menu_group in menu_groups}
-        self.tech_dict = {tech_id: None for tech_id in range(0x100)}
+        eff_inds = [control_header.get_effect_index(eff_num)
+                    for eff_num in range(battle_group.number_of_pcs)]
+        effect_headers = [
+            PCTechEffectHeader.read_from_ctrom(ct_rom, eff_ind)
+            for eff_ind in eff_inds
+        ]
 
-    @staticmethod
-    def get_menu_groups() -> list[int]:
-        single_groups = [0x80 >> i for i in range(7)]
-        dual_groups = [0x80 >> i | 0x80 >> j
-                       for i in range(7)
-                       for j in range(7)
-                       if i < j]
-        triple_groups = [0x80 >> i | 0x80 >> j | 0x80 >> k
-                         for i in range(7)
-                         for j in range(7)
-                         for k in range(7)
-                         if i < j < k]
+        effect_mps = [
+            int(PCEffectMP.read_from_ctrom(ct_rom, eff_ind)[0])
+            for eff_ind in eff_inds
+        ]
 
-        return single_groups + dual_groups + triple_groups
+        graphics_header = PCTechGfxHeader.read_from_ctrom(
+            ct_rom, tech_id)
+
+        target_data = PCTechTargetData.read_from_ctrom(
+            ct_rom, tech_id)
+
+        if battle_group.number_of_pcs > 1:
+            if lrn_req_rw is None:
+                lrn_req_rw = PCTechLearnRequirements.ROM_RW
+
+                # There are always 0x39 single tech entries: 1 fake +
+                # 7*8 singles.
+                lrn_req_index = tech_id - 0x39
+                learn_reqs = PCTechLearnRequirements.read_from_ctrom(
+                    ct_rom, lrn_req_index, None, lrn_req_rw
+                )
+        else:
+            learn_reqs = None
+
+        if battle_group.number_of_pcs > 1:
+            menu_mps = PCTechMenuMPReq.read_from_ctrom(
+                ct_rom, tech_id, battle_group.number_of_pcs
+            )
+        else:
+            menu_mps = None
+
+        name = read_tech_name_from_ctrom(ct_rom, tech_id)
+        desc = read_tech_desc_from_ctrom(ct_rom, tech_id)
+
+        if atb_pen_rw is None:
+            num_dual_techs = get_dual_tech_count(ct_rom)
+            num_triple_techs = get_triple_tech_count(ct_rom)
+            atb_pen_rw = PCTechATBPenaltyRW(0x01BDF6, num_dual_techs,
+                                            num_triple_techs)
+
+        if battle_group.number_of_pcs == 3:
+            num_atb_bytes = 2
+        else:
+            num_atb_bytes = 1
+
+        atb_penalty = PCTechATBPenalty.read_from_ctrom(
+            ct_rom, tech_id, num_atb_bytes, atb_pen_rw)
+
+        return PCTech(battle_group, control_header, effect_headers,
+                      effect_mps, menu_mps, graphics_header, target_data,
+                      learn_reqs, name, desc, atb_penalty)
+
+
+RockType = typing.Literal[
+    ctenums.ItemID.BLUE_ROCK, ctenums.ItemID.BLACK_ROCK,
+    ctenums.ItemID.SILVERROCK, ctenums.ItemID.WHITE_ROCK,
+    ctenums.ItemID.GOLD_ROCK
+]
+
+
+def determine_rock_used(
+        ct_rom: ctrom.CTRom, tech_id: int) -> Optional[RockType]:
+
+    rom = ct_rom.rom_data
+
+    hook_pos = 0x0282F3
+    hook_value = rom.getbuffer()[hook_pos]
+
+    rock_list = [
+        ctenums.ItemID.BLACK_ROCK, ctenums.ItemID.BLUE_ROCK,
+        ctenums.ItemID.SILVERROCK, ctenums.ItemID.WHITE_ROCK,
+        ctenums.ItemID.GOLD_ROCK
+    ]
+    
+    if hook_value == 0x5C:
+        # Is modified
+        pass
+    elif hook_value == 0xA2:
+        # Is vanilla
+        num_techs = get_total_tech_count(ct_rom)
+        first_rock_tech = num_techs - 5
+        rock_num = tech_id - first_rock_tech
+
+        if rock_num < 0:
+            return None
+        else:
+            return rock_list[tech_id]
+    else:
+        raise ValueError("Unable to read rock data from rom.")
+
+    
+
+class PCTechMenuGroup(SizedBinaryData):
+    SIZE = 1
+    ROM_RW = ctt.AbsPointerRW(0x02BCE9)
+
+
+class PCTechManagerMenuGroup:
+    def __init__(self,
+                 menu_group: PCTechManagerMenuGroup,
+                 rock_used: typing.Optional[RockType]):
+        self.menu_group = PCTechMenuGroup(menu_group)
+        self.required_rock = rock_used
+
+class PCTechManager:
+    '''
+    Replacement for TechDB.
+    '''
+    
+    def __init__(self, techs: dict[PCTechManagerMenuGroup, list[PCTech]]):
+        self.techs = dict(techs)
+
+    def read_from_ctrom(ct_rom: ctrom.CTRom):
+        pass
 
 
 def main():
