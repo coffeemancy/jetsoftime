@@ -1022,7 +1022,7 @@ def update_rock_techs(rom, db, reassign):
     # Unless that would be negative...
     num_rock_techs = len(db.menu_grps) - db.first_rock_grp
     clear_num = 0
-    if(num_rock_techs < 3):
+    if num_rock_techs < 3:
         clear_num = 0
     else:
         clear_num = num_rock_techs - 3
