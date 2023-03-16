@@ -1,3 +1,6 @@
+'''
+The Chrono Trigger: Jets of Time Randomizer
+'''
 from __future__ import annotations
 
 import os
@@ -68,13 +71,52 @@ class NoConfigException(GenerationFailedException):
     '''Raise when trying to generate a rom with no config set.'''
 
 
-
 class Randomizer:
+    '''
+    Main randomizer class.  Produces a random Chrono Trigger rom given a
+    vanilla rom and settings object.
 
-    def __init__(self, rom: bytearray, is_vanilla: bool = True,
+    Basic usage:
+        # Obtain ct_vanilla.sfc somehow.  Legally of course.
+        with open('ct_vanilla.sfc', 'rb') as infile:
+            ct_vanilla = infile.read()
+
+        settings = rset.Settings()  # Lots of options
+        out_rom = Randomizer.get_randmomized_rom(ct_vanilla, settings)
+        # out_rom has type bytes and can be written out.
+
+    Other usage:
+        # Obtain ct_vanilla.sfc and read it into bytes-like ct_vanilla
+        rando = Randomizer(ct_vanilla)
+        rando.settings = rset.Settings()  # Or whatever other settings.
+        rando.set_random_config()
+        rando.generate_rom()
+        out_rom = rando.get_generated_rom()
+    '''
+    def __init__(self, rom: bytes, is_vanilla: bool = True,
                  settings: Optional[rset.Settings] = None,
                  config: Optional[cfg.RandoConfig] = None):
+        '''
+        Constructor for a Randomizer.
 
+        Args:
+            rom : bytes
+                A bytes-like object of the input rom.
+            is_vanilla: bool = True
+                Whether the rom is an unmodified rom.  Both headerless and
+                headered roms will be accepted if is_vanilla is True.  Using
+                non-vanilla roms is not supported.
+            settings: Optional[rset.Settings] = None
+                The rset.Settings object to use to generate the
+                cfg.Randoconfig. Or, if a config is provided, the settings
+                object used to generate it.
+            config: Optional[cfg.RandoConfig] = None
+                If a cfg.RandoConfig has already been generated, and you wish
+                to make a random rom based on that config, it can be provided
+                here.  Note, the settings(above) must be the same settings
+                (except cosmetic) used to generate the config, or rom
+                generation will likely fail.
+        '''
         # We want to keep a copy of the base rom around so that we can
         # generate many seeds from it.
         self.base_ctrom = CTRom(rom, ignore_checksum=not is_vanilla)
@@ -89,6 +131,9 @@ class Randomizer:
     # whether out_rom correctly reflects the settings/config.
     @property
     def settings(self):
+        '''
+        The randomizer's settings.  Will reset generation if modified.
+        '''
         return self._settings
 
     @settings.setter
@@ -98,6 +143,10 @@ class Randomizer:
 
     @property
     def config(self):
+        '''
+        The randomizer's cfg.RandoConfig for writing the rom.  Will reset
+        generation if modified.
+        '''
         return self._config
 
     @config.setter
@@ -105,9 +154,10 @@ class Randomizer:
         self._config = new_config
         self.has_generated = False
 
-    # Given the settings passed to the randomizer, give the randomizer a
-    # random RandoConfig object.
     def set_random_config(self):
+        '''
+        Use the Randomizer's settings to generate a random cfg.Randoconfig.
+        '''
         if self.settings is None:
             raise NoSettingsException
 
@@ -672,11 +722,6 @@ class Randomizer:
     def __set_omen_elevators_ctrom(self, ctrom: CTRom,
                                    config: cfg.RandoConfig):
         '''Set both omen elevators'''
-        fights = [config.omen_elevator_fights_down,
-                  config.omen_elevator_fights_up]
-        loc_ids = [ctenums.LocID.BLACK_OMEN_ELEVATOR_DOWN,
-                   ctenums.LocID.BLACK_OMEN_ELEVATOR_UP]
-
         self.__set_omen_elevator_ctrom(
             ctrom, config.omen_elevator_fights_down,
             ctenums.LocID.BLACK_OMEN_ELEVATOR_DOWN
@@ -1070,7 +1115,7 @@ class Randomizer:
 
     def write_spoiler_log(self, outfile):
         if isinstance(outfile, str):
-            with open(outfile, 'w') as real_outfile:
+            with open(outfile, 'w', encoding='utf-8') as real_outfile:
                 self.write_spoiler_log(real_outfile)
         else:
             self.write_settings_spoilers(outfile)
@@ -1088,7 +1133,7 @@ class Randomizer:
 
     def write_json_spoiler_log(self, outfile):
         if isinstance(outfile, str):
-            with open(outfile, 'w') as real_outfile:
+            with open(outfile, 'w', encoding='utf-8') as real_outfile:
                 self.write_json_spoiler_log(real_outfile)
         else:
             json.dump(
@@ -1819,8 +1864,7 @@ class Randomizer:
             cls.__apply_logic_tweaks_to_config(settings, config)
 
             # Get hard versions of config items if needed.
-            # We're done with the rom at this point, so it's OK to patch
-            # regardless.
+            # We're done with the rom at this point, so it's OK to patch.
             ct_rom.rom_data.patch_ips_file('./patches/hard.ips')
             if settings.enemy_difficulty == rset.Difficulty.HARD:
                 config.enemy_dict = \
