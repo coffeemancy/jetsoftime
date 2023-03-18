@@ -1,11 +1,16 @@
+from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import functools
 import typing
 
 import ctenums
+import ctstrings
+import ctoptions
 import randosettings as rset
-from randosettings import GameFlags as GF, GameMode as GM
+from randosettings import GameFlags as GF, GameMode as GM, \
+    CosmeticFlags as CF
+
 
 @dataclass
 class FlagEntry:
@@ -14,7 +19,7 @@ class FlagEntry:
     help_text: typing.Optional[str] = None
 
 
-_flag_entry_dict: dict[GF, FlagEntry] = {
+_flag_entry_dict: dict[GF | CF, FlagEntry] = {
     GF.FIX_GLITCH: FlagEntry(
         "--fix-glitch", "-g",
         "disable save anywhere and HP overflow glitches"),
@@ -132,8 +137,44 @@ _flag_entry_dict: dict[GF, FlagEntry] = {
     GF.VANILLA_DESERT: FlagEntry(
         "--vanilla-desert", None,
         "The sunken desert only unlocks after talking to the plant lady "
-        "in Zeal")
+        "in Zeal"),
+    # Cosmetic Flags
+    CF.AUTORUN: FlagEntry(
+        "--autorun", None,
+        "Automatically run.  Push run button to walk."
+    ),
+    CF.DEATH_PEAK_ALT_MUSIC: FlagEntry(
+        "--death-peak-alt-music", None,
+        "use Singing Mountain track on Death Peak"
+    ),
+    CF.ZENAN_ALT_MUSIC: FlagEntry(
+        "--zenan-alt-music", None,
+        "use alt battle theme for Zenan Bridge"
+    ),
+    CF.QUIET_MODE: FlagEntry(
+        "--quiet", None,
+        "disable all music (not sound effects)"
+    ),
+    CF.REDUCE_FLASH: FlagEntry(
+        "--reduce-flashes", None,
+        "disable most flashing effects"
+    )
 }
+
+#flag, name, default
+_mystery_flag_prob_entries = [
+    (GF.TAB_TREASURES, "flag_tab_treasures", 0.10),
+    (GF.UNLOCKED_MAGIC, "flag_unlocked_magic", 0.50),
+    (GF.BUCKET_LIST, "flag_bucket_list", 0.15),
+    (GF.CHRONOSANITY, "flag_chronosanity", 0.30),
+    (GF.BOSS_RANDO, "flag_boss_rando", 0.50),
+    (GF.BOSS_SCALE, "flag_boss_scaling", 0.30),
+    (GF.LOCKED_CHARS, "flag_locked_chars", 0.25),
+    (GF.DUPLICATE_CHARS, "flag_duplicate_chars", 0.25),
+    (GF.EPOCH_FAIL, "flag_epoch_fail", 0.50),
+    (GF.GEAR_RANDO, "flag_gear_rando", 0.25),
+    (GF.HEALING_ITEM_RANDO, "flag_heal_rando", 0.25),
+]
 
 _mode_dict: dict[str, GM] = {
     'std': GM.STANDARD,
@@ -164,7 +205,7 @@ _shop_price_dict: dict[str, rset.ShopPrices] = {
 
 def add_flags_to_parser(
         group_text: typing.Optional[str],
-        flag_list: typing.Iterable[GF],
+        flag_list: typing.Iterable[GF | CF],
         parser: argparse.ArgumentParser):
 
     add_target: typing.Union[argparse.ArgumentParser,
@@ -190,8 +231,9 @@ def add_flags_to_parser(
         )
 
 def flag_name_to_namespace_key(flag_name: str):
-    return flag_name[2:].replace('-','_')
-        
+    return flag_name[2:].replace('-', '_')
+
+
 # https://stackoverflow.com/questions/3853722/
 # how-to-insert-newlines-on-argparse-help-text
 class SmartFormatter(argparse.HelpFormatter):
@@ -206,7 +248,21 @@ class SmartFormatter(argparse.HelpFormatter):
 def get_bucket_settings(args: argparse.Namespace) -> rset.BucketSettings:
     '''Extract BucketSettings from argparse.Namespace.'''
     # TODO:
-    return rset.BucketSettings()
+    val_dict = vars(args)
+    
+    disable_other_go_modes = val_dict['bucket_disable_other_go']
+    objectives_win = val_dict['bucket_objectives_win']
+    num_objectives = val_dict['bucket_objective_count']
+    num_objectives_needed = val_dict['bucket_objective_needed_count']
+
+    obj_strs: list[str] = []
+    for obj_ind in range(num_objectives_needed):
+        obj_strs.append(val_dict['bucket_objective'+str(obj_ind+1)])
+
+    return rset.BucketSettings(
+        disable_other_go_modes, objectives_win, num_objectives,
+        num_objectives_needed, obj_strs
+    )
 
 
 _pc_index_dict: dict[str, int] = {
@@ -219,6 +275,10 @@ _pc_index_dict: dict[str, int] = {
     'magus': 6
 }
 
+_pc_names: list[str] = [
+    'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch'
+]
+
 
 def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
     '''Extract dc-flag settings from argparse.Namespace.'''
@@ -228,7 +288,7 @@ def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
         choice_string = choice_string.lower()
 
         if choice_string == 'all':
-            return [val for val in range(7)]
+            return list(range(7))
 
         choices = choice_string.split()
         if choices[0] == 'not':
@@ -240,8 +300,50 @@ def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
             return [ind for ind in range(7) if ind in choice_ints]
 
     namespace_vars = [name + '_choices' for name in _pc_index_dict]
-    
     return [parse_choices(arg_dict[name]) for name in namespace_vars]
+
+
+def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
+    mset = rset.MysterySettings()
+    val_dict = vars(args)
+
+    mset.game_mode_freqs = {
+        GM.STANDARD: val_dict['mystery_mode_std'],
+        GM.LOST_WORLDS: val_dict['mystery_mode_lw'],
+        GM.LEGACY_OF_CYRUS: val_dict['mystery_mode_loc'],
+        GM.ICE_AGE: val_dict['mystery_mode_ia'],
+        GM.VANILLA_RANDO: val_dict['mystery_mode_van'],
+    }
+
+    mset.item_difficulty_freqs = {
+        rset.Difficulty.EASY: val_dict['mystery_item_easy'],
+        rset.Difficulty.NORMAL: val_dict['mystery_item_norm'],
+        rset.Difficulty.HARD: val_dict['mystery_item_hard']
+    }
+
+    mset.enemy_difficulty_freqs = {
+        rset.Difficulty.NORMAL: val_dict['mystery_enemy_norm'],
+        rset.Difficulty.HARD: val_dict['mystery_enemy_hard']
+    }
+
+    mset.tech_order_freqs = {
+        rset.TechOrder.NORMAL: val_dict['mystery_tech_norm'],
+        rset.TechOrder.BALANCED_RANDOM: val_dict['mystery_tech_balanced'],
+        rset.TechOrder.FULL_RANDOM: val_dict['mystery_tech_rand']
+    }
+    mset.shop_price_freqs = {
+        rset.ShopPrices.NORMAL: val_dict['mystery_prices_norm'],
+        rset.ShopPrices.MOSTLY_RANDOM: val_dict['mystery_prices_mostly_rand'],
+        rset.ShopPrices.FULLY_RANDOM: val_dict['mystery_prices_rand'],
+        rset.ShopPrices.FREE: val_dict['mystery_prices_free']
+    }
+
+    mset.flag_prob_dict = {
+        flag: val_dict['mystery_'+name]
+        for flag, name, _ in _mystery_flag_prob_entries
+    }
+
+    return mset
 
 
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
@@ -252,7 +354,8 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     flags = functools.reduce(
         lambda x, y: x | y,
         (flag for flag, entry in _flag_entry_dict.items()
-         if val_dict[flag_name_to_namespace_key(entry.name)] is True),
+         if isinstance(flag, GF)
+         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
         GF(0)
     )
 
@@ -262,17 +365,80 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     tech_order = _tech_order_dict[val_dict['tech_order']]
 
     ret_set = rset.Settings()
+    ret_set.seed = val_dict['seed']
     ret_set.game_mode = mode
     ret_set.gameflags = flags
     ret_set.item_difficulty = item_difficulty
     ret_set.enemy_difficulty = enemy_difficulty
     ret_set.techorder = tech_order
 
+    ret_set.mystery_settings = get_mystery_settings(args)
+    
+    cos_flags = functools.reduce(
+        lambda x, y: x | y,
+        (flag for flag, entry in _flag_entry_dict.items()
+         if isinstance(flag, CF)
+         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
+        CF(0)
+    )
+
+    ct_opts = ctoptions.CTOpts()
+    ct_opts.save_menu_cursor = val_dict['save_menu_cursor']
+    ct_opts.save_battle_cursor = val_dict['save_battle_cursor']
+    ct_opts.save_tech_cursor = not val_dict['save_skill_cursor_off']
+    ct_opts.skill_item_info = not val_dict['skill_item_info_off']
+    ct_opts.consistent_paging = val_dict['consistent_paging']
+    ct_opts.battle_speed = val_dict['battle_speed']
+    ct_opts.battle_msg_speed = val_dict['battle_msg_speed']
+    ct_opts.battle_gauge_style = val_dict['battle_gauge_style']
+    ct_opts.menu_background = val_dict['background']
+
+    ret_set.cosmetic_flags = cos_flags
+    ret_set.ctoptions = ct_opts
+
+    ret_set.char_names = [
+        val_dict[name.lower()+"_name"] for name in _pc_names
+    ]
+
     return ret_set
+
+
+def add_generation_options(parser: argparse.ArgumentParser):
+
+    gen_group = parser.add_argument_group("Generation options")
+
+    gen_group.add_argument(
+        "--input-file", "-i",
+        required=True,
+        help="path to Chrono Trigger (U) rom")
+
+    gen_group.add_argument(
+        "--output-path", "-o",
+        help="path to output directory (default same as input)"
+    )
+
+    gen_group.add_argument(
+        "--seed",
+        help="seed for generation (not website share id)"
+    )
+
+    gen_group.add_argument(
+        "--spoilers",
+        help="generate spoilers with the randomized rom.",
+        action="store_true"
+    )
+
+    gen_group.add_argument(
+        "--json-spoilers",
+        help="generate json spoilers with the randomized rom.",
+        action="store_true"
+    )
 
 
 def get_parser():
     parser = argparse.ArgumentParser(formatter_class=SmartFormatter)
+
+    add_generation_options(parser)
 
     parser.add_argument(
         "--mode",
@@ -486,7 +652,7 @@ def get_parser():
     )
 
     tab_options.add_argument(
-        "--min-power_tab",
+        "--min-power-tab",
         help="The minimum value a power tab can increase power by (default 2)",
         default=1,
         type=int,
@@ -494,7 +660,7 @@ def get_parser():
     )
 
     tab_options.add_argument(
-        "--max-power_tab",
+        "--max-power-tab",
         help="The maximum value a power tab can increase power by (default 4)",
         default=1,
         type=int,
@@ -533,21 +699,7 @@ def get_parser():
         choices=range(1, 10)
     )
 
-    mystery_flag_prob_entries = [
-        ("flag_tab_treasures", 0.10),
-        ("flag_unlocked_magic", 0.50),
-        ("flag_bucket_list", 0.15),
-        ("flag_chronosanity", 0.30),
-        ("flag_boss_rando", 0.50),
-        ("flag_boss_scaling", 0.30),
-        ("flag_locked_chars", 0.25),
-        ("flag_duplicate_chars", 0.25),
-        ("flag_epoch_fail", 0.50),
-        ("flag_gear_rando", 0.25),
-        ("flag_heal_rando", 0.25),
-    ]
-
-    def check_non_neg(value):
+    def check_non_neg(value) -> int:
         ivalue = int(value)
         if ivalue < 0:
             raise argparse.ArgumentTypeError(
@@ -600,11 +752,10 @@ def get_parser():
 
     fill_mystery_freq_group(mystery_ediff_freq_entries, mystery_enemy_diff)
 
-
     mystery_tech_order_freq_entries = [
         ("tech_norm", 10),
         ("tech_rand", 80),
-        ("tech_balanced_rand", 10),
+        ("tech_balanced", 10),
     ]
 
     mystery_tech_order = parser.add_argument_group(
@@ -631,7 +782,7 @@ def get_parser():
         "are in the main settings."
     )
 
-    def check_prob(val):
+    def check_prob(val) -> float:
         fval = float(val)
 
         if not 0 <= fval <= 1:
@@ -639,26 +790,85 @@ def get_parser():
 
         return fval
 
-    mystery_flag_prob_entries = [
-        ("flag_tab_treasures", 0.10),
-        ("flag_unlocked_magic", 0.50),
-        ("flag_bucket_list", 0.15),
-        ("flag_chronosanity", 0.30),
-        ("flag_boss_rando", 0.50),
-        ("flag_boss_scaling", 0.30),
-        ("flag_locked_chars", 0.25),
-        ("flag_duplicate_chars", 0.25),
-        ("flag_epoch_fail", 0.50),
-        ("flag_gear_rando", 0.25),
-        ("flag_heal_rando", 0.25),
-    ]
-
-    for flag_str, prob in mystery_flag_prob_entries:
+    for _, flag_str, prob in _mystery_flag_prob_entries:
         mystery_flags.add_argument(
             "--mystery_"+flag_str,
             type=check_prob,
             default=prob,
             help="default %0.2f" % prob
         )
+
+    add_flags_to_parser(
+        "Cosmetic Flags.  Have no effect on randomization.",
+        (CF.AUTORUN, CF.DEATH_PEAK_ALT_MUSIC, CF.ZENAN_ALT_MUSIC,
+         CF.QUIET_MODE, CF.REDUCE_FLASH),
+        parser
+    )
+
+    def verify_name(string: str) -> str:
+        if len(string) > 5:
+            raise argparse.ArgumentTypeError(
+                "Name must have length 5 or less.")
+
+        try:
+            ctnamestr = ctstrings.CTNameString.from_string(
+                string, 5)
+        except ctstrings.InvalidSymbolException as exc:
+            raise argparse.ArgumentTypeError(
+                "Invalid symbol: \'" + str(exc) +"'")
+
+        return string
+
+    name_group = parser.add_argument_group("Character Names")
+    for char_name in _pc_names:
+        name_group.add_argument(
+            f"--{char_name.lower()}-name",
+            type=verify_name,
+            default=char_name
+        )
+
+    menu_opts = (
+        ("--save-menu-cursor", "save last used page of X-menu"),
+        ("--save-battle-cursor", "save battle cursor position"),
+        ("--save-skill-cursor-off",
+         "do not save position in skill/item menu"),
+        ("--skill-item-info-off", "do not show skill/item descriptions"),
+        ("--consistent-paging",
+         "page up/down have the same effect in all menus")
+    )
+
+    opts_group = parser.add_argument_group("Game Options")
+    for name, desc in menu_opts:
+        opts_group.add_argument(
+            name, help=desc, action="store_true"
+        )
+
+    opts_group.add_argument(
+        "--battle-speed",
+        help="default battle speed (lower is faster)",
+        choices=range(1, 9),
+        default=5
+    )
+
+    opts_group.add_argument(
+        "--battle-msg-speed",
+        help="default battle message speed (lower is faster)",
+        choices=range(1, 9),
+        default=5
+    )
+
+    opts_group.add_argument(
+        "--battle-gauge-style",
+        help="default atb gauge style (default 1)",
+        choices=range(3),
+        default=1
+    )
+
+    opts_group.add_argument(
+        "--background",
+        help="default background (default 1)",
+        choices=range(1, 9),
+        default=1
+    )
 
     return parser
