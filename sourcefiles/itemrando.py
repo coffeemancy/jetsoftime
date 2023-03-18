@@ -3,7 +3,13 @@ from __future__ import annotations  # 3.8 compatability
 
 import math
 import random
-from typing import Union, TypeAlias, Optional
+
+from typing import Union, Optional
+try:
+    from typing import TypeAlias
+except ImportError:
+    from typing_extensions import TypeAlias
+
 
 from common.distribution import Distribution as Dist
 import itemdata
