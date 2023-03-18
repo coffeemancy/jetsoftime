@@ -5,11 +5,6 @@ import math
 import random
 
 from typing import Union, Optional
-try:
-    from typing import TypeAlias
-except ImportError:
-    from typing_extensions import TypeAlias
-
 
 from common.distribution import Distribution as Dist
 import itemdata
@@ -139,9 +134,9 @@ class _BoostID(ctenums.StrIntEnum):
     MDEF_9 = 0x15
 
 
-_BID: TypeAlias = _BoostID
-_WE: TypeAlias = cfg.itemdata.WeaponEffects
-_AE: TypeAlias = cfg.itemdata.ArmorEffects
+_BID = _BoostID
+_WE = cfg.itemdata.WeaponEffects
+_AE = cfg.itemdata.ArmorEffects
 
 _low_boosts = (
     _BID.SPEED_1,  _BID.HIT_2, _BID.STAMINA_2, _BID.POWER_2, _BID.MAGIC_2
@@ -293,8 +288,8 @@ def get_armor_effect_dict(settings: rset.Settings, config: cfg.RandoConfig):
     '''
     # Potentially change depending on item difficulty
     # Consider whether low gear might still have decent effects
-    AE: TypeAlias = itemdata.ArmorEffects
-    ret_dist: dict[treasuredata.ItemTier, Dist[AE]] = {}
+    AE = itemdata.ArmorEffects
+    ret_dist: dict[treasuredata.ItemTier, Dist[itemdata.ArmorEffects]] = {}
 
     # Low gear has no effects.
     ret_dist[treasuredata.ItemTier.LOW_GEAR] = Dist(
@@ -937,9 +932,9 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
     if mod < 0:
         stat_mod = 1/stat_mod
 
-    WS: TypeAlias = itemdata.WeaponStats
-    GSS: TypeAlias = itemdata.GearSecondaryStats
-    AS: TypeAlias = itemdata.ArmorStats
+    WS = itemdata.WeaponStats
+    GSS = itemdata.GearSecondaryStats
+    AS = itemdata.ArmorStats
 
     cur_effect: Union[itemdata.WeaponEffects, itemdata.ArmorEffects]
 
@@ -1269,11 +1264,12 @@ def alt_gear_rando(settings: rset.Settings,
 
     randomize_unique_gear(settings, config)
 
-    Tier: TypeAlias = treasuredata.ItemTier
+    Tier = treasuredata.ItemTier
 
     gear_tiers = (Tier.LOW_GEAR, Tier.PASSABLE_GEAR, Tier.MID_GEAR,
                   Tier.GOOD_GEAR, Tier.HIGH_GEAR, Tier.AWESOME_GEAR)
-    gear_in_tier: dict[Union[Tier, str], list[ctenums.ItemID]] = {
+    gear_in_tier: dict[Union[treasuredata.ItemTier, str],
+                       list[ctenums.ItemID]] = {
         tier: treasuredata.get_item_list(tier)
         for tier in gear_tiers
     }
