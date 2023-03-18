@@ -389,9 +389,9 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ct_opts.skill_item_info = not val_dict['skill_item_info_off']
     ct_opts.consistent_paging = val_dict['consistent_paging']
     ct_opts.battle_speed = val_dict['battle_speed']
-    ct_opts.battle_msg_speed = val_dict['battle_msg_speed']
-    ct_opts.battle_gauge_style = val_dict['battle_gauge_style']
-    ct_opts.menu_background = val_dict['background']
+    ct_opts.battle_msg_speed = val_dict['battle_msg_speed']-1
+    ct_opts.battle_gauge_style = val_dict['battle_gauge_style']-1
+    ct_opts.menu_background = val_dict['background']-1
 
     ret_set.cosmetic_flags = cos_flags
     ret_set.ctoptions = ct_opts
