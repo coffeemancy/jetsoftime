@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import typing
-from typing import Optional
+from typing import Optional, List
 
 import ctenums
 import ctrom
@@ -11,7 +11,7 @@ import ctstrings
 import itemdata
 
 WritableBytes = typing.Union[bytearray, memoryview]
-StatList = list[typing.Union[int, typing.Literal[""]]]
+StatList = List[typing.Union[int, typing.Literal[""]]]
 
 
 class EnemySpriteData:
