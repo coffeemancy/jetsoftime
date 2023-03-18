@@ -237,7 +237,7 @@ class EffectHeader(SizedBinaryData):
         if self.effect_type == EffectType.HEALSTATUS:
             self[1] &= 0x7F
             self[1] |= val*0x80
-        
+
     @property
     def status_effect(self) -> list[ctenums.StatusEffect]:
         status_byte = self[2]
@@ -257,8 +257,8 @@ class EffectHeader(SizedBinaryData):
             status_byte = int(statuses)
         else:
             status_byte = 0
-            for x in statuses:
-                status_byte |= int(x)
+            for status in statuses:
+                status_byte |= int(status)
 
         self[2] = status_byte
 
@@ -268,6 +268,42 @@ class EffectHeader(SizedBinaryData):
 class PCTechEffectHeader(EffectHeader):
     ROM_RW = ctt.AbsPointerRW(0x01BF96)
 
+# https://www.chronocompendium.com/Term/Tech_Data_Notes.html#Targeting_Data
+class TargetType(ctenums.StrIntEnum):
+    ONE_PC = 0
+    ALL_PCS_01 = 1
+    SELF = 2
+    ONE_FALLEN_PC = 3
+    ALL_PCS_04 = 4
+    AYLA = 5  # Unused
+    FROG = 6  # Unused
+    ONE_ENEMY_07 = 7
+    ALL_ENEMIES = 8
+    ALL = 9
+    ALL_PCS_0A = 0xA
+    IN_LINE = 0xB
+    LINE_TO_TARGET = 0x0C
+    LINE_ROBO = 0x0D  # Blade Toss
+    ONE_ENEMY_0E = 0x0E
+    HORIZONTAL_LINE = 0x0F
+    ONE_ENEMY_10 = 0x10
+    AREA_SELF = 0x11
+    AREA_ENEMY_12 = 0x12
+    AREA_ROBO_13 = 0x13
+    AREA_ROBO_14 = 0x14
+    ONE_ENEMY_15 = 0x15
+    ONE_ENEMY_16 = 0x16  # One Enemy (no fallback)
+    ONE_ENEMY_17 = 0x17
+    AREA_ENEMY_18 = 0x18
+    ONE_ENEMY_19 = 0x19
+    AREA_ENEMU_1A = 0x1A
+    AREA_MAGUS = 0x1B
+    AREA_ENEMY_1C = 0x1C  # One Enemy (no fallback)
+    AREA_ENEMY_1D = 0x1D  # One Enemy (no fallback)
+    AREA_ENEMY_1E = 0x1E  # One Enemy (no fallback)
+    AREA_ENEMY_1F = 0x1F  # One Enemy (no fallback)
+    AREA_ENEMY_20 = 0x20  # One Enemy (no fallback)
+    
 
 class TargetData(SizedBinaryData):
     SIZE = 2
@@ -275,6 +311,16 @@ class TargetData(SizedBinaryData):
 
 class PCTechTargetData(TargetData):
     ROM_RW = ctt.AbsPointerRW(0x01C25A)
+
+    # It seems like the two bytes are used as follows:
+    # - Byte 0: Used to determine which targets should be marked when the tech
+    #           target is being chosen.  Bit 0x80 is used to determine if the
+    #           Att/Tech/Item menu should be hidden during target selection.
+    hide_tech_menu = byte_prop(0, 0x80, ret_type=bool)
+    select_target = byte_prop(0, 0x7F, ret_type=TargetType)
+    # - Byte 1: If there's some error and the target has vanished between the
+    #           selection and the actual activation, then Byte 1 is a fallback.
+    attack_target = byte_prop(1, 0xFF, ret_type=int)
 
 
 class TechGfxHeader(SizedBinaryData):
@@ -795,243 +841,9 @@ class PCTechATBPenalty(ctt.BinaryData):
             self[1] = value
 
 
-class PCTech:
-    def __init__(
-            self,
-            battle_group: PCTechBattleGroup,
-            control_header: PCTechControlHeader,
-            effect_headers: list[PCTechEffectHeader],
-            effect_mps: list[int],
-            menu_mp_reqs: typing.Optional[PCTechMenuMPReq],
-            graphics_header: PCTechGfxHeader,
-            target_data: PCTechTargetData,
-            learn_reqs: typing.Optional[PCTechLearnRequirements],
-            name: ctstrings.CTNameString,
-            desc: ctstrings.CTString,
-            atb_penalty: PCTechATBPenalty
-    ):
-        self.battle_group = battle_group.get_copy()
-        self.control_header = control_header.get_copy()
-        self.graphics_header = graphics_header.get_copy()
-        self.target_data = target_data.get_copy()
-        self.learn_reqs: typing.Optional[PCTechLearnRequirements]
-        self.atb_penalty = atb_penalty.get_copy()
-
-        if learn_reqs is not None:
-            self.learn_reqs = learn_reqs.get_copy()
-        else:
-            self.learn_reqs = None
-
-        self.menu_mp_reqs: typing.Optional[PCTechMenuMPReq]
-        if menu_mp_reqs is not None:
-            self.menu_mp_reqs = menu_mp_reqs.get_copy()
-        else:
-            self.menu_mp_reqs = None
-
-        self.name = ctstrings.CTNameString(name)
-        self.desc = ctstrings.CTString(desc)
-
-        self.effect_headers = []
-        self.effect_mps = []
-
-        # Make sure that everything is sized correctly.
-        num_pcs = battle_group.number_of_pcs
-        if len(effect_headers) != num_pcs:
-            raise ValueError('Number of PCs and effect headers differs')
-
-        if len(effect_mps) != num_pcs:
-            raise ValueError('Number of PCs and mps differs')
-
-        if len(atb_penalty) == 1 and num_pcs not in (1, 2):
-            raise ValueError("Number of PCs and atb penalties differs.")
-        if len(atb_penalty) == 2 and num_pcs != 3:
-            raise ValueError("Number of PCs and atb penalties differs.")
-
-        if menu_mp_reqs is None and num_pcs != 1:
-            raise ValueError('Number of PCs and menu mp requirements differs')
-        if menu_mp_reqs is not None and len(menu_mp_reqs) != num_pcs:
-            raise ValueError('Number of PCs and menu mp requirements differs')
-
-        for effect_header, mp in zip(effect_headers, effect_mps):
-            self.effect_headers.append(effect_header)
-            self.effect_mps.append(mp)
-
-    @property
-    def is_single_tech(self) -> bool:
-        return self.battle_group.number_of_pcs == 1
-
-    @property
-    def is_dual_tech(self) -> bool:
-        return self.battle_group.number_of_pcs == 2
-
-    @property
-    def is_triple_tech(self) -> bool:
-        return self.battle_group.number_of_pcs == 3
-
-    @property
-    def needs_magic_to_learn(self):
-        if not self.is_single_tech:
-            raise TypeError("Combo techs don't need magic to learn")
-
-        return self.control_header[0] & 0x80
-
-    @needs_magic_to_learn.setter
-    def needs_magic_to_learn(self, val: bool):
-        if not self.is_single_tech:
-            raise TypeError("Combo techs don't need magic to learn")
-
-        self.control_header[0] &= 0x7F
-        self.control_header[0] |= 0x80*(val is True)
-
-    @property
-    def is_unlearnable(self):
-        if self.is_single_tech:
-            raise TypeError("Single techs cannot be marked unlearnable.")
-
-        return self.control_header[0] & 0x80
-
-    @is_unlearnable.setter
-    def is_unlearnable(self, val: bool):
-        if not self.is_single_tech:
-            raise TypeError("Single techs cannot be marked unlearnable.")
-
-        self.control_header[0] &= 0x7F
-        self.control_header[0] |= 0x80*(val is True)
-
-    @classmethod
-    def read_from_ctrom(
-            cls, ct_rom: ctrom.CTRom, tech_id: int,
-            lrn_req_rw: typing.Optional[ctt.RomRW] = None,
-            atb_pen_rw: typing.Optional[ctt.RomRW] = None
-            ) -> PCTech:
-        control_header = PCTechControlHeader.read_from_ctrom(
-            ct_rom, tech_id)
-
-        battle_group_index = control_header.battle_group_id
-        battle_group = PCTechBattleGroup.read_from_ctrom(
-            ct_rom, battle_group_index)
-
-        eff_inds = [control_header.get_effect_index(eff_num)
-                    for eff_num in range(battle_group.number_of_pcs)]
-        effect_headers = [
-            PCTechEffectHeader.read_from_ctrom(ct_rom, eff_ind)
-            for eff_ind in eff_inds
-        ]
-
-        effect_mps = [
-            int(PCEffectMP.read_from_ctrom(ct_rom, eff_ind)[0])
-            for eff_ind in eff_inds
-        ]
-
-        graphics_header = PCTechGfxHeader.read_from_ctrom(
-            ct_rom, tech_id)
-
-        target_data = PCTechTargetData.read_from_ctrom(
-            ct_rom, tech_id)
-
-        if battle_group.number_of_pcs > 1:
-            if lrn_req_rw is None:
-                lrn_req_rw = PCTechLearnRequirements.ROM_RW
-
-                # There are always 0x39 single tech entries: 1 fake +
-                # 7*8 singles.
-                lrn_req_index = tech_id - 0x39
-                learn_reqs = PCTechLearnRequirements.read_from_ctrom(
-                    ct_rom, lrn_req_index, None, lrn_req_rw
-                )
-        else:
-            learn_reqs = None
-
-        if battle_group.number_of_pcs > 1:
-            menu_mps = PCTechMenuMPReq.read_from_ctrom(
-                ct_rom, tech_id, battle_group.number_of_pcs
-            )
-        else:
-            menu_mps = None
-
-        name = read_tech_name_from_ctrom(ct_rom, tech_id)
-        desc = read_tech_desc_from_ctrom(ct_rom, tech_id)
-
-        if atb_pen_rw is None:
-            num_dual_techs = get_dual_tech_count(ct_rom)
-            num_triple_techs = get_triple_tech_count(ct_rom)
-            atb_pen_rw = PCTechATBPenaltyRW(0x01BDF6, num_dual_techs,
-                                            num_triple_techs)
-
-        if battle_group.number_of_pcs == 3:
-            num_atb_bytes = 2
-        else:
-            num_atb_bytes = 1
-
-        atb_penalty = PCTechATBPenalty.read_from_ctrom(
-            ct_rom, tech_id, num_atb_bytes, atb_pen_rw)
-
-        return PCTech(battle_group, control_header, effect_headers,
-                      effect_mps, menu_mps, graphics_header, target_data,
-                      learn_reqs, name, desc, atb_penalty)
-
-
-RockType = typing.Literal[
-    ctenums.ItemID.BLUE_ROCK, ctenums.ItemID.BLACK_ROCK,
-    ctenums.ItemID.SILVERROCK, ctenums.ItemID.WHITE_ROCK,
-    ctenums.ItemID.GOLD_ROCK
-]
-
-
-def determine_rock_used(
-        ct_rom: ctrom.CTRom, tech_id: int) -> Optional[RockType]:
-
-    rom = ct_rom.rom_data
-
-    hook_pos = 0x0282F3
-    hook_value = rom.getbuffer()[hook_pos]
-
-    rock_list = [
-        ctenums.ItemID.BLACK_ROCK, ctenums.ItemID.BLUE_ROCK,
-        ctenums.ItemID.SILVERROCK, ctenums.ItemID.WHITE_ROCK,
-        ctenums.ItemID.GOLD_ROCK
-    ]
-    
-    if hook_value == 0x5C:
-        # Is modified
-        pass
-    elif hook_value == 0xA2:
-        # Is vanilla
-        num_techs = get_total_tech_count(ct_rom)
-        first_rock_tech = num_techs - 5
-        rock_num = tech_id - first_rock_tech
-
-        if rock_num < 0:
-            return None
-        else:
-            return rock_list[tech_id]
-    else:
-        raise ValueError("Unable to read rock data from rom.")
-
-    
-
 class PCTechMenuGroup(SizedBinaryData):
     SIZE = 1
     ROM_RW = ctt.AbsPointerRW(0x02BCE9)
-
-
-class PCTechManagerMenuGroup:
-    def __init__(self,
-                 menu_group: PCTechManagerMenuGroup,
-                 rock_used: typing.Optional[RockType]):
-        self.menu_group = PCTechMenuGroup(menu_group)
-        self.required_rock = rock_used
-
-class PCTechManager:
-    '''
-    Replacement for TechDB.
-    '''
-    
-    def __init__(self, techs: dict[PCTechManagerMenuGroup, list[PCTech]]):
-        self.techs = dict(techs)
-
-    def read_from_ctrom(ct_rom: ctrom.CTRom):
-        pass
 
 
 def main():
