@@ -588,12 +588,16 @@ class Settings:
                 flag_string += diff_str_dict[self.item_difficulty]
 
             # Add a . between mode and difficulty to free up symbols
-            flag_string += '.'
+
+            flag_symbols = ''
             for flag in flag_str_dict:
                 if flag in self.gameflags:
-                    flag_string += flag_str_dict[flag]
+                    flag_symbols += flag_str_dict[flag]
 
-            flag_string += tech_str_dict[self.techorder]
-            flag_string += shop_str_dict[self.shopprices]
+            flag_symbols += tech_str_dict[self.techorder]
+            flag_symbols += shop_str_dict[self.shopprices]
+
+            if flag_symbols:
+                flag_string += "." + flag_symbols
 
         return flag_string
