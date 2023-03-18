@@ -9,6 +9,10 @@ import typing
 import byteops
 
 
+class InvalidSymbolException(Exception):
+    '''Raise when an invalid symbol is passed to a CTString.'''
+
+
 class Node:
 
     def __init__(self):
@@ -383,10 +387,10 @@ class CTNameString(bytearray):
                     break
 
             if not found:
-                raise ValueError(string[str_pos:])
+                raise InvalidSymbolException(string[str_pos:])
 
         if len(ct_bytes) > length:
-            ct_bytes = ct_bytes[0:length+1]
+            ct_bytes = ct_bytes[0:length]
         elif len(ct_bytes) < length:
             ct_bytes.extend([pad_val for x in range(length-len(ct_bytes))])
 
