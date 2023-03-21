@@ -254,9 +254,9 @@ def remove_event_script_flashes(ct_rom: ctrom.CTRom):
 
         pos = script.get_function_start(0, 0)
         while True:
-            pos = script.find_exact_command(flash_cmd, pos)
-
-            if pos is None:
+            try:
+                pos = script.find_exact_command(flash_cmd, pos)
+            except ctevent.CommandNotFoundException:
                 break
 
             script.data[pos+1] = 0xE0
