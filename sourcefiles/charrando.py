@@ -2186,9 +2186,6 @@ def fix_kings_trial_anim(ctrom: CTRom, config: cfg.RandoConfig):
 
     pos = trial_event.find_exact_command(bad_anim_cmd, start, end)
 
-    if pos is None:
-        print(f"Error: Can not find {bad_anim_cmd} (fix_kings_trial_anim)")
-
     # Just overwrite with the new command
     trial_event.data[pos:pos+len(bad_anim_cmd)] = \
         fixed_anim_cmd.to_bytearray()

@@ -62,7 +62,7 @@ class CharRecruit(RecruitSpot):
         # There should be a LoadPC (not in party) command before any other
         # pc-related commands.  This has command id = 0x81.
 
-        pos, cmd = script.find_command([0x81], start, end)
+        pos, cmd = script.find_command_opt([0x81], start, end)
 
         if pos is None:
             raise ScriptParseException(
@@ -89,7 +89,7 @@ class CharRecruit(RecruitSpot):
             # the load command is pc-specific, 0 arg
 
             (pos, cmd) = \
-                script.find_command(
+                script.find_command_opt(
                     [0x81, 0xD2, 0xCF, 0xC8, 0xD0, 0xD3] +
                     CharRecruit.load_cmds,
                     pos, end
@@ -150,7 +150,7 @@ class StarterChar:
 
             # 0xD3 - Add to active party: 1st arg pc_id
             # 0xC8 - Special Dialog (name): 1st arg pc_id | 0xC0
-            pos, cmd = script.find_command([0xD3, 0xC8], pos, end)
+            pos, cmd = script.find_command_opt([0xD3, 0xC8], pos, end)
 
             if pos is None:
                 raise ScriptParseException(

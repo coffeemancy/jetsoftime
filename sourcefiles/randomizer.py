@@ -377,7 +377,7 @@ class Randomizer:
         pos: Optional[int] = script.get_object_start(0)
 
         while True:
-            pos, cmd = script.find_command_always([0xC8], pos)
+            pos, cmd = script.find_command([0xC8], pos)
             if cmd.args[0] in range(0xC0, 0xC7):  # name cmd_args
                 break
 
@@ -697,7 +697,7 @@ class Randomizer:
         # determine whether a fight occurs.
         pos = start
         for i in range(3):
-            pos, cmd = script.find_command_always([0x7F], pos, end)
+            pos, cmd = script.find_command([0x7F], pos, end)
             offset = cmd.args[0]
 
             # Get a val to local mem command
@@ -745,7 +745,7 @@ class Randomizer:
         if cmd.args[0:3] == [0xA8, 0x80, 0x86]:
             script.delete_commands(pos, 1)
         else:
-            print('failed to find mm flag')
+            raise ctevent.CommandNotFoundException('failed to find mm flag')
 
     def __try_supervisors_office_recruit_fix(self):
         '''
@@ -1707,8 +1707,6 @@ class Randomizer:
             script.get_function_start(obj_id, func_id),
             script.get_function_end(obj_id, func_id)
         )
-        if pos is None:
-            raise ctevent.CommandNotFoundException
 
         EC = ctevent.EC
         EF = ctevent.EF

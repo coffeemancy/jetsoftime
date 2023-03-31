@@ -456,7 +456,7 @@ def write_objectives_to_ctrom(
 
     pos = script.get_object_start(0)
     while True:
-        pos, cmd = script.find_command_always([0xC8], pos)
+        pos, cmd = script.find_command([0xC8], pos)
 
         if cmd.args[0] in range(0xC0, 0xC7):
             break

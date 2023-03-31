@@ -84,11 +84,6 @@ def apply_fast_pendant_script(ctrom: CTRom):
         while True:
             pos, cmd = script.find_command([0x16], pos, end)
 
-            if pos is None:
-                raise SystemExit(
-                    f"Failed to find pendant check in {obj_ref.loc_id}"
-                )
-
             # Make sure it's the right command.
             # 1st arg: 0xF4 indicating checking memory 0x7F00F4
             # 2nd arg: 0x40 indicating we're operating with value 0x40

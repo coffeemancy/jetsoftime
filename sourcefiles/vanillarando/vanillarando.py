@@ -194,10 +194,7 @@ def unlock_skyways(ct_rom: ctrom.CTRom):
     end = script.get_function_end(0xE, 4)
 
     pos = script.find_exact_command(del_cmd, st, end)
-    if pos is not None:
-        script.delete_commands(pos, 1)
-    else:
-        raise ValueError('Command not found')
+    script.delete_commands(pos, 1)
 
     update_zeal_throne_door(ct_rom)
 
@@ -522,7 +519,7 @@ def restore_ribbon_boost_atropos(
         end = script.get_function_end(battle_loc.obj_id, battle_loc.fn_id)
 
         for _ in range(battle_loc.battle_num+1):
-            pos, cmd = script.find_command_always([0xD8], pos, end)
+            pos, cmd = script.find_command([0xD8], pos, end)
             pos += len(cmd)
 
         call_cmd = EC.call_obj_function(obj_id, 1, 3, FS.HALT)
@@ -582,7 +579,7 @@ def restore_ribbon_boost_geno(ct_rom: ctrom.CTRom):
     st = script.get_function_start(1, 4)
     end = script.get_function_end(1, 4)
 
-    pos, _ = script.find_command_always([0xBB], st, end)
+    pos, _ = script.find_command([0xBB], st, end)
     script.insert_commands(func.get_bytearray(), pos)
 
 
@@ -636,7 +633,7 @@ class BekklerTreasure(treasuretypes.ScriptTreasure):
         end = script.get_function_end(self.bekkler_object_id,
                                       self.bekkler_function_id)
 
-        pos, _ = script.find_command_always([0x4F], start, end)
+        pos, _ = script.find_command([0x4F], start, end)
 
         # TODO: Handle gold being placed at this spot.
         # TODO: Fix "The clone will be at Crono's house." text to have the

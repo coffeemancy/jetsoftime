@@ -212,7 +212,7 @@ class BattleObjective(Objective):
         battle_cmd_len = len(EC.get_blank_command(battle_cmd_id))
 
         for _ in range(self.battle_loc.battle_num+1):
-            pos, _ = script.find_command_always([battle_cmd_id], pos, end)
+            pos, _ = script.find_command([battle_cmd_id], pos, end)
             pos += battle_cmd_len
 
         add_obj_complete(script, pos, self, num_objectives_needed,
@@ -386,7 +386,7 @@ class JerkyRewardObjective(QuestObjective):
         script = ct_rom.script_manager.get_script(
             ctenums.LocID.PORRE_MAYOR_1F)
         # Stop exploration upon receiving the item.
-        pos, _ = script.find_command_always(
+        pos, _ = script.find_command(
             [0xCA],
             script.get_function_start(8, 1))
 
@@ -613,7 +613,7 @@ class RecruitStarterObjective(Objective):
         name_pc_cmd = EC.name_pc(0)
         num_name_cmds_found = 0
         while True:
-            pos, cmd = script.find_command([name_pc_cmd.command], pos)
+            pos, cmd = script.find_command_opt([name_pc_cmd.command], pos)
 
             if pos is None:
                 break
@@ -662,7 +662,7 @@ class RecruitSpotObjective(Objective):
 
         name_pc_cmd = EC.name_pc(0)
         while True:
-            pos, cmd = script.find_command([name_pc_cmd.command], pos)
+            pos, cmd = script.find_command_opt([name_pc_cmd.command], pos)
 
             if pos is None:
                 break
@@ -761,7 +761,7 @@ class RecruitNCharactersObjective(Objective):
             pos = script.get_object_start(0)
             name_cmd = EC.name_pc(0)
             while True:
-                pos, cmd = script.find_command([name_cmd.command], pos)
+                pos, cmd = script.find_command_opt([name_cmd.command], pos)
 
                 if pos is None:
                     break
@@ -860,14 +860,10 @@ def add_script_treasure_count(
 
     for _ in range(treasure.item_num+1):
         pos, _ = script.find_command([0xCA], pos, end)
-        if pos is None:
-            raise ValueError
         pos += 2
 
     # Find the next textbox command
     pos, _ = script.find_command([0xBB, 0xC1, 0xC2], pos, end)
-    if pos is None:
-        raise ValueError
     pos += 2
 
     script.insert_commands(
@@ -1045,7 +1041,9 @@ def get_defeat_boss_obj(
         boss_assign_dict: dict[rotypes.BossSpotID, rotypes.BossID],
         item_id: typing.Optional[ctenums.ItemID] = None
         ) -> BattleObjective:
-
+    '''
+    Returns a BattleObjective for defeating the given boss.
+    '''
     # BossID.TWIN_BOSS will not be found in the assignment dictionary.  The
     # one-spot boss to be duplicated will be there.
     twin_spot = rotypes.BossSpotID.OCEAN_PALACE_TWIN_GOLEM

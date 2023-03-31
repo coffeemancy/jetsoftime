@@ -207,8 +207,8 @@ def accelerate_end_scene(ct_rom: ctrom.CTRom):
 
     pos: Optional[int] = script.get_function_start(2, 6)
     while True:
-        pos, cmd = script.find_command([0xAD, 0xB7, 0xF0, 0xEB], pos,
-                                       script.get_function_end(2, 6))
+        pos, cmd = script.find_command_opt([0xAD, 0xB7, 0xF0, 0xEB], pos,
+                                           script.get_function_end(2, 6))
         if pos is None:
             break
 

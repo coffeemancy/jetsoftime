@@ -232,7 +232,7 @@ def remove_event_script_flashes(ct_rom: ctrom.CTRom):
         # Any instantaneous flash is replaced with a return to no addition.
         # This is represented by 'F1 E0 00'
         while True:
-            pos, cmd = script.find_command([0xF1], pos)
+            pos, cmd = script.find_command_opt([0xF1], pos)
             if pos is None:
                 break
 
@@ -252,11 +252,10 @@ def remove_event_script_flashes(ct_rom: ctrom.CTRom):
     for loc in loc_ids:
         script = ct_rom.script_manager.get_script(loc)
 
-        pos = script.get_function_start(0, 0)
+        pos: Optional[int] = script.get_function_start(0, 0)
         while True:
-            try:
-                pos = script.find_exact_command(flash_cmd, pos)
-            except ctevent.CommandNotFoundException:
+            pos = script.find_exact_command_opt(flash_cmd, pos)
+            if pos is None:
                 break
 
             script.data[pos+1] = 0xE0

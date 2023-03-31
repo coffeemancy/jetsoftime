@@ -287,10 +287,11 @@ class ScriptTreasure(Treasure):
         pos: typing.Optional[int] = start
         text_cmds = [0xBB, 0xC1, 0xC2]
         while True:
-            pos, cmd = script.find_command(text_cmds, pos, end)
+            pos, cmd = script.find_command_opt(text_cmds, pos, end)
 
             if pos is None:
-                raise ValueError('Unable to find reward string.')
+                raise ctevent.CommandNotFoundException(
+                    'Unable to find reward string.')
 
             str_ind = cmd.args[-1]
             string = script.strings[str_ind]
@@ -333,12 +334,13 @@ class ScriptTreasure(Treasure):
 
             # Loop until we reach the appropriate number of set memory and
             # add gold/item commands
-            pos, cmd = script.find_command([0x4F, 0xCA, 0xCD], pos, fn_end)
+            pos, cmd = script.find_command_opt([0x4F, 0xCA, 0xCD], pos, fn_end)
 
             if pos is None:
-                print(self)
-                print(num_mem_set_cmds_found, num_add_rwd_cmds_found)
-                raise ValueError('Failed to find item setting commands.')
+                # print(self)
+                # print(num_mem_set_cmds_found, num_add_rwd_cmds_found)
+                raise ctevent.CommandNotFoundException(
+                    'Failed to find item setting commands.')
 
             if cmd.command == 0x4F:
                 # Writing to 0x7F0200 is means the last argument is 0
@@ -426,8 +428,6 @@ class BekklerTreasure(ScriptTreasure):
                                       self.bekkler_function_id)
 
         pos, _ = script.find_command([0x4F], st, end)
-        if pos is None:
-            raise ValueError
 
         script.data[pos+1] = int(self.reward)
 

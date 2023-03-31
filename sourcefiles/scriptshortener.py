@@ -31,10 +31,10 @@ def shorten_fritz_script(ct_rom: ctrom.CTRom):
     # 2) Crono, I owe you one.
     # 3) I was up the creek .... <--- Remove this one
     # 4) Hope my dad never hears about this.
-    pos, cmd = script.find_command_always([0xBB],
-                                          script.get_function_start(9, 2))
-    pos, cmd = script.find_command_always([0xBB], pos+len(cmd))
-    pos, _ = script.find_command_always([0xBB], pos+len(cmd))
+    pos, cmd = script.find_command([0xBB],
+                                   script.get_function_start(9, 2))
+    pos, cmd = script.find_command([0xBB], pos+len(cmd))
+    pos, _ = script.find_command([0xBB], pos+len(cmd))
     script.delete_commands(pos, 1)
 
 
@@ -55,7 +55,7 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
 
     # First, remove all pauses
     while True:
-        pos, _ = script.find_command([0xAD], pos, end)
+        pos, _ = script.find_command_opt([0xAD], pos, end)
         if pos is None:
             break
 
@@ -67,7 +67,7 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
     ) + 2
 
     script.insert_commands(EC.pause(3.0).to_bytearray(), pos)
-    pos, _ = script.find_command_always([0xEB], pos)
+    pos, _ = script.find_command([0xEB], pos)
 
     script.delete_commands(pos, 5)  # Delete a second scream and wind song
 
@@ -80,7 +80,7 @@ def shorten_lavos_crash_script(ct_rom: ctrom.CTRom):
     script.insert_commands(EC.pause(1.75).to_bytearray(), pos)
 
     # Add the missing function call to make the 3rd sparke move away.
-    pos, _ = script.find_command_always([2], pos)
+    pos, _ = script.find_command([2], pos)
 
     script.insert_commands(
         EC.call_obj_function(1, 4, 3, FS.CONT).to_bytearray(),
@@ -144,12 +144,12 @@ def shorten_pop_turnin(ct_rom: ctrom.CTRom):
 
     # Now, speed up some of the movement and pauses.
     st = script.get_function_start(1, 3)
-    pos, _ = script.find_command_always([0x89], st)
+    pos, _ = script.find_command([0x89], st)
     script.data[pos+1] = 0x20  # speed command
 
     def reduce_pause(pos: Optional[int], end: int):
         while True:
-            pos, cmd = script.find_command([0xBA, 0xBD], pos, end)
+            pos, cmd = script.find_command_opt([0xBA, 0xBD], pos, end)
 
             if pos is None:
                 break
@@ -181,7 +181,7 @@ def shorten_pop_turnin(ct_rom: ctrom.CTRom):
     end = script.get_function_end(9, 2)
 
     while True:
-        pos, cmd = script.find_command([0x9C, 0x92], pos, end)
+        pos, cmd = script.find_command_opt([0x9C, 0x92], pos, end)
 
         if pos is None:
             break

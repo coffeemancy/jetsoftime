@@ -76,7 +76,7 @@ def set_ending_after_woe(ct_rom: ctrom.CTRom):
     pos, _ = script.find_command([0xD9])
 
     # Wait for silence
-    pos, cmd = script.find_command_always([0xED])
+    pos, cmd = script.find_command([0xED])
     pos += len(cmd)
 
     EC = eventcommand.EventCommand
@@ -143,7 +143,7 @@ def remove_darkages_from_eot(ct_rom: ctrom.CTRom):
     for loc_id in [ctenums.LocID.PROTO_DOME_PORTAL,
                    ctenums.LocID.MYSTIC_MTN_PORTAL]:
         script = ct_rom.script_manager.get_script(loc_id)
-        pos = script.find_exact_command(darkages_cmd)
+        pos = script.find_exact_command_opt(darkages_cmd)
 
         if pos is not None:
             # possibly we have non-beta logic and it isn't making this
@@ -203,7 +203,7 @@ def lock_magic_cave(ct_rom: ctrom.CTRom):
 
     EC = eventcommand.EventCommand
     frog_active = EC.check_active_pc(int(ctenums.CharID.FROG), 0).command
-    pos, if_frog_active_cmd = script.find_command_always([frog_active])
+    pos, if_frog_active_cmd = script.find_command([frog_active])
 
     new_string = ctstrings.CTString.from_str(
         '{frog}: We must make haste to the{line break}'
@@ -221,7 +221,7 @@ def lock_magic_cave(ct_rom: ctrom.CTRom):
     after_text_pos = pos + len(EC.text_box(0))
 
     # the jump has changed after our insertion, so refetch command
-    pos, if_frog_active_cmd = script.find_command_always([frog_active])
+    pos, if_frog_active_cmd = script.find_command([frog_active])
 
     jump_length = if_frog_active_cmd.args[-1]
     jump_target = pos + len(if_frog_active_cmd) + jump_length - 1

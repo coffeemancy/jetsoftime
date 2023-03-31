@@ -1,3 +1,4 @@
+'''Functions for Epoch Fail flag.'''
 from typing import Optional
 
 import eventcommand
@@ -88,7 +89,7 @@ def ground_epoch(ct_rom: ctrom.CTRom):
                                     script.get_function_start(0xE, 4))
     script.insert_commands(EC.darken(1).to_bytearray(), pos)
 
-    pos, _ = script.find_command_always([0xE0], pos)
+    pos, _ = script.find_command([0xE0], pos)
 
     script.delete_commands(pos, 1)
     script.insert_commands(new_loc_cmd.to_bytearray(), pos)
@@ -102,10 +103,10 @@ def ground_epoch(ct_rom: ctrom.CTRom):
     )
 
     # Remove Epoch sfx
-    st = script.get_function_start(0x0E, 4)
+    start = script.get_function_start(0x0E, 4)
 
-    pos, _ = script.find_command_always([0xEA], st)
-    pos, _ = script.find_command_always([0xEC], pos)
+    pos, _ = script.find_command([0xEA], start)
+    pos, _ = script.find_command([0xEC], pos)
     script.delete_commands(pos, 5)
     script.insert_commands(song_slow, pos)
 
@@ -148,7 +149,7 @@ def restore_dactyls(ct_rom: ctrom.CTRom):
         ctenums.LocID.DACTYL_NEST_SUMMIT
     )
 
-    pos, _ = script.find_command_always([0xE0])
+    pos, _ = script.find_command([0xE0])
     script.delete_commands(pos, 1)
 
     EF = ctevent.EF
@@ -225,7 +226,7 @@ def undo_epoch_relocation(ct_rom: ctrom.CTRom):
                                  0x80, 1, jump_len)
 
         while True:
-            pos, cmd = script.find_command([0x4B], pos)
+            pos, cmd = script.find_command_opt([0x4B], pos)
             if pos is None:
                 break
             if cmd.args[0] == 0x7E0290:
@@ -246,16 +247,15 @@ def update_reborn_epoch_script(ct_rom: ctrom.CTRom):
     '''
 
     def change_pc_checks(script: ctrom.ctevent.Event, obj_id, pc_id):
-        st = script.get_object_start(obj_id)
+        start = script.get_object_start(obj_id)
         end = script.get_object_end(obj_id)
 
         EC = ctrom.ctevent.EC
-        EF = ctrom.ctevent.EF
 
         OP = eventcommand.Operation
 
         load_pc_cmd = EC.load_pc_in_party(pc_id)
-        script.data[st] = load_pc_cmd.command
+        script.data[start] = load_pc_cmd.command
 
         check_pc_cmds = [
             EC.if_mem_op_value(addr, OP.EQUALS, 1, 1, 0)
@@ -263,10 +263,10 @@ def update_reborn_epoch_script(ct_rom: ctrom.CTRom):
         ]
 
         for cmd in check_pc_cmds:
-            pos = st
+            pos: Optional[int] = start
 
             while True:
-                pos = script.find_exact_command(cmd, st, end)
+                pos = script.find_exact_command_opt(cmd, start, end)
 
                 if pos is None:
                     break
@@ -288,8 +288,8 @@ def update_reborn_epoch_script(ct_rom: ctrom.CTRom):
     get_command = ctevent.get_command
     del_st_cmd = get_command(b'\xEA\x16', 0)
 
-    st = er_script.get_function_start(9, 0)
-    del_st = er_script.find_exact_command(del_st_cmd, st)
+    start = er_script.get_function_start(9, 0)
+    del_st = er_script.find_exact_command(del_st_cmd, start)
     er_script.delete_commands(del_st, 1)
     del_st += 6  # jump over some function calls to the pc2 function call
 

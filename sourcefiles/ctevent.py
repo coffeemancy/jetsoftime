@@ -447,8 +447,8 @@ class Event:
         pos: Optional[int] = self.get_function_start(0, 0)
         end = len(self.data)
         while True:
-            (pos, cmd) = self.find_command(obj_cmds,
-                                           pos, end)
+            (pos, cmd) = self.find_command_opt(obj_cmds,
+                                               pos, end)
             if pos is None:
                 break
             # It just so happens that the draw status commands and the object
@@ -481,8 +481,8 @@ class Event:
         pos = self.get_function_start(0, 0)
         end = len(self.data)
         while True:
-            (pos, cmd) = self.find_command(obj_cmds,
-                                           pos, end)
+            (pos, cmd) = self.find_command_opt(obj_cmds,
+                                               pos, end)
             if pos is None:
                 break
             # It just so happens that the draw status commands and the object
@@ -506,8 +506,8 @@ class Event:
         pos = self.get_function_start(0, 0)
         end = len(self.data)
         while True:
-            (pos, cmd) = self.find_command([2, 3, 4],
-                                           pos, end)
+            (pos, cmd) = self.find_command_opt([2, 3, 4],
+                                               pos, end)
             if pos is None:
                 break
             if cmd.args[0] == 2*obj_id:
@@ -879,7 +879,7 @@ class Event:
         start = self.get_function_start(0, 0)
         end = self.get_function_end(0, 0)
 
-        pos, _ = self.find_command([0xB8], start, end)
+        pos, _ = self.find_command_opt([0xB8], start, end)
 
         # TODO: Worry whether there are multiple string index commands.
         #       Should keep searching and delete extra ones.
@@ -937,7 +937,7 @@ class Event:
         command.  Will raise CommandNotFoundException if the command can not
         be found.
         '''
-        ret_pos, ret_cmd = self.find_command(cmd_ids, start_pos, end_pos)
+        ret_pos, ret_cmd = self.find_command_opt(cmd_ids, start_pos, end_pos)
 
         if ret_pos is None:
             raise CommandNotFoundException
@@ -1016,7 +1016,7 @@ class Event:
 
         while True:
             # Find the next jump command
-            (pos, cmd) = self.find_command(jmp_cmds, pos)
+            (pos, cmd) = self.find_command_opt(jmp_cmds, pos)
 
             if pos is None:
                 break
@@ -1071,8 +1071,8 @@ class Event:
         pos: Optional[int] = self.get_function_start(0, 0)
         end = len(self.data)
         while True:
-            (pos, cmd) = self.find_command([2, 3, 4],
-                                           pos, end)
+            (pos, cmd) = self.find_command_opt([2, 3, 4],
+                                               pos, end)
             if pos is None:
                 break
 
@@ -1087,8 +1087,8 @@ class Event:
         pos: Optional[int] = self.get_function_start(0, 0)
         end = len(self.data)
         while True:
-            (pos, cmd) = self.find_command([2, 3, 4],
-                                           pos, end)
+            (pos, cmd) = self.find_command_opt([2, 3, 4],
+                                               pos, end)
             if pos is None:
                 break
 
@@ -1146,7 +1146,11 @@ class Event:
 
         del self.data[del_pos:del_pos+cmd_len]
 
-    def delete_commands_range(self, del_start_pos, del_end_pos):
+    def delete_commands_range(self, del_start_pos: int, del_end_pos: int):
+
+        if del_start_pos > del_end_pos:
+            raise ValueError("Start after end.")
+
         pos = del_start_pos
         length_to_delete = del_end_pos - del_start_pos
         deleted_length = 0
@@ -1173,7 +1177,7 @@ class Event:
         if end is not None and find_start < end < find_end:
             find_end = end
 
-        pos, _ = self.find_command(cmd_ids, find_start, find_end)
+        pos, _ = self.find_command_opt(cmd_ids, find_start, find_end)
         if pos is not None:
             self.delete_commands(pos, 1)
 

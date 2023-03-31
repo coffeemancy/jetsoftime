@@ -84,10 +84,6 @@ def duplicate_zenan_bridge(ct_rom: ctrom.CTRom,
     move_party = EC.move_party(0x86, 0x08, 0x88, 0x7, 0x89, 0x0A)
     pos = script.find_exact_command(move_party, start, end)
 
-    if pos is None:
-        print('Error finding move_party')
-        raise SystemExit
-
     # Insert the transition commands after the party moves
     new_move_party = EC.move_party(0x8B, 0x08, 0x8B, 0x7, 0x8B, 0x0A)
 
@@ -184,14 +180,12 @@ def duplicate_maps_on_ctrom(ct_rom: ctrom.CTRom):
     script = script_man.get_script(ctenums.LocID.COURTROOM_LOBBY)
 
     # Find the if Marle is in party command
-    (pos, cmd) = script.find_command([0xD2],
-                                     script.get_function_start(8, 1),
-                                     script.get_function_end(8, 1))
+    (pos, cmd) = script.find_command_opt([0xD2],
+                                         script.get_function_start(8, 1),
+                                         script.get_function_end(8, 1))
     if pos is None or cmd.args[0] != 1:
-        print("Error finding command (kings trial 1)")
-        print(pos)
-        print(cmd.args[1])
-        exit()
+        raise ctevent.CommandNotFoundException(
+            "Error finding command (kings trial 1)")
 
     # Find the changelocation in this conditional block
     jump_target = pos + cmd.args[-1] - 1
@@ -199,14 +193,11 @@ def duplicate_maps_on_ctrom(ct_rom: ctrom.CTRom):
                                       0xDF, 0xE0, 0xE1],
                                      pos, jump_target)
 
-    if pos is None:
-        print("Error finding command (kings trial 2)")
-    else:
-        loc = cmd.args[0]
-        # The location is in bits 0x01FF of the argument.
-        # Keep whatever the old bits have in 0xFE00 put put in the new location
-        loc = (loc & 0xFE00) + int(ctenums.LocID.KINGS_TRIAL_NEW)
-        script.data[pos+1:pos+3] = byteops.to_little_endian(loc, 2)
+    loc = cmd.args[0]
+    # The location is in bits 0x01FF of the argument.
+    # Keep whatever the old bits have in 0xFE00 put put in the new location
+    loc = (loc & 0xFE00) + int(ctenums.LocID.KINGS_TRIAL_NEW)
+    script.data[pos+1:pos+3] = byteops.to_little_endian(loc, 2)
 
     # Note, the script manager hands the actual object, so when edited there's
     # no need to script_man.set_script it

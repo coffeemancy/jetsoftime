@@ -29,7 +29,7 @@ class ScriptTabTreasure(ttypes.ScriptTreasure):
         num_removed = 0
         while True:
             # exploremode toggle commands are 0xE3.  We're nuking them
-            pos, _ = script.find_command([0xE3], start, end)
+            pos, _ = script.find_command_opt([0xE3], start, end)
 
             if pos is None:
                 break
@@ -47,17 +47,12 @@ class ScriptTabTreasure(ttypes.ScriptTreasure):
         pos_text, _ = script.find_command([0xBB, 0xC1, 0xC2],
                                           start, end)
 
-        if pos_flag is None or pos_text is None:
-            raise ctevent.CommandNotFoundException(
-                f'Error finding flag set or text box in {self.location}'
-            )
-
         # If the item looted flag is set after the texbox, then the player
         # can keep the textbox up, leave the screen, and avoid setting the
         # flag, so the tab can be picked up again.
         if pos_flag > pos_text:
             # In this case, put the flag right before the item is added.
-            pos_add_item, _ = script.find_command_always([0xCA], start, end)
+            pos_add_item, _ = script.find_command([0xCA], start, end)
 
             script.delete_commands(pos_flag, 1)
             script.insert_commands(flag_cmd.to_bytearray(), pos_add_item)
@@ -283,7 +278,7 @@ def set_free_menu_glitch(ct_rom: CTRom):
     script = ct_rom.script_manager.get_script(ctenums.LocID.BLACK_OMEN_ZEAL)
     st = script.get_function_start(8, 0)
     end = script.get_function_end(8, 0)
-    pos, _ = script.find_command_always([0xDF], st, end)
+    pos, _ = script.find_command([0xDF], st, end)
 
     script.insert_commands(func.get_bytearray(), pos)
 
@@ -292,7 +287,7 @@ def set_free_menu_glitch(ct_rom: CTRom):
     end = script.get_function_end(8, 0)
 
     while True:
-        pos, cmd = script.find_command_always([0xDF], pos, end)
+        pos, cmd = script.find_command([0xDF], pos, end)
 
         if cmd.args[0] & 0x1FF == 0x1DF:
             break
