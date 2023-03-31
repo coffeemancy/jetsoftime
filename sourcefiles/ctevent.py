@@ -897,11 +897,15 @@ class Event:
             str_ind_bytes = to_little_endian(rom_ptr, 3)
             self.data[pos+1:pos+4] = str_ind_bytes
 
-    def find_command(
+    def find_command_opt(
             self, cmd_ids: list[int],
             start_pos: Optional[int] = None,
             end_pos: Optional[int] = None
     ) -> Tuple[Optional[int], EC]:
+        '''
+        A version of find_command which will return None if the command is
+        not found.
+        '''
 
         if start_pos is None or start_pos < 0:
             start_pos = self.get_object_start(0)
@@ -923,8 +927,7 @@ class Event:
         # returning colorcrash so mypy doesn't want Optional[Event]
         return (None, EC.get_blank_command(1))
 
-    # TODO: Get rid of normal find_command in favor of find_command_always.
-    def find_command_always(
+    def find_command(
             self, cmd_ids: list[int],
             start_pos: Optional[int] = None,
             end_pos: Optional[int] = None
@@ -941,13 +944,12 @@ class Event:
 
         return ret_pos, ret_cmd
 
-
-    def find_exact_command(self, find_cmd: EC,
-                           start_pos: Optional[int] = None,
-                           end_pos: Optional[int] = None) -> int:
+    def find_exact_command_opt(
+            self, find_cmd: EC,
+            start_pos: Optional[int] = None,
+            end_pos: Optional[int] = None) -> Optional[int]:
         '''
-        Finds the command given.  Does not match the exact bytes jumped if
-        given a jump command.  Raises CommandNotFoundException if the command
+        Version of find_exact_command which will return None if the command
         is not found.
         '''
 
@@ -975,6 +977,22 @@ class Event:
             pos += len(cmd)
 
         raise CommandNotFoundException
+
+    def find_exact_command(
+            self, find_cmd: EC,
+            start_pos: Optional[int] = None,
+            end_pos: Optional[int] = None) -> int:
+        '''
+        Finds the command given.  Does not match the exact bytes jumped if
+        given a jump command.  Raises CommandNotFoundException if the command
+        is not found.
+        '''
+        pos = self.find_exact_command_opt(find_cmd, start_pos, end_pos)
+
+        if pos is None:
+            raise CommandNotFoundException
+
+        return pos
 
     # Helper method to shift all jumps by a given amount.  Typically this
     # is called for removals/insertions.
