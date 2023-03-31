@@ -345,7 +345,7 @@ _single_tech_abbrev = {
     '*Dark Mist': 'DkMi',
     '*Black Hole': 'BlHole',
     '*DarkMatter': 'DkMa',
-    '*Anti Life ': 'Alife',
+    '*Anti Life': 'Alife',
     '*Reraise': 'Reraise'
 }
 

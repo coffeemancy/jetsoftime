@@ -372,8 +372,44 @@ class CTNameString(bytearray):
     symbol_to_byte_dict = {value: key
                            for (key, value) in byte_to_symbol_dict.items()}
 
+    def __init__(self, *args, fix_ef: bool = True, **kwargs):
+        '''
+        Construct a CTNameString.
+
+        Internally, this is juts a bytearray, so all arguments passed to
+        bytearray.__init__ are valid.  CTNameString adds the following kwargs:
+        - fix_ef: bool = True
+            Some of CT's tech names are bugged because they use 0xEF as a space
+            instead of 0xFF.  Notable examples are Ice Sword(\xEF)2 and
+            Firesword(\xEF)2.  This causes the game to read them as 'Ice Sword'
+            and 'Firesword' because in some contexts 0xEF is used as  a
+            terminator.
+
+            With fix_ef=True, all 0xEFs except for ones at the end of the
+            string are replaced with 0xFFs.  Any terminal 0xFFs are also
+            replaced by 0xEFs.
+        '''
+        bytearray.__init__(self, *args, **kwargs)
+
+        if fix_ef:
+            self[:] = self[:].rstrip(b'\xEF\xFF').replace(b'\xEF', b'\xFF')\
+                .ljust(len(self), b'\xEF')
+
     @classmethod
     def from_string(cls, string: str, length: int = 0xB, pad_val: int = 0xEF):
+        '''
+        Construct a CTNameString from a python string.
+
+        parameters:
+        - string: str
+            The string to convert into a CTNameString
+        - length: int = 0xB
+            The length of the CTNameString to be produced.  If the result
+            would exceed this length, the result is truncated.
+        - pad_val: int=0xEF
+            If the result falls short of length, pad the end (ljust) with
+            pad_val
+        '''
         str_pos = 0
 
         ct_bytes = bytearray()
@@ -391,22 +427,26 @@ class CTNameString(bytearray):
 
         if len(ct_bytes) > length:
             ct_bytes = ct_bytes[0:length]
-        elif len(ct_bytes) < length:
-            ct_bytes.extend([pad_val for x in range(length-len(ct_bytes))])
 
-        pos = len(ct_bytes) - 1
-        while pos >= 0 and ct_bytes[pos] == 0xFF:
-            ct_bytes[pos] = pad_val
-            pos -= 1
+        # elif len(ct_bytes) < length:
+        #     ct_bytes.extend([pad_val for x in range(length-len(ct_bytes))])
 
+        # pos = len(ct_bytes) - 1
+        # while pos >= 0 and ct_bytes[pos] == 0xFF:
+        #     ct_bytes[pos] = pad_val
+        #     pos -= 1
+
+        # return CTNameString(ct_bytes)
+
+        pad_bytes = bytes([pad_val])
+        ct_bytes = ct_bytes.rstrip(b'\xEF\xFF').replace(b'\xEF', b'\xFF')\
+            .ljust(length, pad_bytes)
         return CTNameString(ct_bytes)
 
     def __str__(self):
-        try:
-            ind = self.index(0xEF)
-        except ValueError:
-            ind = len(self)
-        string = ''.join(self.byte_to_symbol_dict[x] for x in self[0:ind])
+        stripped_ctstr = self.rstrip(b'\xEF').replace(b'\xEF', b'\xFF')
+        string = ''.join(self.byte_to_symbol_dict[x]
+                         for x in stripped_ctstr)
         return string
 
 
