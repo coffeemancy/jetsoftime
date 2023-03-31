@@ -1589,10 +1589,6 @@ class Randomizer:
             vanillarando.revert_sunken_desert_lock(ct_rom)
 
         if GF.VANILLA_ROBO_RIBBON in flags:
-            if rotypes.BossSpotID.EPOCH_REBORN in config.boss_assign_dict:
-                print(settings.game_mode)
-                print(settings.gameflags)
-                raise ValueError
             vanillarando.restore_ribbon_boost_atropos(
                 ct_rom, config.boss_assign_dict
         )

@@ -976,7 +976,7 @@ class Event:
 
             pos += len(cmd)
 
-        raise CommandNotFoundException
+        return None
 
     def find_exact_command(
             self, find_cmd: EC,
@@ -1110,7 +1110,7 @@ class Event:
 
         pos: Optional[int] = start
         while True:
-            pos = self.find_exact_command(from_cmd)
+            pos = self.find_exact_command_opt(from_cmd)
 
             if pos is None:
                 break
