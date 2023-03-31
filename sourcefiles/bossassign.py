@@ -1,3 +1,4 @@
+'''Collection of functions for assigning random bosses to boss spots.'''
 from __future__ import annotations
 
 import functools
@@ -8,27 +9,11 @@ import ctenums
 import ctrom
 import ctevent
 import eventcommand
-import eventfunction
 
-from eventcommand import EventCommand as EC, FuncSync as FS, Operation as OP
+from eventcommand import EventCommand as EC, FuncSync as FS
 from eventfunction import EventFunction as EF
 
 from ctenums import EnemyID
-
-
-class MissingCommandException(Exception):
-    def __init__(self,
-                 message: str = "",
-                 command_id: typing.Optional[int] = None):
-
-        if command_id is not None:
-            command = eventcommand.EventCommand.get_blank_command(command_id)
-            new_message = f'Failed to find {command_id} {command.name}.'
-
-            if message:
-                message = new_message + ' ' + message
-
-        super().__init__(message)
 
 
 # Functions for finding the set coordinate commands in a particular function
@@ -42,9 +27,6 @@ def get_first_coord_cmd_pos(
     start = script.get_function_start(obj_id, fn_id)
     end = script.get_function_end(obj_id, fn_id)
     pos = script.find_command([0x8B, 0x8D], start, end)[0]  # ret pos, cmd
-
-    if pos is None:
-        raise MissingCommandException
 
     return pos
 
@@ -61,7 +43,7 @@ def get_last_coord_cmd_pos(script: ctevent.Event,
     prev_pos = None
 
     while True:
-        pos, cmd = script.find_command([0x8B, 0x8D], pos, end)
+        pos, cmd = script.find_command_opt([0x8B, 0x8D], pos, end)
 
         if pos is None:
             break
@@ -209,7 +191,7 @@ def fix_bad_animations(
 
     pos: typing.Optional[int] = start
     while True:
-        pos, cmd = script.find_command([0xAC], pos, end)
+        pos, cmd = script.find_command_opt([0xAC], pos, end)
 
         if pos is None:
             break
@@ -299,18 +281,6 @@ def set_generic_one_spot_boss_script(
         script.insert_commands(show.get_bytearray(), show_pos)
 
 
-# set_generic_one_spot_boss should be able to set any one spot location's boss
-# with a little help
-#       ctrom: has the script manager to get scripts from
-#        boss: A BossScheme object with the boss's coordinates/slots
-#      loc_id: The id of the location to write to (not the location event id)
-#    boss_obj: The id of the one spot boss's object in the script
-# show_pos_fn: A function to determine how to find the insertion point after
-#              the objects have been added.
-#     first_x: The x-coordinate of the boss when show_pos is hit.  This should
-#              be after all movement is done.
-#     first_y: The same as first_x but for the y_coordinate
-#    is_shown: Should the boss be shown by default.  Usually this is False.
 def set_generic_one_spot_boss(
         ct_rom: ctrom.CTRom,
         boss: rotypes.BossScheme,
@@ -322,6 +292,21 @@ def set_generic_one_spot_boss(
         first_y: typing.Optional[int] = None,
         is_shown: bool = False
 ):
+    '''
+    Set any one spot location's boss.
+
+    Params:
+        ctrom: has the script manager to get scripts from
+        boss: A BossScheme object with the boss's coordinates/slots
+        loc_id: The id of the location to write to
+        boss_obj: The id of the one spot boss's object in the script
+        show_pos_fn: A function to determine how to find the insertion point
+                     after the objects have been added.
+        first_x: The x-coordinate of the boss when show_pos is hit.  This
+                 should be after all movement is done.
+        first_y: The same as first_x but for the y_coordinate
+        is_shown: Should the boss be shown by default.  Usually this is False.
+    '''
     script_manager = ct_rom.script_manager
     script = script_manager.get_script(ctenums.LocID(loc_id))
 
@@ -330,14 +315,13 @@ def set_generic_one_spot_boss(
                                      first_x, first_y, is_shown=is_shown)
 
 
-# Make a barebones object to make a boss part and hide it.
 def append_boss_object(script: ctevent.Event,
                        boss: rotypes.BossScheme, part_index: int,
                        first_x_px: int,
                        first_y_px: int,
                        force_pixel_coords: bool = False,
                        is_shown: bool = False) -> int:
-
+    '''Make a barebones object to make a boss part and hide it.'''
     new_id = boss.parts[part_index].enemy_id
     new_slot = boss.parts[part_index].slot
 
@@ -349,12 +333,6 @@ def append_boss_object(script: ctevent.Event,
         coord_cmd = EC.set_object_coordinates_pixels(new_x, new_y)
     else:
         coord_cmd = EC.set_object_coordinates_auto(new_x, new_y)
-
-    # print(EC.set_object_coordinates(new_x, new_y))
-    # print(' '.join(f"{x:02X}"
-    #                for x in
-    #                EC.set_object_coordinates(new_x, new_y).to_bytearray()))
-    # input()
 
     # Make the new object
     init = (
@@ -381,6 +359,7 @@ def append_boss_object(script: ctevent.Event,
 def set_manoria_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MANORIA_COMMAND):
+    '''Sets the boss of Manoria Cathedral'''
     # 0xC6 is Yakra's map - Manoria Command
     boss_obj = 0xA
     # first_x, first_y = 0x80, 0xA0
@@ -401,6 +380,7 @@ def set_manoria_boss(
 def set_heckrans_cave_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.HECKRAN_CAVE_NEW):
+    '''Sets the boss of Heckran's cave.'''
     # Heckran is in 0xC0 now.  Used to be 0x2F - HECKRAN_CAVE_PASSAGEWAYS
     script = ct_rom.script_manager.get_script(loc_id)
 
@@ -427,6 +407,7 @@ def set_denadoro_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.CAVE_OF_MASAMUNE
 ):
+    '''Sets the boss of Denadoro Mountains.'''
     # 0x97 is M&M's map - Cave of the Masamune
     boss_obj = 0x14
 
@@ -442,6 +423,7 @@ def set_denadoro_boss(
 def set_reptite_lair_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.REPTITE_LAIR_AZALA_ROOM):
+    '''Sets the boss of the Reptite Lair'''
     # 0x121 is Nizbel's map - Reptite Lair Azala's Room
     # loc_id = 0x121
     boss_obj = 0x9
@@ -458,6 +440,7 @@ def set_reptite_lair_boss(
 def set_magus_castle_flea_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MAGUS_CASTLE_FLEA):
+    '''Sets the boss of the Flea spot in Magus's Castle'''
     # 0xAD is Flea's map - Castle Magus Throne of Magic
     # loc_id = 0xAD
 
@@ -465,17 +448,15 @@ def set_magus_castle_flea_spot_boss(
 
     # first_x, first_y = 0x70, 0x150
     def last_coord_fn(script: ctevent.Event) -> int:
-        '''
-        Flea's spot has an extra bit for attract mode.  So we have to skip
-        over that instead of use the default last coord function.
-        '''
+        # Flea's spot has an extra bit for attract mode.  So we have to skip
+        # over that instead of use the default last coord function.
+
         pos: typing.Optional[int]
         pos = script.get_function_start(boss_obj, 0)
         end = script.get_function_end(boss_obj, 0)
         for i in range(2):
             pos, cmd = script.find_command([0x8B, 0x8D], pos, end)
-            if pos is None:
-                raise MissingCommandException
+
             if i == 0:
                 pos += len(cmd)
 
@@ -487,9 +468,6 @@ def set_magus_castle_flea_spot_boss(
         # In bytes it is '7506'
         pos = script.find_exact_command(EC.generic_one_arg(0x75, 0x06),
                                         script.get_function_start(0xC, 0))
-
-        if pos is None:
-            raise ValueError("Error finding show pos (flea spot)")
 
         return pos
     # end show_pos_fn
@@ -506,6 +484,7 @@ def set_magus_castle_flea_spot_boss(
 def set_magus_castle_slash_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MAGUS_CASTLE_SLASH):
+    '''Sets the boss of the Slash spot in Magus's castle.'''
     # 0xA9 is Slash's map - Castle Magus Throne of Strength
     # loc_id = 0xA9
     script = ct_rom.script_manager.get_script(loc_id)
@@ -534,19 +513,12 @@ def set_magus_castle_slash_spot_boss(
         pos, _ = script.find_command([0x8B, 0x8D],
                                      script.get_function_start(0xB, 1),
                                      script.get_function_end(0xB, 1))
-        if pos is None:
-            raise MissingCommandException
 
         return pos
 
     def show_pos_fn(script: ctevent.Event) -> int:
         pos = script.find_exact_command(EC.generic_one_arg(0xE8, 0x8D),
                                         script.get_function_start(0xB, 1))
-
-        if pos is None:
-            raise MissingCommandException(
-                "Failed to find show pos (slash spot)"
-            )
 
         return pos
 
@@ -563,7 +535,7 @@ def set_magus_castle_slash_spot_boss(
 
         while True:
             # Find animation commands and destroy them
-            pos, _ = script.find_command([0xAC], pos, end)
+            pos, _ = script.find_command_opt([0xAC], pos, end)
 
             if pos is None:
                 break
@@ -578,6 +550,7 @@ def set_magus_castle_slash_spot_boss(
 def set_ozzies_fort_flea_plus_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.OZZIES_FORT_FLEA_PLUS):
+    '''Sets the boss of the Flea Plus spot in Ozzie's Fort'''
     # loc_id = 0xB7
     boss_obj = 0x9
     # first_x, first_y = 0x270, 0x250
@@ -593,6 +566,7 @@ def set_ozzies_fort_flea_plus_spot_boss(
 def set_ozzies_fort_super_slash_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.OZZIES_FORT_SUPER_SLASH):
+    '''Sets the boss of the Super Slash spot in Ozzie's Fort'''
     # loc_id = 0xB8
 
     boss_obj = 0x9
@@ -611,6 +585,7 @@ def set_ozzies_fort_super_slash_spot_boss(
 def set_kings_trial_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.KINGS_TRIAL_NEW):
+    '''Sets the boss of the Yakra XIII spot the Prismshard Quest'''
     # Yakra XIII is in 0xC1 now.
     boss_obj = 0xB
 
@@ -634,7 +609,7 @@ def set_kings_trial_boss(
 def set_giants_claw_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.GIANTS_CLAW_TYRANO):
-
+    '''Sets the boss of the Giant's claw.'''
     boss_ids = [part.enemy_id for part in boss.parts]
     if EnemyID.RUST_TYRANO in boss_ids:
         return
@@ -682,6 +657,7 @@ def set_giants_claw_boss(
 def set_tyrano_lair_midboss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.TYRANO_LAIR_NIZBEL):
+    '''Sets the boss of the Nizbel II spot in the Tyrano Lair.'''
     # 0x130 is the Nizbel II's map - Tyrano Lair Nizbel's Room
     # loc_id = 0x130
     boss_obj = 0x8
@@ -694,8 +670,6 @@ def set_tyrano_lair_midboss(
             EC.generic_command(0xAA, 0x07),
             script.get_function_start(8, 0)
         )
-        if anim_pos is None:
-            raise MissingCommandException
         script.data[anim_pos+1] = 1
 
     set_generic_one_spot_boss(
@@ -709,6 +683,7 @@ def set_tyrano_lair_midboss(
 def set_zeal_palace_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ZEAL_PALACE_THRONE_NIGHT):
+    '''Sets the boss of the Golem spot in Zeal Palace.'''
     # 0x14E is the Golem's map - Zeal Palace's Throneroom (Night)
     # Note this is different from vanilla, where it's 0x14C
     # loc_id = 0x14E
@@ -742,9 +717,6 @@ def set_zeal_palace_boss(
         pos = script.find_exact_command(EC.generic_one_arg(0xAA, 0x5),
                                         script.get_function_start(0xA, 3))
 
-        if pos is None:
-            raise ValueError('Error finding show pos (zeal palace)')
-
         return pos
 
     set_generic_one_spot_boss_script(
@@ -757,7 +729,7 @@ def set_zeal_palace_boss(
 def set_epoch_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.REBORN_EPOCH):
-
+    '''Sets the boss of the Dalton Plus spot on the Epoch'''
     # loc_id = LocID.REBORN_EPOCH
     boss_obj = 0xA
     # first_x, first_y = 0x80, 0x1A8
@@ -774,6 +746,7 @@ def set_epoch_boss(
 def set_twin_golem_spot(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.OCEAN_PALACE_TWIN_GOLEM):
+    '''Sets the boss of the Twin Golem spot in the Ocean Palace.'''
     # This one is unique because it actually depends on the size of the boss.
     # One spot bosses will be duplicated and others will just appear as-is.
 
@@ -792,8 +765,6 @@ def set_twin_golem_spot(
     move_cmd = EC.generic_two_arg(0x96, 0x6, 0xE)
     pos = script.find_exact_command(move_cmd,
                                     script.get_function_start(0xA, 3))
-    if pos is None:
-        raise MissingCommandException
 
     first_x = 0x88
     first_y = 0xF0
@@ -843,7 +814,7 @@ def set_twin_golem_spot(
 def set_zenan_bridge_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ZENAN_BRIDGE_BOSS):
-
+    '''Sets the boss of Zenan Bridge.'''
     # 0x87 is Zombor's map - Zenan Bridge (Middle Ages)
     # Except to avoid sprite bugs we changed it
     # loc_id = LocID.ZENAN_BRIDGE_BOSS
@@ -945,11 +916,10 @@ def set_zenan_bridge_boss(
     # end multi-part
 
 
-# TODO: Does this need the new coordinate mangling?  The coordinates all get
-#       changed by the vector_move commands.
 def set_death_peak_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.DEATH_PEAK_GUARDIAN_SPAWN):
+    '''Sets the boss in the final Lavos Spawn spot on Death Peak.'''
     # 0x1EF is the Lavos Spawn's map - Death Peak Guardian Spawn
     # loc_id = 0x1EF
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1002,15 +972,13 @@ def set_death_peak_boss(
                                  script.get_function_start(8, 1),
                                  script.get_function_end(8, 1))
 
-    if pos is None:
-        raise ValueError('Could not find insertion point.')
-
     script.insert_commands(calls, pos)
 
 
 def set_giga_mutant_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.BLACK_OMEN_GIGA_MUTANT):
+    '''Sets the boss of the Giga Mutant spot in the Black Omen.'''
     # 0x143 is the Giga Mutant's map - Black Omen 63F Divine Guardian
     # loc_id = 0x143
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1072,8 +1040,6 @@ def set_giga_mutant_spot_boss(
     pos = script.find_exact_command(ins_cmd,
                                     script.get_function_start(0xA, 1),
                                     script.get_function_end(0xA, 1))
-    if pos is None:
-        raise ValueError("Error finding insertion position (giga mutant)")
 
     # shift to after the found command
     pos += len(ins_cmd)
@@ -1089,6 +1055,7 @@ def set_giga_mutant_spot_boss(
 def set_terra_mutant_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.BLACK_OMEN_TERRA_MUTANT):
+    '''Sets the boss of the Terra Mutant spot in the Black Omen'''
     # 0x145 is the Terra Mutant's map - Black Omen 98F Astral Guardian
     # loc_id = 0x145
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1150,8 +1117,6 @@ def set_terra_mutant_spot_boss(
 
     pos = script.find_exact_command(ins_cmd,
                                     script.get_function_start(8, 1))
-    if pos is None:
-        raise ValueError("Error finding insertion position (terra mutant)")
     pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
@@ -1160,6 +1125,7 @@ def set_terra_mutant_spot_boss(
 def set_elder_spawn_spot_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.BLACK_OMEN_ELDER_SPAWN):
+    '''Sets the boss of the Elder Spawn spot in the Black Omen.'''
     # 0x60 is the Elder Spawn's map - Black Omen 98F Astral Progeny
     # loc_id = 0x60
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1209,9 +1175,6 @@ def set_elder_spawn_spot_boss(
 
     pos = script.find_exact_command(ins_cmd,
                                     script.get_function_start(0, 0))
-
-    if pos is None:
-        raise ValueError("Error finding insertion point (elder spawn)")
     pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
@@ -1220,6 +1183,7 @@ def set_elder_spawn_spot_boss(
 def set_sun_palace_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.SUN_PALACE):
+    '''Sets the boss of the Sun Palace.'''
     # 0xFB is Son of Sun's map - Sun Palace
     # loc_id = 0xFB
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1230,8 +1194,6 @@ def set_sun_palace_boss(
 
     pos, _ = script.find_command([0x96],
                                  script.get_function_start(0x0B, 4))
-    if pos is None:
-        raise MissingCommandException
 
     script.data[pos+2] = 0x1F
     pos += 3
@@ -1302,31 +1264,27 @@ def set_sun_palace_boss(
     # In the eyeball's (0xB) arb 1
     pos = script.find_exact_command(ins_cmd,
                                     script.get_function_start(0xB, 4))
-
-    if pos is None:
-        raise ValueError("Error: Couldn't find insertion point (SoS)")
-
     pos += len(ins_cmd)
 
     script.insert_commands(calls, pos)
 
     # Remove bad animation commands.  Do this after the assignment because
     # an animation command is used as a hook position.
-    boss_ids = set([part.enemy_id for part in boss.parts])
+    boss_ids = {part.enemy_id for part in boss.parts}
     bad_ids = [EnemyID.MOTHERBRAIN, ]
     if set(bad_ids).intersection(boss_ids):
         pos = script.find_exact_command(
             EC.generic_command(0xB7, 7, 3),
             script.get_function_start(0xB, 3)
         )
-        if pos is None:
-            raise MissingCommandException
+
         script.delete_commands(pos, 2)  # Two animation commands
 
 
 def set_desert_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.SUNKEN_DESERT_DEVOURER):
+    '''Sets the boss of the Sunken Desert.'''
     # 0xA1 is Retinite's map - Sunken Desert Devourer
     # loc_id = 0xA1
     script = ct_rom.script_manager.get_script(loc_id)
@@ -1336,8 +1294,8 @@ def set_desert_boss(
     # Extra copies of retinite bottom for the vanilla random location
     # There are some blank objects that can be removed, but will not do so.
     del_objs = [0x12, 0x11]
-    for x in del_objs:
-        script.remove_object(x)
+    for obj in del_objs:
+        script.remove_object(obj)
 
     num_used = min(len(boss.parts), 3)
     first_x, first_y = 0x120, 0xC9
@@ -1386,9 +1344,6 @@ def set_desert_boss(
     pos = script.find_exact_command(ins_cmd,
                                     script.get_function_start(0x2, 0))
 
-    if pos is None:
-        raise MissingCommandException(
-            "Error: Couldn't find insertion point (SoS)")
     pos -= len(ins_cmd)
 
     script.insert_commands(calls, pos)
@@ -1397,7 +1352,7 @@ def set_desert_boss(
 def set_mt_woe_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.MT_WOE_SUMMIT):
-
+    '''Sets the boss of Mt. Woe.'''
     boss_ids = [part.enemy_id for part in boss.parts]
     if EnemyID.GIGA_GAIA_HEAD in boss_ids:
         return
@@ -1457,7 +1412,7 @@ def set_mt_woe_boss(
 def set_geno_dome_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.GENO_DOME_MAINFRAME):
-
+    '''Sets the boss of the Geno Dome in Mother Brain's spot.'''
     boss_ids = [part.enemy_id for part in boss.parts]
     if EnemyID.MOTHERBRAIN in boss_ids:
         return
@@ -1524,8 +1479,6 @@ def set_geno_dome_boss(
     end = script.get_function_end(0x1E, 0)
     ins_pos_cmd = EC.call_obj_function(0x1F, 1, 1, FS.CONT)
     ins_pos = script.find_exact_command(ins_pos_cmd, start, end)
-    if ins_pos is None:
-        raise MissingCommandException
 
     ins_pos += len(ins_pos_cmd)
 
@@ -1535,7 +1488,7 @@ def set_geno_dome_boss(
 def set_arris_dome_boss(
         ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.ARRIS_DOME_GUARDIAN_CHAMBER):
-
+    '''Sets the boss of the Arris Dome.'''
     if EnemyID.GUARDIAN in [part.enemy_id for part in boss.parts]:
         return
 
@@ -1593,8 +1546,6 @@ def set_arris_dome_boss(
     start = script.get_function_start(9, 1)
     end = script.get_function_end(9, 1)
     pos = script.find_exact_command(call, start, end)
-    if pos is None:
-        raise MissingCommandException
 
     script.delete_commands(pos, 2)
 
@@ -1638,9 +1589,6 @@ def set_arris_dome_boss(
     end = script.get_function_end(9, 1)
     pos, _ = script.find_command([0xD8], start, end)  # Battle
 
-    if pos is None:
-        raise ValueError('Could not find insertion point.')
-
     script.insert_commands(new_calls.get_bytearray(), pos)
 
 
@@ -1648,6 +1596,7 @@ def set_prison_catwalks_boss(
         ct_rom: ctrom.CTRom,
         boss: rotypes.BossScheme,
         loc_id: ctenums.LocID = ctenums.LocID.PRISON_CATWALKS):
+    '''Sets the boss of the Dragon Tank's Spot.'''
     # loc_id = ctenums.LocID.PRISON_CATWALKS
     script = ct_rom.script_manager.get_script(loc_id)
 
@@ -1692,9 +1641,6 @@ def set_prison_catwalks_boss(
     script.set_function(0xE, 6, func)
 
     pos, cmd = script.find_command([0xD8])
-
-    if pos is None:
-        raise MissingCommandException(command_id=0xD8)
 
     script.insert_commands(
         EC.call_obj_function(0xE, 6, 6, FS.HALT).to_bytearray(),
@@ -1748,8 +1694,6 @@ def set_prison_catwalks_boss(
 
     # The only remaining thing is to redo a block of callobjfuncs
     pos = script.find_exact_command(EC.call_obj_function(0xD, 3, 6, FS.CONT))
-    if pos is None:
-        raise MissingCommandException()
 
     while script.data[pos] in (2, 3, 4):  # call cmds
         script.delete_commands(pos, 1)
@@ -1760,6 +1704,7 @@ def set_prison_catwalks_boss(
 def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
                      loc_id: ctenums.LocID = ctenums.LocID(0xE6),
                      is_vanilla: bool = False):
+    '''Sets the boss of the R-Series spot.'''
     script = ct_rom.script_manager.get_script(loc_id)
 
     if not is_vanilla:
@@ -1818,8 +1763,6 @@ def set_factory_boss(ct_rom: ctrom.CTRom, boss: rotypes.BossScheme,
         EC.call_obj_function(0xA, 3, 3, FS.CONT),
         start_pos=script.get_object_start(1)
     )
-    if pos is None:
-        raise ValueError("Command not Found")
 
     # call cmds but stop with the obj2 call
     while script.data[pos] in (2, 3, 4) and script.data[pos+1] != 4:
