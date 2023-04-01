@@ -163,6 +163,15 @@ def add_objectives_to_config(settings: rset.Settings,
 
     objectives = []
     used_keys: list[KeyType] = []
+
+    # Pre-set some keys in used_keys to avoid impossible hints
+    if not rset.GameFlags.EPOCH_FAIL | rset.GameFlags.UNLOCKED_SKYGATES \
+       in settings.gameflags:
+        used_keys.append(oty.QuestID.GAIN_EPOCH_FLIGHT)
+
+    if rset.GameFlags.RESTORE_JOHNNY_RACE not in settings.gameflags:
+        used_keys.append(oty.QuestID.DEFEAT_JOHNNY)
+
     default_hint = '50:quest_gated, 30:boss_nogo, 20:recruit_gated'
     for ind in range(len(hints), num_objs):
         hints.append(default_hint)

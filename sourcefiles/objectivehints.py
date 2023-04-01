@@ -226,6 +226,7 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
     obj_type = obj_parts[0]
 
     epoch_fail = rset.GameFlags.EPOCH_FAIL in settings.gameflags
+    unlocked_skyway = rset.GameFlags.UNLOCKED_SKYGATES in settings.gameflags
 
     if obj_type == 'boss':
         # At some point, the one-spot BossID was put in the boss_assign_dict
@@ -265,7 +266,7 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
                 QID.CLEAR_SUN_PALACE, QID.CLEAR_SUNKEN_DESERT,
             ]
 
-            if not epoch_fail:
+            if not (epoch_fail and unlocked_skyway):
                 gated_quests.remove(QID.GAIN_EPOCH_FLIGHT)
 
             return gated_quests
