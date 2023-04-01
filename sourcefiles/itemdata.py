@@ -411,7 +411,7 @@ class WeaponStats(ItemData):
     SIZE = 5
     ROM_START = 0x0C0262
     MIN_ID = 0
-    MAX_ID = int(ctenums.ItemID.WEAPON_END_5A)
+    MAX_ID = int(ctenums.ItemID.WEAPON_END_5A)-1
 
     @property
     def attack(self) -> int:
@@ -468,7 +468,7 @@ class ArmorStats(ItemData):
     '''Class for stats of armors and helms.'''
     SIZE = 3
     ROM_START = 0x0C047E
-    MIN_ID = int(ctenums.ItemID.WEAPON_END_5A)+1
+    MIN_ID = int(ctenums.ItemID.WEAPON_END_5A)
     MAX_ID = int(ctenums.ItemID.HELM_END_94)-1
 
     @property
