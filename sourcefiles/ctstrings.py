@@ -141,7 +141,7 @@ class CTString(bytearray):
 
     symbols = [
         '!', '?', '/', '\"1', '\"2', ':', '&', '(', ')', '\'', '.',
-        ',', '=', '-', '+', '%', 'note', ' ', '{:heart:}', '...',
+        ',', '=', '-', '+', '%', '{note}', ' ', '{:heart:}', '...',
         '{:inf:}', 'none'
     ]
 
@@ -313,8 +313,8 @@ class CTString(bytearray):
                 ret_str += f"{cur_byte-0xD4}"
             elif cur_byte in range(0xDE, 0xF4):
                 symbol = self.symbols[cur_byte-0xDE]
-                if symbol in ('note', '\"1', '\"2'):
-                    symbol = '{' + symbol + '}'
+                # if symbol in ('note', '\"1', '\"2'):
+                #     symbol = '{' + symbol + '}'
                 ret_str += symbol
             elif cur_byte == 0xFF:
                 # enemies edited in TF seem to get FFs in their names
@@ -352,9 +352,9 @@ class CTNameString(bytearray):
         0x32: '{boxtl}',
         0x33: '{boxbr}',
         0x34: '+',
-        # There are more, but weird capital versions that dont come up.
-        0xDE: '!', 0xDF: '?', 0xE0: '/', 0xE1: '\"1', 0xE2: '\"2', 0xE3: ':',
-        0xE4: '&', 0xE5: '(', 0xE6: ')', 0xE7: '\'', 0xE8: '.',
+        # There are more, but weird capital versions that don't come up.
+        0xDE: '!', 0xDF: '?', 0xE0: '/', 0xE1: '\"1', 0xE2: '\"2',
+        0xE3: ':', 0xE4: '&', 0xE5: '(', 0xE6: ')', 0xE7: '\'', 0xE8: '.',
         0xE9: ',', 0xEA: '=', 0xEB: '-', 0xEC: '+', 0xED: '%',
         0xEE: '{noneEE}', 0xEF: '{endpadEF}', 0xF0: '{:heart:}',
         0xFF: ' '
