@@ -177,6 +177,9 @@ class LocID(StrIntEnum):
     MILENIAL_FAIR = 0x5
     OCEAN_PALACE_THRONE = 0x19F
     BLACK_OMEN_CELESTIAL_GATE = 0x06B
+    HECKRAN_CAVE_ENTRANCE = 0x30
+    HECKRAN_CAVE_UNDERGROUND_RIVER = 0x31
+    MANORIA_HEADQUARTERS = 0x83
 
     # Black Omen Panel Flashes
     # BLACK_OMEN_TERRA_MUTANT
@@ -197,6 +200,7 @@ class LocID(StrIntEnum):
     ENDING_SELECTOR = 0x52
     MILLENNIAL_FAIR = 0x05
     ARRIS_DOME_COMMAND = 0xDA
+    REPTITE_LAIR_WEEVIL_BURROW = 0x11D
 
     @classmethod
     def get_boss_locations(cls):
