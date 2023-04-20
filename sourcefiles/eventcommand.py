@@ -2269,7 +2269,7 @@ event_commands[0xD7] = \
                  'Get quantity of item in inventory.')
 
 event_commands[0xD8] = \
-    EventCommand(0xD8, 1, [2],
+    EventCommand(0xD8, 2, [1, 1],
                  ['ffff: Various flags for battle'],
                  'Battle',
                  'Battle.')
