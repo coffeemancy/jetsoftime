@@ -949,11 +949,13 @@ def apply_plus_minus(item: itemdata.Item, mod: int):
         if cur_effect != WE.NONE:
             if mod == -5:
                 item.stats.effect_id = WE.NONE
+                item.stats.has_effect = False
             elif mod <= -3:
                 effect_id = item.stats.effect_id
                 if effect_id not in (WE.CRISIS, WE.CRIT_9999, WE.DMG_125,
                                      WE.DOOMSICKLE, WE.WONDERSHOT):
                     item.stats.effect_id = WE.NONE
+                    item.stats.has_effect = False
         elif mod >= 3:
             dist: Dist[_WE] = Dist(
                 (70, [WE.NONE]),
