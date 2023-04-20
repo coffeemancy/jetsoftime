@@ -402,7 +402,7 @@ class PCTech:
                       menu_usable, pc_target)
 
 
-TechList = list[typing.Optional[PCTech]]
+TechList = typing.List[typing.Optional[PCTech]]
 
 
 class PCTechManagerGroup:

@@ -3,6 +3,7 @@
 #    Pointers are easy, counts are harder to determine but should be readable
 #    from hardcoded loop bounds.
 
+from __future__ import annotations
 import copy
 from typing import Optional
 import typing

@@ -140,7 +140,7 @@ class CTString(bytearray):
     ]
 
     symbols = [
-        '!', '?', '/', '\"1', '\"2', ':', '&', '(', ')', '\'', '.',
+        '!', '?', '/', '{\"1}', '{\"2}', ':', '&', '(', ')', '\'', '.',
         ',', '=', '-', '+', '%', '{note}', ' ', '{:heart:}', '...',
         '{:inf:}', 'none'
     ]
@@ -194,10 +194,10 @@ class CTString(bytearray):
             # Symbols (see CTString.symbols) are in range(0xDE, 0xE
             ct_char = CTString.symbols.index(char) + 0xDE
             length = 1
-        elif char == '\"':
-            quote_str = string[pos:pos+2]
-            ct_char = CTString.symbols.index(quote_str) + 0xDE
-            length = 2
+        # elif char == '\"':
+        #     quote_str = string[pos:pos+2]
+        #     ct_char = CTString.symbols.index(quote_str) + 0xDE
+        #     length = 2
         elif char == '{':
             # '{' marks the start of a keyword like Crono's name or an item.
             # CTString.keywords has all of these listed.
@@ -223,9 +223,9 @@ class CTString(bytearray):
                    end+2 < len(string) and \
                    string[end:end+2] == '\r\n':
                     length += 2
-            elif keyword in CTString.symbols:
+            elif f'{{{keyword}}}' in CTString.symbols:
                 # quotation marks are in there too as {"1} and {"2}
-                ct_char = CTString.symbols.index(keyword) + 0xDE
+                ct_char = CTString.symbols.index(f'{{{keyword}}}') + 0xDE
             elif keyword.split(' ')[0] == 'delay':
                 vals = [0x03, int(keyword.split(' ')[1], 16)]
                 ct_bytes = bytes(vals)
@@ -353,7 +353,7 @@ class CTNameString(bytearray):
         0x33: '{boxbr}',
         0x34: '+',
         # There are more, but weird capital versions that don't come up.
-        0xDE: '!', 0xDF: '?', 0xE0: '/', 0xE1: '\"1', 0xE2: '\"2',
+        0xDE: '!', 0xDF: '?', 0xE0: '/', 0xE1: '{\"1}', 0xE2: '{\"2}',
         0xE3: ':', 0xE4: '&', 0xE5: '(', 0xE6: ')', 0xE7: '\'', 0xE8: '.',
         0xE9: ',', 0xEA: '=', 0xEB: '-', 0xEC: '+', 0xED: '%',
         0xEE: '{noneEE}', 0xEF: '{endpadEF}', 0xF0: '{:heart:}',

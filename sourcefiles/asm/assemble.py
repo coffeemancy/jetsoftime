@@ -1,22 +1,24 @@
 '''
 Module for assembling instructions into binary
 '''
+from __future__ import annotations
 from dataclasses import dataclass
+from typing import Union, List
 
 from asm import instructions as inst
 from asm.instructions import _BranchInstruction, _NormalInstruction
 
 import byteops
 
-Instruction = _BranchInstruction | _NormalInstruction
-ASMList = list[Instruction | str]
+Instruction = Union[_BranchInstruction, _NormalInstruction]
+ASMList = List[Union[Instruction, str]]
 _AM = inst.AddressingMode
 
 
 @dataclass
 class SnippetRecord:
     offset: int
-    data: Instruction | str
+    data: Union[Instruction, str]
 
 
 class ASMSnippet:
@@ -30,14 +32,14 @@ class ASMSnippet:
         subroutine.
     '''
 
-    def __init__(self, instruction_list: list[Instruction | str]):
+    def __init__(self, instruction_list: List[Union[Instruction, str]]):
         self._label_dict: dict[str, int] = {}
-        self.instruction_list: list[SnippetRecord] = []
+        self.instruction_list: List[SnippetRecord] = []
 
         cur_offset = 0
         prev_length = 0
 
-        unresolved_jump_indices: list[int] = []
+        unresolved_jump_indices: List[int] = []
 
         for ind, instruction in enumerate(instruction_list):
             cur_offset += prev_length
@@ -120,7 +122,7 @@ class ASMSnippet:
         return ret_str
 
 
-def assemble(instruction_list: list[Instruction | str]) -> bytes:
+def assemble(instruction_list: List[Union[Instruction, str]]) -> bytes:
     '''
     Turns a list of instructions and labels and produces binary code.
     '''

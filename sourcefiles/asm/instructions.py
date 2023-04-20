@@ -5,12 +5,12 @@ This file was inspired by ff6wc's instruction/asm.py.
 The content of this file and naming conventions are originally from:
   http://www.6502.org/tutorials/65c816opcodes.html
 '''
-
+from __future__ import annotations
 from dataclasses import dataclass
 import enum
 import inspect
 import sys
-from typing import ClassVar, Optional, Protocol, Type
+from typing import ClassVar, Optional, Protocol, Type, Union
 
 
 class InvalidAddressingModeException(Exception):
@@ -284,7 +284,7 @@ class _BranchInstruction(_Instruction):
     _opcode_dict = {}
 
     def __init__(self,
-                 argument: Optional[int | str] = None,
+                 argument: Optional[Union[int, str]] = None,
                  mode: Optional[AddressingMode] = None):
         self.label: Optional[str]
 
