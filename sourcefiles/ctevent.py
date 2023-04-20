@@ -1,4 +1,5 @@
 from __future__ import annotations
+import enum
 from typing import ByteString, Optional, Tuple
 
 from ctdecompress import compress, decompress, get_compressed_length, \
@@ -10,6 +11,26 @@ import ctstrings
 from eventcommand import EventCommand as EC, get_command
 from eventfunction import EventFunction as EF
 from freespace import FSRom, FSWriteType
+
+
+class FunctionID(enum.IntEnum):
+    '''Convenience enum for TF-style object function naming.'''
+    STARTUP = 0
+    ACTIVATE = 1
+    TOUCH = 2
+    ARBITRARY_0 = 3
+    ARBITRARY_1 = 4
+    ARBITRARY_2 = 5
+    ARBITRARY_3 = 6
+    ARBITRARY_4 = 7
+    ARBITRARY_5 = 8
+    ARBITRARY_6 = 9
+    ARBITRARY_7 = 0xA
+    ARBITRARY_8 = 0xB
+    ARBITRARY_9 = 0xC
+    ARBITRARY_A = 0xD
+    ARBITRARY_B = 0xE
+    ARBITRARY_C = 0xF
 
 
 class CommandNotFoundException(Exception):
@@ -527,6 +548,9 @@ class Event:
     # This will break if the object has references to other objects' fns
     def append_copy_object(self, obj_id: int):
 
+        if self.num_objects == 0x40:
+            raise IndexError("No room for additional objects.")
+
         obj_start = self.get_object_start(obj_id)
         obj_end = self.get_function_end(obj_id, 0xF)
 
@@ -551,6 +575,9 @@ class Event:
 
     def append_empty_object(self) -> int:
         '''Makes space for new object.  Returns new object id.'''
+
+        if self.num_objects == 0x40:
+            raise IndexError("No room for additional objects.")
 
         # Account for the 32 bytes of pointers we're about to add here
         end_b = to_little_endian(len(self.data)+32, 2)
@@ -1024,14 +1051,20 @@ class Event:
             jump_mult = 2*(cmd.command in EC.fwd_jump_commands)-1
             jump_target = pos + len(cmd) + cmd.args[-1]*jump_mult - 1
 
+            # For backwards jumps, we need to count the bytes of the command
+            # within the bounds of the jump block.
+            cmd_bound = pos
+            if jump_mult == -1:
+                cmd_bound += len(cmd)
+
             # This has been wrong a few times.  Let's be clear.
             # We only shift if [before_pos, after_pos) is contained in
             # (start, end).  We don't shift when before_pos == start
             # because this means either the insertion will happen prior
             # to the jump (before_pos == after_pos) or the deletion would
             # include the jump command.
-            start = min(pos, jump_target)
-            end = max(pos, jump_target)
+            start = min(cmd_bound, jump_target)
+            end = max(cmd_bound, jump_target)
 
             if before_pos == after_pos:
                 can_shift_aft = (end > after_pos)
@@ -1161,6 +1194,34 @@ class Event:
 
         if deleted_length != length_to_delete:
             print('Warning: Last deleted command exceeded del_end_pos')
+
+    def delete_jump_block(self, pos: int):
+        '''Delete the conditional block beginning at the given offset.'''
+        cmd_id = self.data[pos]
+        if cmd_id not in EC.fwd_jump_commands:
+            raise ValueError("Position does not point to a jump")
+
+        cmd = get_command(self.data, pos)
+        jump_bytes = cmd.args[-1]
+        target = pos + jump_bytes + len(cmd) - 1
+
+        self.delete_commands_range(pos, target)
+
+    def get_jump_block(self, pos: int, include_if: bool = False) -> EF:
+        '''Return the contents of a conditional block as an EventFunction'''
+        cmd_id = self.data[pos]
+        if cmd_id not in EC.fwd_jump_commands:
+            raise ValueError("Position does not point to a jump")
+
+        cmd = get_command(self.data, pos)
+        jump_bytes = cmd.args[-1]
+        target = pos + jump_bytes + len(cmd) - 1
+
+        start = pos
+        if not include_if:
+            start += len(cmd)
+
+        return EF.from_bytearray(self.data[start: target])
 
     def delete_command_from_function(
             self,
