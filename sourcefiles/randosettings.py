@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
-from typing import Union, Optional, Type, TypeVar
+from typing import Union, Optional, Type, TypeVar, Callable
 
 import bossrandotypes as rotypes
 import ctoptions
@@ -22,9 +22,11 @@ class StrIntEnum(IntEnum):
         return dict((x, str(x)) for x in enum_list)
 
     @classmethod
-    def inv_str_dict(cls: Type[SIE]) -> dict[str, SIE]:
+    def inv_str_dict(
+            cls: Type[SIE],
+            formatter: Callable[[str], str] = lambda x: x) -> dict[str, SIE]:
         enum_list: list[SIE] = list(cls)
-        return dict((str(x), x) for x in enum_list)
+        return dict((formatter(str(x)), x) for x in enum_list)
 
 
 class GameMode(StrIntEnum):

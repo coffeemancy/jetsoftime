@@ -306,7 +306,7 @@ def find_match_len(data: bytes, pos_1: int, pos_2: int,
 # Modification of compress_py which precomputes starting indices of every byte.
 # This was suggested by Atmatek on
 # https://www.ff6hacking.com/forums/thread-4085.html.
-def compress_py_2(source: bytes):
+def compress_py_2(source: bytes) -> bytearray:
     # We have to try compressing in two configurations and then return the
     # better of the two.
     compressed_data = [bytearray([0 for i in range(0x10000)])
