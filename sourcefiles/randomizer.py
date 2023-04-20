@@ -13,6 +13,9 @@ from typing import Optional
 
 import arguments
 import charassign
+
+from base import chesttext, basepatch
+
 import enemystats
 import itemdata
 import itemrando
@@ -904,11 +907,20 @@ class Randomizer:
         '''Given config and settings, write to self.out_rom'''
         self.out_rom = CTRom(self.base_ctrom.rom_data.getvalue(), True)
 
+        initial_vanilla = False
+        if CTRom.validate_ct_rom_bytes(self.out_rom.rom_data.getbuffer()):
+            initial_vanilla = True
+            basepatch.mark_initial_free_space(self.out_rom)
+
         # TODO:  Consider working some of the always-applied script changes
         #        Into base_patch.ips to improve generation speed.
         self.__apply_basic_patches(self.out_rom, self.settings)
-
         self.__apply_settings_patches(self.out_rom, self.settings)
+
+        if initial_vanilla:
+            chesttext.apply_chest_text_hack(
+                self.out_rom, self.config.item_db
+            )
 
         # This makes copies of heckran cave passagesways, king's trial,
         # and now Zenan Bridge so that all bosses can go there.
