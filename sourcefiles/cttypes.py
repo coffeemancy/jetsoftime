@@ -351,10 +351,19 @@ class BinaryData(bytearray):
 
         rom_rw.free_data_on_ct_rom(ct_rom, len(self), record_num)
 
+    @classmethod
+    def _get_default_value(cls) -> bytearray:
+        if cls.SIZE is None:
+            return bytearray()
+
+        return bytearray(cls.SIZE)
+
     def __init__(self, *args, **kwargs):
-        bytearray.__init__(self, *args, **kwargs)
-        if len(self) == 0:
-            self[:] = bytearray([0 for _ in range(self.SIZE)])
+        if not args and not kwargs:
+            init_data = self._get_default_value()
+            bytearray.__init__(self, init_data)
+        else:
+            bytearray.__init__(self, *args, **kwargs)
         self.validate_data(self)
 
     @classmethod
