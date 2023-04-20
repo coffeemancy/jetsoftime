@@ -370,7 +370,7 @@ class PCTechBattleGroup(SizedBinaryData):
         data = data + b'\xFF'*(missing_bytes)
         return data
 
-    def to_bitmask(self):
+    def to_bitmask(self) -> int:
         if 0xFF in self:
             last_pos = self.index(0xFF)
         else:
@@ -379,6 +379,8 @@ class PCTechBattleGroup(SizedBinaryData):
         bitmask = 0
         for pc_index in self[:last_pos]:
             bitmask |= (0x80 >> pc_index)
+
+        return bitmask
 
     @property
     def number_of_pcs(self) -> int:
@@ -659,6 +661,7 @@ def get_tech_name_romrw():
 def get_desc_ptr_romrw():
     return ctt.LocalPointerRW(0x02BE6A, 0x0D0323)
 
+
 _tech_name_rw = ctt.LocalPointerRW(0x010B75, 0x010B6A)
 def read_tech_name_from_ctrom(
         ct_rom: ctrom.CTRom, tech_id: int) -> ctstrings.CTNameString:
@@ -844,6 +847,8 @@ class PCTechATBPenalty(ctt.BinaryData):
 class PCTechMenuGroup(SizedBinaryData):
     SIZE = 1
     ROM_RW = ctt.AbsPointerRW(0x02BCE9)
+
+    bitmask = byte_prop(1, 0xFF)
 
 
 def main():
