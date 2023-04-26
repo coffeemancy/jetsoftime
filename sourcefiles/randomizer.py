@@ -910,7 +910,12 @@ class Randomizer:
         initial_vanilla = False
         if CTRom.validate_ct_rom_bytes(self.out_rom.rom_data.getbuffer()):
             initial_vanilla = True
-            basepatch.mark_initial_free_space(self.out_rom)
+            # It's too hard reclaiming space from basepatch.ips.  Just take
+            # one block that I know is OK.
+            # basepatch.mark_initial_free_space(self.out_rom)
+            self.out_rom.rom_data.space_manager.mark_block(
+                (0x027DE4, 0x028000), ctevent.FSWriteType.MARK_FREE
+            )
 
         # TODO:  Consider working some of the always-applied script changes
         #        Into base_patch.ips to improve generation speed.
@@ -918,8 +923,12 @@ class Randomizer:
         self.__apply_settings_patches(self.out_rom, self.settings)
 
         if initial_vanilla:
+            # self.out_rom.rom_data.space_manager.mark_block(
             chesttext.apply_chest_text_hack(
                 self.out_rom, self.config.item_db
+            )
+            self.out_rom.rom_data.space_manager.mark_block(
+                (0x027DE4, 0x028000), ctevent.FSWriteType.MARK_USED
             )
 
         # This makes copies of heckran cave passagesways, king's trial,
