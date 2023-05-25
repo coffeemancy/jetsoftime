@@ -1,5 +1,6 @@
 '''Module to turn a vanilla CT Rom into an open world one...eventually'''
 from typing import Optional
+from asm import instructions as inst, assemble
 
 import byteops
 import ctrom
@@ -294,6 +295,40 @@ def patch_timegauge(ct_rom: ctrom.CTRom):
     hook = bytes.fromhex('22' + rt_addr_b.hex())
     rom.seek(0x027475)
     rom.write(hook)
+
+
+def apply_tf_compressed_enemy_gfx_hack(ct_rom: ctrom.CTRom):
+    '''
+    By default, CT forces compressed graphics for enemies with id > 0xF8.
+    This hack instead looks at the graphics packet id to determine whether to decompress.
+    '''
+
+    # Original code: @ $C04775 (0x004775)
+    #   LDX $6D       - Load (2*) the object number
+    #   LDA $1101,X   - Look up the enemy_id of that object
+    #   CMP #$F8      - Compare the enemy_id to 0xF8
+    #   BCC $C04781   - If < 0xF8 jump to the compressed gfx routine
+    #   BRL $C04845   - If >= 0xF8 jump to the uncompressed gfx routine
+
+    # Upon entering the above code A holds the graphics packet id.  Only graphics packets
+    # 0 through 6 (PCs) are compressed, so jump to the routines based on that.
+
+    # @ $C04775
+    #   CMP #$07      - Compare the graphics packet id to 7
+    #   BCS $C04781   - If >= 7 jump to the compressed gfx routine
+    #   BRA $C0477E   - If < 7 jump to the BRL
+
+    AM = inst.AddressingMode
+    routine: assemble.ASMList = [
+        inst.CMP(0x07, AM.IMM8),
+        inst.BCS(0x08, AM.REL_8),
+        inst.BRA(0x03, AM.REL_8)
+    ]
+
+    routine_b = assemble.assemble(routine)
+
+    ct_rom.rom_data.seek(0x004775)
+    ct_rom.rom_data.write(routine_b)
 
 
 def apply_misc_patches(ct_rom: ctrom.CTRom):
