@@ -64,6 +64,13 @@ class ASMSnippet:
             for ind, record in enumerate(self.instruction_list)
         }
 
+        # TODO: properly find last command
+        last_entry = self.instruction_list[-1]
+        if isinstance(last_entry.data, str):
+            end = last_entry.offset
+        else:
+            end = last_entry.offset + len(last_entry.data)
+
         for ind, record in enumerate(self.instruction_list):
             data = record.data
             if isinstance(data, _BranchInstruction):
@@ -79,10 +86,14 @@ class ASMSnippet:
 
                 jump_target = record.offset + len(data) + data.argument
                 if jump_target not in cmd_starts:
+                    # Separating this because it's not perfect
+                    # The idea is to allow jumps outside of the snippet's range but
+                    # catch bad jumps within the range.
+                    if jump_target >= 0 and jump_target <= end:
                     # print("ERROR:"+str(data)+f'{jump_target:04X}')
-                    raise inst.InvalidArgumentException(
-                        "Branch is not to the start of a command."
-                    )
+                        raise inst.InvalidArgumentException(
+                            "Branch is not to the start of a command."
+                        )
 
     def to_bytes(self) -> bytes:
 
