@@ -489,6 +489,10 @@ class Randomizer:
             'Unlock Porre Mayor (Porre Elder)'
         )
 
+        item_db[IID.MOON_STONE].set_desc_from_str(
+            'Charge in Sun keep for 65,002,300 yrs'
+        )
+
         item_db[IID.SUN_STONE].set_desc_from_str(
             'Give to Melchior after King\'s Trial'
         )
@@ -1652,6 +1656,8 @@ class Randomizer:
 
         # Add qwertymodo's MSU-1 patch
         # rom_data.patch_ips_file('./patches/chrono_msu1.ips')
+
+        basepatch.apply_tf_compressed_enemy_gfx_hack(ctrom)
 
     @classmethod
     def __apply_settings_patches(cls, ctrom: CTRom,
