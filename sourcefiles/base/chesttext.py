@@ -40,9 +40,13 @@ def write_desc_strings(ct_rom: ctrom.CTRom,
         if index in valid_item_ids:
             item_id = ctenums.ItemID(index)
             desc_str = item_db[item_id].get_desc_as_str()
-            # print(desc_str)
-            desc = CTNameString.from_string(desc_str,
-                                            length=desc_size)
+
+            if not desc_str:
+                desc = CTNameString(b''.join(b'\xEF' for _ in range(desc_size)))
+                desc[0] = 0xFF
+            else:
+                desc = CTNameString.from_string(desc_str,
+                                                length=desc_size)
         else:
             # print(f'Error: {index:02X}')
             desc = CTNameString.from_string(f'Item 0x{index:02X}',
