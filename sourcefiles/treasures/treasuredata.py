@@ -483,10 +483,9 @@ _treas_dists[rset.Difficulty.EASY][TreasureLocTier.MID_HIGH] = \
 # Total weight 110
 _treas_dists[rset.Difficulty.EASY][TreasureLocTier.HIGH_AWESOME] = \
     TreasureDist(
-        (50, _good_cons+_high_cons),
-        (3, _awe_gear),
-        (12, _high_gear),
-        (45, _good_gear)
+        (24, _good_cons+_high_cons+_awe_cons),  # 24/40 = 6/10
+        (4, _awe_gear),                         #  4/40 = 1/4*4/10
+        (12, _high_gear+_good_gear),            # 12/40 = 3/4*4/10
     )
 # Total weight 110
 _treas_dists[rset.Difficulty.NORMAL][TreasureLocTier.LOW] = \
