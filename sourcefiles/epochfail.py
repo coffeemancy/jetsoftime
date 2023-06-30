@@ -345,11 +345,6 @@ def add_jets_turnin_to_blackbird_scaffolding(ct_rom: ctrom.CTRom):
     '''
     Have the JetsOfTime be turned in at the blackbird scaffolding (0x16A)
     '''
-
-    # TODO: Delete debug code
-    ct_rom.rom_data.seek(0x01FFFF)
-    ct_rom.rom_data.write(b'\x01')
-
     update_reborn_epoch_script(ct_rom)
 
     EC = ctevent.EC

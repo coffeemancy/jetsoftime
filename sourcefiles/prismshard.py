@@ -26,9 +26,6 @@ def update_prismshard_quest(ct_rom: ctrom.CTRom):
     accelerate_end_scene(ct_rom)
     shorten_shard_turn_in_script(ct_rom)
 
-    ct_rom.rom_data.seek(0x01FFFF)
-    ct_rom.rom_data.write(b'\x01')
-
 
 def set_quest_activation_flags(ct_rom: ctrom.CTRom):
     '''
