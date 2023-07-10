@@ -4,9 +4,7 @@ import hashlib
 import ctrom
 import ctstrings
 
-
-def write_hash_string(ct_rom: ctrom.CTRom):
-    ''' Puts a hash string on the active/wait screen of this ctrom.'''
+def calculate_hash_string(ct_rom: ctrom.CTRom) -> bytes:
     rom = ct_rom.rom_data
 
     rom.seek(0)
@@ -26,7 +24,11 @@ def write_hash_string(ct_rom: ctrom.CTRom):
         num, rem = divmod(num, len(symbols))
         hash_string.append(symbols[rem])
 
-    hash_string_b = bytes(hash_string)
+    return bytes(hash_string)
+
+def write_hash_string(ct_rom: ctrom.CTRom) -> bytes:
+    ''' Puts a hash string on the active/wait screen of this ctrom.'''
+    hash_string = calculate_hash_string(ct_rom)
 
     seed_ctstr = ctstrings.CTString.from_str('Seed:')
 
@@ -51,7 +53,7 @@ def write_hash_string(ct_rom: ctrom.CTRom):
         '01'  # next line x 2
         'FF B6 A0 A8 B3'  # (space)Wait
         '02 42 00'  # 2nd line 2nd tile
-        + seed_ctstr.hex() + hash_string_b.hex() +  # Seed string
+        + seed_ctstr.hex() + hash_string.hex() +  # Seed string
         '0A 03'  # Change to page 0x03 (menu stuff)
         '02 00 00'  # Top left
         'AC'  # grey square
@@ -71,6 +73,8 @@ def write_hash_string(ct_rom: ctrom.CTRom):
 
     new_loc = 0x400000 - len(new_menu_script)
 
+    rom = ct_rom.rom_data
+
     rom.seek(0x3FC49F)
     rom.write(int.to_bytes(new_loc & 0xFFFF, 2, 'little'))
 
@@ -86,3 +90,5 @@ def write_hash_string(ct_rom: ctrom.CTRom):
 
     rom.seek(new_hdma_loc)
     rom.write(new_hdma)
+
+    return hash_string
