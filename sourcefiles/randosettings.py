@@ -64,6 +64,7 @@ class GameFlags(Flag):
     LOCKED_CHARS = auto()
     UNLOCKED_MAGIC = auto()
     CHRONOSANITY = auto()
+    ROCKSANITY = auto()
     TAB_TREASURES = auto()  # Maybe needs to be part of treasure page?
     BOSS_RANDO = auto()
     DUPLICATE_CHARS = auto()
@@ -109,6 +110,7 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
     _GF.CHRONOSANITY: _GF.BOSS_SCALE,
+    _GF.ROCKSANITY: _GF(0),
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
@@ -153,6 +155,7 @@ _forced_on_dict = {
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
     _GF.CHRONOSANITY: _GF(0),
+    _GF.ROCKSANITY: _GF(0),
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),

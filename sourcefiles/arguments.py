@@ -44,6 +44,9 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
     GF.CHRONOSANITY: FlagEntry(
         "--chronosanity", "-cr",
         "key items may be found in treasure chests"),
+    GF.ROCKSANITY: FlagEntry(
+        "--rocksanity",
+        "key items may be found in rock locations"),
     GF.TAB_TREASURES: FlagEntry(
         "--tab-treasures", None,
         "all treasure chests contain tabs"),
@@ -500,7 +503,7 @@ def get_parser():
     add_flags_to_parser(
         'Basic Flags',
         (GF.FIX_GLITCH, GF.BOSS_SCALE, GF.ZEAL_END, GF.FAST_PENDANT,
-         GF.LOCKED_CHARS, GF.UNLOCKED_MAGIC, GF.CHRONOSANITY,
+         GF.LOCKED_CHARS, GF.UNLOCKED_MAGIC, GF.CHRONOSANITY, GF.ROCKSANITY,
          GF.TAB_TREASURES, GF.BOSS_RANDO, GF.DUPLICATE_CHARS,
          GF.MYSTERY, GF.HEALING_ITEM_RANDO, GF.GEAR_RANDO,
          GF.EPOCH_FAIL), parser

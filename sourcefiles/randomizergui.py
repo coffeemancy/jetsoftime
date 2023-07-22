@@ -2228,7 +2228,8 @@ class RandoGUI:
 
         ki_neutral_flags = [
             GameFlags.UNLOCKED_SKYGATES, GameFlags.ADD_SUNKEEP_SPOT,
-            GameFlags.SPLIT_ARRIS_DOME, GameFlags.VANILLA_DESERT
+            GameFlags.SPLIT_ARRIS_DOME, GameFlags.VANILLA_DESERT,
+            GameFlags.ROCKSANITY
         ]
 
         flag_names = {
@@ -2242,7 +2243,8 @@ class RandoGUI:
             GameFlags.ADD_RACELOG_SPOT: 'Add Race Log Spot',
             GameFlags.SPLIT_ARRIS_DOME: 'Split Arris Dome',
             GameFlags.VANILLA_ROBO_RIBBON: 'Vanilla Robo Ribbon',
-            GameFlags.VANILLA_DESERT: 'Vanilla Desert'
+            GameFlags.VANILLA_DESERT: 'Vanilla Desert',
+            GameFlags.ROCKSANITY: 'Rocksanity',
         }
         tooltip_text = {
             GameFlags.UNLOCKED_SKYGATES: (
@@ -2290,6 +2292,10 @@ class RandoGUI:
                 'The Desert begins locked and is only unlocked by talking to '
                 'the plant lady in Zeal palace.'
             ),
+            GameFlags.ROCKSANITY: (
+                'Rocks are added to the KI pool and rock locations will yield '
+                'a KI.'
+            )
         }
 
         def gridify(frame: tk.Frame, flags: list):

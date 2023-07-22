@@ -672,6 +672,45 @@ class ChronosanityGameConfig(GameConfig):
             fiona_shrine = self.getLocationGroup('Fionashrine')
             fiona_shrine.accessRule = _canAccessFionasShrineVR
 
+        if GF.ROCKSANITY in flags:
+            denadoroRock = LocationGroup(
+                "Denadoro Rock", 1, lambda game: True, lambda weight: weight-1
+            )
+            denadoroRock.addLocation(Location(TID.DENADORO_ROCK))
+            self.locationGroups.append(denadoroRock)
+
+            giantsClawRock = LocationGroup(
+                "Giantsclaw Rock", 1, lambda game: game.canAccessGiantsClaw()
+            )
+            giantsClawRock.addLocation(Location(TID.GIANTS_CLAW_ROCK))
+            self.locationGroups.append(giantsClawRock)
+
+            # laruba
+            larubaRock = LocationGroup(
+                "Laruba Rock", 1, lambda game: game.canAccessPrehistory()
+            )
+            larubaRock.addLocation(Location(TID.LARUBA_ROCK))
+            self.locationGroups.append(larubaRock)
+
+            # kajar
+            kajarRock = LocationGroup(
+                "Kajar Rock", 1, lambda game: game.canAccessMtWoe()
+            )
+            kajarRock.addLocation(Location(TID.KAJAR_ROCK))
+            self.locationGroups.append(kajarRock)
+
+            # black omen
+            blackOmenRock = LocationGroup(
+                "Black Omen Rock", 1, lambda game: (
+                    game.hasKeyItem(ItemID.PENDANT) and
+                    game.hasKeyItem(ItemID.CLONE) and
+                    game.hasKeyItem(ItemID.C_TRIGGER) and
+                    (ItemID.JETSOFTIME if GF.EPOCH_FAIL else True)
+                )
+            )
+            blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+            self.locationGroups.append(blackOmenRock)
+
 
     def initKeyItems(self):
         # NOTE:
@@ -711,6 +750,13 @@ class ChronosanityGameConfig(GameConfig):
 
         if rset.GameFlags.VANILLA_ROBO_RIBBON in self.settings.gameflags:
             keyItemList.remove(ItemID.ROBORIBBON)
+
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            keyItemList.append(ItemID.BLACK_ROCK)
+            keyItemList.append(ItemID.BLUE_ROCK)
+            keyItemList.append(ItemID.GOLD_ROCK)
+            keyItemList.append(ItemID.SILVERROCK)
+            keyItemList.append(ItemID.WHITE_ROCK)
 
         # keyItemList ends up with 5 of each key item except for
         # lateProgression items
@@ -1110,6 +1156,13 @@ class NormalGameConfig(GameConfig):
         if rset.GameFlags.VANILLA_ROBO_RIBBON in self.settings.gameflags:
             self.keyItemList.remove(ItemID.ROBORIBBON)
 
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            self.keyItemList.append(ItemID.BLACK_ROCK)
+            self.keyItemList.append(ItemID.BLUE_ROCK)
+            self.keyItemList.append(ItemID.GOLD_ROCK)
+            self.keyItemList.append(ItemID.SILVERROCK)
+            self.keyItemList.append(ItemID.WHITE_ROCK)
+
     def resolveExtraKeyItems(self):
         num_spots = sum(
             len(group.locations) for group in self.locationGroups
@@ -1310,6 +1363,46 @@ class NormalGameConfig(GameConfig):
         if GF.VANILLA_DESERT in flags:
             fiona_shrine = self.getLocationGroup('Fionashrine')
             fiona_shrine.accessRule = _canAccessFionasShrineVR
+
+        if GF.ROCKSANITY in flags:
+            denadoroRock = LocationGroup(
+                "Denadoro Rock", 1, lambda game: True, lambda weight: weight-1
+            )
+            denadoroRock.addLocation(Location(TID.DENADORO_ROCK))
+            self.locationGroups.append(denadoroRock)
+
+            giantsClawRock = LocationGroup(
+                "Giantsclaw Rock", 1, lambda game: game.canAccessGiantsClaw()
+            )
+            giantsClawRock.addLocation(Location(TID.GIANTS_CLAW_ROCK))
+            self.locationGroups.append(giantsClawRock)
+
+            # laruba
+            larubaRock = LocationGroup(
+                "Laruba Rock", 1, lambda game: game.canAccessPrehistory()
+            )
+            larubaRock.addLocation(Location(TID.LARUBA_ROCK))
+            self.locationGroups.append(larubaRock)
+
+            # kajar
+            kajarRock = LocationGroup(
+                "Kajar Rock", 1, lambda game: game.canAccessMtWoe()
+            )
+            kajarRock.addLocation(Location(TID.KAJAR_ROCK))
+            self.locationGroups.append(kajarRock)
+
+            # black omen
+            blackOmenRock = LocationGroup(
+                "Black Omen Rock", 1, lambda game: (
+                    game.hasKeyItem(ItemID.PENDANT) and
+                    game.hasKeyItem(ItemID.CLONE) and
+                    game.hasKeyItem(ItemID.C_TRIGGER) and
+                    (ItemID.JETSOFTIME if GF.EPOCH_FAIL else True)
+                )
+            )
+            blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+            self.locationGroups.append(blackOmenRock)
+
 
 # end NormalGameConfig class
 
