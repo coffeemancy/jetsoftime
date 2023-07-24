@@ -1835,12 +1835,18 @@ def get_rocksanity_location_groups():
     yield kajarRock
 
     # black omen
+    # lock behind all "major" progression items, to avoiding annoying seeds
     blackOmenRock = LocationGroup(
         "Black Omen Rock", 1, lambda game: (
             game.hasKeyItem(ItemID.PENDANT) and
             game.hasKeyItem(ItemID.CLONE) and
             game.hasKeyItem(ItemID.C_TRIGGER) and
-            (ItemID.JETSOFTIME if rset.GameFlags.EPOCH_FAIL else True)
+            (ItemID.JETSOFTIME if rset.GameFlags.EPOCH_FAIL else True) and
+            game.hasKeyItem(ItemID.GATE_KEY) and
+            game.hasKeyItem(ItemID.DREAMSTONE) and
+            game.hasKeyItem(ItemID.RUBY_KNIFE) and
+            game.hasKeyItem(ItemID.BENT_HILT) and
+            game.hasKeyItem(ItemID.BENT_SWORD)
         )
     )
     blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))

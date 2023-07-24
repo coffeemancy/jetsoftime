@@ -45,7 +45,7 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
         "--chronosanity", "-cr",
         "key items may be found in treasure chests"),
     GF.ROCKSANITY: FlagEntry(
-        "--rocksanity",
+        "--rocksanity", None,
         "key items may be found in rock locations"),
     GF.TAB_TREASURES: FlagEntry(
         "--tab-treasures", None,
