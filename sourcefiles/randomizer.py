@@ -754,6 +754,36 @@ class Randomizer:
         else:
             raise ctevent.CommandNotFoundException('failed to find mm flag')
 
+    def __try_manoria_softlock_fix(self):
+        """
+        Move coordinates of manoria hq fight triggers to avoid double hitting.
+        """
+
+        loc_id = ctenums.LocID.MANORIA_HEADQUARTERS
+        script = self.out_rom.script_manager.get_script(loc_id)
+        EC = eventcommand.EventCommand
+
+        # Trigger objects are in 0x26, 0x27, 0x28.
+        # Coordinates in startup are bogus.  They are set in Arb0.
+
+        # Object 0x26 - 0x144, 0x1AC
+        # Object 0x27 - 0x178, 0x1AC
+        # Object 0x28 - 0x160, 0x198
+
+        # We're going to try to get away with a single trigger (0x27)
+        pos = script.get_function_start(0x26, 3)
+        new_cmd = EC.set_object_coordinates_pixels(0x144, 0x120)
+        script.data[pos: pos + len(new_cmd)] = new_cmd.to_bytearray()
+
+        pos = script.get_function_start(0x28, 3)
+        new_cmd = EC.set_object_coordinates_pixels(0x160, 0x120)
+        script.data[pos: pos + len(new_cmd)] = new_cmd.to_bytearray()
+
+        # Pixel coords are weird.
+        pos = script.get_function_start(0x27, 3)
+        new_cmd = EC.set_object_coordinates_pixels(0x160, 0x1AC)
+        script.data[pos: pos + len(new_cmd)] = new_cmd.to_bytearray()
+
     def __try_supervisors_office_recruit_fix(self):
         '''
         Removes a premature ExploreMode On to prevent losing a recruit.
@@ -1070,6 +1100,9 @@ class Randomizer:
         # Two potential softlocks caused by (presumably) touch == activate.
         self.__try_proto_dome_fix()
         self.__try_mystic_mtn_portal_fix()
+
+        # One softlock caused by (presumably) race condition on touch triggers
+        self.__try_manoria_softlock_fix()
 
         # Potential recruit loss when characters rescue in prison
         self.__try_supervisors_office_recruit_fix()
