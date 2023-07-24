@@ -125,6 +125,7 @@ class Randomizer:
         # generate many seeds from it.
         self.base_ctrom = CTRom(rom, ignore_checksum=not is_vanilla)
         self.out_rom: Optional[CTRom] = None
+        self.hash_string_bytes: Optional[bytes] = None
         self.has_generated = False
 
         self.settings = settings
@@ -1143,7 +1144,7 @@ class Randomizer:
         self.out_rom.write_all_scripts_to_rom(clear_scripts=True)
 
         # Put the seed hash on the active/wait screen
-        seedhash.write_hash_string(self.out_rom)
+        self.hash_string_bytes = seedhash.write_hash_string(self.out_rom)
 
         # Apply post-randomization changes
         self.__apply_cosmetic_patches(self.out_rom, self.settings)
@@ -1224,6 +1225,9 @@ class Randomizer:
         return rv
 
     def write_settings_spoilers(self, file_object):
+        if self.hash_string_bytes is not None:
+            hashstr = str(ctstrings.CTNameString(self.hash_string_bytes)).replace('*', '{star}')
+            file_object.write(f"Seed Hash: {hashstr}\n")
         file_object.write(f"Game Mode: {self.settings.game_mode}\n")
         file_object.write(f"Enemies: {self.settings.enemy_difficulty}\n")
         file_object.write(f"Items: {self.settings.item_difficulty}\n")
