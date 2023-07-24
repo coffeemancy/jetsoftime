@@ -1841,12 +1841,12 @@ def get_rocksanity_location_groups():
             game.hasKeyItem(ItemID.PENDANT) and
             game.hasKeyItem(ItemID.CLONE) and
             game.hasKeyItem(ItemID.C_TRIGGER) and
-            (ItemID.JETSOFTIME if rset.GameFlags.EPOCH_FAIL else True) and
             game.hasKeyItem(ItemID.GATE_KEY) and
             game.hasKeyItem(ItemID.DREAMSTONE) and
             game.hasKeyItem(ItemID.RUBY_KNIFE) and
             game.hasKeyItem(ItemID.BENT_HILT) and
-            game.hasKeyItem(ItemID.BENT_SWORD)
+            game.hasKeyItem(ItemID.BENT_SWORD) and
+            (game.hasKeyItem(ItemID.JETSOFTIME) if rset.GameFlags.EPOCH_FAIL else True)
         )
     )
     blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
