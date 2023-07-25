@@ -1,3 +1,4 @@
+import random
 import typing
 from typing import Optional
 from math import ceil
@@ -1480,6 +1481,11 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
         if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
             removed_items.append(ItemID.DREAMSTONE)
 
+        # remove one random rock as KI since only 4 rock locations
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            rocks = [ki for ki in self.keyItemList if ki.name.endswith('ROCK')]
+            removed_items.append(random.choice(rocks))
+
         for item in removed_items:
             if item in self.keyItemList:  # In case something else removed RR
                 self.keyItemList.remove(item)
@@ -1572,6 +1578,10 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
             )
             self.locationGroups.append(fionaShrineLocations)
 
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            for locationGroup in _get_rocksanity_location_groups():
+                self.locationGroups.append(locationGroup)
+
 
 class IceAgeGameConfig(NormalGameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
@@ -1588,6 +1598,11 @@ class IceAgeGameConfig(NormalGameConfig):
         removed_items = [
             ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
         ]
+
+        # remove one random rock as KI since only 4 rock locations
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            rocks = [ki for ki in self.keyItemList if ki.name.endswith('ROCK')]
+            removed_items.append(random.choice(rocks))
 
         for item in removed_items:
             self.keyItemList.remove(item)
