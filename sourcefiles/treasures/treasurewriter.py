@@ -201,15 +201,24 @@ def write_treasures_to_config(settings: rset.Settings,
         assign[tid].reward = rand.choice(items)
 
     # finally rocks
-    rock_tids = [TID.DENADORO_ROCK, TID.GIANTS_CLAW_ROCK,
-                 TID.LARUBA_ROCK, TID.KAJAR_ROCK, TID.BLACK_OMEN_TERRA_ROCK]
+    if rset.GameFlags.ROCKSANITY in settings.gameflags:
+        # rock locations can be treasures in Rocksanity (e.g. for Chronosanity)
+        # use same treasure tier as other KI in same/similar location
+        assign[TID.DENADORO_ROCK].reward = rand.choice(good_gear)
+        assign[TID.GIANTS_CLAW_ROCK].reward = rand.choice(high_gear)
+        assign[TID.LARUBA_ROCK].reward = rand.choice(high_gear)
+        assign[TID.KAJAR_ROCK].reward = rand.choice(awesome_gear)
+        assign[TID.BLACK_OMEN_TERRA_ROCK].reward = rand.choice(awesome_gear)
+    else:
+        rock_tids = [TID.DENADORO_ROCK, TID.GIANTS_CLAW_ROCK,
+                     TID.LARUBA_ROCK, TID.KAJAR_ROCK, TID.BLACK_OMEN_TERRA_ROCK]
 
-    rocks = [ItemID.GOLD_ROCK, ItemID.BLUE_ROCK,
-             ItemID.SILVERROCK, ItemID.BLACK_ROCK, ItemID.WHITE_ROCK]
-    rand.shuffle(rocks)
+        rocks = [ItemID.GOLD_ROCK, ItemID.BLUE_ROCK,
+                 ItemID.SILVERROCK, ItemID.BLACK_ROCK, ItemID.WHITE_ROCK]
+        rand.shuffle(rocks)
 
-    for ind, tid in enumerate(rock_tids):
-        assign[tid].reward = rocks[ind]
+        for ind, tid in enumerate(rock_tids):
+            assign[tid].reward = rocks[ind]
 
 
 def ptr_to_enum(ptr_list):
