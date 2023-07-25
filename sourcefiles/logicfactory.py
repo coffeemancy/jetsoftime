@@ -1849,9 +1849,13 @@ def _get_rocksanity_location_groups():
     kajarRock.addLocation(Location(TID.KAJAR_ROCK))
     yield kajarRock
 
-    # black omen rock
+    # black omen rock set up to prevent putting go-mode items there
     blackOmenRock = LocationGroup(
-        "Black Omen Rock", 1, lambda game: game.canAccessBlackOmen()
+        "Black Omen Rock", 1, lambda game: (
+            game.canAccessBlackOmen() and
+            game.canAccessMagusCastle() and
+            game.canAccessTyranoLair()
+        )
     )
     blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
     yield blackOmenRock
