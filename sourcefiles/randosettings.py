@@ -529,9 +529,9 @@ class Settings:
             else:
                 raise ValueError
 
-        # Rocksanity implies Unlocked SKyways
+        # Rocksanity implies Unlocked Skyways
         if GameFlags.ROCKSANITY in self.gameflags:
-            self.gameflags |= GameFlags.UNLOCKED_SKYWAYS
+            self.gameflags |= GameFlags.UNLOCKED_SKYGATES
 
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode
