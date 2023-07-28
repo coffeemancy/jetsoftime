@@ -1369,7 +1369,7 @@ class NormalGameConfig(GameConfig):
         if GF.ROCKSANITY in flags:
             self.initLocationsRocksanity()
 
-    def initLocationsRocksanity():
+    def initLocationsRocksanity(self):
         denadoroRock = LocationGroup(
             "Denadoro Rock", 1, lambda game: True
         )
@@ -1652,7 +1652,7 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
             self.locationGroups.append(fionaShrineLocations)
 
         if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
-            NormalConfig.initLocationsRocksanity(self)
+            NormalGameConfig.initLocationsRocksanity(self)
 
 
 class IceAgeGameConfig(NormalGameConfig):
