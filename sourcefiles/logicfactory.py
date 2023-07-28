@@ -674,8 +674,44 @@ class ChronosanityGameConfig(GameConfig):
             fiona_shrine.accessRule = _canAccessFionasShrineVR
 
         if GF.ROCKSANITY in flags:
-            for locationGroup in _get_rocksanity_location_groups():
-                self.locationGroups.append(locationGroup)
+            self.initLocationsRocksanity()
+
+    def initLocationsRocksanity(self):
+        # add rock to existing Denadoro locations
+        denadoro = self.getLocationGroup('DenadoroLocations')
+        denadoro.weight += 1
+        denadoro.addLocation(Location(TID.DENADORO_ROCK))
+
+        # add rock to existing Giants Claw locations
+        giantsclaw = self.getLocationGroup('Giantsclaw')
+        giantsclaw.weight += 3
+        giantsclaw.addLocation(Location(TID.GIANTS_CLAW_ROCK))
+
+        # laruba
+        larubaRock = LocationGroup(
+            "Laruba Rock", 5, lambda game: game.canAccessPrehistory()
+        )
+        larubaRock.addLocation(Location(TID.LARUBA_ROCK))
+
+        # kajar
+        kajarRock = LocationGroup(
+            "Kajar Rock", 5, lambda game: game.canAccessMtWoe()
+        )
+        kajarRock.addLocation(Location(TID.KAJAR_ROCK))
+
+        # black omen rock set up to prevent putting go-mode items there
+        blackOmenRock = LocationGroup(
+            "Black Omen Rock", 1, lambda game: (
+                game.canAccessBlackOmen() and
+                game.canAccessMagusCastle() and
+                game.canAccessTyranoLair()
+            )
+        )
+        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+
+        self.locationGroups.extend([
+            larubaRock, kajarRock, blackOmenRock
+        ])
 
 
     def initKeyItems(self):
@@ -1331,8 +1367,45 @@ class NormalGameConfig(GameConfig):
             fiona_shrine.accessRule = _canAccessFionasShrineVR
 
         if GF.ROCKSANITY in flags:
-            for locationGroup in _get_rocksanity_location_groups():
-                self.locationGroups.append(locationGroup)
+            self.initLocationsRocksanity()
+
+    def initLocationsRocksanity():
+        denadoroRock = LocationGroup(
+            "Denadoro Rock", 1, lambda game: True
+        )
+        denadoroRock.addLocation(Location(TID.DENADORO_ROCK))
+
+        giantsClawRock = LocationGroup(
+            "Giantsclaw Rock", 1, lambda game: game.canAccessGiantsClaw()
+        )
+        giantsClawRock.addLocation(Location(TID.GIANTS_CLAW_ROCK))
+
+        # laruba
+        larubaRock = LocationGroup(
+            "Laruba Rock", 1, lambda game: game.canAccessPrehistory()
+        )
+        larubaRock.addLocation(Location(TID.LARUBA_ROCK))
+
+        # kajar
+        kajarRock = LocationGroup(
+            "Kajar Rock", 1, lambda game: game.canAccessMtWoe()
+        )
+        kajarRock.addLocation(Location(TID.KAJAR_ROCK))
+
+        # black omen rock set up to prevent putting go-mode items there
+        blackOmenRock = LocationGroup(
+            "Black Omen Rock", 1, lambda game: (
+                game.canAccessBlackOmen() and
+                game.canAccessMagusCastle() and
+                game.canAccessTyranoLair()
+            )
+        )
+        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+
+        self.locationGroups.extend([
+            denadoroRock, giantsClawRock, larubaRock, kajarRock, blackOmenRock
+        ])
+
 # end NormalGameConfig class
 
 
@@ -1579,8 +1652,7 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
             self.locationGroups.append(fionaShrineLocations)
 
         if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
-            for locationGroup in _get_rocksanity_location_groups():
-                self.locationGroups.append(locationGroup)
+            NormalConfig.initLocationsRocksanity(self)
 
 
 class IceAgeGameConfig(NormalGameConfig):
@@ -1820,42 +1892,3 @@ def getGameConfig(settings: rset.Settings, config: cfg.RandoConfig):
 
     return CfgType(settings, config)
 # end getGameConfig
-
-
-def _get_rocksanity_location_groups():
-    denadoroRock = LocationGroup(
-        "Denadoro Rock", 1, lambda game: True, lambda weight: weight-1
-    )
-    denadoroRock.addLocation(Location(TID.DENADORO_ROCK))
-    yield denadoroRock
-
-    giantsClawRock = LocationGroup(
-        "Giantsclaw Rock", 1, lambda game: game.canAccessGiantsClaw()
-    )
-    giantsClawRock.addLocation(Location(TID.GIANTS_CLAW_ROCK))
-    yield giantsClawRock
-
-    # laruba
-    larubaRock = LocationGroup(
-        "Laruba Rock", 1, lambda game: game.canAccessPrehistory()
-    )
-    larubaRock.addLocation(Location(TID.LARUBA_ROCK))
-    yield larubaRock
-
-    # kajar
-    kajarRock = LocationGroup(
-        "Kajar Rock", 1, lambda game: game.canAccessMtWoe()
-    )
-    kajarRock.addLocation(Location(TID.KAJAR_ROCK))
-    yield kajarRock
-
-    # black omen rock set up to prevent putting go-mode items there
-    blackOmenRock = LocationGroup(
-        "Black Omen Rock", 1, lambda game: (
-            game.canAccessBlackOmen() and
-            game.canAccessMagusCastle() and
-            game.canAccessTyranoLair()
-        )
-    )
-    blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
-    yield blackOmenRock
