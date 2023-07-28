@@ -171,7 +171,7 @@ class Randomizer:
         if rset.GameFlags.MYSTERY in self.settings.gameflags:
             self.settings = mystery.generate_mystery_settings(self.settings)
 
-        self.settings.fix_flag_conflcits()
+        self.settings.fix_flag_conflicts()
 
         # Some of the config defaults (prices, techdb, enemy stats) are
         # read from the rom.  This routine partially patches a copy of the

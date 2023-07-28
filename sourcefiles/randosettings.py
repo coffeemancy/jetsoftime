@@ -482,7 +482,7 @@ class Settings:
 
         return ret
 
-    def fix_flag_conflcits(self):
+    def fix_flag_conflicts(self):
         '''
         The gui should prevent bad flag choices.  In the event that it somehow
         does not, this method will silently make changes to the flags to fix
