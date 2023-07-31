@@ -266,6 +266,11 @@ def get_objective_keys(obj_str: str, settings: rset.Settings,
                 QID.CLEAR_SUN_PALACE, QID.CLEAR_SUNKEN_DESERT,
             ]
 
+            # Note that this does not stop someone from naming an impossible
+            # quest on purpose.  It just prevents impossible quests from being
+            # drawn randomly.
+            if epoch_fail:
+                gated_quests.remove(QID.GIVE_JERKY_TO_MAYOR)
             if not (epoch_fail and unlocked_skyway):
                 gated_quests.remove(QID.GAIN_EPOCH_FLIGHT)
 
