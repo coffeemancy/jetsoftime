@@ -1375,6 +1375,7 @@ def get_reassign_techdb(orig_db, reassign, dup_duals=False):
     # hardcode the new starts for the db here.  I have the free space manager
     # but integrating it with the rest of the randomizer is an ordeal.
     # Should be max 0xFE techs now?  Should never exceed 0x9A.
+    # Actually it's 0x9B because tech0 is fake.
 
     new_db.control_start = 0x5F0000
     new_db.effect_start = 0x5F1000
@@ -1382,11 +1383,13 @@ def get_reassign_techdb(orig_db, reassign, dup_duals=False):
     new_db.target_start = 0x5f3000
     new_db.bat_grp_start = 0x5F3200
     new_db.menu_grp_start = 0x5F3500
+
+    # Names are 0xB bytes long, so we can have 0xB*0x9B = 0x6A9 bytes
     new_db.name_start = 0x5F4000
 
     # new_db.desc_new_start = 0x5F5100
-    new_db.set_desc_start(0x5F4800)
-    new_db.desc_ptr_start = 0x5F4600
+    new_db.set_desc_start(0x5F4A00)
+    new_db.desc_ptr_start = 0x5F4800
 
     new_db.techs_learned_start = 0x4F0230
 
