@@ -1690,24 +1690,12 @@ class RandoGUI:
                 self.output_dir.set(str(input_path.parent))
 
             base_name = input_path.name.split('.')[0]
-            flag_str = self.settings.get_flag_string()
-
-            out_filename = f"{base_name}.{flag_str}.{seed}.sfc"
             out_dir = self.output_dir.get()
-            out_path = str(pathlib.Path(out_dir).joinpath(out_filename))
 
-            with open(out_path, 'wb') as outfile:
-                outfile.write(out_rom)
-
-            spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.txt"
-            spoiler_path = \
-                str(pathlib.Path(out_dir).joinpath(spoiler_filename))
-            json_spoiler_filename = \
-                f"{base_name}.{flag_str}.{seed}.spoilers.json"
-            json_spoiler_path = \
-                str(pathlib.Path(out_dir).joinpath(json_spoiler_filename))
-            rando.write_spoiler_log(spoiler_path)
-            rando.write_json_spoiler_log(json_spoiler_path)
+            writer = randomizer.RandomizerWriter(rando, base_name=base_name)
+            writer.write_output_rom(out_dir)
+            writer.write_spoiler_log(out_dir)
+            writer.write_json_spoiler_log(out_dir)
 
             tk.messagebox.showinfo(
                 title='Randomization Complete',
