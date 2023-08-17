@@ -64,6 +64,7 @@ class GameFlags(Flag):
     LOCKED_CHARS = auto()
     UNLOCKED_MAGIC = auto()
     CHRONOSANITY = auto()
+    ROCKSANITY = auto()
     TAB_TREASURES = auto()  # Maybe needs to be part of treasure page?
     BOSS_RANDO = auto()
     DUPLICATE_CHARS = auto()
@@ -109,13 +110,14 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
     _GF.CHRONOSANITY: _GF.BOSS_SCALE,
+    _GF.ROCKSANITY: _GF(0),
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
     _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_LIST: _GF(0),
+    _GF.BUCKET_LIST: _GF.ROCKSANITY,
     _GF.MYSTERY: _GF(0),
     _GF.GEAR_RANDO: _GF(0),
     _GF.HEALING_ITEM_RANDO: _GF(0),
@@ -126,7 +128,7 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT |
         _GF.ADD_RACELOG_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_JOHNNY_RACE |
         _GF.SPLIT_ARRIS_DOME | _GF.RESTORE_TOOLS | _GF.UNLOCKED_SKYGATES |
-        _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON
+        _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON | _GF.ROCKSANITY
     ),
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
@@ -153,6 +155,7 @@ _forced_on_dict = {
     _GF.LOCKED_CHARS: _GF(0),
     _GF.UNLOCKED_MAGIC: _GF(0),
     _GF.CHRONOSANITY: _GF(0),
+    _GF.ROCKSANITY: _GF.UNLOCKED_SKYGATES,
     _GF.TAB_TREASURES: _GF(0),
     _GF.BOSS_RANDO: _GF(0),
     _GF.DUPLICATE_CHARS: _GF(0),
@@ -479,7 +482,7 @@ class Settings:
 
         return ret
 
-    def fix_flag_conflcits(self):
+    def fix_flag_conflicts(self):
         '''
         The gui should prevent bad flag choices.  In the event that it somehow
         does not, this method will silently make changes to the flags to fix
@@ -525,6 +528,10 @@ class Settings:
                 added_kis -= 1
             else:
                 raise ValueError
+
+        # Rocksanity implies Unlocked Skyways
+        if GameFlags.ROCKSANITY in self.gameflags:
+            self.gameflags |= GameFlags.UNLOCKED_SKYGATES
 
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode

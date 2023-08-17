@@ -1,3 +1,4 @@
+import random
 import typing
 from typing import Optional
 from math import ceil
@@ -672,6 +673,46 @@ class ChronosanityGameConfig(GameConfig):
             fiona_shrine = self.getLocationGroup('Fionashrine')
             fiona_shrine.accessRule = _canAccessFionasShrineVR
 
+        if GF.ROCKSANITY in flags:
+            self.initLocationsRocksanity()
+
+    def initLocationsRocksanity(self):
+        # add rock to existing Denadoro locations
+        denadoro = self.getLocationGroup('DenadoroLocations')
+        denadoro.weight += 1
+        denadoro.addLocation(Location(TID.DENADORO_ROCK))
+
+        # add rock to existing Giants Claw locations
+        giantsclaw = self.getLocationGroup('Giantsclaw')
+        giantsclaw.weight += 3
+        giantsclaw.addLocation(Location(TID.GIANTS_CLAW_ROCK))
+
+        # laruba
+        larubaRock = LocationGroup(
+            "Laruba Rock", 5, lambda game: game.canAccessPrehistory()
+        )
+        larubaRock.addLocation(Location(TID.LARUBA_ROCK))
+
+        # kajar
+        kajarRock = LocationGroup(
+            "Kajar Rock", 5, lambda game: game.canAccessMtWoe()
+        )
+        kajarRock.addLocation(Location(TID.KAJAR_ROCK))
+
+        # black omen rock set up to prevent putting go-mode items there
+        blackOmenRock = LocationGroup(
+            "Black Omen Rock", 1, lambda game: (
+                game.canAccessBlackOmen() and
+                game.canAccessMagusCastle() and
+                game.canAccessTyranoLair()
+            )
+        )
+        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+
+        self.locationGroups.extend([
+            larubaRock, kajarRock, blackOmenRock
+        ])
+
 
     def initKeyItems(self):
         # NOTE:
@@ -731,6 +772,13 @@ class ChronosanityGameConfig(GameConfig):
         # Add additional copies of the pendant and gate key
         keyItemList.extend([ItemID.GATE_KEY, ItemID.GATE_KEY, ItemID.GATE_KEY,
                             ItemID.PENDANT, ItemID.PENDANT, ItemID.PENDANT])
+
+        # Add all 5 rocks if Rocksanity used with all Chronosanity modes
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            keyItemList.extend([
+                ItemID.BLACK_ROCK, ItemID.BLUE_ROCK, ItemID.GOLD_ROCK,
+                ItemID.SILVERROCK, ItemID.WHITE_ROCK
+            ])
 
         self.keyItemList = keyItemList
     # end initKeyItems
@@ -1110,6 +1158,13 @@ class NormalGameConfig(GameConfig):
         if rset.GameFlags.VANILLA_ROBO_RIBBON in self.settings.gameflags:
             self.keyItemList.remove(ItemID.ROBORIBBON)
 
+        # add all 5 rocks as KI for all 5 rock locations when Rocksanity used
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            self.keyItemList.extend([
+                ItemID.BLACK_ROCK, ItemID.BLUE_ROCK, ItemID.GOLD_ROCK,
+                ItemID.SILVERROCK, ItemID.WHITE_ROCK
+            ])
+
     def resolveExtraKeyItems(self):
         num_spots = sum(
             len(group.locations) for group in self.locationGroups
@@ -1311,6 +1366,46 @@ class NormalGameConfig(GameConfig):
             fiona_shrine = self.getLocationGroup('Fionashrine')
             fiona_shrine.accessRule = _canAccessFionasShrineVR
 
+        if GF.ROCKSANITY in flags:
+            self.initLocationsRocksanity()
+
+    def initLocationsRocksanity(self):
+        denadoroRock = LocationGroup(
+            "Denadoro Rock", 1, lambda game: True
+        )
+        denadoroRock.addLocation(Location(TID.DENADORO_ROCK))
+
+        giantsClawRock = LocationGroup(
+            "Giantsclaw Rock", 1, lambda game: game.canAccessGiantsClaw()
+        )
+        giantsClawRock.addLocation(Location(TID.GIANTS_CLAW_ROCK))
+
+        # laruba
+        larubaRock = LocationGroup(
+            "Laruba Rock", 1, lambda game: game.canAccessPrehistory()
+        )
+        larubaRock.addLocation(Location(TID.LARUBA_ROCK))
+
+        # kajar
+        kajarRock = LocationGroup(
+            "Kajar Rock", 1, lambda game: game.canAccessMtWoe()
+        )
+        kajarRock.addLocation(Location(TID.KAJAR_ROCK))
+
+        # black omen rock set up to prevent putting go-mode items there
+        blackOmenRock = LocationGroup(
+            "Black Omen Rock", 1, lambda game: (
+                game.canAccessBlackOmen() and
+                game.canAccessMagusCastle() and
+                game.canAccessTyranoLair()
+            )
+        )
+        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+
+        self.locationGroups.extend([
+            denadoroRock, giantsClawRock, larubaRock, kajarRock, blackOmenRock
+        ])
+
 # end NormalGameConfig class
 
 
@@ -1459,6 +1554,11 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
         if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
             removed_items.append(ItemID.DREAMSTONE)
 
+        # remove one random rock as KI since only 4 rock locations
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            rocks = [ki for ki in self.keyItemList if ki.name.endswith('ROCK')]
+            removed_items.append(random.choice(rocks))
+
         for item in removed_items:
             if item in self.keyItemList:  # In case something else removed RR
                 self.keyItemList.remove(item)
@@ -1551,6 +1651,9 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
             )
             self.locationGroups.append(fionaShrineLocations)
 
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            NormalGameConfig.initLocationsRocksanity(self)
+
 
 class IceAgeGameConfig(NormalGameConfig):
     def __init__(self, settings: rset.Settings, config: cfg.RandoConfig):
@@ -1567,6 +1670,11 @@ class IceAgeGameConfig(NormalGameConfig):
         removed_items = [
             ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
         ]
+
+        # remove one random rock as KI since only 4 rock locations
+        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
+            rocks = [ki for ki in self.keyItemList if ki.name.endswith('ROCK')]
+            removed_items.append(random.choice(rocks))
 
         for item in removed_items:
             self.keyItemList.remove(item)

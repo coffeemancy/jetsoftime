@@ -44,6 +44,10 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
     GF.CHRONOSANITY: FlagEntry(
         "--chronosanity", "-cr",
         "key items may be found in treasure chests"),
+    GF.ROCKSANITY: FlagEntry(
+        "--rocksanity", None,
+        "rocks are added as key items and key items may be found "
+        "in rock locations"),
     GF.TAB_TREASURES: FlagEntry(
         "--tab-treasures", None,
         "all treasure chests contain tabs"),
@@ -536,7 +540,7 @@ def get_parser():
     add_flags_to_parser(
         "Logic Flags that are KI/KI Spot Neutral",
         (GF.UNLOCKED_SKYGATES, GF.ADD_SUNKEEP_SPOT, GF.SPLIT_ARRIS_DOME,
-         GF.VANILLA_DESERT),
+         GF.VANILLA_DESERT, GF.ROCKSANITY),
         parser
     )
 
