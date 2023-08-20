@@ -70,6 +70,9 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
         "--bucket-list", "-k",
         "allow the End of Time bucket to Lavos to activate when enough "
         "objectives have been completed."),
+    GF.TECH_DAMAGE_RANDO: FlagEntry(
+        "--tech-damage-rando", None,
+        "Randomize the damage dealt by single techs."),
     GF.MYSTERY: FlagEntry(
         "--mystery", None,
         "choose flags randomly according to mystery settings"),
@@ -520,7 +523,7 @@ def get_parser():
     add_flags_to_parser(
         "Extra Flags",
         (GF.STARTERS_SUFFICIENT, GF.USE_ANTILIFE, GF.TACKLE_EFFECTS_ON,
-         GF.BUCKET_LIST),
+         GF.BUCKET_LIST, GF.TECH_DAMAGE_RANDO),
         parser
     )
 

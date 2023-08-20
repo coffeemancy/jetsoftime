@@ -2216,6 +2216,18 @@ class RandoGUI:
             'Allow for objectives to control bucket activation.'
         )
 
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Tech Damage Randomization',
+            variable=self.flag_dict[GameFlags.TECH_DAMAGE_RANDO],
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Randomize damage inflicted by single techs.'
+        )
+
         plus_ki_flags = [
             GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS
         ]
