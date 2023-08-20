@@ -46,6 +46,7 @@ import prismshard
 import scriptshortener
 import bucketlist
 import techdescs
+import techdamagerando
 
 import byteops
 import ctenums
@@ -199,6 +200,14 @@ class Randomizer:
         techrandomizer.write_tech_order_to_config(self.settings,
                                                   self.config)
 
+        # Tech Damage Rando can add duplicate effect headers for randomized powers.
+        # So we have to generate the combo tech descs before randomizing the single tech damage.
+        techdescs.update_combo_tech_descs(self.config.tech_db)
+        if rset.GameFlags.TECH_DAMAGE_RANDO in self.settings.gameflags:
+            techdamagerando.modify_all_single_techs(self.config.tech_db)
+        techdescs.update_single_tech_descs(self.config.tech_db)
+        techdescs.clean_up_desc_space(self.config.tech_db)
+
         # Fast Magic.  Should be fine before or after charrando.
         # Safest after.
         fastmagic.write_config(self.settings, self.config)
@@ -264,9 +273,6 @@ class Randomizer:
 
         # Ice age GG buffs if IA flag is present in settings.
         iceage.write_config(self.settings, self.config)
-
-        # Do this after charrando to hopefully get dup duals too
-        techdescs.update_all_tech_descs(self.config.tech_db)
 
     @classmethod
     def __set_fast_zeal_teleporters(cls, ct_rom: CTRom):

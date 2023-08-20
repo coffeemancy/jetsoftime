@@ -94,6 +94,8 @@ class GameFlags(Flag):
     SPLIT_ARRIS_DOME = auto()
     VANILLA_ROBO_RIBBON = auto()
     VANILLA_DESERT = auto()
+    # No longer Logic Tweak Flags
+    TECH_DAMAGE_RANDO = auto()
 
 
 # Dictionary for what flags force what other flags off.
