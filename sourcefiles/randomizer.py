@@ -13,6 +13,7 @@ from typing import Optional
 
 import arguments
 import charassign
+import eventfunction
 
 from base import chesttext, basepatch
 
@@ -761,6 +762,63 @@ class Randomizer:
         else:
             raise ctevent.CommandNotFoundException('failed to find mm flag')
 
+    def __try_bromide_fix(self):
+        """
+        Fix the bromide not being obtainable (despite message) after the boss
+        is defeated.
+        """
+        loc_id = ctenums.LocID.MANORIA_STORAGE
+        script = self.out_rom.script_manager.get_script(loc_id)
+        EC = eventcommand.EventCommand
+        OP = eventcommand.Operation
+
+        pos = script.find_exact_command(
+            EC.if_mem_op_value(0x7F0100, OP.BITWISE_AND_NONZERO, 0x02, 1, 0),
+            script.get_function_start(8, 1)
+        )
+
+        pos += 5  # Get to next command, a goto.
+
+        jump_byte_pos = pos + 1
+        flag_set_pos = script.find_exact_command(EC.set_bit(0x7F00FE, 0x02), pos)
+
+        bytes_jumped = flag_set_pos - jump_byte_pos
+        script.data[jump_byte_pos] = bytes_jumped
+
+    def __try_sunstone_pickup_fix(self):
+        """
+        Place the item addition and flag setting prior to the textbox.
+        This is done already if ADD_SUNKEEP_SPOT is active.
+        """
+
+        if rset.GameFlags.ADD_SUNKEEP_SPOT in self.settings.gameflags:
+            return
+
+        loc_id = ctenums.LocID.SUN_KEEP_2300
+        script = self.out_rom.script_manager.get_script(loc_id)
+        EC = eventcommand.EventCommand
+        EF = eventfunction.EventFunction
+        OP = eventcommand.Operation
+        FS = eventcommand.FuncSync
+
+        pos = script.find_exact_command(EC.set_explore_mode(False),
+                                        script.get_function_start(8, 1))
+        script.delete_commands(pos, 1)
+        set_bit_cmd = EC.set_bit(0x7F013A, 0x40)
+
+        pos, _ = script.find_command([0xBB], pos)
+        script.insert_commands(
+            EF().add(set_bit_cmd)
+            .add(EC.add_item(ctenums.ItemID.SUN_STONE)).get_bytearray(), pos
+        )
+
+        pos = script.find_exact_command(set_bit_cmd, pos + len(set_bit_cmd))
+        script.delete_commands(pos, 2)
+
+
+
+
+
     def __try_manoria_softlock_fix(self):
         """
         Move coordinates of manoria hq fight triggers to avoid double hitting.
@@ -1110,6 +1168,12 @@ class Randomizer:
 
         # One softlock caused by (presumably) race condition on touch triggers
         self.__try_manoria_softlock_fix()
+
+        # Bromide not obtainable after Yakra fix
+        self.__try_bromide_fix()
+
+        # Sunstone flag/item is not added until after music change
+        self.__try_sunstone_pickup_fix()
 
         # Potential recruit loss when characters rescue in prison
         self.__try_supervisors_office_recruit_fix()
