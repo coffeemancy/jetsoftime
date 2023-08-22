@@ -119,7 +119,7 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     _GF.DUPLICATE_TECHS: _GF(0),
     _GF.VISIBLE_HEALTH: _GF(0),
     _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_LIST: _GF.ROCKSANITY,
+    _GF.BUCKET_LIST: _GF(0),
     _GF.MYSTERY: _GF(0),
     _GF.GEAR_RANDO: _GF(0),
     _GF.HEALING_ITEM_RANDO: _GF(0),
