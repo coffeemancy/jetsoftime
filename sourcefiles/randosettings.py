@@ -535,9 +535,7 @@ class Settings:
             else:
                 raise ValueError
 
-        # TODO: refactor to use forced_on_dict, currently only in mystery
-
-        # Duplicate Character simplies Character Rando
+        # Duplicate Character implies Character Rando
         if GameFlags.DUPLICATE_CHARS in self.gameflags:
             self.gameflags |= GameFlags.CHAR_RANDO
 
