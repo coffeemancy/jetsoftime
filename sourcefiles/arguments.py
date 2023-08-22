@@ -853,6 +853,7 @@ def get_parser():
     opts_group.add_argument(
         "--battle-speed",
         help="default battle speed (lower is faster)",
+        type=int,
         choices=range(1, 9),
         default=5
     )
@@ -860,6 +861,7 @@ def get_parser():
     opts_group.add_argument(
         "--battle-msg-speed",
         help="default battle message speed (lower is faster)",
+        type=int,
         choices=range(1, 9),
         default=5
     )
@@ -867,6 +869,7 @@ def get_parser():
     opts_group.add_argument(
         "--battle-gauge-style",
         help="default atb gauge style (default 1)",
+        type=int,
         choices=range(3),
         default=1
     )
@@ -874,6 +877,7 @@ def get_parser():
     opts_group.add_argument(
         "--background",
         help="default background (default 1)",
+        type=int,
         choices=range(1, 9),
         default=1
     )
