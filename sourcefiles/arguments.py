@@ -487,7 +487,7 @@ def get_parser():
         "balanced - random but biased towards better techs later\n"
         "  random - fully random (default)",
         choices=['normal', 'balanced', 'random'],
-        default='normal',
+        default='random',
         type=str.lower
     )
 
