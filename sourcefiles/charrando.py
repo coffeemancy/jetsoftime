@@ -75,13 +75,12 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
         else:
             all_choices = [p for p in permutations(range(0, 7), r=7)]
             shuffle = random.sample(all_choices, k=len(all_choices))
-            pc_ids = sorted(CharID)
             try:
                 permutation = next(
                     p for p in shuffle
                     if all(
                         p[pc_id] in settings.char_choices[pc_id]
-                        for pc_id in pc_ids
+                        for pc_id in CharID
                     )
                 )
             except StopIteration:
@@ -89,7 +88,7 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
                     'No valid permutation for unique characters based on '
                     'character choices.'
                 )
-            choices = {pc_id: permutation[pc_id] for pc_id in pc_ids}
+            choices = {pc_id: permutation[pc_id] for pc_id in CharID}
 
         # Get Copies of stats
         orig_stats = {
