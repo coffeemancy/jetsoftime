@@ -876,9 +876,23 @@ class ObtainNRocksObjective(Objective):
     def __init__(self,
                  num_rocks_needed: int,
                  num_rocks_addr: int,
+                 treasure_dict: dict[ctenums.TreasureID, treasuretypes.Treasure],
                  item_id: ctenums.ItemID):
         if num_rocks_needed not in range(1, 6):
             raise ValueError('num_rocks_needed must be in range(1, 6)')
+
+        rocks = (ctenums.ItemID.BLUE_ROCK, ctenums.ItemID.BLACK_ROCK,
+                 ctenums.ItemID.SILVERROCK, ctenums.ItemID.WHITE_ROCK,
+                 ctenums.ItemID.GOLD_ROCK)
+        rock_dict = {
+            tid: treasure for (tid, treasure) in treasure_dict.items()
+            if treasure.reward in rocks
+        }
+
+        if len(rock_dict) != 5:
+            raise ValueError("Not all rocks are assigned in treaure_dict")
+
+        self.rock_dict = rock_dict
         self.num_rocks_needed = num_rocks_needed
         self.num_rocks_addr = num_rocks_addr
         self.name = f'*{num_rocks_needed} Rocks'
@@ -890,43 +904,27 @@ class ObtainNRocksObjective(Objective):
             bucket_settings: rset.BucketSettings,
             objective_count_addr: int
             ):
-        '''Add listeners for the vanilla rock locations'''
+        """Add listeners to the treasures which hold rocks."""
 
-        # TODO: Allow the objective to find the TIDs which have the rocks and
-        #       adjust accordingly.  For now, just do default locations.
-
-        # There are two treasure_boxes and three script locations.
-        # Treasure boxes:
-        #   - ChestID = 0x5E, LocID = 0xC4 Giant's Claw Caverns
-        #   - ChestID = 0xCE, LocID = 0x145 Black Omen Terra Mutant
-        caverns_script = ct_rom.script_manager.get_script(
-            ctenums.LocID.GIANTS_CLAW_CAVERNS)
-        add_box_check(caverns_script, 0x5E, self,
-                      self.num_rocks_addr, self.num_rocks_needed,
-                      bucket_settings, objective_count_addr)
-
-        bo_terra_script = ct_rom.script_manager.get_script(
-            ctenums.LocID.BLACK_OMEN_TERRA_MUTANT)
-        add_box_check(bo_terra_script, 0xCE, self,
-                      self.num_rocks_addr, self.num_rocks_needed,
-                      bucket_settings, objective_count_addr)
-
-        # Add hooks to the other three rocks
-        tids = [ctenums.TreasureID.DENADORO_ROCK,
-                ctenums.TreasureID.LARUBA_ROCK,
-                ctenums.TreasureID.KAJAR_ROCK]
-
-        treasure_dict = treasuretypes.get_base_treasure_dict()
-        for tid in tids:
-            treasure = treasure_dict[tid]
-            if not isinstance(treasure, treasuretypes.ScriptTreasure):
-                raise TypeError
-
-            add_script_treasure_count(
-                ct_rom, treasure, self,
-                self.num_rocks_addr, self.num_rocks_needed,
-                bucket_settings, objective_count_addr
-            )
+        for tid, treasure in self.rock_dict.items():
+            if isinstance(treasure, treasuretypes.ScriptTreasure):
+                add_script_treasure_count(
+                    ct_rom, treasure, self,
+                    self.num_rocks_addr, self.num_rocks_needed,
+                    bucket_settings, objective_count_addr
+                )
+            elif isinstance(treasure, treasuretypes.ChestTreasure):
+                # I've checked chest-having locations for enough objects.
+                # If more box checks are added for other objectives, we may
+                # need to aggregate box check objects.
+                chest_id = treasure.chest_index
+                loc_id = treasuretypes.get_chest_loc_id(chest_id)
+                script = ct_rom.script_manager.get_script(loc_id)
+                add_box_check(script, chest_id, self,
+                              self.num_rocks_addr, self.num_rocks_needed,
+                              bucket_settings, objective_count_addr)
+            else:
+                raise TypeError(f"Unsupported Treasure Type: {type(treasure).__name__}")
 
 
 class CollectNFragmentsObjective(Objective):
