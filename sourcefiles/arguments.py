@@ -133,7 +133,7 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
         "--add-racelog-spot", None,
         "Gain a KI from the vanilla Race Log chest."),
     GF.SPLIT_ARRIS_DOME: FlagEntry(
-        "--split-arris=dome", None,
+        "--split-arris-dome", None,
         "Get one key item from the dead guy after Guardian.  Get a second "
         "after checking the Arris dome computer and bringing the Seed "
         "(new KI) to Doan."),
