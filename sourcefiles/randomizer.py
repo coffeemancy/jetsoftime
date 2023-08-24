@@ -1102,16 +1102,16 @@ class Randomizer:
         #   - Duplicate characters changes to Spekkio when not in LW
         flags = self.settings.gameflags
         mode = self.settings.game_mode
-        dup_chars = rset.GameFlags.DUPLICATE_CHARS in flags
+        char_rando = rset.GameFlags.CHAR_RANDO in flags
         locked_chars = rset.GameFlags.LOCKED_CHARS in flags
         lost_worlds = rset.GameMode.LOST_WORLDS == mode
         vanilla = rset.GameMode.VANILLA_RANDO == mode
         epoch_fail = rset.GameFlags.EPOCH_FAIL in flags
 
-        if dup_chars and not lost_worlds:
-            # Lets Spekkio give magic properly to duplicates
-            dc_spekkio_event = Event.from_flux('./flux/charrando-eot.flux')
-            script_manager.set_script(dc_spekkio_event,
+        if char_rando and not lost_worlds:
+            # Lets Spekkio give magic properly with randomized/duplicate chars
+            rc_spekkio_event = Event.from_flux('./flux/charrando-eot.flux')
+            script_manager.set_script(rc_spekkio_event,
                                       ctenums.LocID.SPEKKIO)
 
         if locked_chars:
@@ -1308,7 +1308,7 @@ class Randomizer:
                 f"Magic {tab_set.magic_min}-{tab_set.magic_max}, "
                 f"Speed {tab_set.speed_min}-{tab_set.speed_max}\n"
             )
-        if rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags and \
+        if rset.GameFlags.CHAR_RANDO in self.settings.gameflags and \
            self.settings.char_choices != rset.Settings().char_choices:
 
             dupes = self._summarize_dupes()
@@ -1400,7 +1400,7 @@ class Randomizer:
         file_object.write("---------------\n")
 
         CharID = ctenums.CharID
-        dup_chars = rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags
+        char_rando = rset.GameFlags.CHAR_RANDO in self.settings.gameflags
         tech_db = self.config.tech_db
 
         # Fix volt bite damage error.
@@ -1411,7 +1411,7 @@ class Randomizer:
         for char_id in range(7):
             pc_id = CharID(char_id)
             file_object.write(f"{CharID(char_id)}:")
-            if dup_chars:
+            if char_rando:
                 file_object.write(
                     f" assigned to {pcstats.get_character_assignment(pc_id)}"
                 )
