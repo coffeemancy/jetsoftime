@@ -2192,6 +2192,32 @@ class Randomizer:
         rando.generate_rom()
         return rando.get_generated_rom()
 
+class RandomizerWriter:
+    '''Utility class for writing output/spoilers for Randomizer.'''
+    def __init__(self, rando: Randomizer, base_name: str):
+        self.rando = rando
+
+        flag_string = rando.settings.get_flag_string()
+        seed =  rando.settings.seed
+        self.out_string =  f"{base_name}.{flag_string}.{seed}"
+
+    def write_output_rom(self, output_path: str):
+        out_name = f"{self.out_string}.sfc"
+        self.out_rom = self.rando.get_generated_rom()
+        self.full_output_path = os.path.join(output_path, out_name)
+
+        with open(self.full_output_path, 'wb') as outfile:
+            outfile.write(self.out_rom)
+
+    def write_spoiler_log(self, output_path: str):
+        spoiler_name = f"{self.out_string}.spoilers.txt"
+        self.spoiler_path = os.path.join(output_path, spoiler_name)
+        self.rando.write_spoiler_log(self.spoiler_path)
+
+    def write_json_spoiler_log(self, output_path: str):
+        json_spoiler_name = f"{self.out_string}.spoilers.json"
+        self.json_spoiler_path = os.path.join(output_path, json_spoiler_name)
+        self.rando.write_json_spoiler_log(self.json_spoiler_path)
 
 def read_names():
     p = open("names.txt", "r")
@@ -2238,29 +2264,19 @@ def main():
     rando = Randomizer(rom, is_vanilla=False,
                        settings=settings, config=None)
     rando.set_random_config()
-    out_rom = rando.get_generated_rom()
 
     base_name = os.path.basename(input_file)
-    flag_string = settings.get_flag_string()
-    out_name = f"{base_name}.{flag_string}.{settings.seed}.sfc"
-    full_output_path = os.path.join(output_path, out_name)
-
-    with open(full_output_path, 'wb') as outfile:
-        outfile.write(out_rom)
-
-    print(f"output ROM: {full_output_path}")
+    writer = RandomizerWriter(rando, base_name=base_name)
+    writer.write_output_rom(output_path)
+    print(f"output ROM: {writer.full_output_path}")
 
     if val_dict['spoilers']:
-        spoiler_name = \
-            f"{base_name}.{flag_string}.{settings.seed}.spoilers.txt"
-        spoiler_path = os.path.join(output_path, spoiler_name)
-        print(f"spoilers: {spoiler_path}")
+        writer.write_spoiler_log(output_path)
+        print(f"spoilers: {writer.spoiler_path}")
 
     if val_dict['json_spoilers']:
-        json_spoiler_name = \
-            f"{base_name}.{flag_string}.{settings.seed}.spoilers.json"
-        json_spoiler_path = os.path.join(output_path, json_spoiler_name)
-        print(f"json spoilers: {json_spoiler_path}")
+        writer.write_json_spoiler_log(output_path)
+        print(f"json spoilers: {writer.json_spoiler_path}")
 
 
 if __name__ == "__main__":
