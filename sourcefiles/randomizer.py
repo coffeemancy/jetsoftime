@@ -13,6 +13,7 @@ from typing import Optional
 
 import arguments
 import charassign
+import eventfunction
 
 from base import chesttext, basepatch
 
@@ -46,6 +47,7 @@ import prismshard
 import scriptshortener
 import bucketlist
 import techdescs
+import techdamagerando
 
 import byteops
 import ctenums
@@ -199,6 +201,14 @@ class Randomizer:
         techrandomizer.write_tech_order_to_config(self.settings,
                                                   self.config)
 
+        # Tech Damage Rando can add duplicate effect headers for randomized powers.
+        # So we have to generate the combo tech descs before randomizing the single tech damage.
+        techdescs.update_combo_tech_descs(self.config.tech_db)
+        if rset.GameFlags.TECH_DAMAGE_RANDO in self.settings.gameflags:
+            techdamagerando.modify_all_single_techs(self.config.tech_db)
+        techdescs.update_single_tech_descs(self.config.tech_db)
+        techdescs.clean_up_desc_space(self.config.tech_db)
+
         # Fast Magic.  Should be fine before or after charrando.
         # Safest after.
         fastmagic.write_config(self.settings, self.config)
@@ -264,9 +274,6 @@ class Randomizer:
 
         # Ice age GG buffs if IA flag is present in settings.
         iceage.write_config(self.settings, self.config)
-
-        # Do this after charrando to hopefully get dup duals too
-        techdescs.update_all_tech_descs(self.config.tech_db)
 
     @classmethod
     def __set_fast_zeal_teleporters(cls, ct_rom: CTRom):
@@ -755,6 +762,63 @@ class Randomizer:
         else:
             raise ctevent.CommandNotFoundException('failed to find mm flag')
 
+    def __try_bromide_fix(self):
+        """
+        Fix the bromide not being obtainable (despite message) after the boss
+        is defeated.
+        """
+        loc_id = ctenums.LocID.MANORIA_STORAGE
+        script = self.out_rom.script_manager.get_script(loc_id)
+        EC = eventcommand.EventCommand
+        OP = eventcommand.Operation
+
+        pos = script.find_exact_command(
+            EC.if_mem_op_value(0x7F0100, OP.BITWISE_AND_NONZERO, 0x02, 1, 0),
+            script.get_function_start(8, 1)
+        )
+
+        pos += 5  # Get to next command, a goto.
+
+        jump_byte_pos = pos + 1
+        flag_set_pos = script.find_exact_command(EC.set_bit(0x7F00FE, 0x02), pos)
+
+        bytes_jumped = flag_set_pos - jump_byte_pos
+        script.data[jump_byte_pos] = bytes_jumped
+
+    def __try_sunstone_pickup_fix(self):
+        """
+        Place the item addition and flag setting prior to the textbox.
+        This is done already if ADD_SUNKEEP_SPOT is active.
+        """
+
+        if rset.GameFlags.ADD_SUNKEEP_SPOT in self.settings.gameflags:
+            return
+
+        loc_id = ctenums.LocID.SUN_KEEP_2300
+        script = self.out_rom.script_manager.get_script(loc_id)
+        EC = eventcommand.EventCommand
+        EF = eventfunction.EventFunction
+        OP = eventcommand.Operation
+        FS = eventcommand.FuncSync
+
+        pos = script.find_exact_command(EC.set_explore_mode(False),
+                                        script.get_function_start(8, 1))
+        script.delete_commands(pos, 1)
+        set_bit_cmd = EC.set_bit(0x7F013A, 0x40)
+
+        pos, _ = script.find_command([0xBB], pos)
+        script.insert_commands(
+            EF().add(set_bit_cmd)
+            .add(EC.add_item(ctenums.ItemID.SUN_STONE)).get_bytearray(), pos
+        )
+
+        pos = script.find_exact_command(set_bit_cmd, pos + len(set_bit_cmd))
+        script.delete_commands(pos, 2)
+
+
+
+
+
     def __try_manoria_softlock_fix(self):
         """
         Move coordinates of manoria hq fight triggers to avoid double hitting.
@@ -1038,16 +1102,16 @@ class Randomizer:
         #   - Duplicate characters changes to Spekkio when not in LW
         flags = self.settings.gameflags
         mode = self.settings.game_mode
-        dup_chars = rset.GameFlags.DUPLICATE_CHARS in flags
+        char_rando = rset.GameFlags.CHAR_RANDO in flags
         locked_chars = rset.GameFlags.LOCKED_CHARS in flags
         lost_worlds = rset.GameMode.LOST_WORLDS == mode
         vanilla = rset.GameMode.VANILLA_RANDO == mode
         epoch_fail = rset.GameFlags.EPOCH_FAIL in flags
 
-        if dup_chars and not lost_worlds:
-            # Lets Spekkio give magic properly to duplicates
-            dc_spekkio_event = Event.from_flux('./flux/charrando-eot.flux')
-            script_manager.set_script(dc_spekkio_event,
+        if char_rando and not lost_worlds:
+            # Lets Spekkio give magic properly with randomized/duplicate chars
+            rc_spekkio_event = Event.from_flux('./flux/charrando-eot.flux')
+            script_manager.set_script(rc_spekkio_event,
                                       ctenums.LocID.SPEKKIO)
 
         if locked_chars:
@@ -1104,6 +1168,12 @@ class Randomizer:
 
         # One softlock caused by (presumably) race condition on touch triggers
         self.__try_manoria_softlock_fix()
+
+        # Bromide not obtainable after Yakra fix
+        self.__try_bromide_fix()
+
+        # Sunstone flag/item is not added until after music change
+        self.__try_sunstone_pickup_fix()
 
         # Potential recruit loss when characters rescue in prison
         self.__try_supervisors_office_recruit_fix()
@@ -1238,7 +1308,7 @@ class Randomizer:
                 f"Magic {tab_set.magic_min}-{tab_set.magic_max}, "
                 f"Speed {tab_set.speed_min}-{tab_set.speed_max}\n"
             )
-        if rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags and \
+        if rset.GameFlags.CHAR_RANDO in self.settings.gameflags and \
            self.settings.char_choices != rset.Settings().char_choices:
 
             dupes = self._summarize_dupes()
@@ -1330,7 +1400,7 @@ class Randomizer:
         file_object.write("---------------\n")
 
         CharID = ctenums.CharID
-        dup_chars = rset.GameFlags.DUPLICATE_CHARS in self.settings.gameflags
+        char_rando = rset.GameFlags.CHAR_RANDO in self.settings.gameflags
         tech_db = self.config.tech_db
 
         # Fix volt bite damage error.
@@ -1341,7 +1411,7 @@ class Randomizer:
         for char_id in range(7):
             pc_id = CharID(char_id)
             file_object.write(f"{CharID(char_id)}:")
-            if dup_chars:
+            if char_rando:
                 file_object.write(
                     f" assigned to {pcstats.get_character_assignment(pc_id)}"
                 )
@@ -2122,6 +2192,32 @@ class Randomizer:
         rando.generate_rom()
         return rando.get_generated_rom()
 
+class RandomizerWriter:
+    '''Utility class for writing output/spoilers for Randomizer.'''
+    def __init__(self, rando: Randomizer, base_name: str):
+        self.rando = rando
+
+        flag_string = rando.settings.get_flag_string()
+        seed =  rando.settings.seed
+        self.out_string =  f"{base_name}.{flag_string}.{seed}"
+
+    def write_output_rom(self, output_path: str):
+        out_name = f"{self.out_string}.sfc"
+        self.out_rom = self.rando.get_generated_rom()
+        self.full_output_path = os.path.join(output_path, out_name)
+
+        with open(self.full_output_path, 'wb') as outfile:
+            outfile.write(self.out_rom)
+
+    def write_spoiler_log(self, output_path: str):
+        spoiler_name = f"{self.out_string}.spoilers.txt"
+        self.spoiler_path = os.path.join(output_path, spoiler_name)
+        self.rando.write_spoiler_log(self.spoiler_path)
+
+    def write_json_spoiler_log(self, output_path: str):
+        json_spoiler_name = f"{self.out_string}.spoilers.json"
+        self.json_spoiler_path = os.path.join(output_path, json_spoiler_name)
+        self.rando.write_json_spoiler_log(self.json_spoiler_path)
 
 def read_names():
     p = open("names.txt", "r")
@@ -2168,29 +2264,19 @@ def main():
     rando = Randomizer(rom, is_vanilla=False,
                        settings=settings, config=None)
     rando.set_random_config()
-    out_rom = rando.get_generated_rom()
 
     base_name = os.path.basename(input_file)
-    flag_string = settings.get_flag_string()
-    out_name = f"{base_name}.{flag_string}.{settings.seed}.sfc"
-    full_output_path = os.path.join(output_path, out_name)
-
-    with open(full_output_path, 'wb') as outfile:
-        outfile.write(out_rom)
-
-    print(f"output ROM: {full_output_path}")
+    writer = RandomizerWriter(rando, base_name=base_name)
+    writer.write_output_rom(output_path)
+    print(f"output ROM: {writer.full_output_path}")
 
     if val_dict['spoilers']:
-        spoiler_name = \
-            f"{base_name}.{flag_string}.{settings.seed}.spoilers.txt"
-        spoiler_path = os.path.join(output_path, spoiler_name)
-        print(f"spoilers: {spoiler_path}")
+        writer.write_spoiler_log(output_path)
+        print(f"spoilers: {writer.spoiler_path}")
 
     if val_dict['json_spoilers']:
-        json_spoiler_name = \
-            f"{base_name}.{flag_string}.{settings.seed}.spoilers.json"
-        json_spoiler_path = os.path.join(output_path, json_spoiler_name)
-        print(f"json spoilers: {json_spoiler_path}")
+        writer.write_json_spoiler_log(output_path)
+        print(f"json spoilers: {writer.json_spoiler_path}")
 
 
 if __name__ == "__main__":

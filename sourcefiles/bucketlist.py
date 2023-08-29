@@ -259,7 +259,8 @@ def get_obj_from_key(key, settings: rset.Settings,
         parts = key.split('_')
         if parts[0] == 'rocks':
             num_rocks = int(parts[1])
-            return oty.ObtainNRocksObjective(num_rocks, 0x7F003D, item_id)
+            return oty.ObtainNRocksObjective(num_rocks, 0x7F003D,
+                                             config.treasure_assign_dict, item_id)
         if parts[0] == 'fragments':
             num_fragments = int(parts[1])
             total_fragments = int(parts[2])

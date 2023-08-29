@@ -259,19 +259,17 @@ def update_single_tech_descs(tech_db: techdb.TechDB):
 
         tech_db.set_tech(tech, tech_id)
 
-
-def update_all_tech_descs(tech_db: techdb.TechDB):
-    update_single_tech_descs(tech_db)
-    update_combo_tech_descs(tech_db)
-
-    # Clean up all of the now-unused space.
+def clean_up_desc_space(tech_db: techdb.TechDB):
+    """
+    Remove old descriptions and
+    """
     num_ptrs = tech_db.desc_ptr_count
     desc_st = tech_db.desc_start
     desc_st = desc_st % 0x10000
 
     ptrs = []
     for ptr_num in range(1, num_ptrs):
-        ptr = int.from_bytes(tech_db.desc_ptrs[ptr_num*2:ptr_num*2+2],
+        ptr = int.from_bytes(tech_db.desc_ptrs[ptr_num * 2:ptr_num * 2 + 2],
                              'little')
         ptrs.append(ptr)
 
@@ -281,11 +279,16 @@ def update_all_tech_descs(tech_db: techdb.TechDB):
     tech_db.descs = tech_db.descs[real_st:]
     tech_db.desc_ptrs[0:2] = int.to_bytes(desc_st, 2, 'little')
     for ptr_num in range(1, num_ptrs):
-        ptr = int.from_bytes(tech_db.desc_ptrs[ptr_num*2:ptr_num*2+2],
+        ptr = int.from_bytes(tech_db.desc_ptrs[ptr_num * 2:ptr_num * 2 + 2],
                              'little')
         ptr -= real_st
-        tech_db.desc_ptrs[ptr_num*2:ptr_num*2+2] = \
+        tech_db.desc_ptrs[ptr_num * 2:ptr_num * 2 + 2] = \
             int.to_bytes(ptr, 2, 'little')
+
+def update_all_tech_descs(tech_db: techdb.TechDB):
+    update_single_tech_descs(tech_db)
+    update_combo_tech_descs(tech_db)
+    clean_up_desc_space(tech_db)
 
 
 _single_tech_abbrev = {

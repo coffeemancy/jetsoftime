@@ -54,12 +54,15 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
     GF.BOSS_RANDO: FlagEntry(
         "--boss-randomization", "-ro",
         "randomize the location of bosses and scale based on location"),
+    GF.CHAR_RANDO: FlagEntry(
+        "--char-rando", "-rc",
+        "randomize character identities and models"), 
     GF.DUPLICATE_CHARS: FlagEntry(
         "--duplicate-characters", "-dc",
         "allow multiple copies of a character to be present in a seed"),
     GF.DUPLICATE_TECHS: FlagEntry(
         "--duplicate-techs", None,
-        "Allow duplicate characters to perform dual techs together."),
+        "allow duplicate characters to perform dual techs together"),
     GF.VISIBLE_HEALTH: FlagEntry(
         "--visible-health", None,
         "the sightscope effect will always be present"),
@@ -70,6 +73,9 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
         "--bucket-list", "-k",
         "allow the End of Time bucket to Lavos to activate when enough "
         "objectives have been completed."),
+    GF.TECH_DAMAGE_RANDO: FlagEntry(
+        "--tech-damage-rando", None,
+        "Randomize the damage dealt by single techs."),
     GF.MYSTERY: FlagEntry(
         "--mystery", None,
         "choose flags randomly according to mystery settings"),
@@ -130,7 +136,7 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
         "--add-racelog-spot", None,
         "Gain a KI from the vanilla Race Log chest."),
     GF.SPLIT_ARRIS_DOME: FlagEntry(
-        "--split-arris=dome", None,
+        "--split-arris-dome", None,
         "Get one key item from the dead guy after Guardian.  Get a second "
         "after checking the Arris dome computer and bringing the Seed "
         "(new KI) to Doan."),
@@ -174,6 +180,7 @@ _mystery_flag_prob_entries = [
     (GF.BOSS_RANDO, "flag_boss_rando", 0.50),
     (GF.BOSS_SCALE, "flag_boss_scaling", 0.30),
     (GF.LOCKED_CHARS, "flag_locked_chars", 0.25),
+    (GF.CHAR_RANDO, "flag_char_rando", 0.5),
     (GF.DUPLICATE_CHARS, "flag_duplicate_chars", 0.25),
     (GF.EPOCH_FAIL, "flag_epoch_fail", 0.50),
     (GF.GEAR_RANDO, "flag_gear_rando", 0.25),
@@ -484,7 +491,7 @@ def get_parser():
         "balanced - random but biased towards better techs later\n"
         "  random - fully random (default)",
         choices=['normal', 'balanced', 'random'],
-        default='normal',
+        default='random',
         type=str.lower
     )
 
@@ -505,7 +512,7 @@ def get_parser():
         'Basic Flags',
         (GF.FIX_GLITCH, GF.BOSS_SCALE, GF.ZEAL_END, GF.FAST_PENDANT,
          GF.LOCKED_CHARS, GF.UNLOCKED_MAGIC, GF.CHRONOSANITY,
-         GF.TAB_TREASURES, GF.BOSS_RANDO, GF.DUPLICATE_CHARS,
+         GF.TAB_TREASURES, GF.BOSS_RANDO, GF.CHAR_RANDO,
          GF.MYSTERY, GF.HEALING_ITEM_RANDO, GF.GEAR_RANDO,
          GF.EPOCH_FAIL), parser
     )
@@ -520,7 +527,7 @@ def get_parser():
     add_flags_to_parser(
         "Extra Flags",
         (GF.STARTERS_SUFFICIENT, GF.USE_ANTILIFE, GF.TACKLE_EFFECTS_ON,
-         GF.BUCKET_LIST),
+         GF.BUCKET_LIST, GF.TECH_DAMAGE_RANDO),
         parser
     )
 
@@ -591,20 +598,26 @@ def get_parser():
         action="store_true"
     )
 
-    # Duplicate Character Options
-    dc_options = parser.add_argument_group(
-        "-dc Options",
-        "These options are only valid when --duplicate-characters [-dc] "
+    # Character Rando Options
+    rc_options = parser.add_argument_group(
+        "-rc Options",
+        "These options are only valid when --char-rando [-rc] "
         "is set"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
+        "--duplicate-characters", "-dc",
+        help="Allow multiple copies of a character to be present in a seed.",
+        action="store_true"
+    )
+
+    rc_options.add_argument(
         "--duplicate-techs",
         help="Allow duplicate characters to perform dual techs together.",
         action="store_true"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--crono-choices",
         help="The characters Crono is allowed to be assigned. For example, "
         "--crono-choices \"lucca robo\" would allow Crono to be assigned to "
@@ -614,37 +627,37 @@ def get_parser():
         default="all"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--marle-choices",
         help="Same as --crono-choices.",
         default="all"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--lucca-choices",
         help="Same as --crono-choices.",
         default="all"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--robo-choices",
         help="Same as --crono-choices.",
         default="all"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--frog-choices",
         help="Same as --crono-choices.",
         default="all"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--ayla-choices",
         help="Same as --crono-choices.",
         default="all"
     )
 
-    dc_options.add_argument(
+    rc_options.add_argument(
         "--magus-choices",
         help="Same as --crono-choices.",
         default="all"
@@ -850,6 +863,7 @@ def get_parser():
     opts_group.add_argument(
         "--battle-speed",
         help="default battle speed (lower is faster)",
+        type=int,
         choices=range(1, 9),
         default=5
     )
@@ -857,6 +871,7 @@ def get_parser():
     opts_group.add_argument(
         "--battle-msg-speed",
         help="default battle message speed (lower is faster)",
+        type=int,
         choices=range(1, 9),
         default=5
     )
@@ -864,6 +879,7 @@ def get_parser():
     opts_group.add_argument(
         "--battle-gauge-style",
         help="default atb gauge style (default 1)",
+        type=int,
         choices=range(3),
         default=1
     )
@@ -871,6 +887,7 @@ def get_parser():
     opts_group.add_argument(
         "--background",
         help="default background (default 1)",
+        type=int,
         choices=range(1, 9),
         default=1
     )

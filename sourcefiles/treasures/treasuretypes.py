@@ -1014,3 +1014,149 @@ def get_base_treasure_dict() -> dict[ctenums.TreasureID, Treasure]:
     }
 
     return ret_dict
+
+_treasure_count_dict: dict[ctenums.LocID, int] = {
+    ctenums.LocID.LOAD_SCREEN: 1,
+    ctenums.LocID.TRUCE_INN_1000: 1,
+    ctenums.LocID.TRUCE_MAYOR_1F: 1,
+    ctenums.LocID.TRUCE_MAYOR_2F: 1,
+    ctenums.LocID.KINGS_CHAMBER_1000: 1,
+    ctenums.LocID.QUEENS_ROOM_1000: 1,
+    ctenums.LocID.GUARDIA_BASEMENT: 3,
+    ctenums.LocID.PRISON_TORTURE_STORAGE_ROOM: 1,
+    ctenums.LocID.FOREST_RUINS: 1,
+    ctenums.LocID.HECKRAN_CAVE_PASSAGEWAYS: 1,
+    ctenums.LocID.HECKRAN_CAVE_ENTRANCE: 1,
+    ctenums.LocID.HECKRAN_CAVE_UNDERGROUND_RIVER: 2,
+    ctenums.LocID.PORRE_MAYOR_2F: 1,
+    ctenums.LocID.PRISON_CELLS: 8,
+    ctenums.LocID.PRISON_STAIRWELLS: 1,
+    ctenums.LocID.ANCIENT_TYRANO_LAIR: 1,
+    ctenums.LocID.ANCIENT_TYRANO_LAIR_TRAPS: 1,
+    ctenums.LocID.TRUCE_CANYON: 2,
+    ctenums.LocID.KINGS_CHAMBER_600: 1,
+    ctenums.LocID.GUARDIA_QUEENS_CHAMBER_600: 1,
+    ctenums.LocID.GUARDIA_KITCHEN_600: 1,
+    ctenums.LocID.MAGUS_CASTLE_DOPPLEGANGER_CORRIDOR: 1,
+    ctenums.LocID.MANORIA_MAIN_HALL: 3,
+    ctenums.LocID.MANORIA_HEADQUARTERS: 4,
+    ctenums.LocID.CURSED_WOODS: 2,
+    ctenums.LocID.FROGS_BURROW: 1,
+    ctenums.LocID.DENADORO_SOUTH_FACE: 3,
+    ctenums.LocID.DENADORO_MTS_MASAMUNE_EXTERIOR: 3,
+    ctenums.LocID.DENADORO_NORTH_FACE: 5,
+    ctenums.LocID.DENADORO_ENTRANCE: 2,
+    ctenums.LocID.DENADORO_LOWER_EAST_FACE: 4,
+    ctenums.LocID.DENADORO_UPPER_EAST_FACE: 1,
+    ctenums.LocID.DENADORO_WEST_FACE: 1,
+    ctenums.LocID.FIONAS_VILLA: 2,
+    ctenums.LocID.SUNKEN_DESERT_PARASITES: 4,
+    ctenums.LocID.SUNKEN_DESERT_DEVOURER: 7,
+    ctenums.LocID.MAGUS_CASTLE_GUILLOTINES: 2,
+    ctenums.LocID.MAGUS_CASTLE_SLASH: 2,
+    ctenums.LocID.MAGUS_CASTLE_HALL_AGGRESSION: 1,
+    ctenums.LocID.MAGUS_CASTLE_HALL_DECEIT: 1,
+    ctenums.LocID.MAGUS_CASTLE_OZZIE: 2,
+    ctenums.LocID.MAGUS_CASTLE_HALL_APPREHENSION: 1,
+    ctenums.LocID.OZZIES_FORT_GUILLOTINE: 4,
+    ctenums.LocID.OZZIES_FORT_LAST_STAND: 2,
+    ctenums.LocID.GIANTS_CLAW_ENTRANCE_CAVES: 2,
+    ctenums.LocID.GIANTS_CLAW_CAVERNS: 4,
+    ctenums.LocID.MANORIA_COMMAND: 1,
+    ctenums.LocID.MANORIA_SHRINE_ANTECHAMBER: 2,
+    ctenums.LocID.MANORIA_STORAGE: 3,
+    ctenums.LocID.MANORIA_SHRINE: 2,
+    ctenums.LocID.BANGOR_DOME_SEALED_ROOM: 3,
+    ctenums.LocID.TRANN_DOME_SEALED_ROOM: 2,
+    ctenums.LocID.LAB_16_WEST: 3,
+    ctenums.LocID.LAB_16_EAST: 1,
+    ctenums.LocID.ARRIS_DOME_INFESTATION: 1,
+    ctenums.LocID.ARRIS_DOME_SEALED_ROOM: 4,
+    ctenums.LocID.REPTITE_LAIR_2F: 1,
+    ctenums.LocID.LAB_32_WEST: 1,
+    ctenums.LocID.LAB_32: 1,
+    ctenums.LocID.FACTORY_RUINS_AUXILIARY_CONSOLE: 1,
+    ctenums.LocID.FACTORY_RUINS_SECURITY_CENTER: 2,
+    ctenums.LocID.FACTORY_RUINS_CRANE_ROOM: 4,
+    ctenums.LocID.FACTORY_RUINS_CRANE_CONTROL: 2,
+    ctenums.LocID.FACTORY_RUINS_INFO_ARCHIVE: 1,
+    ctenums.LocID.FACTORY_RUINS_POWER_CORE: 1,
+    ctenums.LocID.SEWERS_B1: 3,
+    ctenums.LocID.DEATH_PEAK_SOUTH_FACE: 3,
+    ctenums.LocID.DEATH_PEAK_SOUTHEAST_FACE: 1,
+    ctenums.LocID.GENO_DOME_LABS: 4,
+    ctenums.LocID.GENO_DOME_STORAGE: 2,
+    ctenums.LocID.GENO_DOME_ROBOT_HUB: 2,
+    ctenums.LocID.FACTORY_RUINS_DATA_CORE: 2,
+    ctenums.LocID.DEATH_PEAK_NORTHWEST_FACE: 1,
+    ctenums.LocID.DEATH_PEAK_CAVE: 3,
+    ctenums.LocID.GENO_DOME_MAINFRAME: 4,
+    ctenums.LocID.MYSTIC_MTN_GULCH: 1,
+    ctenums.LocID.FOREST_MAZE: 9,
+    ctenums.LocID.REPTITE_LAIR_WEEVIL_BURROW: 3,
+    ctenums.LocID.REPTITE_LAIR_WEEVIL_BURROWS_B2: 3,
+    ctenums.LocID.REPTITE_LAIR_COMMONS: 2,
+    ctenums.LocID.DACTYL_NEST_LOWER: 2,
+    ctenums.LocID.DACTYL_NEST_UPPER: 1,
+    ctenums.LocID.GIANTS_CLAW_LAIR_THRONEROOM: 2,
+    ctenums.LocID.TYRANO_LAIR_THRONEROOM: 1,
+    ctenums.LocID.TYRANO_LAIR_ANTECHAMBERS: 2,
+    ctenums.LocID.TYRANO_LAIR_STORAGE: 1,
+    ctenums.LocID.TYRANO_LAIR_ROOM_OF_VERTIGO: 4,
+    ctenums.LocID.BLACK_OMEN_47F_AUX_COMMAND: 2,
+    ctenums.LocID.BLACK_OMEN_47F_GRAND_HALL: 1,
+    ctenums.LocID.BLACK_OMEN_47F_EMPORIUM: 6,
+    ctenums.LocID.BLACK_OMEN_47F_ROYAL_PATH: 1,
+    ctenums.LocID.BLACK_OMEN_47F_ROYAL_BALLROOM: 1,
+    ctenums.LocID.BLACK_OMEN_47F_ROYAL_ASSEMBLY: 1,
+    ctenums.LocID.BLACK_OMEN_47F_ROYAL_PROMENADE: 2,
+    ctenums.LocID.BLACK_OMEN_63F_DIVINE_ESPLANADE: 3,
+    ctenums.LocID.BLACK_OMEN_TERRA_MUTANT: 3,
+    ctenums.LocID.ARRIS_DOME_FOOD_LOCKER: 1,
+    ctenums.LocID.MT_WOE_WESTERN_FACE: 5,
+    ctenums.LocID.MT_WOE_LOWER_EASTERN_FACE: 5,
+    ctenums.LocID.MT_WOE_MIDDLE_EASTERN_FACE: 1,
+    ctenums.LocID.MT_WOE_UPPER_EASTERN_FACE: 2,
+    ctenums.LocID.OCEAN_PALACE_PIAZZA: 2,
+    ctenums.LocID.OCEAN_PALACE_SIDE_ROOMS: 2,
+    ctenums.LocID.OCEAN_PALACE_FORWARD_AREA: 4,
+    ctenums.LocID.OCEAN_PALACE_SECURITY_ESPLANADE: 1,
+    ctenums.LocID.FACTORY_RUINS_ROBOT_STORAGE: 1,
+    ctenums.LocID.GUARDIA_REAR_STORAGE: 3,
+    ctenums.LocID.GUARDIA_QUEENS_TOWER_600: 1,
+    ctenums.LocID.MAGUS_CASTLE_CORRIDOR_OF_COMBAT: 1,
+    ctenums.LocID.MAGUS_CASTLE_HALL_OF_AMBUSH: 1,
+    ctenums.LocID.MAGUS_CASTLE_DUNGEONS: 4,
+    ctenums.LocID.GUARDIA_CASTLE_KINGS_TOWER_600: 1,
+    ctenums.LocID.GUARDIA_CASTLE_KINGS_TOWER_1000: 1,
+    ctenums.LocID.GUARDIA_QUEENS_TOWER_1000: 1,
+    ctenums.LocID.GUARDIA_LAWGIVERS_TOWER: 1,
+    ctenums.LocID.GUARDIA_PRISON_TOWER: 1,
+    ctenums.LocID.ANCIENT_TYRANO_LAIR_VERTIGO: 1,
+    ctenums.LocID.DEATH_PEAK_GUARDIAN_SPAWN: 1
+}
+
+_chest_id_loc_id_dict: dict[int, ctenums.LocID] = {}
+_temp = 0
+for loc_id in sorted(_treasure_count_dict.keys()):
+    for _ in range(_treasure_count_dict[loc_id]):
+        _chest_id_loc_id_dict[_temp] = loc_id
+        _temp += 1
+del _temp
+
+def get_chest_loc_id(chest_id: int) -> ctenums.LocID:
+    """
+    Returns the location in which a treasure chest lives
+    """
+    return _chest_id_loc_id_dict[chest_id]
+
+
+def get_treasure_count_dict() -> dict[ctenums.LocID, int]:
+    """
+    Return a dict with a count of each location's treasure chests.
+    """
+
+    return {
+        loc_id: _treasure_count_dict.get(loc_id, 0)
+        for loc_id in ctenums.LocID
+    }

@@ -132,11 +132,12 @@ class RandoGUI:
         self.tab_rando_scheme = tk.StringVar()
         self.tab_success_chance = tk.DoubleVar()
 
-        # DC stuff
-        # By default, dc puts no restrictions on assignment
+        # RC stuff
+        # By default, rc puts no restrictions on assignment
         self.char_choices = [[tk.IntVar(value=1) for i in range(7)]
                              for j in range(7)]
 
+        self.duplicate_chars = tk.IntVar(value=0)
         self.duplicate_duals = tk.IntVar(value=0)
 
         # ro settings
@@ -228,7 +229,7 @@ class RandoGUI:
         
         self.general_page = self.get_general_page()
         self.tabs_page = self.get_tabs_page()
-        self.dc_page = self.get_dc_page()
+        self.rc_page = self.get_rc_page()
         self.qol_page = self.get_qol_page()
         self.cosmetic_page = self.get_cosmetic_page()
         self.options_page = self.get_options_page()
@@ -261,7 +262,7 @@ class RandoGUI:
 
         self.notebook.add(self.general_page, text='General')
         self.notebook.add(self.tabs_page, text='Tabs')
-        self.notebook.add(self.dc_page, text='DC')
+        self.notebook.add(self.rc_page, text='RC')
         self.notebook.add(self.ro_page, text='RO')
         self.notebook.add(self.qol_page, text='QoL')
         self.notebook.add(self.cosmetic_page, text='Cos')
@@ -428,7 +429,7 @@ class RandoGUI:
                 speed_max=self.speed_tab_max.get()
             )
 
-        # DC (dup duals already taken, just char choices)
+        # RC (dup duals already taken, just char choices)
         for i in range(7):
             self.settings.char_choices[i] = []
             for j in range(7):
@@ -562,7 +563,7 @@ class RandoGUI:
 
         self.tab_success_chance.set(self.settings.tab_settings.binom_success)
 
-        # DC char choices
+        # RC char choices
         for i in range(7):
             for j in range(7):
                 if j in self.settings.char_choices[i]:
@@ -704,11 +705,11 @@ class RandoGUI:
             self.flag_dict[GameFlags.BOSS_SCALE].set(0)
             self.boss_scaling_checkbox.config(state=tk.DISABLED)
 
-        # Check DC Page
-        if self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
-            self.notebook.tab(self.dc_page, state=tk.NORMAL)
+        # Check RC Page
+        if self.flag_dict[GameFlags.CHAR_RANDO].get() == 1:
+            self.notebook.tab(self.rc_page, state=tk.NORMAL)
         else:
-            self.notebook.tab(self.dc_page, state=tk.DISABLED)
+            self.notebook.tab(self.rc_page, state=tk.DISABLED)
 
         # Check RO Page
         if self.flag_dict[GameFlags.BOSS_RANDO].get() == 1:
@@ -789,19 +790,34 @@ class RandoGUI:
         return frame
 
     # Called by self.settings_valid
-    def dc_settings_valid(self) -> bool:
-        for i in range(7):
-            is_set = False
-            for j in self.char_choices[i]:
-                if j.get() == 1:
-                    is_set = True
+    def rc_settings_valid(self) -> bool:
+        # check all character identities have a model associated
+        model_missing = any(
+            not any(
+                model.get() == 1
+                for model in self.char_choices[identity]
+            )
+            for identity in range(7)
+        )
+        if model_missing:
+            return False
 
-            if not is_set:
+        # unless duplicate chars, also check all character models
+        # are associated with at least one identity
+        if not self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
+            identity_missing = any(
+                not any(
+                    identity[model].get() == 1
+                    for identity in self.char_choices
+                )
+                for model in range(7)
+            )
+            if identity_missing:
                 return False
         return True
 
-    def get_dc_set_char_choices(self, parent):
-        dcframe = tk.Frame(
+    def get_rc_set_char_choices(self, parent):
+        rcframe = tk.Frame(
             parent, borderwidth=1, highlightbackground='black',
             highlightthickness=1
         )
@@ -817,7 +833,7 @@ class RandoGUI:
 
         for i in range(7):
             tk.Label(
-                dcframe,
+                rcframe,
                 text=char_names[i],
                 anchor='center'
             ).grid(row=row, column=(i+1))
@@ -826,7 +842,7 @@ class RandoGUI:
 
         for i in range(7):
             tk.Label(
-                dcframe,
+                rcframe,
                 text=char_names[i]+' choices:',
                 anchor="w"
             ).grid(row=row, column=0)
@@ -835,7 +851,7 @@ class RandoGUI:
 
             for j in range(7):
                 tk.Checkbutton(
-                    dcframe,  # text=char_names[j],
+                    rcframe,  # text=char_names[j],
                     variable=self.char_choices[i][j]
                 ).grid(row=row, column=col)
 
@@ -844,9 +860,9 @@ class RandoGUI:
             col = 0
             row += 1
 
-        return dcframe
+        return rcframe
 
-    def get_dc_set_autofill(self, parent):
+    def get_rc_set_autofill(self, parent):
 
         # Helper for setting the underlying variables
         def set_all(val):
@@ -854,44 +870,52 @@ class RandoGUI:
                 for j in self.char_choices[i]:
                     j.set(val)
 
-        dcframe = tk.Frame(
+        rcframe = tk.Frame(
             parent, borderwidth=1, highlightbackground='black',
             highlightthickness=1
         )
 
         row = 0
 
-        button = tk.Button(dcframe, text='Check All',
+        button = tk.Button(rcframe, text='Check All',
                            command=lambda: set_all(1))
         button.grid(row=row, column=0, columnspan=2)
 
-        button = tk.Button(dcframe, text='Uncheck All',
+        button = tk.Button(rcframe, text='Uncheck All',
                            command=lambda: set_all(0))
         button.grid(row=row, column=2, columnspan=2)
 
-        dcframe.pack(fill=tk.X)
+        rcframe.pack(fill=tk.X)
 
-        return dcframe
+        return rcframe
 
-    def get_dc_set_additional_options(self, parent):
+    def get_rc_set_additional_options(self, parent):
 
-        dcframe = tk.Frame(parent, borderwidth=1,
+        rcframe = tk.Frame(parent, borderwidth=1,
                            highlightbackground='black',
                            highlightthickness=1)
 
-        label = tk.Label(dcframe, text='Additional Options')
-        label.grid(row=0, column=0)
+        label = tk.Label(rcframe, text='Additional Options')
+        label.pack(anchor=tk.W)
 
         checkbutton = tk.Checkbutton(
-            dcframe, text='Duplicate Duals',
+            rcframe, text='Duplicate Chars',
+            variable=self.flag_dict[GameFlags.DUPLICATE_CHARS]
+        )
+        checkbutton.pack(anchor=tk.W)
+        CreateToolTip(checkbutton,
+                      'Check this to enable copies of the same character.')
+
+        checkbutton = tk.Checkbutton(
+            rcframe, text='Duplicate Duals',
             variable=self.flag_dict[GameFlags.DUPLICATE_TECHS]
         )
-        checkbutton.grid(row=1, column=0)
+        checkbutton.pack(anchor=tk.W)
         CreateToolTip(checkbutton,
                       'Check this to enable dual techs betweeen copies of the '
                       + 'same character (e.g. Ayla+Ayla beast toss).')
 
-        return dcframe
+        return rcframe
 
     def get_general_options(self, parent):
         frame = tk.Frame(
@@ -1152,21 +1176,23 @@ class RandoGUI:
             'to their normal locations.'
         )
 
-        # Duplicate Characters
-        self.dup_char_checkbox = tk.Checkbutton(
+        # Character Rando
+        self.char_rando_checkbox = tk.Checkbutton(
             frame,
-            text="Duplicate Characters (dc)",
-            variable=self.flag_dict[GameFlags.DUPLICATE_CHARS],
+            text="Character Rando (rc)",
+            variable=self.flag_dict[GameFlags.CHAR_RANDO],
             command=self.verify_settings
         )
-        self.dup_char_checkbox.grid(
+        self.char_rando_checkbox.grid(
             row=row, column=2, sticky=tk.W, columnspan=2
         )
         CreateToolTip(
-            self.dup_char_checkbox,
-            'Characters can now show up more than once. Quests are '
-            'activated and turned in based on the default NAME of the '
-            'character.')
+            self.char_rando_checkbox,
+            'Character identities are randomized. Each named character '
+            'identity uses a random character model; techs match character '
+            'model and identity determines progression (e.g. the '
+            'character named "Marle" could be an "Ayla" model with Ayla '
+            'techs and needed for Marle\'s Prism Shard quest).')
         row = row + 1
 
         checkbox = tk.Checkbutton(
@@ -1359,20 +1385,26 @@ class RandoGUI:
             if not mys_valid:
                 return
 
-        # Check for bad input from DC page
-        if not self.dc_settings_valid():
-            if self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
-                messagebox.showerror(
-                    'DC Settings Error',
-                    'Each character must have at least one choice selected.'
+        # Check for bad input from RC page
+        if not self.rc_settings_valid():
+            rc_err = (
+                'Each character identity (row) must have at least '
+                'one model (column) selected.'
+            )
+            if not self.flag_dict[GameFlags.DUPLICATE_CHARS].get() == 1:
+                rc_err += (
+                    ' Each character model (column) must have at least '
+                    'one identity (row) selected.'
                 )
-                self.notebook.select(self.dc_page)
+            if self.flag_dict[GameFlags.CHAR_RANDO].get() == 1:
+                self.notebook.select(self.rc_page)
+                messagebox.showerror('RC Settings Error', rc_err)
                 return
             elif self.flag_dict[GameFlags.MYSTERY].get() == 1:
                 messagebox.showerror(
-                    'DC+Mystery Settings Error',
-                    'Each character must have at least one choice selected. '
-                    'Enable dc flag and adjust the settings.'
+                    'RC+Mystery Settings Error',
+                    rc_err,
+                    'Enable rc flag and adjust the settings.'
                 )
                 return
 
@@ -1690,24 +1722,12 @@ class RandoGUI:
                 self.output_dir.set(str(input_path.parent))
 
             base_name = input_path.name.split('.')[0]
-            flag_str = self.settings.get_flag_string()
-
-            out_filename = f"{base_name}.{flag_str}.{seed}.sfc"
             out_dir = self.output_dir.get()
-            out_path = str(pathlib.Path(out_dir).joinpath(out_filename))
 
-            with open(out_path, 'wb') as outfile:
-                outfile.write(out_rom)
-
-            spoiler_filename = f"{base_name}.{flag_str}.{seed}.spoilers.txt"
-            spoiler_path = \
-                str(pathlib.Path(out_dir).joinpath(spoiler_filename))
-            json_spoiler_filename = \
-                f"{base_name}.{flag_str}.{seed}.spoilers.json"
-            json_spoiler_path = \
-                str(pathlib.Path(out_dir).joinpath(json_spoiler_filename))
-            rando.write_spoiler_log(spoiler_path)
-            rando.write_json_spoiler_log(json_spoiler_path)
+            writer = randomizer.RandomizerWriter(rando, base_name=base_name)
+            writer.write_output_rom(out_dir)
+            writer.write_spoiler_log(out_dir)
+            writer.write_json_spoiler_log(out_dir)
 
             tk.messagebox.showinfo(
                 title='Randomization Complete',
@@ -1866,7 +1886,7 @@ class RandoGUI:
 
         return frame
 
-    def get_dc_page(self):
+    def get_rc_page(self):
         frame = ttk.Frame(self.notebook)
 
         instruction_frame = tk.Frame(frame)
@@ -1878,9 +1898,9 @@ class RandoGUI:
 
         instruction_frame.pack(fill=tk.X)
 
-        self.get_dc_set_char_choices(frame).pack(fill=tk.X)
-        self.get_dc_set_autofill(frame).pack(fill=tk.X)
-        self.get_dc_set_additional_options(frame).pack(fill=tk.X)
+        self.get_rc_set_char_choices(frame).pack(fill=tk.X)
+        self.get_rc_set_autofill(frame).pack(fill=tk.X)
+        self.get_rc_set_additional_options(frame).pack(fill=tk.X)
 
         return frame
 
@@ -2214,6 +2234,18 @@ class RandoGUI:
         CreateToolTip(
             checkbox,
             'Allow for objectives to control bucket activation.'
+        )
+
+        checkbox = tk.Checkbutton(
+            frame,
+            text='Tech Damage Randomization',
+            variable=self.flag_dict[GameFlags.TECH_DAMAGE_RANDO],
+        )
+        checkbox.pack(anchor=tk.W)
+
+        CreateToolTip(
+            checkbox,
+            'Randomize damage inflicted by single techs.'
         )
 
         plus_ki_flags = [
@@ -2915,6 +2947,7 @@ class RandoGUI:
             GameFlags.UNLOCKED_MAGIC: 'UnlockMag',
             GameFlags.BUCKET_LIST: 'BucketList',
             GameFlags.CHRONOSANITY: 'Chronosanity',
+            GameFlags.CHAR_RANDO: 'CharRando',
             GameFlags.DUPLICATE_CHARS: 'DupeChars',
             GameFlags.LOCKED_CHARS: 'LockChars',
             GameFlags.TAB_TREASURES: 'TabTreas',
