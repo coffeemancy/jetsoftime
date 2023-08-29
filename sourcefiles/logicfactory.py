@@ -699,18 +699,8 @@ class ChronosanityGameConfig(GameConfig):
         )
         kajarRock.addLocation(Location(TID.KAJAR_ROCK))
 
-        # black omen rock set up to prevent putting go-mode items there
-        blackOmenRock = LocationGroup(
-            "Black Omen Rock", 1, lambda game: (
-                game.canAccessBlackOmen() and
-                game.canAccessMagusCastle() and
-                game.canAccessTyranoLair()
-            )
-        )
-        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
-
         self.locationGroups.extend([
-            larubaRock, kajarRock, blackOmenRock
+            larubaRock, kajarRock
         ])
 
 
@@ -1395,18 +1385,8 @@ class NormalGameConfig(GameConfig):
         )
         kajarRock.addLocation(Location(TID.KAJAR_ROCK))
 
-        # black omen rock set up to prevent putting go-mode items there
-        blackOmenRock = LocationGroup(
-            "Black Omen Rock", 1, lambda game: (
-                game.canAccessBlackOmen() and
-                game.canAccessMagusCastle() and
-                game.canAccessTyranoLair()
-            )
-        )
-        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
-
         self.locationGroups.extend([
-            denadoroRock, giantsClawRock, larubaRock, kajarRock, blackOmenRock
+            denadoroRock, giantsClawRock, larubaRock, kajarRock
         ])
 
 # end NormalGameConfig class
@@ -1557,11 +1537,6 @@ class LegacyOfCyrusGameConfig(NormalGameConfig):
         if rset.GameFlags.LOCKED_CHARS not in self.settings.gameflags:
             removed_items.append(ItemID.DREAMSTONE)
 
-        # remove one random rock as KI since only 4 rock locations
-        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
-            rocks = [ki for ki in self.keyItemList if ki.name.endswith('ROCK')]
-            removed_items.append(random.choice(rocks))
-
         for item in removed_items:
             if item in self.keyItemList:  # In case something else removed RR
                 self.keyItemList.remove(item)
@@ -1673,11 +1648,6 @@ class IceAgeGameConfig(NormalGameConfig):
         removed_items = [
             ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE
         ]
-
-        # remove one random rock as KI since only 4 rock locations
-        if rset.GameFlags.ROCKSANITY in self.settings.gameflags:
-            rocks = [ki for ki in self.keyItemList if ki.name.endswith('ROCK')]
-            removed_items.append(random.choice(rocks))
 
         for item in removed_items:
             self.keyItemList.remove(item)
