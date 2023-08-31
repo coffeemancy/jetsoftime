@@ -1063,6 +1063,9 @@ def apply_epoch_fail(game_config: GameConfig):
         flight_tids.append(TID.SUN_KEEP_2300)
         flight_tids.remove(TID.MELCHIOR_KEY)
 
+    if rset.GameFlags.ROCKSANITY in settings.gameflags:
+        flight_tids.append(TID.GIANTS_CLAW_ROCK)
+
     def add_flight(func):
 
         def ret_func(game: Game):
