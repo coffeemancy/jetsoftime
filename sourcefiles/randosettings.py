@@ -98,6 +98,12 @@ class GameFlags(Flag):
     # No longer Logic Tweak Flags
     TECH_DAMAGE_RANDO = auto()
 
+    def __add__(self, other: GameFlags):
+        return self | other
+
+    def __sub__(self, other: GameFlags):
+        return self & ~other
+
 
 # Dictionary for what flags force what other flags off.
 # Note that this is NOT symmetric.  For example Lost Worlds will force
@@ -493,32 +499,52 @@ class Settings:
         The gui should prevent bad flag choices.  In the event that it somehow
         does not, this method will silently make changes to the flags to fix
         things.
+
+        This intends to prevent logicfactory from raising an ImpossibleGameConfig
+        from resolveExtraKeyItems, if possible.
         '''
         mode = self.game_mode
         forced_off = _forced_off_dict[mode]
         self.gameflags &= ~forced_off
 
+        # Duplicate Character implies Character Rando
+        if GameFlags.DUPLICATE_CHARS in self.gameflags:
+            self.gameflags |= GameFlags.CHAR_RANDO
+
+        # Rocksanity implies Unlocked Skyways
+        if GameFlags.ROCKSANITY in self.gameflags:
+            self.gameflags |= GameFlags.UNLOCKED_SKYGATES
+
+        # Chronosanity is not compatible with boss scaling.
         if GameFlags.CHRONOSANITY in self.gameflags:
             self.gameflags &= ~GameFlags.BOSS_SCALE
 
+        # TODO: Is this necessary/desired for Chronosanity? Plenty of spots.
         add_ki_flags = [
             GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS,
             GameFlags.EPOCH_FAIL
         ]
-        added_kis = sum(flag in self.gameflags
-                        for flag in add_ki_flags)
+        added_kis = sum(flag in self.gameflags for flag in add_ki_flags)
 
         add_spot_flags = [
             GameFlags.ADD_BEKKLER_SPOT, GameFlags.ADD_CYRUS_SPOT,
             GameFlags.ADD_OZZIE_SPOT, GameFlags.ADD_RACELOG_SPOT,
             GameFlags.VANILLA_ROBO_RIBBON
         ]
-        added_spots = sum(flag in self.gameflags
-                          for flag in add_spot_flags)
+        added_spots = sum(flag in self.gameflags for flag in add_spot_flags)
+
+        # Rocksanity adds 5 rock KIs, 4-5 spots depending on mode
+        if GameFlags.ROCKSANITY in self.gameflags:
+            added_kis += 5
+            has_black_omen_spot = (
+                mode not in [GameMode.LEGACY_OF_CYRUS, GameMode.ICE_AGE]
+            )
+            added_spots += 5 if has_black_omen_spot else 4
 
         # We need to make changes that the user will not get tripped up by.
         # For example, we don't want to add a spot that they wouldn't know to
         # check.
+        # logicfactory handles one extra KI by removing Jerky if necessary.
         while added_kis > added_spots + 1:
 
             if GameFlags.VANILLA_ROBO_RIBBON not in self.gameflags:
@@ -533,15 +559,9 @@ class Settings:
                 self.gameflags &= ~GameFlags.EPOCH_FAIL
                 added_kis -= 1
             else:
-                raise ValueError
+                raise ValueError('Cannot fix flag conflicts')
 
-        # Duplicate Character implies Character Rando
-        if GameFlags.DUPLICATE_CHARS in self.gameflags:
-            self.gameflags |= GameFlags.CHAR_RANDO
 
-        # Rocksanity implies Unlocked Skyways
-        if GameFlags.ROCKSANITY in self.gameflags:
-            self.gameflags |= GameFlags.UNLOCKED_SKYGATES
 
     def get_flag_string(self):
         # Flag string is based only on main game flags and game mode
