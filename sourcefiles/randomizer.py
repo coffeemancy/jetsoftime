@@ -762,6 +762,16 @@ class Randomizer:
         else:
             raise ctevent.CommandNotFoundException('failed to find mm flag')
 
+    def __free_guardia_forest_600_objs(self):
+        """
+        Remove Cyrus/Glenn cutscene objects to make room for objective objects.
+        """
+        loc_id = ctenums.LocID.GUARDIA_FOREST_600
+        script = self.out_rom.script_manager.get_script(loc_id)
+
+        for obj_id in range(0xD, 7, -1):
+            script.remove_object(obj_id)
+
     def __try_bromide_fix(self):
         """
         Fix the bromide not being obtainable (despite message) after the boss
@@ -982,6 +992,11 @@ class Randomizer:
             rset.GameFlags.LOCKED_CHARS in self.settings.gameflags
         )
 
+        # I need to write objectives before bosses are in because otherwise
+        # the change in object count change the correct object_ids to hook into.
+        bucketlist.write_objectives_to_ctrom(self.out_rom, self.settings,
+                                             self.config)
+
         # Stats
         config.pcstats.write_to_ctrom(ctrom)
 
@@ -1020,6 +1035,7 @@ class Randomizer:
         #        Into base_patch.ips to improve generation speed.
         self.__apply_basic_patches(self.out_rom, self.settings)
         self.__apply_settings_patches(self.out_rom, self.settings)
+        self.__free_guardia_forest_600_objs()
 
         if initial_vanilla:
             # self.out_rom.rom_data.space_manager.mark_block(
@@ -1208,8 +1224,6 @@ class Randomizer:
         elif mode == rset.GameMode.VANILLA_RANDO:
             vanillarando.restore_sos(self.out_rom, self.config)
 
-        bucketlist.write_objectives_to_ctrom(self.out_rom, self.settings,
-                                             self.config)
         # Write and remove all scripts
         self.out_rom.write_all_scripts_to_rom(clear_scripts=True)
 

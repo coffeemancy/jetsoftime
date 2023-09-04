@@ -830,7 +830,7 @@ def get_base_treasure_dict() -> dict[ctenums.TreasureID, Treasure]:
         ),
         TID.GUARDIA_FOREST_SEALED_600: ScriptTreasure(
             location=LocID.GUARDIA_FOREST_600,
-            object_id=0x3E,
+            object_id=0x3E-6,  # removed some objects from forest
             function_id=0x01
         ),
         TID.GUARDIA_FOREST_SEALED_1000: ScriptTreasure(
