@@ -95,6 +95,7 @@ class GameFlags(Flag):
     SPLIT_ARRIS_DOME = auto()
     VANILLA_ROBO_RIBBON = auto()
     VANILLA_DESERT = auto()
+    REMOVE_BLACK_OMEN_SPOT = auto()
     # No longer Logic Tweak Flags
     TECH_DAMAGE_RANDO = auto()
 
@@ -138,7 +139,8 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
         _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT |
         _GF.ADD_RACELOG_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_JOHNNY_RACE |
         _GF.SPLIT_ARRIS_DOME | _GF.RESTORE_TOOLS | _GF.UNLOCKED_SKYGATES |
-        _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON | _GF.ROCKSANITY
+        _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON | _GF.ROCKSANITY |
+        _GF.REMOVE_BLACK_OMEN_SPOT
     ),
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
@@ -544,11 +546,12 @@ class Settings:
         ]
         added_spots = sum(flag in self.gameflags for flag in add_spot_flags)
 
-        # Rocksanity adds 5 rock KIs, 4-5 spots depending on mode
+        # Rocksanity adds 5 rock KIs, 4-5 spots depending on mode/flags
         if GameFlags.ROCKSANITY in self.gameflags:
             added_kis += 5
             has_black_omen_spot = (
-                mode not in [GameMode.LEGACY_OF_CYRUS, GameMode.ICE_AGE]
+                mode not in [GameMode.LEGACY_OF_CYRUS, GameMode.ICE_AGE] and
+                GameFlags.REMOVE_BLACK_OMEN_SPOT not in self.gameflags
             )
             added_spots += 5 if has_black_omen_spot else 4
 

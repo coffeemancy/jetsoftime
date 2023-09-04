@@ -1420,6 +1420,9 @@ class NormalGameConfig(GameConfig):
 # end NormalGameConfig class
 
 def _couldAccessBlackOmen(gc: GameConfig) -> bool:
+    flags = gc.settings.gameflags
+    GF = rset.GameFlags
+
     # configurations which do not have access to Black Omen
     omenless_cfgs: List[Type[GameConfig]] = [
         ChronosanityIceAgeGameConfig,
@@ -1428,7 +1431,8 @@ def _couldAccessBlackOmen(gc: GameConfig) -> bool:
         LegacyOfCyrusGameConfig,
     ]
     inaccessible = any(isinstance(gc, cfg) for cfg in omenless_cfgs)
-    return not inaccessible
+
+    return not inaccessible and GF.REMOVE_BLACK_OMEN_SPOT not in flags
 
 #
 # This class represents the game configuration for a

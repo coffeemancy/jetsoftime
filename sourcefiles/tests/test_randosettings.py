@@ -68,10 +68,12 @@ def test_fix_flag_conflicts_adequate_spots(mode, spot_flags, expected_flags, set
         (_GM.STANDARD, _GF(0), _GF.VANILLA_ROBO_RIBBON, _GF.EPOCH_FAIL),
         # added one spot, just ribbon
         (_GM.STANDARD, _GF.ADD_CYRUS_SPOT, _GF.VANILLA_ROBO_RIBBON, _GF(0)),
+        # added one spot, removed black omen, add ribbon and remove Epoch Fail
+        (_GM.STANDARD, _GF.ADD_OZZIE_SPOT | _GF.REMOVE_BLACK_OMEN_SPOT, _GF.VANILLA_ROBO_RIBBON, _GF.EPOCH_FAIL),
         # +2 IA, -1 no black omen, adds ribbon and but keeps Epoch Fail
         (_GM.ICE_AGE, _GF(0), _GF.VANILLA_ROBO_RIBBON, _GF(0)),
     ],
-    ids=('std', 'std+1', 'ia'),
+    ids=('std', 'std+1', 'std+1-1', 'ia'),
 )
 def test_fix_flag_conflicts_few_spots(mode, spot_flags, added, removed, settings):
     '''Check expected flags added/removed when not enough spots.'''
@@ -136,11 +138,10 @@ def test_fix_flag_conflicts_removes_spots(mode, incompatible_spots, settings):
         assert compatible_spots & settings.gameflags, 'Missing compatible spots'
 
 
-@pytest.mark.xfail(reason='there are currently no configs that cannot be fixed!')
 def test_fix_flag_conflicts_unfixable(settings):
     '''Check exception thrown when cannot adjust to have enough spots.'''
-    settings.game_mode = _GM.ICE_AGE
-    settings.gameflags |= ALL_KI_FLAGS
+    settings.game_mode = _GM.STANDARD
+    settings.gameflags |= ALL_KI_FLAGS | _GF.REMOVE_BLACK_OMEN_SPOT
     with pytest.raises(ValueError) as ex:
         settings.fix_flag_conflicts()
     assert 'fix flag conflicts' in str(ex)

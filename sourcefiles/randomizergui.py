@@ -2254,10 +2254,10 @@ class RandoGUI:
             GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS
         ]
 
-        plus_spot_flags = [
+        adjust_spot_flags = [
             GameFlags.ADD_BEKKLER_SPOT, GameFlags.ADD_OZZIE_SPOT,
             GameFlags.ADD_RACELOG_SPOT, GameFlags.VANILLA_ROBO_RIBBON,
-            GameFlags.ADD_CYRUS_SPOT
+            GameFlags.ADD_CYRUS_SPOT, GameFlags.REMOVE_BLACK_OMEN_SPOT
         ]
 
         ki_neutral_flags = [
@@ -2275,6 +2275,7 @@ class RandoGUI:
             GameFlags.ADD_OZZIE_SPOT: 'Add Ozzie\'s Fort Spot',
             GameFlags.RESTORE_JOHNNY_RACE: 'Restore Johnny Race',
             GameFlags.ADD_RACELOG_SPOT: 'Add Race Log Spot',
+            GameFlags.REMOVE_BLACK_OMEN_SPOT: 'Remove Black Omen Spot',
             GameFlags.SPLIT_ARRIS_DOME: 'Split Arris Dome',
             GameFlags.VANILLA_ROBO_RIBBON: 'Vanilla Robo Ribbon',
             GameFlags.VANILLA_DESERT: 'Vanilla Desert',
@@ -2311,6 +2312,10 @@ class RandoGUI:
             ),
             GameFlags.ADD_RACELOG_SPOT: (
                 'Adds a KI in the Lab32 Race Log chest.'
+            ),
+            GameFlags.REMOVE_BLACK_OMEN_SPOT: (
+                'Removes Black Omen rock chest as a KI location. Currently '
+                'only relevant when Rocksanity is used.'
             ),
             GameFlags.SPLIT_ARRIS_DOME: (
                 'Adds a KI as a reward for interacting with the corpse in '
@@ -2363,10 +2368,10 @@ class RandoGUI:
         gridify(check_frame, plus_ki_flags)
         check_frame.pack(anchor=tk.W, padx=10)
 
-        label = tk.Label(logic_tweak_frame, text='Flags that Add a KI Spot:')
+        label = tk.Label(logic_tweak_frame, text='Flags that Add/Remove a KI Spot:')
         label.pack(anchor=tk.W)
         check_frame = tk.Frame(logic_tweak_frame)
-        gridify(check_frame, plus_spot_flags)
+        gridify(check_frame, adjust_spot_flags)
         check_frame.pack(anchor=tk.W, padx=10)
 
         label = tk.Label(logic_tweak_frame, text='KI-count neutral Flags:')
