@@ -1034,8 +1034,9 @@ class Randomizer:
         # TODO:  Consider working some of the always-applied script changes
         #        Into base_patch.ips to improve generation speed.
         self.__apply_basic_patches(self.out_rom, self.settings)
-        self.__apply_settings_patches(self.out_rom, self.settings)
         self.__free_guardia_forest_600_objs()
+        self.__apply_settings_patches(self.out_rom, self.settings)
+
 
         if initial_vanilla:
             # self.out_rom.rom_data.space_manager.mark_block(
