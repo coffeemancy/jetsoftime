@@ -1,5 +1,6 @@
 # python standard libraries
 from functools import reduce
+import copy
 import os
 import pathlib
 import pickle
@@ -411,6 +412,7 @@ class RandoGUI:
 
         self.settings.gameflags = \
             reduce(lambda a, b: a | b, flags, GameFlags(False))
+        self.settings.initial_flags = copy.deepcopy(self.settings.gameflags)
         self.settings.cosmetic_flags = \
             reduce(lambda a, b: a | b, cosmetic_flags, CosmeticFlags(False))
 

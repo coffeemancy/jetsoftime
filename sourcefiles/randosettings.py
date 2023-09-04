@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
-from typing import Union, Optional, Type, TypeVar, Callable
+from typing import Callable, Union, Optional, Tuple, Type, TypeVar
 
 import bossrandotypes as rotypes
 import ctoptions
@@ -363,6 +363,7 @@ class Settings:
         self.mystery_settings = MysterySettings()
 
         self.gameflags = GameFlags(0)
+        self.initial_flags = GameFlags(0)
         self.char_choices = [list(range(7)) for j in range(7)]
 
         self.ro_settings = ROSettings.from_game_mode(self.game_mode)
@@ -389,6 +390,7 @@ class Settings:
             "tech_order": str(self.techorder),
             "shops": str(self.shopprices),
             "flags": self.gameflags,
+            "initial_flags": self.initial_flags,
             "cosmetic_flags": self.cosmetic_flags
         }
 
@@ -495,6 +497,10 @@ class Settings:
         ret.gameflags &= ~GameFlags.FREE_MENU_GLITCH
 
         return ret
+
+    def get_flag_diffs(self) -> Tuple[GameFlags, GameFlags]:
+        '''Get diff from initial flags (+, -).'''
+        return (self.gameflags - self.initial_flags, self.initial_flags - self.gameflags)
 
     def fix_flag_conflicts(self):
         '''

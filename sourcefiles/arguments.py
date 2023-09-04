@@ -1,8 +1,11 @@
 from __future__ import annotations
 import argparse
-from dataclasses import dataclass
+import copy
 import functools
 import typing
+
+from dataclasses import dataclass
+
 
 import ctenums
 import ctstrings
@@ -379,6 +382,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.seed = val_dict['seed']
     ret_set.game_mode = mode
     ret_set.gameflags = flags
+    ret_set.initial_flags = copy.deepcopy(flags)
     ret_set.item_difficulty = item_difficulty
     ret_set.enemy_difficulty = enemy_difficulty
     ret_set.techorder = tech_order
