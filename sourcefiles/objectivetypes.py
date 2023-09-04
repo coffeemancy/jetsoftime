@@ -890,7 +890,15 @@ class ObtainNRocksObjective(Objective):
         }
 
         if len(rock_dict) != 5:
-            raise ValueError("Not all rocks are assigned in treaure_dict")
+            # This should only be acceptable if we have a double-assignment
+            # on the pyramid.
+            TID = ctenums.TreasureID
+            if (
+                TID.PYRAMID_LEFT not in rock_dict or
+                TID.PYRAMID_RIGHT not in rock_dict or
+                len(rock_dict) != 6
+            ):
+                raise ValueError("Not all rocks are assigned in treaure_dict")
 
         self.rock_dict = rock_dict
         self.num_rocks_needed = num_rocks_needed
