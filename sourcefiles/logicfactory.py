@@ -1815,7 +1815,7 @@ class VanillaRandoGameConfig(NormalGameConfig):
         giants_claw = self.getLocationGroup('Giantsclaw')
         giants_claw.accessRule = _canAccessGiantsClawVR
 
-        kings_trial = self.getLocationGroup('KingsTrialKey')
+        kings_trial = self.getLocationGroup('GuardiaTreasury')
         kings_trial.accessRule = _canAccessKingsTrialVR
 
         fiona_shrine = self.getLocationGroup('Fionashrine')
