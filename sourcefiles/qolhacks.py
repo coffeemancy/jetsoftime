@@ -130,7 +130,7 @@ def fast_tab_pickup(ctrom: CTRom):
     slow_tabs = {
         TID.GUARDIA_FOREST_POWER_TAB_600: ScriptTabTreasure(
             location=LocID.GUARDIA_FOREST_600,
-            object_id=0x3F,
+            object_id=0x3F-6,
             function_id=0x01,
             item_num=0,
             reward=ItemID.POWER_TAB
