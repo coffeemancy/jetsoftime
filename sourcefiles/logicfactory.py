@@ -3,6 +3,7 @@ import typing
 from typing import Optional
 from math import ceil
 
+import ctenums
 from logictypes import BaselineLocation, Location, LocationGroup,\
     LinkedLocation, Game
 from treasures import treasuredata as td
@@ -325,8 +326,8 @@ class ChronosanityGameConfig(GameConfig):
 
         # Guardia Treasury
         guardiaTreasuryLocations = \
-            LocationGroup("GuardiaTreasury", 36,
-                          lambda game: game.canAccessKingsTrial())
+            LocationGroup("GuardiaTreasury", 30,
+                          lambda game: game.hasKeyItem(ctenums.ItemID.PRISMSHARD))
         (
             guardiaTreasuryLocations
             .addLocation(Location(TID.GUARDIA_BASEMENT_1))
@@ -335,8 +336,11 @@ class ChronosanityGameConfig(GameConfig):
             .addLocation(Location(TID.GUARDIA_TREASURY_1))
             .addLocation(Location(TID.GUARDIA_TREASURY_2))
             .addLocation(Location(TID.GUARDIA_TREASURY_3))
-            .addLocation(Location(TID.KINGS_TRIAL_KEY))
         )
+
+        guardiaTreasuryKeyLocations = \
+            LocationGroup("KingsTrialKey", 6,
+                          lambda game: game.canAccessKingsTrial())
 
         # Ozzie's Fort locations
         # Ozzie's fort is a high level location.
@@ -590,6 +594,7 @@ class ChronosanityGameConfig(GameConfig):
         self.locationGroups.append(northernRuinsLocations)
         self.locationGroups.append(northernRuinsFrogLocked)
         self.locationGroups.append(guardiaTreasuryLocations)
+        self.locationGroups.append(guardiaTreasuryKeyLocations)
         self.locationGroups.append(openLocations)
         self.locationGroups.append(openKeys)
         self.locationGroups.append(heckranLocations)
@@ -1512,8 +1517,11 @@ class ChronosanityLegacyOfCyrusGameConfig(ChronosanityGameConfig):
         unavail_char = \
             self.config.char_assign_dict[RecruitID.PROTO_DOME].held_char
 
+        # TODO: Consider whether in Cronosanity we allow Prismshard with no
+        #       Marle so that the treasury is available.
         if unavail_char == Characters.MARLE:
             removed_names.append('GuardiaTreasury')
+            removed_names.append('KingsTrialKey')
         elif unavail_char == Characters.ROBO:
             removed_names.append('Fionashrine')
 
@@ -1807,7 +1815,7 @@ class VanillaRandoGameConfig(NormalGameConfig):
         giants_claw = self.getLocationGroup('Giantsclaw')
         giants_claw.accessRule = _canAccessGiantsClawVR
 
-        kings_trial = self.getLocationGroup('GuardiaTreasury')
+        kings_trial = self.getLocationGroup('KingsTrialKey')
         kings_trial.accessRule = _canAccessKingsTrialVR
 
         fiona_shrine = self.getLocationGroup('Fionashrine')
@@ -1836,7 +1844,7 @@ class ChronosanityVanillaRandoGameConfig(ChronosanityGameConfig):
         giants_claw = self.getLocationGroup('Giantsclaw')
         giants_claw.accessRule = _canAccessGiantsClawVR
 
-        kings_trial = self.getLocationGroup('GuardiaTreasury')
+        kings_trial = self.getLocationGroup('KingsTrialKey')
         kings_trial.accessRule = _canAccessKingsTrialVR
 
         fiona_shrine = self.getLocationGroup('Fionashrine')

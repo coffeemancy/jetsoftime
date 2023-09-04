@@ -340,6 +340,7 @@ class ScriptTreasure(Treasure):
                 # print(self)
                 # print(num_mem_set_cmds_found, num_add_rwd_cmds_found)
                 raise ctevent.CommandNotFoundException(
+                    f'{self.location}: '
                     'Failed to find item setting commands.')
 
             if cmd.command == 0x4F:
@@ -430,6 +431,24 @@ class BekklerTreasure(ScriptTreasure):
         pos, _ = script.find_command([0x4F], st, end)
 
         script.data[pos+1] = int(self.reward)
+
+
+class PrismShardTreasure(ScriptTreasure):
+    def write_to_ctrom(self, ct_rom: ctrom.CTRom):
+        """Also set the name spoiler in obj9, touch"""
+        ScriptTreasure.write_to_ctrom(self, ct_rom)
+
+        # Putting gold here is not really supported yet, so write a mop instead.
+        if isinstance(self.reward, ctenums.ItemID):
+            write_item = self.reward
+        else:
+            write_item = ctenums.ItemID.MOP
+
+        script = ct_rom.script_manager.get_script(ctenums.LocID.GUARDIA_REAR_STORAGE)
+        hook_cmd = EC.assign_val_to_mem(write_item, 0x7F0200, 1)
+        pos, _ = script.find_command([hook_cmd.command],
+                                     script.get_function_start(9, 2))
+        script.data[pos:pos+len(hook_cmd)] = hook_cmd.to_bytearray()
 
 
 def get_base_treasure_dict() -> dict[ctenums.TreasureID, Treasure]:
@@ -897,7 +916,7 @@ def get_base_treasure_dict() -> dict[ctenums.TreasureID, Treasure]:
             object_id=0x0A,
             function_id=0x01
         ),
-        TID.KINGS_TRIAL_KEY: ScriptTreasure(
+        TID.KINGS_TRIAL_KEY: PrismShardTreasure(
             location=LocID.GUARDIA_REAR_STORAGE,
             object_id=0x02,
             function_id=0x03

@@ -25,7 +25,41 @@ def update_prismshard_quest(ct_rom: ctrom.CTRom):
     alter_shard_spot_pickup(ct_rom)
     accelerate_end_scene(ct_rom)
     shorten_shard_turn_in_script(ct_rom)
+    modify_present_guards_and_king(ct_rom)
 
+
+def modify_present_guards_and_king(ct_rom: ctrom.CTRom):
+    """
+    Do not have the guards in the 1000 castle block the throne.
+    This removes the need for Marle when turning the shard in.
+    Also hide
+    """
+    script = ct_rom.script_manager.get_script(
+        ctenums.LocID.GUARDIA_THRONEROOM_1000
+    )
+
+    blocker_guard_obj_ids = (0x15, 0x16)
+    for obj_id in blocker_guard_obj_ids:
+        pos = script.find_exact_command(
+            EC.if_mem_op_value(0x7F00A1, OP.BITWISE_AND_NONZERO, 0x40, 1, 0),
+            script.get_object_start(obj_id)
+        )
+        script.delete_jump_block(pos)
+
+    pos = script.get_function_start(0xD, 0)
+    script.insert_commands(
+        EF().add_if(
+            # If treasury
+            EC.if_mem_op_value(0x7F00A1, OP.BITWISE_AND_NONZERO, 0x40, 1, 0),
+            EF().add_if_else(
+                # If trial complete
+                EC.if_mem_op_value(0x7F0050, OP.BITWISE_AND_NONZERO, 0x40, 1, 0),
+                EF(),  # nothing
+                EF().add(EC.remove_object(0xD))  # else hide king
+                .add(EC.return_cmd()).add(EC.end_cmd())
+            )
+        ).get_bytearray(), pos
+    )
 
 def set_quest_activation_flags(ct_rom: ctrom.CTRom):
     '''
@@ -143,6 +177,53 @@ def alter_shard_spot_pickup(ct_rom: ctrom.CTRom):
     )
 
     # The shell is Object 0x09 touch, but it calls out to Object 2 arb 0.
+    new_touch = (
+        EF()
+        .add_if(
+            EC.if_mem_op_value(0x7F00A2, OP.BITWISE_AND_NONZERO, 0x80, 1, 0),
+            EF().add(EC.return_cmd())
+        )
+        .add(EC.assign_val_to_mem(ctenums.ItemID.MOP, 0x7F0200, 1))
+        .add_if_else(
+            EC.check_active_pc(ctenums.CharID.MARLE, 0),
+            EF().add(EC.decision_box(
+                script.add_py_string(
+                    "Should {marle} take the {item}?{line break}"
+                    "   Yes.{line break}"
+                    "   No.{null}"
+                ), 1, 2
+            )).add_if(
+                EC.if_result_equals(1, 0),
+                EF().add(EC.generic_command(0xE7, 0x2C, 0x02))
+                .add(EC.move_party(0x33, 0x0D, 0x32, 0xC, 0x36, 0xC))
+                .add(EC.call_obj_function(2, 3, 3, FS.HALT))
+                .add(EC.move_party(0x34, 0xD, 0x34, 0xD, 0x34, 0xD))
+                .add(EC.party_follow())
+                .add_if_else(
+                    # If trial complete
+                    EC.if_mem_op_value(0x7F0050, OP.BITWISE_AND_NONZERO, 0x40,
+                                       1, 0),
+                    # Just start plyaing castle music again
+                    EF().add(eventcommand.get_command(b'\xEA\x0C')),
+                    # else
+                    EF()
+                    .add(EC.set_bit(0x7F006A, 0x80))  # castle lockdown
+                    .add(EC.assign_val_to_mem(1, 0x7F01ED, 1))  # set keep song
+                    .add(eventcommand.get_command(bytes.fromhex('EC880101')))
+                    # ^ Weird song state change
+                    .add(eventcommand.get_command(b'\xEA\x23'))  # song play
+                )
+            ),
+            EF().add(EC.auto_text_box(
+                script.add_py_string(
+                    "Only {marle} can take the {item}.{null}"
+                )
+            ))
+        ).add(EC.return_cmd())
+    )
+    script.set_function(9, 2, new_touch)
+
+    # Now change Marle's bit.
     hook_cmd = EC.call_obj_function(2, 3, 3, FS.HALT)
     hook_pos = script.find_exact_command(hook_cmd,
                                          script.get_function_start(9, 2),
@@ -176,7 +257,7 @@ def alter_shard_spot_pickup(ct_rom: ctrom.CTRom):
     # stuff, otherwise, the song will just end instead of repeating the
     # dramatic part.
 
-    script.insert_commands(func.get_bytearray(), hook_pos)
+    # script.insert_commands(func.get_bytearray(), hook_pos)
 
     # Now eliminate the part of the function (obj2, arb0) that does the
     # cutaway to the trial.
@@ -229,6 +310,13 @@ def shorten_shard_turn_in_script(ct_rom: ctrom.CTRom):
     script = ct_rom.script_manager.get_script(
         ctenums.LocID.GUARDIA_THRONEROOM_600
     )
+
+    # Remove the Marle block on the King
+    pos, _ = script.find_command(
+        [0xCF],  # if pc recruited
+        script.get_function_start(0x13, 1)
+    )
+    script.delete_commands(pos, 1)
 
     # Remove everything leading up to "Done! I shall...."
     # Now the king interaction is just him saying he'll get the shell
