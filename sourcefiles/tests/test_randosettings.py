@@ -22,16 +22,19 @@ def settings():
 @pytest.mark.parametrize(
     'mode, spot_flags, expected_flags',
     [
-        (_GM.STANDARD, _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT, ALL_KI_FLAGS),
-        # no Epoch Fail / Ribbon for LW, nor other spots, so allget removed
+        # need +2 spots for all flags
+        (_GM.STANDARD, _GF.ADD_BEKKLER_SPOT | _GF.ADD_RACELOG_SPOT, ALL_KI_FLAGS),
+        # no Epoch Fail / Ribbon for LW, nor other spots, so all get removed
         (_GM.LOST_WORLDS, MOST_SPOT_FLAGS | _GF.VANILLA_ROBO_RIBBON, _GF(0)),
-        # need one more spot than standard because no black omen spot for rocksanity
-        (_GM.ICE_AGE, _GF.ADD_BEKKLER_SPOT | _GF.ADD_OZZIE_SPOT | _GF.ADD_RACELOG_SPOT, ALL_KI_FLAGS),
-        # no Johnny Race or Restore Tools for LoC
-        (_GM.LEGACY_OF_CYRUS, MOST_SPOT_FLAGS, _GF.EPOCH_FAIL | _GF.ROCKSANITY),
+        # 2 extras from IA, -1 no black omen, +1 spot
+        (_GM.ICE_AGE, _GF.ADD_OZZIE_SPOT, ALL_KI_FLAGS),
+        # no Johnny Race or Restore Tools for LoC, don't need extra spots
+        (_GM.LEGACY_OF_CYRUS, _GF(0), _GF.EPOCH_FAIL | _GF.ROCKSANITY),
         (_GM.VANILLA_RANDO, _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT, ALL_KI_FLAGS),
+        # chronosanity should not need any extra spots nor add/remove flags
+        (_GM.STANDARD, _GF.CHRONOSANITY, ALL_KI_FLAGS),
     ],
-    ids=('std', 'lw', 'ia', 'loc', 'vr'),
+    ids=('std+2', 'lw', 'ia+1', 'loc', 'vr+2', 'std+cr'),
 )
 def test_fix_flag_conflicts_adequate_spots(mode, spot_flags, expected_flags, settings):
     '''Check no unexpected flags added/removed when adequate spots.
@@ -65,12 +68,10 @@ def test_fix_flag_conflicts_adequate_spots(mode, spot_flags, expected_flags, set
         (_GM.STANDARD, _GF(0), _GF.VANILLA_ROBO_RIBBON, _GF.EPOCH_FAIL),
         # added one spot, just ribbon
         (_GM.STANDARD, _GF.ADD_CYRUS_SPOT, _GF.VANILLA_ROBO_RIBBON, _GF(0)),
-        # added one spot, adds ribbon and removes Epoch Fail since no Black Omen spot
-        (_GM.ICE_AGE, _GF.ADD_OZZIE_SPOT, _GF.VANILLA_ROBO_RIBBON, _GF.EPOCH_FAIL),
-        # no spots added, add ribbon since no Black Omen spot
-        (_GM.LEGACY_OF_CYRUS, _GF(0), _GF.VANILLA_ROBO_RIBBON, _GF(0)),
+        # +2 IA, -1 no black omen, adds ribbon and but keeps Epoch Fail
+        (_GM.ICE_AGE, _GF(0), _GF.VANILLA_ROBO_RIBBON, _GF(0)),
     ],
-    ids=('std', 'std+1', 'ia+1', 'loc'),
+    ids=('std', 'std+1', 'ia'),
 )
 def test_fix_flag_conflicts_few_spots(mode, spot_flags, added, removed, settings):
     '''Check expected flags added/removed when not enough spots.'''
@@ -104,6 +105,38 @@ def test_fix_flag_conflicts_forces_on_required(flag, required, settings):
     assert not (required - settings.gameflags), 'Missing required flags'
 
 
+@pytest.mark.parametrize(
+    'mode, incompatible_spots',
+    [
+        (_GM.LOST_WORLDS, MOST_SPOT_FLAGS | _GF.VANILLA_ROBO_RIBBON),
+        (_GM.ICE_AGE, _GF.ADD_BEKKLER_SPOT),
+        (_GM.LEGACY_OF_CYRUS, _GF.ADD_BEKKLER_SPOT | _GF.ADD_OZZIE_SPOT | _GF.ADD_RACELOG_SPOT),
+    ],
+    ids=('lw', 'ia', 'loc'),
+)
+def test_fix_flag_conflicts_removes_spots(mode, incompatible_spots, settings):
+    '''Check incompatible spot flags are removed based on game mode.
+
+    This partially covers _forced_off_dict being applied in fix_flag_conflicts by
+    asserting that incompatible spot flags for game mode are disabled.
+    '''
+    # turn on all spots so can make sure incompatible ones are removed
+    spot_flags = MOST_SPOT_FLAGS | _GF.VANILLA_ROBO_RIBBON
+    compatible_spots = spot_flags - incompatible_spots
+
+    settings.game_mode = mode
+    settings.gameflags |= spot_flags
+
+    settings.fix_flag_conflicts()
+
+    if mode == _GM.LOST_WORLDS:
+        assert not settings.gameflags, 'Extra flags for Lost Worlds'
+    else:
+        assert not incompatible_spots & settings.gameflags, 'Unexpected incompatible spots'
+        assert compatible_spots & settings.gameflags, 'Missing compatible spots'
+
+
+@pytest.mark.xfail(reason='there are currently no configs that cannot be fixed!')
 def test_fix_flag_conflicts_unfixable(settings):
     '''Check exception thrown when cannot adjust to have enough spots.'''
     settings.game_mode = _GM.ICE_AGE

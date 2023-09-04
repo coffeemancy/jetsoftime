@@ -1,6 +1,6 @@
 import random
 import typing
-from typing import Optional
+from typing import List, Optional, Type
 from math import ceil
 
 import ctenums
@@ -704,19 +704,19 @@ class ChronosanityGameConfig(GameConfig):
         )
         kajarRock.addLocation(Location(TID.KAJAR_ROCK))
 
-        # black omen rock set up to prevent putting go-mode items there
-        blackOmenRock = LocationGroup(
-            "Black Omen Rock", 1, lambda game: (
-                game.canAccessBlackOmen() and
-                game.canAccessMagusCastle() and
-                game.canAccessTyranoLair()
-            )
-        )
-        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+        self.locationGroups.extend([larubaRock, kajarRock])
 
-        self.locationGroups.extend([
-            larubaRock, kajarRock, blackOmenRock
-        ])
+        if _couldAccessBlackOmen(self):
+            # black omen rock set up to prevent putting go-mode items there
+            blackOmenRock = LocationGroup(
+                "Black Omen Rock", 1, lambda game: (
+                    game.canAccessBlackOmen() and
+                    game.canAccessMagusCastle() and
+                    game.canAccessTyranoLair()
+                )
+            )
+            blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+            self.locationGroups.append(blackOmenRock)
 
 
     def initKeyItems(self):
@@ -1400,22 +1400,35 @@ class NormalGameConfig(GameConfig):
         )
         kajarRock.addLocation(Location(TID.KAJAR_ROCK))
 
-        # black omen rock set up to prevent putting go-mode items there
-        blackOmenRock = LocationGroup(
-            "Black Omen Rock", 1, lambda game: (
-                game.canAccessBlackOmen() and
-                game.canAccessMagusCastle() and
-                game.canAccessTyranoLair()
-            )
-        )
-        blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
-
         self.locationGroups.extend([
-            denadoroRock, giantsClawRock, larubaRock, kajarRock, blackOmenRock
+            denadoroRock, giantsClawRock, larubaRock, kajarRock
         ])
+
+        if _couldAccessBlackOmen(self):
+            # black omen rock set up to prevent putting go-mode items there
+            blackOmenRock = LocationGroup(
+                    "Black Omen Rock", 1, lambda game: (
+                    game.canAccessBlackOmen() and
+                    game.canAccessMagusCastle() and
+                    game.canAccessTyranoLair()
+                )
+            )
+            blackOmenRock.addLocation(Location(TID.BLACK_OMEN_TERRA_ROCK))
+            self.locationGroups.append(blackOmenRock)
+
 
 # end NormalGameConfig class
 
+def _couldAccessBlackOmen(gc: GameConfig) -> bool:
+    # configurations which do not have access to Black Omen
+    omenless_cfgs: List[Type[GameConfig]] = [
+        ChronosanityIceAgeGameConfig,
+        ChronosanityLegacyOfCyrusGameConfig,
+        IceAgeGameConfig,
+        LegacyOfCyrusGameConfig,
+    ]
+    inaccessible = any(isinstance(gc, cfg) for cfg in omenless_cfgs)
+    return not inaccessible
 
 #
 # This class represents the game configuration for a

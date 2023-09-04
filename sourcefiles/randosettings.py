@@ -142,13 +142,15 @@ _forced_off_dict: dict[Union[_GF, _GM], _GF] = {
     ),
     _GM.ICE_AGE: (
         _GF.ZEAL_END |
-        _GF.BOSS_SCALE | _GF.BUCKET_LIST
+        _GF.BOSS_SCALE | _GF.BUCKET_LIST |
+        _GF.ADD_BEKKLER_SPOT
     ),
     _GM.LEGACY_OF_CYRUS: (
         _GF.ZEAL_END |
         _GF.BUCKET_LIST | _GF.BOSS_SCALE |
         _GF.ADD_OZZIE_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_TOOLS |
-        _GF.RESTORE_JOHNNY_RACE | _GF.SPLIT_ARRIS_DOME
+        _GF.RESTORE_JOHNNY_RACE | _GF.SPLIT_ARRIS_DOME | _GF.ADD_RACELOG_SPOT |
+        _GF.ADD_BEKKLER_SPOT
     ),
     _GM.VANILLA_RANDO: (
         _GF.BOSS_SCALE
@@ -519,7 +521,10 @@ class Settings:
         if GameFlags.CHRONOSANITY in self.gameflags:
             self.gameflags &= ~GameFlags.BOSS_SCALE
 
-        # TODO: Is this necessary/desired for Chronosanity? Plenty of spots.
+            # there are plenty of spots in chronosanity, so don't need
+            # to adjust based on KI/spot flags
+            return True
+
         add_ki_flags = [
             GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS,
             GameFlags.EPOCH_FAIL
@@ -540,6 +545,12 @@ class Settings:
                 mode not in [GameMode.LEGACY_OF_CYRUS, GameMode.ICE_AGE]
             )
             added_spots += 5 if has_black_omen_spot else 4
+
+        # some modes have extra treasure spots (fewer KIs) which can be filled
+        if mode == GameMode.ICE_AGE:
+            added_spots += 2
+        elif mode == GameMode.LEGACY_OF_CYRUS:
+            added_spots += 1
 
         # We need to make changes that the user will not get tripped up by.
         # For example, we don't want to add a spot that they wouldn't know to
