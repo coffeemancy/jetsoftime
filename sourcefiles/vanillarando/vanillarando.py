@@ -171,8 +171,8 @@ def add_check_to_ozzies_fort_script(ct_rom: ctrom.CTRom):
     get_item_func = (
         EF()
         .add(EC.assign_val_to_mem(item_id, 0x7F0200, 1))
+        .add(EC.add_item(item_id))  # Add Item is expected before the textbox
         .add(EC.auto_text_box(new_ind))
-        .add(EC.add_item(item_id))
     )
 
     script.insert_commands(get_item_func.get_bytearray(), hook_loc)
