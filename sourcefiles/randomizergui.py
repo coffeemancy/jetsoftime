@@ -1715,28 +1715,35 @@ class RandoGUI:
 
             rando = randomizer.Randomizer(rom, is_vanilla=False)
             rando.settings = self.settings
-            rando.set_random_config()
-            out_rom = rando.get_generated_rom()
+            try:
+                rando.set_random_config()
+                out_rom = rando.get_generated_rom()
+            except Exception as ex:
+                tk.messagebox.showerror(
+                    title='Error generating rom!', message=str(ex)
+                )
+                # clear seed field on error
+                self.seed.set('')
+            else:
+                input_path = pathlib.Path(self.input_file.get())
 
-            input_path = pathlib.Path(self.input_file.get())
+                if self.output_dir is None or self.output_dir.get() == '':
+                    self.output_dir.set(str(input_path.parent))
 
-            if self.output_dir is None or self.output_dir.get() == '':
-                self.output_dir.set(str(input_path.parent))
+                base_name = input_path.name.split('.')[0]
+                out_dir = self.output_dir.get()
 
-            base_name = input_path.name.split('.')[0]
-            out_dir = self.output_dir.get()
+                writer = randomizer.RandomizerWriter(rando, base_name=base_name)
+                writer.write_output_rom(out_dir)
+                writer.write_spoiler_log(out_dir)
+                writer.write_json_spoiler_log(out_dir)
 
-            writer = randomizer.RandomizerWriter(rando, base_name=base_name)
-            writer.write_output_rom(out_dir)
-            writer.write_spoiler_log(out_dir)
-            writer.write_json_spoiler_log(out_dir)
+                tk.messagebox.showinfo(
+                    title='Randomization Complete',
+                    message=f'Randomization Complete.  Seed: {seed}.'
+                )
 
-            tk.messagebox.showinfo(
-                title='Randomization Complete',
-                message=f'Randomization Complete.  Seed: {seed}.'
-            )
-
-            self.save_settings()
+                self.save_settings()
 
         # Regardless of generation, stop the progress bar
         self.progressBar.stop()
@@ -2344,7 +2351,7 @@ class RandoGUI:
                     frame,
                     text=flag_names[flag],
                     variable=self.flag_dict[flag],
-                    width=20,
+                    width=22,
                     anchor=tk.W
                 )
                 CreateToolTip(checkbox, text=tooltip_text[flag])
