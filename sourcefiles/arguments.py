@@ -6,7 +6,6 @@ import typing
 
 from dataclasses import dataclass
 
-
 import ctenums
 import ctstrings
 import ctoptions
