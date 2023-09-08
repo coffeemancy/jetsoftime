@@ -125,4 +125,3 @@ def modify_effect_header(
     scale_function = scale_dict[formula_type]
     scale_factor = scale_function(new_mp)/scale_function(orig_mp)
     effect_header.power = round(scale_factor*effect_header.power)
-
