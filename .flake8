@@ -3,10 +3,6 @@ exclude = .git,__pycache__
 max-line-length = 119
 
 extend-ignore=
-  # Temporarily ignore issues which probably should be addressed in near future
-  ## end-of-file blank lines
-  W391,
-
   # Ignore formatting issues that a tool like black could automatically address
   ## non-syntax indentation (visual)
   E122, E123, E128, E131,

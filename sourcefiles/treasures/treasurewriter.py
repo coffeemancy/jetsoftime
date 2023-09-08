@@ -272,4 +272,3 @@ def find_script_ptrs(ptr_list):
         chest_index = (ptr-0x35f404)//4
         if 0 > chest_index or chest_index > 0xF8:
             print(f"{ptr:06X}")
-
