@@ -19,9 +19,6 @@ extend-ignore=
   ## trailing whitespace, blank line contains whitespace
   W291, W293,
 
-  ## line breaks around binary operators
-  W503, W504
-
   ## line length
   E501,
 
@@ -40,4 +37,3 @@ per-file-ignores=
 
   ## assigned by never used, might be for debugging or WIP?
   sourcefiles/techdb.py:F841
-
