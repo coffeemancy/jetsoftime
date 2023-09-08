@@ -268,7 +268,7 @@ def commitKeyItems(settings: rset.Settings,
     # piece of treasure. Treasure quality is based on the location's loot tier.
     for locationGroup in locationGroups:
         for location in locationGroup.getLocations():
-            if type(location) == logictypes.BaselineLocation and \
+            if isinstance(location, logictypes.BaselineLocation) and \
                (location not in chosenLocations):
 
                 # This is a baseline location without a key item.
