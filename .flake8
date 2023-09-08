@@ -4,9 +4,6 @@ max-line-length = 119
 
 extend-ignore=
   # Temporarily ignore issues which probably should be addressed in near future
-  ## imported but unused
-  F401,
-
   ## assigned but never used
   F841,
 

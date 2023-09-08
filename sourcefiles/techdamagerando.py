@@ -3,7 +3,7 @@ import math
 import random
 from typing import Callable
 
-import ctenums, ctstrings
+import ctstrings
 import cttechtypes as ctt
 import techdb
 

@@ -1,5 +1,4 @@
 import json
-import randoconfig as cfg
 import randosettings as rset
 
 class JOTJSONEncoder(json.JSONEncoder):

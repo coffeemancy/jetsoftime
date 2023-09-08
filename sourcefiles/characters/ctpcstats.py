@@ -10,7 +10,6 @@ import itemdata
 import ctenums
 import ctrom
 import cttypes as ctt
-import ctstrings
 
 
 class PCStat(ctenums.StrIntEnum):

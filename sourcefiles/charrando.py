@@ -3,7 +3,6 @@ import random
 
 from itertools import permutations
 
-from characters import ctpcstats
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
     update_ptrs, to_rom_ptr

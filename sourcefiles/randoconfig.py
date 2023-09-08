@@ -4,7 +4,6 @@
 # GameConfig out to the rom.
 from __future__ import annotations
 import dataclasses
-import typing
 from typing import Optional, Union
 
 from treasures import treasuretypes
@@ -23,8 +22,6 @@ import ctenums
 import ctrom
 import ctstrings
 import techdb
-
-import randosettings as rset
 
 
 @dataclasses.dataclass

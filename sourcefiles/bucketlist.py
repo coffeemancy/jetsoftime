@@ -11,20 +11,14 @@ from common import distribution
 import ctenums
 import ctrom
 
-import eventcommand
 from eventcommand import EventCommand as EC, Operation as OP, FuncSync as FS
-
-import eventfunction
 from eventfunction import EventFunction as EF
-
 from maps import locationtypes
 
 import objectivehints as obhint
 import objectivetypes as oty
-
 import randoconfig as cfg
 import randosettings as rset
-
 import xpscale
 
 
