@@ -3,7 +3,7 @@ Module for turning text expressions into objective choices.
 '''
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple
 
 import bossrandotypes as rotypes
 import objectivetypes

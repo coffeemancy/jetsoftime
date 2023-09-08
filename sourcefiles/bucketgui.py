@@ -2,7 +2,6 @@
 Module for creating a frame with bucket settings.
 '''
 
-import dataclasses
 import tkinter as tk
 import typing
 

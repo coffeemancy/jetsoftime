@@ -8,16 +8,12 @@ import abc
 import typing
 
 import byteops
-import ctevent
 import ctenums
 import ctrom
 import cttypes as ctt
 
-import eventcommand
-import eventfunction
 
-from eventcommand import EventCommand as EC, FuncSync as FS, Operation as OP
-from eventfunction import EventFunction as EF
+from eventcommand import EventCommand as EC
 
 
 RewardType = typing.Union[ctenums.ItemID, int]

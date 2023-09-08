@@ -3,7 +3,6 @@ The Chrono Trigger: Jets of Time Randomizer
 '''
 from __future__ import annotations
 
-import copy
 import os
 import random
 import pickle
