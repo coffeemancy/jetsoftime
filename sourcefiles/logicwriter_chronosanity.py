@@ -31,19 +31,19 @@ locationGroups = []
 # return: List of all available LocationGroups
 #
 def getAvailableLocations(game: logictypes.Game) -> list[logictypes.Location]:
-  # Have the game object update what characters are available based on the
-  # currently available items and time periods.
-  game.updateAvailableCharacters()
-  
-  # Get a list of all accessible location groups
-  accessibleLocationGroups = []
-  for locationGroup in locationGroups:
-    if locationGroup.canAccess(game):
-      if locationGroup.getAvailableLocationCount() > 0:
-        accessibleLocationGroups.append(locationGroup)
-  
-  return accessibleLocationGroups
-  
+    # Have the game object update what characters are available based on the
+    # currently available items and time periods.
+    game.updateAvailableCharacters()
+
+    # Get a list of all accessible location groups
+    accessibleLocationGroups = []
+    for locationGroup in locationGroups:
+        if locationGroup.canAccess(game):
+            if locationGroup.getAvailableLocationCount() > 0:
+                accessibleLocationGroups.append(locationGroup)
+
+    return accessibleLocationGroups
+
 # end getAvailableLocations
 
 #
@@ -55,26 +55,26 @@ def getAvailableLocations(game: logictypes.Game) -> list[logictypes.Location]:
 # return: A Location randomly chosen from the groups list
 #
 def getRandomLocation(groups):
-  # get the max rand value from the combined weightings of the location groups
-  # This will be used to help select a location group
-  weightTotal = 0
-  for group in groups:
-    weightTotal = weightTotal + group.getWeight()
-  
-  # Select a location group
-  locationChoice = rand.randint(1, weightTotal)
-  counter = 0
-  chosenGroup = None
-  for group in groups:
-    counter = counter + group.getWeight()
-    if counter >= locationChoice:
-      chosenGroup = group
-      break
-    
-  # Select a random location from the chosen location group.
-  location = rand.choice(chosenGroup.getLocations())
-  
-  return chosenGroup, location
+    # get the max rand value from the combined weightings of the location groups
+    # This will be used to help select a location group
+    weightTotal = 0
+    for group in groups:
+        weightTotal = weightTotal + group.getWeight()
+
+    # Select a location group
+    locationChoice = rand.randint(1, weightTotal)
+    counter = 0
+    chosenGroup = None
+    for group in groups:
+        counter = counter + group.getWeight()
+        if counter >= locationChoice:
+            chosenGroup = group
+            break
+
+    # Select a random location from the chosen location group.
+    location = rand.choice(chosenGroup.getLocations())
+
+    return chosenGroup, location
 # end getRandomLocation
 
 #
@@ -86,18 +86,18 @@ def getRandomLocation(groups):
 # return: Shuffled list of key items with duplicates removed
 #
 def getShuffledKeyItemList(weightedList):
-  tempList = weightedList.copy()
+    tempList = weightedList.copy()
 
-  # In the shuffle, higher weighted items have a better chance of appearing
-  # before lower weighted items.
-  rand.shuffle(tempList)
-  
-  keyItemList = []
-  for keyItem in tempList:
-    if not (keyItem in keyItemList):
-      keyItemList.append(keyItem)
-  
-  return keyItemList
+    # In the shuffle, higher weighted items have a better chance of appearing
+    # before lower weighted items.
+    rand.shuffle(tempList)
+
+    keyItemList = []
+    for keyItem in tempList:
+        if keyItem not in keyItemList:
+            keyItemList.append(keyItem)
+
+    return keyItemList
 # end getShuffledKeyItemList
 
 #
@@ -111,13 +111,13 @@ def getShuffledKeyItemList(weightedList):
 #             A list of locations with key items assigned
 #
 def determineKeyItemPlacement(gameConfig):
-  global locationGroups
-  locationGroups = gameConfig.getLocations()
-  # game = gameConfig.getGame()
-  remainingKeyItems = gameConfig.getKeyItemList()
-  chosenLocations = []
-  return determineKeyItemPlacement_impl(chosenLocations,
-                                        remainingKeyItems, gameConfig)
+    global locationGroups
+    locationGroups = gameConfig.getLocations()
+    # game = gameConfig.getGame()
+    remainingKeyItems = gameConfig.getKeyItemList()
+    chosenLocations = []
+    return determineKeyItemPlacement_impl(chosenLocations,
+                                          remainingKeyItems, gameConfig)
 # end place_key_items
 
 
@@ -137,7 +137,7 @@ def determineKeyItemPlacement(gameConfig):
 #     Get a shuffled list of the remaining key items
 #     Loop through the key item list, trying each one in the chosen location
 #       Recurse and try the next location/key item
-#     
+#
 #
 # param: chosenLocations - List of locations already chosen for key items
 # param: remainingKeyItems - List of key items remaining to be placed
@@ -157,58 +157,58 @@ def determineKeyItemPlacement(gameConfig):
 def determineKeyItemPlacement_impl(chosenLocations,
                                    remainingKeyItems,
                                    gameConfig):
-  if len(remainingKeyItems) == 0:
-    # We've placed all key items.  This is our breakout condition
-    return True, chosenLocations
-  else:
+    if len(remainingKeyItems) == 0:
+        # We've placed all key items.  This is our breakout condition
+        return True, chosenLocations
+
     # We still have key items to place.
     availableLocations = getAvailableLocations(gameConfig.getGame())
     if len(availableLocations) == 0:
-      # This item configuration is not completable. 
-      return False, chosenLocations
-    else:
-      # Continue placing key items.
-      keyItemConfirmed = False
-      returnedChosenLocations = None
-      
-      # Choose a random location
-      locationGroup, location = getRandomLocation(availableLocations)
-      locationGroup.removeLocation(location)
-      locationGroup.decayWeight()
-      chosenLocations.append(location)
-      
-      # Sometimes key item bias is removed after N checks
-      gameConfig.updateKeyItems(remainingKeyItems)
+        # This item configuration is not completable.
+        return False, chosenLocations
 
-      # Use the weighted key item list to get a list of key items
-      # that we can loop through and attempt to place.
-      localKeyItemList = getShuffledKeyItemList(remainingKeyItems)
-      for keyItem in localKeyItemList:
+    # Continue placing key items.
+    keyItemConfirmed = False
+    returnedChosenLocations = None
+
+    # Choose a random location
+    locationGroup, location = getRandomLocation(availableLocations)
+    locationGroup.removeLocation(location)
+    locationGroup.decayWeight()
+    chosenLocations.append(location)
+
+    # Sometimes key item bias is removed after N checks
+    gameConfig.updateKeyItems(remainingKeyItems)
+
+    # Use the weighted key item list to get a list of key items
+    # that we can loop through and attempt to place.
+    localKeyItemList = getShuffledKeyItemList(remainingKeyItems)
+    for keyItem in localKeyItemList:
         # Try placing this key item and then recurse
         location.setKeyItem(keyItem)
         gameConfig.getGame().addKeyItem(keyItem)
-        
+
         newKeyItemList = [x for x in remainingKeyItems if x != keyItem]
         # recurse and try to place the next key item.
         keyItemConfirmed, returnedChosenLocations = \
             determineKeyItemPlacement_impl(chosenLocations,
                                            newKeyItemList,
                                            gameConfig)
-        
+
         if keyItemConfirmed:
-          # We're unwinding the recursion here, all key items are placed.
-          return keyItemConfirmed, returnedChosenLocations
-        else:
-          gameConfig.getGame().removeKeyItem(keyItem)
-      # end keyItem loop
-      
-      # If we get here, we failed to place an item.  Undo location modifications
-      locationGroup.addLocation(location)
-      locationGroup.undoWeightDecay()
-      chosenLocations.remove(location)
-      location.unsetKeyItem()
-      
-      return False, chosenLocations
+            # We're unwinding the recursion here, all key items are placed.
+            return keyItemConfirmed, returnedChosenLocations
+
+        gameConfig.getGame().removeKeyItem(keyItem)
+    # end keyItem loop
+
+    # If we get here, we failed to place an item.  Undo location modifications
+    locationGroup.addLocation(location)
+    locationGroup.undoWeightDecay()
+    chosenLocations.remove(location)
+    location.unsetKeyItem()
+
+    return False, chosenLocations
 
 # end determineKeyItemPlacement_impl recursive function
 
@@ -219,21 +219,21 @@ def determineKeyItemPlacement_impl(chosenLocations,
 # param: charLocations - Dictionary of locations to characters
 #
 def writeSpoilerLog(chosenLocations, charLocations):
-  spoilerLog = open("spoiler_log.txt","w+")
-  # Write the key item location to the spoiler log
-  
-  spoilerLog.write("Key ItemLocations:\n")
-  for location in chosenLocations:
-    spoilerLog.write("  " +
-                     location.getName() + ": " +
-                     location.getKeyItem().name + "\n")
+    spoilerLog = open("spoiler_log.txt","w+")
+    # Write the key item location to the spoiler log
 
-  # Write the character locations to the spoiler log
-  spoilerLog.write("\n\nCharacter Locations:\n")
-  for loc, char in charLocations.items():
-    character = char.held_char
-    spoilerLog.write("  " + str(loc) + ": " + str(character) + "\n")
-  spoilerLog.close()
+    spoilerLog.write("Key ItemLocations:\n")
+    for location in chosenLocations:
+        spoilerLog.write("  " +
+                         location.getName() + ": " +
+                         location.getKeyItem().name + "\n")
+
+    # Write the character locations to the spoiler log
+    spoilerLog.write("\n\nCharacter Locations:\n")
+    for loc, char in charLocations.items():
+        character = char.held_char
+        spoilerLog.write("  " + str(loc) + ": " + str(character) + "\n")
+    spoilerLog.close()
 
 
 #

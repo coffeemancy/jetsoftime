@@ -33,10 +33,6 @@ extend-ignore=
   E741
 
 per-file-ignores=
-  # Temporarily ignore issues which probably should be addressed in near future
-  ## indentation not a multiple of 4 (should address in near future)
-  sourcefiles/logicwriter_chronosanity.py:E111, E114
-
   # Ignore other issues which may or may not care about
   ## line length
   sourcefiles/ctoptions.py:E501
