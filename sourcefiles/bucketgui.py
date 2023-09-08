@@ -164,7 +164,7 @@ class BucketPage(tk.Frame):
             option.pack(side=tk.LEFT, fill=tk.X, expand=True)
             self.obj_hint_dropdowns.append(option)
 
-            label = tk.Label(self.simple_mode_frame, text=f'')
+            label = tk.Label(self.simple_mode_frame, text='')
             self.simple_mode_hint_labels.append(label)
 
             frame.pack()

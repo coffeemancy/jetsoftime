@@ -1,5 +1,6 @@
 # python standard libraries
 from functools import reduce
+import copy
 import os
 import pathlib
 import pickle
@@ -411,6 +412,7 @@ class RandoGUI:
 
         self.settings.gameflags = \
             reduce(lambda a, b: a | b, flags, GameFlags(False))
+        self.settings.initial_flags = copy.deepcopy(self.settings.gameflags)
         self.settings.cosmetic_flags = \
             reduce(lambda a, b: a | b, cosmetic_flags, CosmeticFlags(False))
 
@@ -1713,28 +1715,35 @@ class RandoGUI:
 
             rando = randomizer.Randomizer(rom, is_vanilla=False)
             rando.settings = self.settings
-            rando.set_random_config()
-            out_rom = rando.get_generated_rom()
+            try:
+                rando.set_random_config()
+                out_rom = rando.get_generated_rom()
+            except Exception as ex:
+                tk.messagebox.showerror(
+                    title='Error generating rom!', message=str(ex)
+                )
+                # clear seed field on error
+                self.seed.set('')
+            else:
+                input_path = pathlib.Path(self.input_file.get())
 
-            input_path = pathlib.Path(self.input_file.get())
+                if self.output_dir is None or self.output_dir.get() == '':
+                    self.output_dir.set(str(input_path.parent))
 
-            if self.output_dir is None or self.output_dir.get() == '':
-                self.output_dir.set(str(input_path.parent))
+                base_name = input_path.name.split('.')[0]
+                out_dir = self.output_dir.get()
 
-            base_name = input_path.name.split('.')[0]
-            out_dir = self.output_dir.get()
+                writer = randomizer.RandomizerWriter(rando, base_name=base_name)
+                writer.write_output_rom(out_dir)
+                writer.write_spoiler_log(out_dir)
+                writer.write_json_spoiler_log(out_dir)
 
-            writer = randomizer.RandomizerWriter(rando, base_name=base_name)
-            writer.write_output_rom(out_dir)
-            writer.write_spoiler_log(out_dir)
-            writer.write_json_spoiler_log(out_dir)
+                tk.messagebox.showinfo(
+                    title='Randomization Complete',
+                    message=f'Randomization Complete.  Seed: {seed}.'
+                )
 
-            tk.messagebox.showinfo(
-                title='Randomization Complete',
-                message=f'Randomization Complete.  Seed: {seed}.'
-            )
-
-            self.save_settings()
+                self.save_settings()
 
         # Regardless of generation, stop the progress bar
         self.progressBar.stop()
@@ -2252,10 +2261,10 @@ class RandoGUI:
             GameFlags.RESTORE_JOHNNY_RACE, GameFlags.RESTORE_TOOLS
         ]
 
-        plus_spot_flags = [
+        adjust_spot_flags = [
             GameFlags.ADD_BEKKLER_SPOT, GameFlags.ADD_OZZIE_SPOT,
             GameFlags.ADD_RACELOG_SPOT, GameFlags.VANILLA_ROBO_RIBBON,
-            GameFlags.ADD_CYRUS_SPOT
+            GameFlags.ADD_CYRUS_SPOT, GameFlags.REMOVE_BLACK_OMEN_SPOT
         ]
 
         ki_neutral_flags = [
@@ -2273,6 +2282,7 @@ class RandoGUI:
             GameFlags.ADD_OZZIE_SPOT: 'Add Ozzie\'s Fort Spot',
             GameFlags.RESTORE_JOHNNY_RACE: 'Restore Johnny Race',
             GameFlags.ADD_RACELOG_SPOT: 'Add Race Log Spot',
+            GameFlags.REMOVE_BLACK_OMEN_SPOT: 'Remove Black Omen Spot',
             GameFlags.SPLIT_ARRIS_DOME: 'Split Arris Dome',
             GameFlags.VANILLA_ROBO_RIBBON: 'Vanilla Robo Ribbon',
             GameFlags.VANILLA_DESERT: 'Vanilla Desert',
@@ -2310,6 +2320,10 @@ class RandoGUI:
             GameFlags.ADD_RACELOG_SPOT: (
                 'Adds a KI in the Lab32 Race Log chest.'
             ),
+            GameFlags.REMOVE_BLACK_OMEN_SPOT: (
+                'Removes Black Omen rock chest as a KI location. Currently '
+                'only relevant when Rocksanity is used.'
+            ),
             GameFlags.SPLIT_ARRIS_DOME: (
                 'Adds a KI as a reward for interacting with the corpse in '
                 'Arris Dome Food Locker.  Adds the Seed as a KI.  Changes the '
@@ -2337,7 +2351,7 @@ class RandoGUI:
                     frame,
                     text=flag_names[flag],
                     variable=self.flag_dict[flag],
-                    width=20,
+                    width=22,
                     anchor=tk.W
                 )
                 CreateToolTip(checkbox, text=tooltip_text[flag])
@@ -2361,10 +2375,10 @@ class RandoGUI:
         gridify(check_frame, plus_ki_flags)
         check_frame.pack(anchor=tk.W, padx=10)
 
-        label = tk.Label(logic_tweak_frame, text='Flags that Add a KI Spot:')
+        label = tk.Label(logic_tweak_frame, text='Flags that Add/Remove a KI Spot:')
         label.pack(anchor=tk.W)
         check_frame = tk.Frame(logic_tweak_frame)
-        gridify(check_frame, plus_spot_flags)
+        gridify(check_frame, adjust_spot_flags)
         check_frame.pack(anchor=tk.W, padx=10)
 
         label = tk.Label(logic_tweak_frame, text='KI-count neutral Flags:')

@@ -229,7 +229,7 @@ class RandoConfig:
         # objects maybe
         def get_tech_list(char_id: int, tech_db: techdb.TechDB):
             ret_names = [
-                str(ctstrings.CTNameString(tech_db.get_tech(ind)['name']))\
+                str(ctstrings.CTNameString(tech_db.get_tech(ind)['name']))
                 .strip(' *')
                 for ind in range(1+char_id*8, 1+(char_id+1)*8)
             ]
