@@ -95,7 +95,7 @@ class ControllerBinds:
 
         try:
             check = {x: binds[x] for x in ActionMap}
-        except:
+        except KeyError:
             return False
 
         assigned = [y for x, y in check.items()]
