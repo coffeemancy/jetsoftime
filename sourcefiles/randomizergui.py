@@ -1415,7 +1415,7 @@ class RandoGUI:
         for action, button in self.controller_binds.items():
             try:
                 value = InputMap[button.get().upper().replace(' ', '_')]
-            except:
+            except Exception:
                 messagebox.showerror(
                     'Options Controller Error',
                     'All button binds must be set.'
@@ -2710,25 +2710,12 @@ class RandoGUI:
             and assignment dropdowns.
             '''
 
-            # Initially populate the list.
-            ret = [str(x) for x in InputMap]
-
             # Get the assigned buttons.
             assigned = [
                 y.get() for x, y in binds.items() if y.get() != 'Unset'
             ]
 
-            for x in InputMap:
-                # Force strings to enable comparisons;
-                # StringVars only output str, not StrIntEnum
-                x = str(x)
-                try:
-                    if x in assigned:
-                        ret.remove(x)
-                except:  # TODO: Figure out what exceptions are raised.
-                    pass
-
-            return ret
+            return [str(x) for x in InputMap if str(x) not in assigned]
 
         def _update_display_pg(pg_strs):
             '''
