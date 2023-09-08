@@ -4,9 +4,6 @@ max-line-length = 119
 
 extend-ignore=
   # Temporarily ignore issues which probably should be addressed in near future
-  ## assigned but never used
-  F841,
-
   ## end-of-file blank lines
   W391,
 
@@ -48,4 +45,7 @@ per-file-ignores=
   ## line length
   sourcefiles/ctoptions.py:E501
   sourcefiles/randomizergui.py:E501
+
+  ## assigned by never used, might be for debugging or WIP?
+  sourcefiles/techdb.py:F841
 

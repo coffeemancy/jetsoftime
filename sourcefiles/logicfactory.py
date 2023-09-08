@@ -1757,7 +1757,6 @@ def _canAccessKingsTrialVR(game: Game):
 
 def _canAccessFionasShrineVR(game: Game):
 
-    flags = game.settings.gameflags
     GF = rset.GameFlags
 
     if not game.hasCharacter(Characters.ROBO):

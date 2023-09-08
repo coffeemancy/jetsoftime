@@ -927,8 +927,8 @@ class PCTechManager:
              Robo and Magus.
            - Expand to allow tech_ids exceeding 0x7F (max is 0xFE I think?)
         '''
-        menu_groups = list(self._bitmasks)
-        battle_group_bytes = self._collect_update_battle_groups()
+        # menu_groups = list(self._bitmasks)
+        battle_group_bytes = self._collect_update_battle_groups()  # noqa: F841
 
     def print_protected(self):
         '''Debug method for tracking the group counts.'''

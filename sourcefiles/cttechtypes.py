@@ -852,7 +852,7 @@ class PCTechMenuGroup(SizedBinaryData):
 
 
 def main():
-    ct_rom = ctrom.CTRom.from_file('./roms/ct.sfc')
+    ct_rom = ctrom.CTRom.from_file('./roms/ct.sfc')  # noqa: F841
 
 
 if __name__ == '__main__':

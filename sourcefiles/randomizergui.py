@@ -322,7 +322,7 @@ class RandoGUI:
                 try:
                     [settings, input_file, output_dir] = pickle.load(infile)
                     self.settings = settings
-                except (ValueError, AttributeError, EOFError, KeyError) as ex:
+                except (ValueError, AttributeError, EOFError, KeyError):
                     tk.messagebox.showinfo(
                         title='Settings Error',
                         message='Unable to load saved settings.  This often'
@@ -1715,7 +1715,7 @@ class RandoGUI:
             rando.settings = self.settings
             try:
                 rando.set_random_config()
-                out_rom = rando.get_generated_rom()
+                rando.get_generated_rom()
             except Exception as ex:
                 tk.messagebox.showerror(
                     title='Error generating rom!', message=str(ex)

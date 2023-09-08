@@ -132,9 +132,9 @@ def determine_boss_rank(settings: rset.Settings, config: cfg.RandoConfig):
         TID.FROGS_BURROW_LEFT: ItemID.HERO_MEDAL
     }
 
-    no_req_tids = [TID.DENADORO_MTS_KEY, TID.ZENAN_BRIDGE_KEY,
-                   TID.SNAIL_STOP_KEY, TID.LAZY_CARPENTER,
-                   TID.TABAN_KEY]
+    # no_req_tids = [TID.DENADORO_MTS_KEY, TID.ZENAN_BRIDGE_KEY,
+    #                TID.SNAIL_STOP_KEY, TID.LAZY_CARPENTER,
+    #                TID.TABAN_KEY]
 
     rank = 3
     important_keys = [ItemID.C_TRIGGER, ItemID.CLONE, ItemID.RUBY_KNIFE]

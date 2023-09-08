@@ -90,7 +90,6 @@ def double_xp(ctrom: CTRom, mem_addr: int = 0x7E287E):
     fsrom.write(rt, FSWriteType.MARK_USED)
 
     script = ctrom.script_manager.get_script(ctenums.LocID.LOAD_SCREEN)
-    EF = ctevent.EF
     EC = ctevent.EC
 
     st_cmd = EC.assign_val_to_mem(0x100, 0x7F01CD, 2)
@@ -126,7 +125,7 @@ def scale_xp(ctrom: CTRom, mem_addr: int, scale_factor: int):
         '6B'
     )
     fsrom = ctrom.rom_data
-    space_man = fsrom.space_manager
+    # space_man = fsrom.space_manager
     rt_addr = 0x01FFDF # space_man.get_free_addr(len(rt))
 
     # Replace the LDX, PHX (4 bytes) with the JSL (also 4 bytes)

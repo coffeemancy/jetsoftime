@@ -833,8 +833,7 @@ def get_parser():
                 "Name must have length 5 or less.")
 
         try:
-            ctnamestr = ctstrings.CTNameString.from_string(
-                string, 5)
+            ctstrings.CTNameString.from_string(string, 5)
         except ctstrings.InvalidSymbolException as exc:
             raise argparse.ArgumentTypeError(
                 "Invalid symbol: \'" + str(exc) +"'")

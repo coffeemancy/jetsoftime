@@ -1488,7 +1488,7 @@ def get_m_reraise_scr(rom, bank_st, scr_ptrs_st):
 
     script_ptr = to_file_ptr((bank << 16)
                              + get_value_from_bytes(ptr))
-    life_scr = TechScript.from_rom(rom, script_ptr)
+    life_scr = TechScript.from_rom(rom, script_ptr)  # noqa: F841
 
     # life_scr.print_data()
 

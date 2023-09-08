@@ -207,6 +207,8 @@ class TechDB:
             rom_buf[menu_grp_start: menu_grp_start+menu_grp_count]
         )
 
+    # TODO: is this used anywhere? Can't find where, and it doesn't return
+    # anything. Has a lot of 'assigned but never used' variables (flake8 F841).
     @classmethod
     def read_from_ctrom(cls, ct_rom: ctrom.CTRom):
         '''

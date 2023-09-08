@@ -247,8 +247,6 @@ def writeSpoilerLog(chosenLocations, charLocations):
 def commitKeyItems(settings: rset.Settings,
                    config: cfg.RandoConfig):
 
-    charLocations = config.char_assign_dict
-
     # Get a game configuration for the provided flags
     gameConfig = logicfactory.getGameConfig(settings, config)
 
@@ -282,7 +280,7 @@ def commitKeyItems(settings: rset.Settings,
                 additional_locs.append(location)
 
     config.key_item_locations = chosenLocations + additional_locs
-    # writeSpoilerLog(chosenLocations, charLocations)
+    # writeSpoilerLog(chosenLocations, config.char_assign_dict)
 
 
 def main():

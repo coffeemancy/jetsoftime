@@ -385,7 +385,6 @@ def compress_py_2(source: bytes) -> bytearray:
                     break
 
                 lookback_st = max(0, src_pos - lookback_range)
-                lookback_end = src_pos
 
                 best_len = 0
                 best_len_st = 0
@@ -442,9 +441,6 @@ def compress_py_2(source: bytes) -> bytearray:
 
         if len(compressed_data[i]) < best_size:
             best_size = len(compressed_data[i])
-            best_ind = i
-        else:
-            best_ind = 0
 
     # Test code for comparing performance of the two window schemes
     # if len(compressed_data[0]) < len(compressed_data[1]):
