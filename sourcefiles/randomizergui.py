@@ -5,7 +5,6 @@ import os
 import pathlib
 import pickle
 import random
-import sys
 import threading
 import tkinter as tk
 from tkinter import ttk
@@ -19,13 +18,12 @@ import randomizer
 import bossrandotypes as rotypes
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, ROFlags, \
-    CosmeticFlags, BucketSettings, GameMode, MysterySettings
-from ctenums import LocID, ActionMap, InputMap
+    CosmeticFlags, GameMode, MysterySettings
+from ctenums import ActionMap, InputMap
 import ctoptions
 import ctrom
 import ctstrings
 
-import objectivehints as oh
 
 #
 # tkinter does not have a native tooltip implementation.
