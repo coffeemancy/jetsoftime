@@ -76,7 +76,7 @@ class CreateToolTip(object):
         self.tw.wm_overrideredirect(True)
         self.tw.wm_geometry("+%d+%d" % (x, y))
         displaytext = self.text
-        if type(self.text) == tk.StringVar:
+        if isinstance(self.text, tk.StringVar):
             displaytext = self.text.get()
         label = tk.Label(self.tw, text=displaytext, justify='left',
                          background="#ffffff", relief='solid', borderwidth=1,

@@ -202,11 +202,11 @@ def add_objectives_to_config(settings: rset.Settings,
                                      objective_pool[ind])
         objectives.append(objective)
 
-        if type(chosen_key) == str:
+        if isinstance(chosen_key, str):
             chosen_key = chosen_key.split('_')[0]
         used_keys.append(chosen_key)
 
-        if type(chosen_key) == ctenums.CharID:
+        if isinstance(chosen_key, ctenums.CharID):
             used_keys.append('recruits')
 
     for objective in objectives:
@@ -228,7 +228,7 @@ def clean_distribution(dist: distribution.Distribution,
     for weight, items in wo_pairs:
         for key in used_keys:
             if key in ('fragments', 'rocks', 'recruits'):
-                str_keys = [x for x in items if type(x) == str]
+                str_keys = [x for x in items if isinstance(x, str)]
                 match_keys = [x for x in str_keys if key in x]
                 for key in match_keys:
                     items.remove(key)
@@ -244,18 +244,18 @@ def clean_distribution(dist: distribution.Distribution,
 def get_obj_from_key(key, settings: rset.Settings,
                      config: cfg.RandoConfig,
                      item_id: ctenums.ItemID):
-    if type(key) == rotypes.BossID:
+    if isinstance(key, rotypes.BossID):
         return oty.get_defeat_boss_obj(key, settings,
                                        config.boss_assign_dict, item_id)
-    if type(key) == oty.QuestID:
+    if isinstance(key, oty.QuestID):
         return oty.get_quest_obj(key, settings, item_id)
-    if type(key) == ctenums.RecruitID:
+    if isinstance(key, ctenums.RecruitID):
         return oty.get_recruit_spot_obj(key, settings,
                                         config.char_assign_dict, item_id)
-    if type(key) == ctenums.CharID:
+    if isinstance(key, ctenums.CharID):
         return oty.get_recruit_char_obj(key, settings,
                                         config.char_assign_dict, item_id)
-    if type(key) == str:
+    if isinstance(key, str):
         parts = key.split('_')
         if parts[0] == 'rocks':
             num_rocks = int(parts[1])
