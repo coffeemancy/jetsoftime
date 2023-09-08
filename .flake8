@@ -4,9 +4,6 @@ max-line-length = 119
 
 extend-ignore=
   # Temporarily ignore issues which probably should be addressed in near future
-  ## use isinstance()
-  E721,
-
   ## bare except
   E722,
 

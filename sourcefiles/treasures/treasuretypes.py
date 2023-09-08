@@ -276,7 +276,7 @@ class ScriptTreasure(Treasure):
             reward: RewardType,
             orig_gold_amt: typing.Optional[int] = None):
 
-        if type(reward) == ctenums.ItemID:
+        if isinstance(reward, ctenums.ItemID):
             if reward == ctenums.ItemID.NONE:
                 repl_str = 'Nothing'
             else:
