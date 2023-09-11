@@ -229,8 +229,13 @@ class TabSettings:
     speed_min: int = 1
     speed_max: int = 1
 
+    def to_jot_json(self) -> Dict[str, JSONPrimitive]:
+        data = {field.name: getattr(self, field.name) for field in fields(self)}
+        data['scheme'] = str(self.scheme)
+        return data
 
-class ROFlags(Flag):
+
+class ROFlags(SerializableFlag):
     '''
     Flags which can be passed to boss rando.
     '''
@@ -287,6 +292,13 @@ class ROSettings:
 
         return ROSettings(spots, boss_list, ro_flags)
 
+    def to_jot_json(self) -> Dict[str, Any]:
+        data = {}
+        for item in fields(self):
+            attr = getattr(self, item.name)
+            data[item.name] = [str(x) for x in attr] if isinstance(attr, List) else attr
+        return data
+
 
 @dataclass
 class BucketSettings:
@@ -300,6 +312,9 @@ class BucketSettings:
     num_objectives: int = 5
     num_objectives_needed: int = 4
     hints: list[str] = field(default_factory=list)
+
+    def to_jot_json(self) -> Dict[str, JSONType]:
+        return {field.name: getattr(self, field.name) for field in fields(self)}
 
 
 class MysterySettings:
@@ -346,6 +361,17 @@ class MysterySettings:
             GameFlags.HEALING_ITEM_RANDO: 0.25
         }
 
+    def to_jot_json(self) -> Dict[str, JSONType]:
+        attrs = [
+            'game_mode_freqs',
+            'item_difficulty_freqs',
+            'enemy_difficulty_freqs',
+            'tech_order_freqs',
+            'shop_price_freqs',
+            'flag_prob_dict',
+        ]
+        return {attr: {str(k): f for k, f in getattr(self, attr).items()} for attr in attrs}
+
     def __str__(self):
         ret_str = ''
         ret_str += str(self.game_mode_freqs) + '\n'
@@ -390,17 +416,24 @@ class Settings:
             'Epoch'
         ]
 
-    def to_jot_json(self):
+    def to_jot_json(self) -> Dict[str, Any]:
         return {
-            "seed": self.seed,
-            "mode": str(self.game_mode),
+            "game_mode": str(self.game_mode),
             "enemy_difficulty": str(self.enemy_difficulty),
             "item_difficulty": str(self.item_difficulty),
-            "tech_order": str(self.techorder),
-            "shops": str(self.shopprices),
-            "flags": self.gameflags,
+            "techorder": str(self.techorder),
+            "shopprices": str(self.shopprices),
+            "mystery_settings": self.mystery_settings,
+            "gameflags": self.gameflags,
             "initial_flags": self.initial_flags,
-            "cosmetic_flags": self.cosmetic_flags
+            "char_choices": self.char_choices,
+            "ro_settings": self.ro_settings,
+            "bucket_settings": self.bucket_settings,
+            "tab_settings": self.tab_settings,
+            "cosmetic_flags": self.cosmetic_flags,
+            "ctoptions": self.ctoptions,
+            "seed": self.seed,
+            "char_names": self.char_names,
         }
 
     @staticmethod
