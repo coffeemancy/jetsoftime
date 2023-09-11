@@ -25,7 +25,7 @@ class Treasure(abc.ABC):
     def __init__(self, reward: RewardType = ctenums.ItemID.MOP):
         self.reward = reward
 
-    def _jot_json(self):
+    def to_jot_json(self):
         return str(self.reward)
 
     @abc.abstractmethod

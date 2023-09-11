@@ -1,12 +1,15 @@
 '''
 Module for preconfiguring in-game options at compile time
 '''
-from typing import Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 import byteops
 from ctenums import ActionMap, InputMap
 from ctrom import CTRom
 from ctevent import FSWriteType
+
+if TYPE_CHECKING:
+    import randosettings as rset
 
 class ControllerBinds:
     '''
@@ -499,6 +502,9 @@ class CTOpts:
         
         rom.seek(0x011483 + 1) # AND #$10
         rom.write(0x20.to_bytes(1, 'little'))
+
+    def to_jot_json(self) -> Dict[str, 'rset.JSONPrimitive']:
+        return {k: v for k, v in self}
         
 
 if __name__ == '__main__':
