@@ -2,9 +2,10 @@ from __future__ import annotations
 import argparse
 import copy
 import functools
-import typing
+import operator
 
 from dataclasses import dataclass
+from typing import Any, Dict, Iterable, Optional, Union
 
 import ctstrings
 import ctoptions
@@ -12,15 +13,17 @@ import randosettings as rset
 from randosettings import GameFlags as GF, GameMode as GM, \
     CosmeticFlags as CF
 
+SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags]
+
 
 @dataclass
 class FlagEntry:
     name: str = ""
-    short_name: typing.Optional[str] = None
-    help_text: typing.Optional[str] = None
+    short_name: Optional[str] = None
+    help_text: Optional[str] = None
 
 
-_flag_entry_dict: dict[GF | CF, FlagEntry] = {
+_flag_entry_dict: Dict[SettingsFlags, FlagEntry] = {
     GF.FIX_GLITCH: FlagEntry(
         "--fix-glitch", "-g",
         "disable save anywhere and HP overflow glitches"),
@@ -219,12 +222,11 @@ _shop_price_dict: dict[str, rset.ShopPrices] = {
 }
 
 def add_flags_to_parser(
-        group_text: typing.Optional[str],
-        flag_list: typing.Iterable[GF | CF],
+        group_text: Optional[str],
+        flag_list: Iterable[GF | CF],
         parser: argparse.ArgumentParser):
 
-    add_target: typing.Union[argparse.ArgumentParser,
-                             argparse._ArgumentGroup]
+    add_target: Union[argparse.ArgumentParser, argparse._ArgumentGroup]
 
     if group_text is None:
         add_target = parser
@@ -234,7 +236,7 @@ def add_flags_to_parser(
 
     for flag in flag_list:
         flag_entry = _flag_entry_dict[flag]
-        add_args: typing.Iterable[str]
+        add_args: Iterable[str]
         if flag_entry.short_name is None:
             add_args = (flag_entry.name,)
         else:
@@ -360,19 +362,21 @@ def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
 
     return mset
 
+def fill_flags(val_dict: Dict[str, Any], init: SettingsFlags) -> SettingsFlags:
+    cls = type(init)
+    return functools.reduce(
+        operator.or_,
+        (flag for (flag, entry) in _flag_entry_dict.items()
+         if isinstance(flag, cls)
+         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
+        init
+    )
 
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
 
     val_dict = vars(args)
-    # Fill GameFlags
-    flags = functools.reduce(
-        lambda x, y: x | y,
-        (flag for flag, entry in _flag_entry_dict.items()
-         if isinstance(flag, GF)
-         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
-        GF(0)
-    )
+    flags = rset.GameFlags(fill_flags(val_dict, GF(0)))
 
     mode = _mode_dict[val_dict['mode']]
     item_difficulty = _diff_dict[val_dict['item_difficulty']]
@@ -390,13 +394,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
 
     ret_set.mystery_settings = get_mystery_settings(args)
     
-    cos_flags = functools.reduce(
-        lambda x, y: x | y,
-        (flag for flag, entry in _flag_entry_dict.items()
-         if isinstance(flag, CF)
-         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
-        CF(0)
-    )
+    cos_flags = rset.CosmeticFlags(fill_flags(val_dict, CF(0)))
 
     ct_opts = ctoptions.CTOpts()
     ct_opts.save_menu_cursor = val_dict['save_menu_cursor']

@@ -1,12 +1,15 @@
 '''
 Module for preconfiguring in-game options at compile time
 '''
-from typing import Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 import byteops
 from ctenums import ActionMap, InputMap
 from ctrom import CTRom
 from ctevent import FSWriteType
+
+if TYPE_CHECKING:
+    import randosettings as rset
 
 class ControllerBinds:
     '''

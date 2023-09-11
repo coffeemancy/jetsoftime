@@ -1,13 +1,13 @@
 from __future__ import annotations
 import copy
 import functools
-import typing
+from typing import Any, Dict, List
 
 import random
 import randosettings as rset
 
 
-def random_weighted_choice_from_dict(choice_dict: dict[typing.Any, int]):
+def random_weighted_choice_from_dict(choice_dict: Dict[Any, int]):
     '''Make a random choice from dict keys given weights in dict values.'''
     keys, weights = zip(*choice_dict.items())
     return random.choices(keys, weights, k=1)[0]
@@ -38,9 +38,10 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
     # blocks off boss scaling.
     mystery_flags = list(ms.flag_prob_dict.keys())
 
-    extra_flags = [flag for flag in list(GF)
-                   if flag in base_settings.gameflags
-                   and flag not in mystery_flags]
+    extra_flags: List[rset.GameFlags] = [
+        flag for flag in GF
+        if flag in base_settings.gameflags and flag not in mystery_flags
+    ]
 
     force_disabled_flags = rset.get_forced_off(ret_settings.game_mode)
     force_enabled_flags = rset.get_forced_on(ret_settings.game_mode)

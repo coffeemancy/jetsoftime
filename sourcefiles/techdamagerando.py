@@ -1,7 +1,7 @@
 """Module to randomize tech damage based on assigned mp."""
 import math
 import random
-from typing import Callable
+from typing import Callable, Dict, Union
 
 import ctstrings
 import cttechtypes as ctt
@@ -111,7 +111,7 @@ def modify_effect_header(
     """
 
     # Sketchy math was performed to come up with these.
-    scale_dict: dict[ctt.DamageFormula, Callable[[int], int]] = {
+    scale_dict: Dict[ctt.DamageFormula, Callable[[int], Union[int, float]]] = {
         ctt.DamageFormula.MAGIC: lambda mp: 1.88*mp+4.34,
         ctt.DamageFormula.PC_MELEE: lambda mp: math.sqrt(55.6*mp + 65.8),
         ctt.DamageFormula.PC_AYLA: lambda mp: math.sqrt(62.6*mp + 134),

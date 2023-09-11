@@ -1,3 +1,16 @@
 [tool.black]
 line-length = 119
 skip_string_normalization = true
+
+[tool.mypy]
+disable_error_code = "annotation-unchecked"
+ignore_missing_imports = true
+files = [
+  "sourcefiles/arguments.py",
+  "sourcefiles/charrando.py",
+  "sourcefiles/jotjson.py",
+  "sourcefiles/mystery.py",
+  "sourcefiles/randosettings.py",
+  "sourcefiles/techdamagerando.py",
+  "sourcefiles/tests/**/*.py"
+]
