@@ -1,12 +1,14 @@
+from __future__ import annotations
 import json
-import randosettings as rset
+from typing import Any, Dict
+
 
 class JOTJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if hasattr(obj, '_jot_json'):
-            return obj._jot_json()
-        elif isinstance(obj, rset.GameFlags):
-            return [str(flag) for flag in rset.GameFlags if flag in obj]
-        elif isinstance(obj, rset.CosmeticFlags):
-            return [str(flag) for flag in rset.CosmeticFlags if flag in obj]
+    def __init__(self, *args, **kwargs):
+        kwargs['indent'] = 2
+        json.JSONEncoder.__init__(self, *args, **kwargs)
+
+    def default(self, obj) -> Dict[str, Any]:
+        if hasattr(obj, 'to_jot_json'):
+            return obj.to_jot_json()
         return json.JSONEncoder.default(self, obj)

@@ -56,7 +56,12 @@ class ShopPrices(StrIntEnum):
     FREE = 3
 
 
-class GameFlags(Flag):
+class SerializableFlag(Flag):
+    def to_jot_json(self) -> List[str]:
+        return [str(flag) for flag in type(self) if flag in self]
+
+
+class GameFlags(SerializableFlag):
     FIX_GLITCH = auto()
     BOSS_SCALE = auto()
     ZEAL_END = auto()
@@ -198,7 +203,7 @@ def get_forced_on(flag: GameFlags) -> GameFlags:
     return _forced_on_dict.get(flag, GameFlags(0))
 
 
-class CosmeticFlags(Flag):
+class CosmeticFlags(SerializableFlag):
     ZENAN_ALT_MUSIC = auto()
     DEATH_PEAK_ALT_MUSIC = auto()
     QUIET_MODE = auto()
@@ -383,7 +388,7 @@ class Settings:
             'Epoch'
         ]
 
-    def _jot_json(self):
+    def to_jot_json(self):
         return {
             "seed": self.seed,
             "mode": str(self.game_mode),
