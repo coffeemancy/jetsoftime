@@ -9,6 +9,7 @@ from typing import Dict, List, Iterable, Mapping, Optional, Protocol, Union, Typ
 
 import ctstrings
 import ctoptions
+import objectivehints as obhint
 import randosettings as rset
 
 from ctenums import CharID
@@ -324,22 +325,13 @@ class SmartFormatter(argparse.HelpFormatter):
 
 def get_bucket_settings(args: argparse.Namespace) -> rset.BucketSettings:
     '''Extract BucketSettings from argparse.Namespace.'''
-    # TODO:
-    val_dict = vars(args)
-    
-    disable_other_go_modes = val_dict['bucket_disable_other_go']
-    objectives_win = val_dict['bucket_objectives_win']
-    num_objectives = val_dict['bucket_objective_count']
-    num_objectives_needed = val_dict['bucket_objective_needed_count']
-
-    obj_strs: list[str] = []
-    for obj_ind in range(num_objectives_needed):
-        obj_strs.append(val_dict['bucket_objective'+str(obj_ind+1)])
-
-    return rset.BucketSettings(
-        disable_other_go_modes, objectives_win, num_objectives,
-        num_objectives_needed, obj_strs
-    )
+    bset = rset.BucketSettings()
+    bset.disable_other_go_modes = args.bucket_disable_other_go
+    bset.objectives_win = args.bucket_objectives_win
+    bset.num_objectives = args.bucket_objective_count
+    bset.num_objectives_needed = args.bucket_objective_needed_count
+    bset.hints = [getattr(args, f"bucket_objective{obj}") for obj in range(1, bset.num_objectives+1)]
+    return bset
 
 
 def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
@@ -427,7 +419,6 @@ def get_char_names(args: argparse.Namespace) -> List[str]:
 
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
-
     ret_set = rset.Settings()
     ret_set.seed = args.seed
     ret_set.game_mode = GameModeAdapter.to_setting(args)
@@ -442,7 +433,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.ctoptions = get_ctoptions(args)
     ret_set.char_choices = get_dc_choices(args)
     ret_set.char_names = get_char_names(args)
-
+    ret_set.bucket_settings = get_bucket_settings(args)
     return ret_set
 
 
@@ -597,10 +588,10 @@ def get_parser():
     )
 
     bucket_options.add_argument(
-        "--bucket-objective-needed_count",
+        "--bucket-objective-needed-count",
         help="Number of objectives needed to meet goal.",
         type=int,
-        default=3
+        default=4
     )
 
     bucket_options.add_argument(
@@ -615,10 +606,17 @@ def get_parser():
         action="store_true"
     )
 
-    for obj_ind in range(8):
+    def check_bucket_objective(hint: str) -> str:
+        valid, msg = obhint.is_hint_valid(hint)
+        if not valid:
+            raise argparse.ArgumentTypeError(f"Invalid bucket objective: '{msg}'")
+        return hint
+
+    for obj_ind in range(1, 9):
         bucket_options.add_argument(
-            "--bucket-objective"+str(obj_ind+1), "-obj"+str(obj_ind+1),
-            default="random"
+            f"--bucket-objective{obj_ind}", f"-obj{obj_ind}",
+            default="",
+            type=check_bucket_objective
         )
 
     # Boss Rando Options

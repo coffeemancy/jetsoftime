@@ -1,3 +1,12 @@
+'''
+Tests for sourcefiles/arguments.py.
+
+This file ends up exercising and covering a lot of settings-related code across arguments.py,
+randosettings.py, ctoptions.py, bossrandotypes.py, and more, because it tests from passing CLI args through
+the argparse parser to randosettings.args_to_settings creating a Settings object, and makes assertions about
+that which cover testing settings for GameMode, GameFlags, CosmeticFlags, item and enemy difficulty,
+TechOrder, ShopPrices, character names and settings (CharSettings), BucketSettings and more.
+'''
 from __future__ import annotations
 import pytest
 
@@ -54,6 +63,54 @@ def test_args_to_settings(cli_args, expected_settings, parser):
 
     for attr, value in expected_settings.items():
         assert getattr(settings, attr) == value
+
+
+@pytest.mark.parametrize(
+    'cli_args, expected_settings',
+    [
+        # default
+        (
+            [],
+            {
+                'disable_other_go_modes': False,
+                'objectives_win': False,
+                'num_objectives': 5,
+                'num_objectives_needed': 4,
+                'hints': ['', '', '', '', ''],
+            },
+        ),
+        # set objectives
+        (
+            (
+                '--bucket-disable-other-go --bucket-objectives-win --bucket-objective-count 3'
+                ' --bucket-objective-needed-count 2'
+            ).split(' ')
+            + [
+                '--bucket-objective1=quest_gated',
+                '--bucket-objective2=boss_nogo',
+                '-obj3=50:quest_gated, 30:boss_nogo, 20:recruit_gated',
+            ],
+            {
+                'disable_other_go_modes': True,
+                'objectives_win': True,
+                'num_objectives': 3,
+                'num_objectives_needed': 2,
+                'hints': ['quest_gated', 'boss_nogo', '50:quest_gated, 30:boss_nogo, 20:recruit_gated'],
+            },
+        ),
+    ],
+    ids=('default', 'objectives'),
+)
+def test_bucket_settings(cli_args, expected_settings, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    bucket_settings = arguments.args_to_settings(args).bucket_settings
+
+    assert bucket_settings
+    err = f"Wrong type for bucket_settings: {type(bucket_settings)}"
+    assert isinstance(bucket_settings, rset.BucketSettings), err
+
+    for attr, value in expected_settings.items():
+        assert getattr(bucket_settings, attr) == value
 
 
 @pytest.mark.parametrize(
