@@ -18,7 +18,7 @@ import randomizer
 import bossrandotypes as rotypes
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, ROFlags, \
-    CosmeticFlags, GameMode, MysterySettings
+    CosmeticFlags, GameMode, MysterySettings, CharSettings
 from ctenums import ActionMap, InputMap
 import ctoptions
 import ctrom
@@ -825,9 +825,7 @@ class RandoGUI:
         row = 0
         col = 0
 
-        char_names = [
-            'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus'
-        ]
+        char_names = CharSettings.default_names()[:-1]
 
         row += 1
 

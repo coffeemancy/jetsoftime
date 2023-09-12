@@ -5,14 +5,16 @@ import functools
 import operator
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, Mapping, Optional, Protocol, Union, Type
+from typing import Dict, List, Iterable, Mapping, Optional, Protocol, Union, Type
 
 import ctstrings
 import ctoptions
 import randosettings as rset
 
-from randosettings import GameFlags as GF, GameMode as GM, \
-    CosmeticFlags as CF
+from ctenums import CharID
+from randosettings import (
+    CharSettings, GameFlags as GF, GameMode as GM, CosmeticFlags as CF
+)
 
 SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags]
 
@@ -341,6 +343,7 @@ def get_bucket_settings(args: argparse.Namespace) -> rset.BucketSettings:
 
 
 def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
+    '''Extract CTOpts from argparse.Namespace.'''
     ct_opts = ctoptions.CTOpts()
     ct_opts.save_menu_cursor = args.save_menu_cursor
     ct_opts.save_battle_cursor = args.save_battle_cursor
@@ -354,26 +357,10 @@ def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
     return ct_opts
 
 
-_pc_index_dict: dict[str, int] = {
-    'crono': 0,
-    'marle': 1,
-    'lucca': 2,
-    'robo': 3,
-    'frog': 4,
-    'ayla': 5,
-    'magus': 6
-}
-
-_pc_names: list[str] = [
-    'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch'
-]
-
-
 def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
     '''Extract dc-flag settings from argparse.Namespace.'''
 
-    arg_dict = vars(args)
-    def parse_choices(choice_string: str) -> list[int]:
+    def parse_choices(choice_string: str) -> List[int]:
         choice_string = choice_string.lower()
 
         if choice_string == 'all':
@@ -381,15 +368,14 @@ def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
 
         choices = choice_string.split()
         if choices[0] == 'not':
-            choices = choices[1:]
-            choice_ints = [_pc_index_dict[choice] for choice in choices]
-            return [ind for ind in range(7) if ind not in choice_ints]
+            choice_ints = [CharID[choice.upper()] for choice in choices[1:]]
+            return [int(ind) for ind in range(7) if ind not in choice_ints]
         else:
-            choice_ints = [_pc_index_dict[choice] for choice in choices]
-            return [ind for ind in range(7) if ind in choice_ints]
+            choice_ints = [CharID[choice.upper()] for choice in choices]
+            return [int(ind) for ind in range(7) if ind in choice_ints]
 
-    namespace_vars = [name + '_choices' for name in _pc_index_dict]
-    return [parse_choices(arg_dict[name]) for name in namespace_vars]
+    pc_names = CharSettings.default_names()[:-1]
+    return [parse_choices(getattr(args, f"{name.lower()}_choices")) for name in pc_names]
 
 
 def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
@@ -435,10 +421,12 @@ def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
     return mset
 
 
+def get_char_names(args: argparse.Namespace) -> List[str]:
+    return [getattr(args, f"{name.lower()}_name") for name in CharSettings.default_names()]
+
+
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
-
-    val_dict = vars(args)
 
     ret_set = rset.Settings()
     ret_set.seed = args.seed
@@ -452,9 +440,8 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.mystery_settings = get_mystery_settings(args)
     ret_set.cosmetic_flags = CosmeticFlagsAdapter.to_setting(args)
     ret_set.ctoptions = get_ctoptions(args)
-    ret_set.char_names = [
-        val_dict[name.lower()+"_name"] for name in _pc_names
-    ]
+    ret_set.char_choices = get_dc_choices(args)
+    ret_set.char_names = get_char_names(args)
 
     return ret_set
 
@@ -884,7 +871,7 @@ def get_parser():
         return string
 
     name_group = parser.add_argument_group("Character Names")
-    for char_name in _pc_names:
+    for char_name in CharSettings.default_names():
         name_group.add_argument(
             f"--{char_name.lower()}-name",
             type=verify_name,

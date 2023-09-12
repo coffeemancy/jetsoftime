@@ -341,6 +341,18 @@ class BucketSettings:
         return {field.name: getattr(self, field.name) for field in fields(self)}
 
 
+class CharSettings:
+    '''Contains settings related to characters.'''
+
+    def __init__(self):
+        self.names: List[str] = self.default_names()
+
+    @staticmethod
+    def default_names() -> List[str]:
+        '''Default character names.'''
+        return ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch']
+
+
 class MysterySettings:
     def __init__(self):
         self.game_mode_freqs: dict[GameMode, int] = {
@@ -435,10 +447,7 @@ class Settings:
 
         self.seed = ''
 
-        self.char_names: list[str] = [
-            'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus',
-            'Epoch'
-        ]
+        self.char_names = CharSettings.default_names()
 
     def to_jot_json(self) -> Dict[str, Any]:
         return {
