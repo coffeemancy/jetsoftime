@@ -3,13 +3,14 @@ The Chrono Trigger: Jets of Time Randomizer
 '''
 from __future__ import annotations
 
-import os
 import random
 import pickle
 import sys
 import json
 import textwrap
 import typing
+
+from pathlib import Path
 from typing import Optional
 
 import arguments
@@ -2230,30 +2231,28 @@ class Randomizer:
 
 class RandomizerWriter:
     '''Utility class for writing output/spoilers for Randomizer.'''
-    def __init__(self, rando: Randomizer, base_name: str):
+    def __init__(self, rando: Randomizer, base_name: Path):
         self.rando = rando
 
         flag_string = rando.settings.get_flag_string()
         seed = rando.settings.seed
         self.out_string = f"{base_name}.{flag_string}.{seed}"
 
-    def write_output_rom(self, output_path: str):
+    def write_output_rom(self, output_path: Path):
         out_name = f"{self.out_string}.sfc"
         self.out_rom = self.rando.get_generated_rom()
-        self.full_output_path = os.path.join(output_path, out_name)
+        self.full_output_path = output_path / out_name
+        self.full_output_path.write_bytes(self.out_rom)
 
-        with open(self.full_output_path, 'wb') as outfile:
-            outfile.write(self.out_rom)
-
-    def write_spoiler_log(self, output_path: str):
+    def write_spoiler_log(self, output_path: Path):
         spoiler_name = f"{self.out_string}.spoilers.txt"
-        self.spoiler_path = os.path.join(output_path, spoiler_name)
-        self.rando.write_spoiler_log(self.spoiler_path)
+        self.spoiler_path = output_path / spoiler_name
+        self.rando.write_spoiler_log(str(self.spoiler_path))
 
-    def write_json_spoiler_log(self, output_path: str):
+    def write_json_spoiler_log(self, output_path: Path):
         json_spoiler_name = f"{self.out_string}.spoilers.json"
-        self.json_spoiler_path = os.path.join(output_path, json_spoiler_name)
-        self.rando.write_json_spoiler_log(self.json_spoiler_path)
+        self.json_spoiler_path = output_path / json_spoiler_name
+        self.rando.write_json_spoiler_log(str(self.json_spoiler_path))
 
 
 def read_names():
@@ -2266,29 +2265,23 @@ def read_names():
 
 def main():
     parser = arguments.get_parser()
-    arg_namespace = parser.parse_args()
-    val_dict = vars(arg_namespace)
+    args = parser.parse_args()
 
-    input_file = val_dict['input_file']
-    output_path = val_dict['output_path']
-
-    if not os.path.isfile(input_file):
+    if not args.input_file.exists():
         raise FileNotFoundError("Invalid input file path.")
 
-    if output_path is None:
-        output_path = os.path.dirname(input_file)
-    elif not os.path.isdir(output_path):
+    if args.output_path is None:
+        args.output_path = args.input_file.parent
+    if not args.output_path.is_dir():
         raise FileNotFoundError("Invalid output directory.")
 
     # Make sure the settings are ok before going further and reading the rom.
-    settings = arguments.args_to_settings(arg_namespace)
+    settings = arguments.args_to_settings(args)
     if settings.seed is None or settings.seed == "":
         names = read_names()
         settings.seed = "".join(random.choice(names) for i in range(2))
 
-    with open(input_file, 'rb') as infile:
-        rom = infile.read()
-
+    rom = args.input_file.read_bytes()
     if not CTRom.validate_ct_rom_bytes(rom):
         print(
             'Warning: File provided is not a vanilla CT ROM.  Proceed '
@@ -2298,21 +2291,20 @@ def main():
         if not proceed:
             sys.exit()
 
-    rando = Randomizer(rom, is_vanilla=False,
-                       settings=settings, config=None)
+    rando = Randomizer(rom, is_vanilla=False, settings=settings, config=None)
     rando.set_random_config()
 
-    base_name = os.path.basename(input_file)
+    base_name = args.input_file.parts[-1]
     writer = RandomizerWriter(rando, base_name=base_name)
-    writer.write_output_rom(output_path)
+    writer.write_output_rom(args.output_path)
     print(f"output ROM: {writer.full_output_path}")
 
-    if val_dict['spoilers']:
-        writer.write_spoiler_log(output_path)
+    if args.spoilers:
+        writer.write_spoiler_log(args.output_path)
         print(f"spoilers: {writer.spoiler_path}")
 
-    if val_dict['json_spoilers']:
-        writer.write_json_spoiler_log(output_path)
+    if args.json_spoilers:
+        writer.write_json_spoiler_log(args.output_path)
         print(f"json spoilers: {writer.json_spoiler_path}")
 
 
