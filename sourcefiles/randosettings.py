@@ -19,6 +19,10 @@ class StrIntEnum(IntEnum):
         return x
 
     @classmethod
+    def default(cls):
+        raise NotImplementedError(f"No .default implemented for {cls}")
+
+    @classmethod
     def str_dict(cls: Type[SIE]) -> dict[SIE, str]:
         enum_list: list[SIE] = list(cls)
         return dict((x, str(x)) for x in enum_list)
@@ -38,17 +42,29 @@ class GameMode(StrIntEnum):
     LEGACY_OF_CYRUS = auto()
     VANILLA_RANDO = auto()
 
+    @classmethod
+    def default(_):
+        return GameMode.STANDARD
+
 
 class Difficulty(StrIntEnum):
     EASY = 0
     NORMAL = 1
     HARD = 2
 
+    @classmethod
+    def default(_):
+        return Difficulty.NORMAL
+
 
 class TechOrder(StrIntEnum):
     NORMAL = 0
     FULL_RANDOM = 1
     BALANCED_RANDOM = 2
+
+    @classmethod
+    def default(_):
+        return TechOrder.FULL_RANDOM
 
 
 class ShopPrices(StrIntEnum):
@@ -57,8 +73,18 @@ class ShopPrices(StrIntEnum):
     FULLY_RANDOM = 2
     FREE = 3
 
+    @classmethod
+    def default(_):
+        return ShopPrices.NORMAL
+
 
 class SerializableFlag(Flag):
+    def __add__(self, other: Flag):
+        return self | other
+
+    def __sub__(self, other: Flag):
+        return self & ~other
+
     def to_jot_json(self) -> List[str]:
         return [str(flag) for flag in type(self) if flag in self]
 
@@ -105,12 +131,6 @@ class GameFlags(SerializableFlag):
     REMOVE_BLACK_OMEN_SPOT = auto()
     # No longer Logic Tweak Flags
     TECH_DAMAGE_RANDO = auto()
-
-    def __add__(self, other: GameFlags):
-        return self | other
-
-    def __sub__(self, other: GameFlags):
-        return self & ~other
 
 
 # Dictionary for what flags force what other flags off.
@@ -217,10 +237,14 @@ class TabRandoScheme(StrIntEnum):
     UNIFORM = 0
     BINOMIAL = 1
 
+    @classmethod
+    def default(_):
+        return TabRandoScheme.UNIFORM
+
 
 @dataclass
 class TabSettings:
-    scheme: TabRandoScheme = TabRandoScheme.UNIFORM
+    scheme: TabRandoScheme = TabRandoScheme.default()
     binom_success: float = 0.5  # Only used by binom if set
     power_min: int = 2
     power_max: int = 4
@@ -388,12 +412,12 @@ class Settings:
 
     def __init__(self):
 
-        self.game_mode = GameMode.STANDARD
-        self.item_difficulty = Difficulty.NORMAL
-        self.enemy_difficulty = Difficulty.NORMAL
+        self.game_mode = GameMode.default()
+        self.item_difficulty = Difficulty.default()
+        self.enemy_difficulty = Difficulty.default()
 
-        self.techorder = TechOrder.FULL_RANDOM
-        self.shopprices = ShopPrices.NORMAL
+        self.techorder = TechOrder.default()
+        self.shopprices = ShopPrices.default()
 
         self.mystery_settings = MysterySettings()
 

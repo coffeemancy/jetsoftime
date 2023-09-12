@@ -5,11 +5,12 @@ import functools
 import operator
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Dict, Iterable, Mapping, Optional, Protocol, Union, Type
 
 import ctstrings
 import ctoptions
 import randosettings as rset
+
 from randosettings import GameFlags as GF, GameMode as GM, \
     CosmeticFlags as CF
 
@@ -194,32 +195,93 @@ _mystery_flag_prob_entries = [
     (GF.HEALING_ITEM_RANDO, "flag_heal_rando", 0.25),
 ]
 
-_mode_dict: dict[str, GM] = {
-    'std': GM.STANDARD,
-    'lw': GM.LOST_WORLDS,
-    'loc': GM.LEGACY_OF_CYRUS,
-    'ia': GM.ICE_AGE,
-    'van': GM.VANILLA_RANDO
-}
 
-_diff_dict: dict[str, rset.Difficulty] = {
-    'easy': rset.Difficulty.EASY,
-    'normal': rset.Difficulty.NORMAL,
-    'hard': rset.Difficulty.HARD
-}
+class SettingsAdapter(Protocol):
+    _adapter: Mapping[str, rset.StrIntEnum] = {}
+    _arg: str
+    _cls: Type[rset.StrIntEnum]
 
-_tech_order_dict: dict[str, rset.TechOrder] = {
-    'normal': rset.TechOrder.NORMAL,
-    'balanced': rset.TechOrder.BALANCED_RANDOM,
-    'random': rset.TechOrder.FULL_RANDOM
-}
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> rset.StrIntEnum:
+        '''Get coerced setting from args or default.'''
+        if cls._arg in args:
+            choice = getattr(args, cls._arg)
+            return cls._adapter[choice.lower()]
+        return cls._cls.default()
 
-_shop_price_dict: dict[str, rset.ShopPrices] = {
-    'normal': rset.ShopPrices.NORMAL,
-    'random': rset.ShopPrices.FULLY_RANDOM,
-    'mostrandom': rset.ShopPrices.MOSTLY_RANDOM,
-    'free': rset.ShopPrices.FREE
-}
+
+class GameModeAdapter(SettingsAdapter):
+    _adapter: Dict[str, rset.GameMode] = {
+        'std': GM.STANDARD,
+        'lw': GM.LOST_WORLDS,
+        'loc': GM.LEGACY_OF_CYRUS,
+        'ia': GM.ICE_AGE,
+        'van': GM.VANILLA_RANDO
+    }
+    _arg = 'mode'
+    _cls = rset.GameMode
+
+
+class DifficultyAdapter(SettingsAdapter):
+    _adapter: Dict[str, rset.Difficulty] = {
+        'easy': rset.Difficulty.EASY,
+        'normal': rset.Difficulty.NORMAL,
+        'hard': rset.Difficulty.HARD
+    }
+    _cls = rset.Difficulty
+
+
+class EnemyDifficultyAdapter(DifficultyAdapter):
+    _arg = 'enemy_difficulty'
+
+
+class ItemDifficultyAdapter(DifficultyAdapter):
+    _arg = 'item_difficulty'
+
+
+class TechOrderAdapter(SettingsAdapter):
+    _adapter: Dict[str, rset.TechOrder] = {
+        'normal': rset.TechOrder.NORMAL,
+        'balanced': rset.TechOrder.BALANCED_RANDOM,
+        'random': rset.TechOrder.FULL_RANDOM
+    }
+    _arg = 'tech_order'
+    _cls = rset.TechOrder
+
+
+class ShopPricesAdapter(SettingsAdapter):
+    _adapter: Dict[str, rset.ShopPrices] = {
+        'normal': rset.ShopPrices.NORMAL,
+        'random': rset.ShopPrices.FULLY_RANDOM,
+        'mostrandom': rset.ShopPrices.MOSTLY_RANDOM,
+        'free': rset.ShopPrices.FREE
+    }
+    _arg = 'shop_prices'
+    _cls = rset.ShopPrices
+
+
+class FlagsAdapter(Protocol):
+    _cls: Type[SettingsFlags]
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None) -> SettingsFlags:
+        if init is None:
+            init = cls._cls(0)
+        flags = (
+            flag for (flag, entry) in _flag_entry_dict.items()
+            if isinstance(flag, cls._cls)
+            and getattr(args, entry.name[2:].replace('-', '_')) is True
+        )
+        return functools.reduce(operator.or_, flags, init)
+
+
+class GameFlagsAdapter(FlagsAdapter):
+    _cls = rset.GameFlags
+
+
+class CosmeticFlagsAdapter(FlagsAdapter):
+    _cls = rset.CosmeticFlags
+
 
 def add_flags_to_parser(
         group_text: Optional[str],
@@ -246,10 +308,6 @@ def add_flags_to_parser(
             help=flag_entry.help_text,
             action="store_true"
         )
-
-def flag_name_to_namespace_key(flag_name: str):
-    return flag_name[2:].replace('-', '_')
-
 
 # https://stackoverflow.com/questions/3853722/
 # how-to-insert-newlines-on-argparse-help-text
@@ -280,6 +338,20 @@ def get_bucket_settings(args: argparse.Namespace) -> rset.BucketSettings:
         disable_other_go_modes, objectives_win, num_objectives,
         num_objectives_needed, obj_strs
     )
+
+
+def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
+    ct_opts = ctoptions.CTOpts()
+    ct_opts.save_menu_cursor = args.save_menu_cursor
+    ct_opts.save_battle_cursor = args.save_battle_cursor
+    ct_opts.save_tech_cursor = not args.save_skill_cursor_off
+    ct_opts.skill_item_info = not args.skill_item_info_off
+    ct_opts.consistent_paging = args.consistent_paging
+    ct_opts.battle_speed = args.battle_speed
+    ct_opts.battle_msg_speed = args.battle_msg_speed - 1
+    ct_opts.battle_gauge_style = args.battle_gauge_style
+    ct_opts.menu_background = args.background - 1
+    return ct_opts
 
 
 _pc_index_dict: dict[str, int] = {
@@ -356,60 +428,30 @@ def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
     }
 
     mset.flag_prob_dict = {
-        flag: val_dict['mystery_'+name]
+        flag: getattr(args, f"mystery_{name}")
         for flag, name, _ in _mystery_flag_prob_entries
     }
 
     return mset
 
-def fill_flags(val_dict: Dict[str, Any], init: SettingsFlags) -> SettingsFlags:
-    cls = type(init)
-    return functools.reduce(
-        operator.or_,
-        (flag for (flag, entry) in _flag_entry_dict.items()
-         if isinstance(flag, cls)
-         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
-        init
-    )
 
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
 
     val_dict = vars(args)
-    flags = rset.GameFlags(fill_flags(val_dict, GF(0)))
-
-    mode = _mode_dict[val_dict['mode']]
-    item_difficulty = _diff_dict[val_dict['item_difficulty']]
-    enemy_difficulty = _diff_dict[val_dict['enemy_difficulty']]
-    tech_order = _tech_order_dict[val_dict['tech_order']]
 
     ret_set = rset.Settings()
-    ret_set.seed = val_dict['seed']
-    ret_set.game_mode = mode
-    ret_set.gameflags = flags
-    ret_set.initial_flags = copy.deepcopy(flags)
-    ret_set.item_difficulty = item_difficulty
-    ret_set.enemy_difficulty = enemy_difficulty
-    ret_set.techorder = tech_order
-
+    ret_set.seed = args.seed
+    ret_set.game_mode = GameModeAdapter.to_setting(args)
+    ret_set.gameflags = GameFlagsAdapter.to_setting(args)
+    ret_set.initial_flags = copy.deepcopy(ret_set.gameflags)
+    ret_set.item_difficulty =  ItemDifficultyAdapter.to_setting(args)
+    ret_set.enemy_difficulty =  EnemyDifficultyAdapter.to_setting(args)
+    ret_set.techorder = TechOrderAdapter.to_setting(args)
+    ret_set.shopprices = ShopPricesAdapter.to_setting(args)
     ret_set.mystery_settings = get_mystery_settings(args)
-    
-    cos_flags = rset.CosmeticFlags(fill_flags(val_dict, CF(0)))
-
-    ct_opts = ctoptions.CTOpts()
-    ct_opts.save_menu_cursor = val_dict['save_menu_cursor']
-    ct_opts.save_battle_cursor = val_dict['save_battle_cursor']
-    ct_opts.save_tech_cursor = not val_dict['save_skill_cursor_off']
-    ct_opts.skill_item_info = not val_dict['skill_item_info_off']
-    ct_opts.consistent_paging = val_dict['consistent_paging']
-    ct_opts.battle_speed = val_dict['battle_speed']
-    ct_opts.battle_msg_speed = val_dict['battle_msg_speed']-1
-    ct_opts.battle_gauge_style = val_dict['battle_gauge_style']
-    ct_opts.menu_background = val_dict['background']-1
-
-    ret_set.cosmetic_flags = cos_flags
-    ret_set.ctoptions = ct_opts
-
+    ret_set.cosmetic_flags = CosmeticFlagsAdapter.to_setting(args)
+    ret_set.ctoptions = get_ctoptions(args)
     ret_set.char_names = [
         val_dict[name.lower()+"_name"] for name in _pc_names
     ]
@@ -454,6 +496,8 @@ def get_parser():
 
     add_generation_options(parser)
 
+    # arguments with a default of "argparse.SUPPRESS", when explicitly specified
+    # on the CLI, will override any other value (e.g. from a preset file)
     parser.add_argument(
         "--mode",
         choices=['std', 'lw', 'ia', 'loc', 'van'],
@@ -464,7 +508,7 @@ def get_parser():
         "  ia: ice age\n"
         " loc: legacy of cyrus\n"
         " van: vanilla rando",
-        default='std',
+        default=argparse.SUPPRESS,
         type=str.lower
     )
 
@@ -473,7 +517,7 @@ def get_parser():
         help="controls quality of treasure, drops, and starting gold "
         "(default: normal)",
         choices=['easy','normal', 'hard'],
-        default='normal',
+        default=argparse.SUPPRESS,
         type=str.lower
     )
 
@@ -482,7 +526,7 @@ def get_parser():
         help="controls strength of enemies and xp/tp rewards "
         "(default: normal)",
         choices=['normal', 'hard'],
-        default='normal',
+        default=argparse.SUPPRESS,
         type=str.lower
     )
 
@@ -494,12 +538,12 @@ def get_parser():
         "balanced - random but biased towards better techs later\n"
         "  random - fully random (default)",
         choices=['normal', 'balanced', 'random'],
-        default='random',
+        default=argparse.SUPPRESS,
         type=str.lower
     )
 
     parser.add_argument(
-        "--shop_prices",
+        "--shop-prices",
         help="R|"
         "controls the prices in shops\n"
         "    normal - standard prices (default)\n"
@@ -507,7 +551,7 @@ def get_parser():
         "mostrandom - random except for staple consumables\n"
         "      free - all items cost 1G",
         choices=['normal', 'random', 'mostrandom', 'free'],
-        default='normal',
+        default=argparse.SUPPRESS,
         type=str.lower
     )
 
