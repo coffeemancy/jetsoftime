@@ -175,16 +175,16 @@ FLAG_ENTRY_DICT: Dict[SettingsFlags, FlagEntry] = {
 
 # flag, name, default
 MYSTERY_FLAG_PROB_ENTRIES: List[Tuple['rset.GameFlags', str, float]] = [
-    (GF.TAB_TREASURES, "flag_tab_treasures", 0.10),
-    (GF.UNLOCKED_MAGIC, "flag_unlocked_magic", 0.50),
-    (GF.BUCKET_LIST, "flag_bucket_list", 0.15),
-    (GF.CHRONOSANITY, "flag_chronosanity", 0.30),
-    (GF.BOSS_RANDO, "flag_boss_rando", 0.50),
-    (GF.BOSS_SCALE, "flag_boss_scaling", 0.30),
-    (GF.LOCKED_CHARS, "flag_locked_chars", 0.25),
-    (GF.CHAR_RANDO, "flag_char_rando", 0.5),
-    (GF.DUPLICATE_CHARS, "flag_duplicate_chars", 0.25),
-    (GF.EPOCH_FAIL, "flag_epoch_fail", 0.50),
-    (GF.GEAR_RANDO, "flag_gear_rando", 0.25),
-    (GF.HEALING_ITEM_RANDO, "flag_heal_rando", 0.25),
+    (GF.TAB_TREASURES, "flag-tab-treasures", 0.10),
+    (GF.UNLOCKED_MAGIC, "flag-unlocked-magic", 0.50),
+    (GF.BUCKET_LIST, "flag-bucket-list", 0.15),
+    (GF.CHRONOSANITY, "flag-chronosanity", 0.30),
+    (GF.BOSS_RANDO, "flag-boss-rando", 0.50),
+    (GF.BOSS_SCALE, "flag-boss-scaling", 0.30),
+    (GF.LOCKED_CHARS, "flag-locked-chars", 0.25),
+    (GF.CHAR_RANDO, "flag-char-rando", 0.5),
+    (GF.DUPLICATE_CHARS, "flag-duplicate-chars", 0.25),
+    (GF.EPOCH_FAIL, "flag-epoch-fail", 0.50),
+    (GF.GEAR_RANDO, "flag-gear-rando", 0.25),
+    (GF.HEALING_ITEM_RANDO, "flag-heal-rando", 0.25),
 ]

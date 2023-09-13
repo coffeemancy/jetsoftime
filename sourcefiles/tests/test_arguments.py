@@ -35,8 +35,10 @@ def parser():
                 'enemy_difficulty': rset.Difficulty.NORMAL,
                 'techorder': rset.TechOrder.FULL_RANDOM,
                 'shopprices': rset.ShopPrices.NORMAL,
+                # 'mystery_settings': rset.MysterySettings(),
                 'tab_settings': rset.TabSettings(),
                 'char_settings': rset.CharSettings(),
+                'bucket_settings': rset.BucketSettings(),
             },
         ),
         # overriding most non-flag settings
@@ -67,6 +69,40 @@ def test_args_to_settings(cli_args, expected_settings, parser):
 
     for attr, value in expected_settings.items():
         assert getattr(settings, attr) == value
+
+
+@pytest.mark.parametrize(
+    'cli_args, expected',
+    [
+        # default
+        ([], rset.BucketSettings()),
+        # set objectives
+        (
+            (
+                '--bucket-disable-other-go --bucket-objectives-win --bucket-objective-count 3'
+                ' --bucket-objective-needed-count 2'
+            ).split(' ')
+            + [
+                '--bucket-objective1=quest_gated',
+                '--bucket-objective2=boss_nogo',
+                '-obj3=50:quest_gated, 30:boss_nogo, 20:recruit_gated',
+            ],
+            rset.BucketSettings(
+                disable_other_go_modes=True,
+                objectives_win=True,
+                num_objectives=3,
+                num_objectives_needed=2,
+                hints=['quest_gated', 'boss_nogo', '50:quest_gated, 30:boss_nogo, 20:recruit_gated'],
+            ),
+        ),
+    ],
+    ids=('default', 'objectives'),
+)
+def test_bucket_settings(cli_args, expected, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    bset = arguments.args_to_settings(args).bucket_settings
+
+    assert bset == expected
 
 
 @pytest.mark.parametrize(
@@ -214,3 +250,121 @@ def test_flags_adapters(cli_args, cls, init, expected_flags, parser):
 
     assert isinstance(flags, expected_type), f"Flags are not expected type: {expected_type}"
     assert flags == expected_flags, 'Flags do not match expected flags'
+
+
+@pytest.mark.xfail(reason='RO Settings cannot be set by CLI currently')
+def test_ro_settings():
+    assert False
+
+
+@pytest.mark.xfail(reason='mystery defaults are wrong in arguments.py')
+@pytest.mark.parametrize(
+    'cli_args, expected',
+    [
+        # default
+        (
+            [],
+            rset.MysterySettings(),
+        ),
+        # override most game_mode_freqs, make sure LW stays at default
+        (
+            ('--mystery-mode-std=0 --mystery-mode-loc=50 --mystery-mode-ia=20 --mystery-mode-van=5').split(' '),
+            rset.MysterySettings().update(
+                game_mode_freqs={
+                    GM.STANDARD: 0,
+                    GM.LEGACY_OF_CYRUS: 50,
+                    GM.ICE_AGE: 20,
+                    GM.VANILLA_RANDO: 5,
+                }
+            ),
+        ),
+        # override item and enemy difficulties, tech orders, shop prices
+        (
+            (
+                '--mystery-item-easy=10 --mystery-item-norm=40 --mystery-item-hard=50'
+                ' --mystery-enemy-norm=40 --mystery-enemy-hard=60'
+                ' --mystery-tech-norm=0 --mystery-tech-balanced=40 --mystery-tech-rand=60'
+                ' --mystery-prices-norm=40 --mystery-prices-mostly-rand=30 --mystery-prices-rand=20'
+                ' --mystery-prices-free=10'
+            ).split(' '),
+            rset.MysterySettings().update(
+                item_difficulty_freqs={
+                    rset.Difficulty.EASY: 10,
+                    rset.Difficulty.NORMAL: 40,
+                    rset.Difficulty.HARD: 50,
+                },
+                enemy_difficulty_freqs={
+                    rset.Difficulty.NORMAL: 40,
+                    rset.Difficulty.HARD: 60,
+                },
+                tech_order_freqs={
+                    rset.TechOrder.NORMAL: 0,
+                    rset.TechOrder.BALANCED_RANDOM: 40,
+                    rset.TechOrder.FULL_RANDOM: 60,
+                },
+                shop_price_freqs={
+                    rset.ShopPrices.NORMAL: 40,
+                    rset.ShopPrices.MOSTLY_RANDOM: 30,
+                    rset.ShopPrices.FULLY_RANDOM: 20,
+                    rset.ShopPrices.FREE: 10,
+                },
+            ),
+        ),
+        # override flag probs
+        (
+            (
+                '--mystery-flag-bucket-list=0.2 --mystery-flag-boss-scaling=0 --mystery-flag-char-rando=1'
+                ' --mystery-flag-gear-rando=0.6'
+            ).split(' '),
+            rset.MysterySettings().update(
+                flag_prob_dict={
+                    GF.BUCKET_LIST: 0.2,
+                    GF.BOSS_SCALE: 0,
+                    GF.CHAR_RANDO: 1.0,
+                    GF.GEAR_RANDO: 0.6,
+                },
+            ),
+        ),
+    ],
+    ids=('default', 'mode', 'complex', 'flag_prob'),
+)
+def test_mystery_settings(cli_args, expected, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    mystery = arguments.args_to_settings(args).mystery_settings
+
+    assert mystery == expected
+
+
+@pytest.mark.parametrize(
+    'cli_args, expected',
+    [
+        # default
+        (
+            [],
+            rset.TabSettings(),
+        ),
+        # override all tabs settings
+        (
+            (
+                '--min-power-tab=3 --max-power-tab=6 --min-magic-tab=2 --max-magic-tab=4'
+                ' --max-speed-tab=2 --min-speed-tab=2 --tab-scheme=binomial --tab-binom-success=0.7'
+            ).split(' '),
+            rset.TabSettings(
+                power_min=3,
+                power_max=6,
+                magic_min=2,
+                magic_max=4,
+                speed_min=2,
+                speed_max=2,
+                scheme=rset.TabRandoScheme.BINOMIAL,
+                binom_success=0.7,
+            ),
+        ),
+    ],
+    ids=('default', 'complex'),
+)
+def test_tab_settings(cli_args, expected, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    tabset = arguments.args_to_settings(args).tab_settings
+
+    assert tabset == expected

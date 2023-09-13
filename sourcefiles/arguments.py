@@ -7,11 +7,11 @@ from typing import Iterable, Optional, Union
 
 import cli.adapters as adp
 import ctstrings
-import ctoptions
+import objectivehints as obhint
 import randosettings as rset
 
 from cli.constants import FLAG_ENTRY_DICT, MYSTERY_FLAG_PROB_ENTRIES
-from randosettings import GameFlags as GF, GameMode as GM, CosmeticFlags as CF
+from randosettings import GameFlags as GF, CosmeticFlags as CF
 
 
 def add_flags_to_parser(
@@ -51,87 +51,8 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def get_bucket_settings(args: argparse.Namespace) -> rset.BucketSettings:
-    '''Extract BucketSettings from argparse.Namespace.'''
-    # TODO:
-    val_dict = vars(args)
-    
-    disable_other_go_modes = val_dict['bucket_disable_other_go']
-    objectives_win = val_dict['bucket_objectives_win']
-    num_objectives = val_dict['bucket_objective_count']
-    num_objectives_needed = val_dict['bucket_objective_needed_count']
-
-    obj_strs: list[str] = []
-    for obj_ind in range(num_objectives_needed):
-        obj_strs.append(val_dict['bucket_objective'+str(obj_ind+1)])
-
-    return rset.BucketSettings(
-        disable_other_go_modes, objectives_win, num_objectives,
-        num_objectives_needed, obj_strs
-    )
-
-
-def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
-    '''Extract CTOpts from argparse.Namespace.'''
-    ct_opts = ctoptions.CTOpts()
-    ct_opts.save_menu_cursor = args.save_menu_cursor
-    ct_opts.save_battle_cursor = args.save_battle_cursor
-    ct_opts.save_tech_cursor = not args.save_skill_cursor_off
-    ct_opts.skill_item_info = not args.skill_item_info_off
-    ct_opts.consistent_paging = args.consistent_paging
-    ct_opts.battle_speed = args.battle_speed - 1
-    ct_opts.battle_msg_speed = args.battle_msg_speed - 1
-    ct_opts.battle_gauge_style = args.battle_gauge_style
-    ct_opts.menu_background = args.background - 1
-    return ct_opts
-
-
-def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
-    mset = rset.MysterySettings()
-    val_dict = vars(args)
-
-    mset.game_mode_freqs = {
-        GM.STANDARD: val_dict['mystery_mode_std'],
-        GM.LOST_WORLDS: val_dict['mystery_mode_lw'],
-        GM.LEGACY_OF_CYRUS: val_dict['mystery_mode_loc'],
-        GM.ICE_AGE: val_dict['mystery_mode_ia'],
-        GM.VANILLA_RANDO: val_dict['mystery_mode_van'],
-    }
-
-    mset.item_difficulty_freqs = {
-        rset.Difficulty.EASY: val_dict['mystery_item_easy'],
-        rset.Difficulty.NORMAL: val_dict['mystery_item_norm'],
-        rset.Difficulty.HARD: val_dict['mystery_item_hard']
-    }
-
-    mset.enemy_difficulty_freqs = {
-        rset.Difficulty.NORMAL: val_dict['mystery_enemy_norm'],
-        rset.Difficulty.HARD: val_dict['mystery_enemy_hard']
-    }
-
-    mset.tech_order_freqs = {
-        rset.TechOrder.NORMAL: val_dict['mystery_tech_norm'],
-        rset.TechOrder.BALANCED_RANDOM: val_dict['mystery_tech_balanced'],
-        rset.TechOrder.FULL_RANDOM: val_dict['mystery_tech_rand']
-    }
-    mset.shop_price_freqs = {
-        rset.ShopPrices.NORMAL: val_dict['mystery_prices_norm'],
-        rset.ShopPrices.MOSTLY_RANDOM: val_dict['mystery_prices_mostly_rand'],
-        rset.ShopPrices.FULLY_RANDOM: val_dict['mystery_prices_rand'],
-        rset.ShopPrices.FREE: val_dict['mystery_prices_free']
-    }
-
-    mset.flag_prob_dict = {
-        flag: getattr(args, f"mystery_{name}")
-        for flag, name, _ in MYSTERY_FLAG_PROB_ENTRIES
-    }
-
-    return mset
-
-
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
-
     ret_set = rset.Settings()
     ret_set.seed = args.seed
     ret_set.game_mode = adp.GameModeAdapter.to_setting(args)
@@ -141,11 +62,12 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.enemy_difficulty =  adp.EnemyDifficultyAdapter.to_setting(args)
     ret_set.techorder = adp.TechOrderAdapter.to_setting(args)
     ret_set.shopprices = adp.ShopPricesAdapter.to_setting(args)
-    ret_set.mystery_settings = get_mystery_settings(args)
+    ret_set.mystery_settings = adp.MysterySettingsAdapter.to_setting(args)
     ret_set.cosmetic_flags = adp.CosmeticFlagsAdapter.to_setting(args)
-    ret_set.ctoptions = get_ctoptions(args)
+    ret_set.ctoptions = adp.CTOptsAdapter.to_setting(args)
     ret_set.char_settings = adp.CharSettingsAdapter.to_setting(args)
-
+    ret_set.tab_settings = adp.TabSettingsAdapter.to_setting(args)
+    ret_set.bucket_settings = adp.BucketSettingsAdapter.to_setting(args)
     return ret_set
 
 
@@ -303,10 +225,10 @@ def get_parser():
     )
 
     bucket_options.add_argument(
-        "--bucket-objective-needed_count",
+        "--bucket-objective-needed-count",
         help="Number of objectives needed to meet goal.",
         type=int,
-        default=3
+        default=4
     )
 
     bucket_options.add_argument(
@@ -321,10 +243,17 @@ def get_parser():
         action="store_true"
     )
 
-    for obj_ind in range(8):
+    def check_bucket_objective(hint: str) -> str:
+        valid, msg = obhint.is_hint_valid(hint)
+        if not valid:
+            raise argparse.ArgumentTypeError(f"Invalid bucket objective: '{msg}'")
+        return hint
+
+    for obj_ind in range(1, 9):
         bucket_options.add_argument(
-            "--bucket-objective"+str(obj_ind+1), "-obj"+str(obj_ind+1),
-            default="random"
+            f"--bucket-objective{obj_ind}", f"-obj{obj_ind}",
+            default=argparse.SUPPRESS,
+            type=check_bucket_objective
         )
 
     # Boss Rando Options
@@ -411,7 +340,7 @@ def get_parser():
     tab_options.add_argument(
         "--min-power-tab",
         help="The minimum value a power tab can increase power by (default 2)",
-        default=1,
+        default=2,
         type=int,
         choices=range(1, 10)
     )
@@ -419,7 +348,7 @@ def get_parser():
     tab_options.add_argument(
         "--max-power-tab",
         help="The maximum value a power tab can increase power by (default 4)",
-        default=1,
+        default=4,
         type=int,
         choices=range(1, 10)
     )
@@ -435,7 +364,7 @@ def get_parser():
     tab_options.add_argument(
         "--max-magic-tab",
         help="The maximum value a magic tab can increase power by (default 3)",
-        default=1,
+        default=3,
         type=int,
         choices=range(1, 10)
     )
@@ -456,6 +385,21 @@ def get_parser():
         choices=range(1, 10)
     )
 
+    tab_options.add_argument(
+        "--tab-scheme",
+        help="The scheme to use for randomizing tabs (default uniform)",
+        default=argparse.SUPPRESS,
+        type=str,
+        choices=['binomial', 'uniform'],
+    )
+
+    tab_options.add_argument(
+        "--tab-binom-success",
+        help="Success probability for tabs (only when scheme is binomial) (default 0.5)",
+        default=argparse.SUPPRESS,
+        type=float,
+    )
+
     def check_non_neg(value) -> int:
         ivalue = int(value)
         if ivalue < 0:
@@ -468,7 +412,7 @@ def get_parser():
     def fill_mystery_freq_group(freq_dict, arg_group: argparse._ArgumentGroup):
         for string, rel_freq in freq_dict:
             arg_group.add_argument(
-                "--mystery_"+string,
+                f"--mystery-{string}",
                 type=check_non_neg,
                 help="default: %d" % rel_freq,
                 default=rel_freq,
@@ -481,8 +425,8 @@ def get_parser():
     )
 
     mystery_mode_freq_entries = [
-        ("mode_std", 1), ("mode_lw", 1), ("mode_loc", 1),
-        ("mode_ia", 1), ("mode_van", 0),
+        ("mode-std", 1), ("mode-lw", 1), ("mode-loc", 1),
+        ("mode-ia", 1), ("mode-van", 0),
     ]
 
     fill_mystery_freq_group(mystery_mode_freq_entries, mystery_modes)
@@ -492,9 +436,9 @@ def get_parser():
     )
 
     mystery_idiff_freq_entries = [
-        ("item_easy", 15),
-        ("item_norm", 75),
-        ("item_hard", 15),
+        ("item-easy", 15),
+        ("item-norm", 75),
+        ("item-hard", 15),
     ]
 
     fill_mystery_freq_group(mystery_idiff_freq_entries, mystery_item_diff)
@@ -503,16 +447,16 @@ def get_parser():
         "Mystery Enemy Difficulty relative frequency (only with --mystery)"
     )
     mystery_ediff_freq_entries = [
-        ("enemy_norm", 75),
-        ("enemy_hard", 25),
+        ("enemy-norm", 75),
+        ("enemy-hard", 25),
     ]
 
     fill_mystery_freq_group(mystery_ediff_freq_entries, mystery_enemy_diff)
 
     mystery_tech_order_freq_entries = [
-        ("tech_norm", 10),
-        ("tech_rand", 80),
-        ("tech_balanced", 10),
+        ("tech-norm", 10),
+        ("tech-rand", 80),
+        ("tech-balanced", 10),
     ]
 
     mystery_tech_order = parser.add_argument_group(
@@ -522,10 +466,10 @@ def get_parser():
                             mystery_tech_order)
 
     mystery_price_freq_entries = [
-        ("prices_norm", 70),
-        ("prices_rand", 10),
-        ("prices_mostly_rand", 10),
-        ("prices_free", 10)
+        ("prices-norm", 70),
+        ("prices-rand", 10),
+        ("prices-mostly-rand", 10),
+        ("prices-free", 10)
     ]
     mystery_prices = parser.add_argument_group(
         "Mystery Shop Price relative frequency (only with --mystery)"
@@ -549,7 +493,7 @@ def get_parser():
 
     for _, flag_str, prob in MYSTERY_FLAG_PROB_ENTRIES:
         mystery_flags.add_argument(
-            "--mystery_"+flag_str,
+            f"--mystery-{flag_str}",
             type=check_prob,
             default=prob,
             help="default %0.2f" % prob
@@ -571,8 +515,7 @@ def get_parser():
             ctnamestr = ctstrings.CTNameString.from_string(
                 string, 5)
         except ctstrings.InvalidSymbolException as exc:
-            raise argparse.ArgumentTypeError(
-                "Invalid symbol: \'" + str(exc) +"'")
+            raise argparse.ArgumentTypeError(f"Invalid symbol: '{str(exc)}'")
 
         return string
 
