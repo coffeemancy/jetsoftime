@@ -6,7 +6,7 @@ import operator
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Iterable, Mapping, Optional, Protocol, Union, Type
+from typing import Any, Dict, List, Generator, Iterable, Mapping, Optional, Protocol, Union, Tuple, Type
 
 import ctstrings
 import ctoptions
@@ -14,12 +14,12 @@ import objectivehints as obhint
 import randosettings as rset
 
 from ctenums import CharID
-from randosettings import (
-    CharSettings, GameFlags as GF, GameMode as GM, CosmeticFlags as CF
-)
+from randosettings import CharSettings, Difficulty, TechOrder, ShopPrices
+from randosettings import GameFlags as GF, GameMode as GM, CosmeticFlags as CF
 
 SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags]
 
+# Flags ######################################################################
 
 @dataclass
 class FlagEntry:
@@ -200,7 +200,35 @@ _mystery_flag_prob_entries = [
 ]
 
 
+# Adapters and Settings ######################################################
+
 class SettingsAdapter(Protocol):
+    '''Protocol to adapt CLI arguments to Settings object attributes.
+
+    These classes are used to provide a consistent interface for converting CLI argparse arguments
+    into attributes for a randosettings.Settings object (.to_setting classmethod). Some adapters
+    set a single value (e.g. GameModeAdapter) while others build and set complex nested objects
+    (e.g. MysterySettingsAdapter).
+    '''
+
+    # mapping of argument (per argparse.Namespace) mapped to values related to Settings attribute
+    _adapter: Mapping[str, Any] = {}
+    _cls: Type[Any]
+
+    @classmethod
+    def get(cls, arg: str) -> Any:
+        '''Get attribute values associated with specified argparse argument.'''
+        key = arg.lstrip('-').replace('-', '_')
+        return cls._adapter[key]
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace):
+        raise NotImplementedError
+
+
+class ArgumentAdapter(SettingsAdapter):
+    '''Adapter for converting single CLI arg directly into a setting.'''
+
     _adapter: Mapping[str, rset.StrIntEnum] = {}
     _arg: str
     _cls: Type[rset.StrIntEnum]
@@ -214,25 +242,21 @@ class SettingsAdapter(Protocol):
         return cls._cls.default()
 
 
-class GameModeAdapter(SettingsAdapter):
+class GameModeAdapter(ArgumentAdapter):
     _adapter: Dict[str, rset.GameMode] = {
         'std': GM.STANDARD,
         'lw': GM.LOST_WORLDS,
         'loc': GM.LEGACY_OF_CYRUS,
         'ia': GM.ICE_AGE,
-        'van': GM.VANILLA_RANDO
+        'van': GM.VANILLA_RANDO,
     }
     _arg = 'mode'
     _cls = rset.GameMode
 
 
-class DifficultyAdapter(SettingsAdapter):
-    _adapter: Dict[str, rset.Difficulty] = {
-        'easy': rset.Difficulty.EASY,
-        'normal': rset.Difficulty.NORMAL,
-        'hard': rset.Difficulty.HARD
-    }
-    _cls = rset.Difficulty
+class DifficultyAdapter(ArgumentAdapter):
+    _adapter: Dict[str, Difficulty] = {'easy': Difficulty.EASY, 'normal': Difficulty.NORMAL, 'hard': Difficulty.HARD}
+    _cls = Difficulty
 
 
 class EnemyDifficultyAdapter(DifficultyAdapter):
@@ -243,40 +267,55 @@ class ItemDifficultyAdapter(DifficultyAdapter):
     _arg = 'item_difficulty'
 
 
-class TechOrderAdapter(SettingsAdapter):
-    _adapter: Dict[str, rset.TechOrder] = {
-        'normal': rset.TechOrder.NORMAL,
-        'balanced': rset.TechOrder.BALANCED_RANDOM,
-        'random': rset.TechOrder.FULL_RANDOM
+class TechOrderAdapter(ArgumentAdapter):
+    _adapter: Dict[str, TechOrder] = {
+        'normal': TechOrder.NORMAL,
+        'balanced': TechOrder.BALANCED_RANDOM,
+        'random': TechOrder.FULL_RANDOM,
     }
     _arg = 'tech_order'
-    _cls = rset.TechOrder
+    _cls = TechOrder
 
 
-class ShopPricesAdapter(SettingsAdapter):
-    _adapter: Dict[str, rset.ShopPrices] = {
-        'normal': rset.ShopPrices.NORMAL,
-        'random': rset.ShopPrices.FULLY_RANDOM,
-        'mostrandom': rset.ShopPrices.MOSTLY_RANDOM,
-        'free': rset.ShopPrices.FREE
+class ShopPricesAdapter(ArgumentAdapter):
+    _adapter: Dict[str, ShopPrices] = {
+        'normal': ShopPrices.NORMAL,
+        'random': ShopPrices.FULLY_RANDOM,
+        'mostrandom': ShopPrices.MOSTLY_RANDOM,
+        'free': ShopPrices.FREE,
     }
     _arg = 'shop_prices'
-    _cls = rset.ShopPrices
+    _cls = ShopPrices
 
 
-class FlagsAdapter(Protocol):
+class FlagsAdapter(SettingsAdapter):
+    '''Adapter for converting arguments into a Flag.'''
+
     _cls: Type[SettingsFlags]
+
+    @classmethod
+    def get(cls, arg: str) -> SettingsFlags:
+        '''Get Flag associated with specified argparse argument.'''
+        for flag, entry in _flag_entry_dict.items():
+            if cls._flag_to_arg(entry) == arg:
+                return flag
+        else:
+            raise KeyError(f"No flag associated with '{arg}'")
 
     @classmethod
     def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None) -> SettingsFlags:
         if init is None:
             init = cls._cls(0)
         flags = (
-            flag for (flag, entry) in _flag_entry_dict.items()
-            if isinstance(flag, cls._cls)
-            and getattr(args, entry.name[2:].replace('-', '_')) is True
+            flag
+            for (flag, entry) in _flag_entry_dict.items()
+            if isinstance(flag, cls._cls) and getattr(args, cls._flag_to_arg(entry), None) is True
         )
         return functools.reduce(operator.or_, flags, init)
+
+    @staticmethod
+    def _flag_to_arg(entry: FlagEntry) -> str:
+        return entry.name.lstrip('-').replace('-', '_')
 
 
 class GameFlagsAdapter(FlagsAdapter):
@@ -285,6 +324,195 @@ class GameFlagsAdapter(FlagsAdapter):
 
 class CosmeticFlagsAdapter(FlagsAdapter):
     _cls = rset.CosmeticFlags
+
+
+class BucketSettingsAdapter(SettingsAdapter):
+    _adapter: Dict[str, str] = {
+        'bucket_disable_other_go': 'disable_other_go_modes',
+        'bucket_objectives_win': 'objectives_win',
+        'bucket_objective_count': 'num_objectives',
+        'bucket_objective_needed_count': 'num_objectives_needed',
+    }
+    _cls = rset.BucketSettings
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> rset.BucketSettings:
+        '''Extract BucketSettings from argparse.Namespace.'''
+        bset = rset.BucketSettings()
+        for arg, prop in cls._adapter.items():
+            if arg in args:
+                setattr(bset, prop, getattr(args, arg))
+
+        # objectives
+        objectives = (getattr(args, f"bucket_objective{obj}", None) for obj in range(1, bset.num_objectives + 1))
+        hints: List[str] = [hint for hint in objectives if hint is not None]
+        if hints:
+            bset.hints = hints
+
+        return bset
+
+
+class TabSettingsAdapter(SettingsAdapter):
+    _adapter: Dict[str, str] = {
+        'min_power_tab': 'power_min',
+        'max_power_tab': 'power_max',
+        'min_magic_tab': 'magic_min',
+        'max_magic_tab': 'magic_max',
+        'min_speed_tab': 'speed_min',
+        'max_speed_tab': 'speed_max',
+        'tab_binom_success': 'binom_success',
+    }
+    _cls = rset.TabSettings
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace):
+        '''Extract TabSettings from argparse.Namespace.'''
+        tset = rset.TabSettings()
+        for arg, prop in cls._adapter.items():
+            if arg in args:
+                setattr(tset, prop, getattr(args, arg))
+
+        if 'tab_scheme' in args:
+            scheme = getattr(args, 'tab_scheme')
+            if scheme == 'binomial':
+                setattr(tset, 'scheme', rset.TabRandoScheme.BINOMIAL)
+            elif scheme == 'uniform':
+                setattr(tset, 'scheme', rset.TabRandoScheme.UNIFORM)
+            else:
+                raise ValueError(f"Invalid tab scheme: {scheme}")
+
+        return tset
+
+
+class CTOptsAdapter(SettingsAdapter):
+    _adapter: Dict[str, str] = {
+        'save_menu_cursor': 'save_menu_cursor',
+        'save_battle_cursor': 'save_battle_cursor',
+        'save_skill_cursor_off': 'save_tech_cursor',
+        'skill_item_info_off': 'skill_item_info',
+        'consistent_paging': 'consistent_paging',
+        'battle_speed': 'battle_speed',
+        'battle_msg_speed': 'battle_msg_speed',
+        'battle_gauge_style': 'battle_gauge_style',
+        'background': 'menu_background',
+    }
+    _cls = ctoptions.CTOpts
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> ctoptions.CTOpts:
+        '''Extract CTOpts from argparse.Namespace.'''
+        ct_opts = ctoptions.CTOpts()
+        inverted_args = ['save_skill_cursor_off', 'skill_item_info_off']
+        plus_one_args = ['battle_speed', 'battle_msg_speed', 'background']
+
+        for arg, prop in cls._adapter.items():
+            if arg in args:
+                if arg in inverted_args:
+                    setattr(ct_opts, prop, not getattr(args, arg))
+                elif arg in plus_one_args:
+                    setattr(ct_opts, prop, getattr(args, arg) - 1)
+                else:
+                    setattr(ct_opts, prop, getattr(args, arg))
+        return ct_opts
+
+
+class CharChoicesAdapter(SettingsAdapter):
+    # TODO: handle this logic in CharSettings itself?
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> List[List[int]]:
+        '''Extract character choice settings from argparse.Namespace.'''
+        return [
+            cls._parse_choices(getattr(args, f"{name.lower()}_choices", 'all'))
+            for name in rset.CharSettings.default_names()[:-1]
+        ]
+
+    @staticmethod
+    def _parse_choices(choice_string: str) -> List[int]:
+        choice_string = choice_string.lower()
+
+        if choice_string == 'all':
+            return list(range(7))
+
+        choices = choice_string.split()
+
+        if choices[0] == 'not':
+            choice_ints = [CharID[choice.upper()] for choice in choices[1:]]
+            return [int(ind) for ind in range(7) if ind not in choice_ints]
+
+        choice_ints = [CharID[choice.upper()] for choice in choices]
+        return [int(ind) for ind in range(7) if ind in choice_ints]
+
+
+class MysterySettingsAdapter(SettingsAdapter):
+    _adapter: Dict[str, Tuple[str, Any]] = {
+        # game_mode_freqs
+        'mystery_mode_std': ('game_mode_freqs', GM.STANDARD),
+        'mystery_mode_lw': ('game_mode_freqs', GM.LOST_WORLDS),
+        'mystery_mode_loc': ('game_mode_freqs', GM.LEGACY_OF_CYRUS),
+        'mystery_mode_ia': ('game_mode_freqs', GM.ICE_AGE),
+        'mystery_mode_van': ('game_mode_freqs', GM.VANILLA_RANDO),
+        #  item_difficulty_freqs
+        'mystery_item_easy': ('item_difficulty_freqs', Difficulty.EASY),
+        'mystery_item_norm': ('item_difficulty_freqs', Difficulty.NORMAL),
+        'mystery_item_hard': ('item_difficulty_freqs', Difficulty.HARD),
+        # enemy_difficulty_freqs
+        'mystery_enemy_norm': ('enemy_difficulty_freqs', Difficulty.NORMAL),
+        'mystery_enemy_hard': ('enemy_difficulty_freqs', Difficulty.HARD),
+        # tech_order_freqs
+        'mystery_tech_norm': ('tech_order_freqs', TechOrder.NORMAL),
+        'mystery_tech_balanced': ('tech_order_freqs', TechOrder.BALANCED_RANDOM),
+        'mystery_tech_rand': ('tech_order_freqs', TechOrder.FULL_RANDOM),
+        # shop_price_freqs
+        'mystery_prices_norm': ('shop_price_freqs', ShopPrices.NORMAL),
+        'mystery_prices_mostly_rand': ('shop_price_freqs', ShopPrices.MOSTLY_RANDOM),
+        'mystery_prices_rand': ('shop_price_freqs', ShopPrices.FULLY_RANDOM),
+        'mystery_prices_free': ('shop_price_freqs', ShopPrices.FREE),
+        # flag_prob_dict
+        'mystery_flag_tab_treasures': ('flag_prob_dict', GF.TAB_TREASURES),
+        'mystery_flag_unlocked_magic': ('flag_prob_dict', GF.UNLOCKED_MAGIC),
+        'mystery_flag_bucket_list': ('flag_prob_dict', GF.BUCKET_LIST),
+        'mystery_flag_chronosanity': ('flag_prob_dict', GF.CHRONOSANITY),
+        'mystery_flag_boss_rando': ('flag_prob_dict', GF.BOSS_RANDO),
+        'mystery_flag_boss_scaling': ('flag_prob_dict', GF.BOSS_SCALE),
+        'mystery_flag_locked_chars': ('flag_prob_dict', GF.LOCKED_CHARS),
+        'mystery_flag_char_rando': ('flag_prob_dict', GF.CHAR_RANDO),
+        'mystery_flag_duplicate_chars': ('flag_prob_dict', GF.DUPLICATE_CHARS),
+        'mystery_flag_epoch_fail': ('flag_prob_dict', GF.EPOCH_FAIL),
+        'mystery_flag_gear_rando': ('flag_prob_dict', GF.GEAR_RANDO),
+        'mystery_flag_heal_rando': ('flag_prob_dict', GF.HEALING_ITEM_RANDO),
+    }
+    _cls = rset.MysterySettings
+
+    @classmethod
+    def args(cls, field: str) -> Generator[Tuple[str, Any], None, None]:
+        '''Get all CLI arguments and key in field in MysterySettings.'''
+        for arg, (item_field, key) in cls._adapter.items():
+            if item_field == field:
+                yield (arg, key)
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> rset.MysterySettings:
+        '''Get mystery settings from args.
+
+        This creates a MysterySettings object where all explicitly-passed values from the CLI
+        override the inherent defaults. Values not explicitly passed are suppressed by
+        the parser and will not override the defaults from randosettings.MysterySettings.
+        '''
+        mset = rset.MysterySettings()
+        for arg, (field, key) in cls._adapter.items():
+            if arg in args:
+                attr = getattr(mset, field)
+                attr[key] = getattr(args, arg)
+        return mset
+
+
+class CharNamesAdapter(SettingsAdapter):
+    # TODO: handle this logic in CharSettings itself?
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> List[str]:
+        return [getattr(args, f"{name.lower()}_name", name) for name in rset.CharSettings.default_names()]
 
 
 def add_flags_to_parser(
@@ -324,100 +552,6 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def get_bucket_settings(args: argparse.Namespace) -> rset.BucketSettings:
-    '''Extract BucketSettings from argparse.Namespace.'''
-    bset = rset.BucketSettings()
-    bset.disable_other_go_modes = args.bucket_disable_other_go
-    bset.objectives_win = args.bucket_objectives_win
-    bset.num_objectives = args.bucket_objective_count
-    bset.num_objectives_needed = args.bucket_objective_needed_count
-    bset.hints = [getattr(args, f"bucket_objective{obj}") for obj in range(1, bset.num_objectives+1)]
-    return bset
-
-
-def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
-    '''Extract CTOpts from argparse.Namespace.'''
-    ct_opts = ctoptions.CTOpts()
-    ct_opts.save_menu_cursor = args.save_menu_cursor
-    ct_opts.save_battle_cursor = args.save_battle_cursor
-    ct_opts.save_tech_cursor = not args.save_skill_cursor_off
-    ct_opts.skill_item_info = not args.skill_item_info_off
-    ct_opts.consistent_paging = args.consistent_paging
-    ct_opts.battle_speed = args.battle_speed
-    ct_opts.battle_msg_speed = args.battle_msg_speed - 1
-    ct_opts.battle_gauge_style = args.battle_gauge_style
-    ct_opts.menu_background = args.background - 1
-    return ct_opts
-
-
-def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
-    '''Extract dc-flag settings from argparse.Namespace.'''
-
-    def parse_choices(choice_string: str) -> List[int]:
-        choice_string = choice_string.lower()
-
-        if choice_string == 'all':
-            return list(range(7))
-
-        choices = choice_string.split()
-        if choices[0] == 'not':
-            choice_ints = [CharID[choice.upper()] for choice in choices[1:]]
-            return [int(ind) for ind in range(7) if ind not in choice_ints]
-        else:
-            choice_ints = [CharID[choice.upper()] for choice in choices]
-            return [int(ind) for ind in range(7) if ind in choice_ints]
-
-    pc_names = CharSettings.default_names()[:-1]
-    return [parse_choices(getattr(args, f"{name.lower()}_choices")) for name in pc_names]
-
-
-def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
-    mset = rset.MysterySettings()
-    val_dict = vars(args)
-
-    mset.game_mode_freqs = {
-        GM.STANDARD: val_dict['mystery_mode_std'],
-        GM.LOST_WORLDS: val_dict['mystery_mode_lw'],
-        GM.LEGACY_OF_CYRUS: val_dict['mystery_mode_loc'],
-        GM.ICE_AGE: val_dict['mystery_mode_ia'],
-        GM.VANILLA_RANDO: val_dict['mystery_mode_van'],
-    }
-
-    mset.item_difficulty_freqs = {
-        rset.Difficulty.EASY: val_dict['mystery_item_easy'],
-        rset.Difficulty.NORMAL: val_dict['mystery_item_norm'],
-        rset.Difficulty.HARD: val_dict['mystery_item_hard']
-    }
-
-    mset.enemy_difficulty_freqs = {
-        rset.Difficulty.NORMAL: val_dict['mystery_enemy_norm'],
-        rset.Difficulty.HARD: val_dict['mystery_enemy_hard']
-    }
-
-    mset.tech_order_freqs = {
-        rset.TechOrder.NORMAL: val_dict['mystery_tech_norm'],
-        rset.TechOrder.BALANCED_RANDOM: val_dict['mystery_tech_balanced'],
-        rset.TechOrder.FULL_RANDOM: val_dict['mystery_tech_rand']
-    }
-    mset.shop_price_freqs = {
-        rset.ShopPrices.NORMAL: val_dict['mystery_prices_norm'],
-        rset.ShopPrices.MOSTLY_RANDOM: val_dict['mystery_prices_mostly_rand'],
-        rset.ShopPrices.FULLY_RANDOM: val_dict['mystery_prices_rand'],
-        rset.ShopPrices.FREE: val_dict['mystery_prices_free']
-    }
-
-    mset.flag_prob_dict = {
-        flag: getattr(args, f"mystery_{name}")
-        for flag, name, _ in _mystery_flag_prob_entries
-    }
-
-    return mset
-
-
-def get_char_names(args: argparse.Namespace) -> List[str]:
-    return [getattr(args, f"{name.lower()}_name") for name in CharSettings.default_names()]
-
-
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
     ret_set = rset.Settings()
@@ -425,16 +559,17 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.game_mode = GameModeAdapter.to_setting(args)
     ret_set.gameflags = GameFlagsAdapter.to_setting(args)
     ret_set.initial_flags = copy.deepcopy(ret_set.gameflags)
-    ret_set.item_difficulty =  ItemDifficultyAdapter.to_setting(args)
-    ret_set.enemy_difficulty =  EnemyDifficultyAdapter.to_setting(args)
+    ret_set.item_difficulty = ItemDifficultyAdapter.to_setting(args)
+    ret_set.enemy_difficulty = EnemyDifficultyAdapter.to_setting(args)
     ret_set.techorder = TechOrderAdapter.to_setting(args)
     ret_set.shopprices = ShopPricesAdapter.to_setting(args)
-    ret_set.mystery_settings = get_mystery_settings(args)
+    ret_set.mystery_settings = MysterySettingsAdapter.to_setting(args)
+    ret_set.tab_settings = TabSettingsAdapter.to_setting(args)
     ret_set.cosmetic_flags = CosmeticFlagsAdapter.to_setting(args)
-    ret_set.ctoptions = get_ctoptions(args)
-    ret_set.char_choices = get_dc_choices(args)
-    ret_set.char_names = get_char_names(args)
-    ret_set.bucket_settings = get_bucket_settings(args)
+    ret_set.ctoptions = CTOptsAdapter.to_setting(args)
+    ret_set.char_choices = CharChoicesAdapter.to_setting(args)
+    ret_set.char_names = CharNamesAdapter.to_setting(args)
+    ret_set.bucket_settings = BucketSettingsAdapter.to_setting(args)
     return ret_set
 
 

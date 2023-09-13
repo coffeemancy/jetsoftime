@@ -353,36 +353,46 @@ class CharSettings:
         return ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch']
 
 
+@dataclass
 class MysterySettings:
+    '''Settings related to generating mystery seeds.'''
+
+    game_mode_freqs: Dict[GameMode, int] = field(default_factory=dict)
+    item_difficulty_freqs: Dict[Difficulty, int] = field(default_factory=dict)
+    enemy_difficulty_freqs: Dict[Difficulty, int] = field(default_factory=dict)
+    tech_order_freqs: Dict[TechOrder, int] = field(default_factory=dict)
+    shop_price_freqs: Dict[ShopPrices, int] = field(default_factory=dict)
+    flag_prob_dict: Dict[GameFlags, float] = field(default_factory=dict)
+
     def __init__(self):
-        self.game_mode_freqs: dict[GameMode, int] = {
+        self.game_mode_freqs = {
             GameMode.STANDARD: 75,
             GameMode.LOST_WORLDS: 25,
             GameMode.LEGACY_OF_CYRUS: 0,
             GameMode.ICE_AGE: 0,
             GameMode.VANILLA_RANDO: 0
         }
-        self.item_difficulty_freqs: dict[Difficulty, int] = {
+        self.item_difficulty_freqs = {
             Difficulty.EASY: 15,
             Difficulty.NORMAL: 70,
             Difficulty.HARD: 15
         }
-        self.enemy_difficulty_freqs: dict[Difficulty, int] = {
+        self.enemy_difficulty_freqs = {
             Difficulty.NORMAL: 75,
             Difficulty.HARD: 25
         }
-        self.tech_order_freqs: dict[TechOrder, int] = {
+        self.tech_order_freqs = {
             TechOrder.NORMAL: 10,
             TechOrder.BALANCED_RANDOM: 10,
             TechOrder.FULL_RANDOM: 80
         }
-        self.shop_price_freqs: dict[ShopPrices, int] = {
+        self.shop_price_freqs = {
             ShopPrices.NORMAL: 70,
             ShopPrices.MOSTLY_RANDOM: 10,
             ShopPrices.FULLY_RANDOM: 10,
             ShopPrices.FREE: 10
         }
-        self.flag_prob_dict: dict[GameFlags, float] = {
+        self.flag_prob_dict = {
             GameFlags.TAB_TREASURES: 0.10,
             GameFlags.UNLOCKED_MAGIC: 0.5,
             GameFlags.BUCKET_LIST: 0.15,
@@ -398,26 +408,21 @@ class MysterySettings:
         }
 
     def to_jot_json(self) -> Dict[str, JSONType]:
-        attrs = [
-            'game_mode_freqs',
-            'item_difficulty_freqs',
-            'enemy_difficulty_freqs',
-            'tech_order_freqs',
-            'shop_price_freqs',
-            'flag_prob_dict',
-        ]
-        return {attr: {str(k): f for k, f in getattr(self, attr).items()} for attr in attrs}
+        return {
+            field.name: {str(k): freq for k, freq in self[field.name].items()}
+            for field in fields(self)
+        }
 
-    def __str__(self):
-        ret_str = ''
-        ret_str += str(self.game_mode_freqs) + '\n'
-        ret_str += str(self.item_difficulty_freqs) + '\n'
-        ret_str += str(self.enemy_difficulty_freqs) + '\n'
-        ret_str += str(self.tech_order_freqs) + '\n'
-        ret_str += str(self.shop_price_freqs) + '\n'
-        ret_str += str(self.flag_prob_dict) + '\n'
+    def update(self, **items) -> MysterySettings:
+        for attr, updates in items.items():
+            self[attr].update(updates)
+        return self
 
-        return ret_str
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __str__(self) -> str:
+        return '\n'.join(str(self[field.name]) for field in fields(self)) + '\n'
 
 
 class Settings:

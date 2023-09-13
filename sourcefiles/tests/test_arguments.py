@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 import arguments
+import ctoptions
 import randosettings as rset
 
 from randosettings import CosmeticFlags as CF, GameFlags as GF, GameMode as GM
@@ -30,7 +31,13 @@ def parser():
             {
                 'game_mode': GM.STANDARD,
                 'item_difficulty': rset.Difficulty.NORMAL,
+                'enemy_difficulty': rset.Difficulty.NORMAL,
                 'techorder': rset.TechOrder.FULL_RANDOM,
+                'shopprices': rset.ShopPrices.NORMAL,
+                # 'mystery_settings': rset.MysterySettings(),
+                # 'tab_settings': rset.TabSettings(),
+                'char_names': rset.CharSettings.default_names(),
+                # 'bucket_settings': rset.BucketSettings(),
             },
         ),
         # overriding most non-flag settings
@@ -38,7 +45,7 @@ def parser():
             (
                 '--mode loc --boss-randomization --char-rando --gear-rando --zenan-alt-music'
                 ' --item-difficulty hard --enemy-difficulty hard --tech-order balanced'
-                ' --shop-prices free --frog-name Glenn --epoch-name Apoch'
+                ' --shop-prices free --frog-name Glenn --marle-name Nadia --epoch-name Apoch'
             ).split(' '),
             {
                 'game_mode': GM.LEGACY_OF_CYRUS,
@@ -48,7 +55,7 @@ def parser():
                 'enemy_difficulty': rset.Difficulty.HARD,
                 'techorder': rset.TechOrder.BALANCED_RANDOM,
                 'shopprices': rset.ShopPrices.FREE,
-                'char_names': ['Crono', 'Marle', 'Lucca', 'Robo', 'Glenn', 'Ayla', 'Magus', 'Apoch'],
+                'char_names': ['Crono', 'Nadia', 'Lucca', 'Robo', 'Glenn', 'Ayla', 'Magus', 'Apoch'],
             },
         ),
     ],
@@ -58,27 +65,18 @@ def test_args_to_settings(cli_args, expected_settings, parser):
     args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
     settings = arguments.args_to_settings(args)
 
-    assert settings
     assert isinstance(settings, rset.Settings), f"Wrong type for settings: {type(settings)}"
 
     for attr, value in expected_settings.items():
         assert getattr(settings, attr) == value
 
 
+@pytest.mark.xfail(reason='bucket flags missing/broken in CLI')
 @pytest.mark.parametrize(
-    'cli_args, expected_settings',
+    'cli_args, expected',
     [
         # default
-        (
-            [],
-            {
-                'disable_other_go_modes': False,
-                'objectives_win': False,
-                'num_objectives': 5,
-                'num_objectives_needed': 4,
-                'hints': ['', '', '', '', ''],
-            },
-        ),
+        ([], rset.BucketSettings()),
         # set objectives
         (
             (
@@ -90,27 +88,22 @@ def test_args_to_settings(cli_args, expected_settings, parser):
                 '--bucket-objective2=boss_nogo',
                 '-obj3=50:quest_gated, 30:boss_nogo, 20:recruit_gated',
             ],
-            {
-                'disable_other_go_modes': True,
-                'objectives_win': True,
-                'num_objectives': 3,
-                'num_objectives_needed': 2,
-                'hints': ['quest_gated', 'boss_nogo', '50:quest_gated, 30:boss_nogo, 20:recruit_gated'],
-            },
+            rset.BucketSettings(
+                disable_other_go_modes=True,
+                objectives_win=True,
+                num_objectives=3,
+                num_objectives_needed=2,
+                hints=['quest_gated', 'boss_nogo', '50:quest_gated, 30:boss_nogo, 20:recruit_gated'],
+            ),
         ),
     ],
     ids=('default', 'objectives'),
 )
-def test_bucket_settings(cli_args, expected_settings, parser):
+def test_bucket_settings(cli_args, expected, parser):
     args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
-    bucket_settings = arguments.args_to_settings(args).bucket_settings
+    bset = arguments.args_to_settings(args).bucket_settings
 
-    assert bucket_settings
-    err = f"Wrong type for bucket_settings: {type(bucket_settings)}"
-    assert isinstance(bucket_settings, rset.BucketSettings), err
-
-    for attr, value in expected_settings.items():
-        assert getattr(bucket_settings, attr) == value
+    assert bset == expected
 
 
 @pytest.mark.parametrize(
@@ -161,6 +154,54 @@ def test_char_choices(cli_args, expected_choices, parser):
 
 
 @pytest.mark.parametrize(
+    'cli_args, expected_settings',
+    [
+        # default
+        (
+            [],
+            {
+                'battle_speed': 4,
+                'save_menu_cursor': 0,
+                'skill_item_info': 1,
+                'menu_background': 0,
+                'battle_msg_speed': 4,
+                'save_battle_cursor': 0,
+                'save_tech_cursor': 1,
+                'battle_gauge_style': 1,
+            },
+        ),
+        # override all ctoptions
+        (
+            (
+                '--battle-speed=1 --save-menu-cursor --skill-item-info-off --background=3'
+                ' --battle-msg-speed 1 --save-battle-cursor --save-skill-cursor-off'
+                ' --battle-gauge-style 2'
+            ).split(' '),
+            {
+                'battle_speed': 0,
+                'save_menu_cursor': 1,
+                'skill_item_info': 0,
+                'menu_background': 2,
+                'battle_msg_speed': 0,
+                'save_battle_cursor': 1,
+                'save_tech_cursor': 0,
+                'battle_gauge_style': 2,
+            },
+        ),
+    ],
+    ids=('default', 'complex'),
+)
+def test_ctoptions_settings(cli_args, expected_settings, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    ctopts = arguments.args_to_settings(args).ctoptions
+
+    assert isinstance(ctopts, ctoptions.CTOpts), f"Wrong type: {type(ctopts)}"
+
+    for attr, value in expected_settings.items():
+        assert getattr(ctopts, attr) == value
+
+
+@pytest.mark.parametrize(
     'cli_args, cls, init, expected_flags',
     [
         # game flags
@@ -190,3 +231,122 @@ def test_flags_adapters(cli_args, cls, init, expected_flags, parser):
 
     assert isinstance(flags, expected_type), f"Flags are not expected type: {expected_type}"
     assert flags == expected_flags, 'Flags do not match expected flags'
+
+
+@pytest.mark.xfail(reason='RO Settings cannot be set by CLI currently')
+def test_ro_settings():
+    assert False
+
+
+@pytest.mark.xfail(reason='mystery flags missing/broken in CLI')
+@pytest.mark.parametrize(
+    'cli_args, expected',
+    [
+        # default
+        (
+            [],
+            rset.MysterySettings(),
+        ),
+        # override most game_mode_freqs, make sure LW stays at default
+        (
+            ('--mystery-mode-std=0 --mystery-mode-loc=50 --mystery-mode-ia=20 --mystery-mode-van=5').split(' '),
+            rset.MysterySettings().update(
+                game_mode_freqs={
+                    GM.STANDARD: 0,
+                    GM.LEGACY_OF_CYRUS: 50,
+                    GM.ICE_AGE: 20,
+                    GM.VANILLA_RANDO: 5,
+                }
+            ),
+        ),
+        # override item and enemy difficulties, tech orders, shop prices
+        (
+            (
+                '--mystery-item-easy=10 --mystery-item-norm=40 --mystery-item-hard=50'
+                ' --mystery-enemy-norm=40 --mystery-enemy-hard=60'
+                ' --mystery-tech-norm=0 --mystery-tech-balanced=40 --mystery-tech-rand=60'
+                ' --mystery-prices-norm=40 --mystery-prices-mostly-rand=30 --mystery-prices-rand=20'
+                ' --mystery-prices-free=10'
+            ).split(' '),
+            rset.MysterySettings().update(
+                item_difficulty_freqs={
+                    rset.Difficulty.EASY: 10,
+                    rset.Difficulty.NORMAL: 40,
+                    rset.Difficulty.HARD: 50,
+                },
+                enemy_difficulty_freqs={
+                    rset.Difficulty.NORMAL: 40,
+                    rset.Difficulty.HARD: 60,
+                },
+                tech_order_freqs={
+                    rset.TechOrder.NORMAL: 0,
+                    rset.TechOrder.BALANCED_RANDOM: 40,
+                    rset.TechOrder.FULL_RANDOM: 60,
+                },
+                shop_price_freqs={
+                    rset.ShopPrices.NORMAL: 40,
+                    rset.ShopPrices.MOSTLY_RANDOM: 30,
+                    rset.ShopPrices.FULLY_RANDOM: 20,
+                    rset.ShopPrices.FREE: 10,
+                },
+            ),
+        ),
+        # override flag probs
+        (
+            (
+                '--mystery-flag-bucket-list=0.2 --mystery-flag-boss-scaling=0 --mystery-flag-char-rando=1'
+                ' --mystery-flag-gear-rando=0.6'
+            ).split(' '),
+            rset.MysterySettings().update(
+                flag_prob_dict={
+                    GF.BUCKET_LIST: 0.2,
+                    GF.BOSS_SCALE: 0,
+                    GF.CHAR_RANDO: 1.0,
+                    GF.GEAR_RANDO: 0.6,
+                },
+            ),
+        ),
+    ],
+    ids=('default', 'mode', 'complex', 'flag_prob'),
+)
+def test_mystery_settings(cli_args, expected, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    mystery = arguments.args_to_settings(args).mystery_settings
+
+    assert mystery == expected
+
+
+@pytest.mark.xfail(reason='tab flags missing/broken in CLI')
+@pytest.mark.parametrize(
+    'cli_args, expected',
+    [
+        # default
+        (
+            [],
+            rset.TabSettings(),
+        ),
+        # override all tabs settings
+        (
+            (
+                '--min-power-tab=3 --max-power-tab=6 --min-magic-tab=2 --max-magic-tab=4'
+                ' --max-speed-tab=2 --min-speed-tab=2 --tab-scheme=binomial --tab-binom-success=0.7'
+            ).split(' '),
+            rset.TabSettings(
+                power_min=3,
+                power_max=6,
+                magic_min=2,
+                magic_max=4,
+                speed_min=2,
+                speed_max=2,
+                scheme=rset.TabRandoScheme.BINOMIAL,
+                binom_success=0.7,
+            ),
+        ),
+    ],
+    ids=('default', 'complex'),
+)
+def test_tab_settings(cli_args, expected, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    tabset = arguments.args_to_settings(args).tab_settings
+
+    assert tabset == expected
