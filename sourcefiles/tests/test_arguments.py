@@ -34,10 +34,10 @@ def parser():
                 'enemy_difficulty': rset.Difficulty.NORMAL,
                 'techorder': rset.TechOrder.FULL_RANDOM,
                 'shopprices': rset.ShopPrices.NORMAL,
-                # 'mystery_settings': rset.MysterySettings(),
-                # 'tab_settings': rset.TabSettings(),
+                'mystery_settings': rset.MysterySettings(),
+                'tab_settings': rset.TabSettings(),
                 'char_names': rset.CharSettings.default_names(),
-                # 'bucket_settings': rset.BucketSettings(),
+                'bucket_settings': rset.BucketSettings(),
             },
         ),
         # overriding most non-flag settings
@@ -71,7 +71,6 @@ def test_args_to_settings(cli_args, expected_settings, parser):
         assert getattr(settings, attr) == value
 
 
-@pytest.mark.xfail(reason='bucket flags missing/broken in CLI')
 @pytest.mark.parametrize(
     'cli_args, expected',
     [
@@ -238,7 +237,6 @@ def test_ro_settings():
     assert False
 
 
-@pytest.mark.xfail(reason='mystery flags missing/broken in CLI')
 @pytest.mark.parametrize(
     'cli_args, expected',
     [
@@ -316,7 +314,6 @@ def test_mystery_settings(cli_args, expected, parser):
     assert mystery == expected
 
 
-@pytest.mark.xfail(reason='tab flags missing/broken in CLI')
 @pytest.mark.parametrize(
     'cli_args, expected',
     [
