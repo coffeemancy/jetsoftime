@@ -1,18 +1,19 @@
 from __future__ import annotations
 import json
 
-from typing import Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, Union
 
-import randosettings as rset
+if TYPE_CHECKING:
+    import randosettings as rset
 
-DecodedJOTJSON = Dict[str, Union[rset.Settings, rset.JSONType]]
+DecodedJOTJSON = Dict[str, Union['rset.Settings', 'rset.JSONType']]
 
 class JOTJSONEncoder(json.JSONEncoder):
     def __init__(self, *args, **kwargs):
-        kwargs['indent'] = 2
+        kwargs['indent'] = kwargs.get('indent', 2)
         json.JSONEncoder.__init__(self, *args, **kwargs)
 
-    def default(self, obj) -> rset.JSONType:
+    def default(self, obj) -> 'rset.JSONType':
         if hasattr(obj, 'to_jot_json'):
             return obj.to_jot_json()
         return json.JSONEncoder.default(self, obj)
@@ -23,6 +24,9 @@ class JOTJSONDecoder(json.JSONDecoder):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, obj: Dict[str, Any]) -> DecodedJOTJSON:
+        # late import to prevent circular import between randosettings and jotjoon
+        import randosettings as rset
+
         # for now, strip out configuration, as not needed for presets
         # in future, if needed, can add decoding for it
         if 'configuration' in obj:

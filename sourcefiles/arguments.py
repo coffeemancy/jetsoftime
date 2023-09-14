@@ -185,6 +185,23 @@ _flag_entry_dict: Dict[SettingsFlags, FlagEntry] = {
 
 # Adapters and Settings ######################################################
 
+
+def load_preset(attr: str, impl: Type[Any]):
+    '''Decorate SettingsAdapter classmethod to inject initialized object or copy from preset.'''
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(cls, args: argparse.Namespace):
+            # copy value from preset or initialize new object
+            if 'preset' in args:
+                obj = copy.deepcopy(getattr(args.preset, attr))
+            else:
+                obj = impl()
+            # inject object as last parameter in wrapped classmethod
+            return fn(cls, args, obj)
+        return wrapper
+    return decorator
+
+
 class SettingsAdapter(Protocol):
     '''Protocol to adapt CLI arguments to Settings object attributes.
 
@@ -215,13 +232,16 @@ class ArgumentAdapter(SettingsAdapter):
     _adapter: Mapping[str, rset.StrIntEnum] = {}
     _arg: str
     _cls: Type[rset.StrIntEnum]
+    _field: str
 
     @classmethod
     def to_setting(cls, args: argparse.Namespace):
-        '''Get coerced setting from args or default.'''
+        '''Get coerced setting from args, preset, or default.'''
         if cls._arg in args:
             choice = getattr(args, cls._arg)
             return cls._adapter[choice.lower()]
+        elif 'preset' in args:
+            return copy.deepcopy(getattr(args.preset, cls._field))
         return cls._cls.default()
 
 
@@ -235,6 +255,7 @@ class GameModeAdapter(ArgumentAdapter):
     }
     _arg = 'mode'
     _cls = rset.GameMode
+    _field = 'game_mode'
 
 
 class DifficultyAdapter(ArgumentAdapter):
@@ -244,10 +265,12 @@ class DifficultyAdapter(ArgumentAdapter):
 
 class EnemyDifficultyAdapter(DifficultyAdapter):
     _arg = 'enemy_difficulty'
+    _field = 'enemy_difficulty'
 
 
 class ItemDifficultyAdapter(DifficultyAdapter):
     _arg = 'item_difficulty'
+    _field = 'item_difficulty'
 
 
 class TechOrderAdapter(ArgumentAdapter):
@@ -258,6 +281,7 @@ class TechOrderAdapter(ArgumentAdapter):
     }
     _arg = 'tech_order'
     _cls = TechOrder
+    _field = 'techorder'
 
 
 class ShopPricesAdapter(ArgumentAdapter):
@@ -269,12 +293,14 @@ class ShopPricesAdapter(ArgumentAdapter):
     }
     _arg = 'shop_prices'
     _cls = ShopPrices
+    _field = 'shopprices'
 
 
 class FlagsAdapter(SettingsAdapter):
     '''Adapter for converting arguments into a Flag.'''
 
     _cls: Type[SettingsFlags]
+    _field: str
 
     @classmethod
     def get(cls, arg: str) -> SettingsFlags:
@@ -288,7 +314,11 @@ class FlagsAdapter(SettingsAdapter):
     @classmethod
     def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None):
         if init is None:
-            init = cls._cls(0)
+            if 'preset' in args:
+                # add flags to flags loaded from preset
+                init = copy.deepcopy(getattr(args.preset, cls._field))
+            else:
+                init = cls._cls(0)
         flags = (
             flag
             for (flag, entry) in _flag_entry_dict.items()
@@ -303,10 +333,12 @@ class FlagsAdapter(SettingsAdapter):
 
 class GameFlagsAdapter(FlagsAdapter):
     _cls = rset.GameFlags
+    _field = 'gameflags'
 
 
 class CosmeticFlagsAdapter(FlagsAdapter):
     _cls = rset.CosmeticFlags
+    _field = 'cosmetic_flags'
 
 
 class BucketSettingsAdapter(SettingsAdapter):
@@ -319,9 +351,9 @@ class BucketSettingsAdapter(SettingsAdapter):
     _cls = rset.BucketSettings
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> rset.BucketSettings:
+    @load_preset('bucket_settings', rset.BucketSettings)
+    def to_setting(cls, args: argparse.Namespace, bset: rset.BucketSettings) -> rset.BucketSettings:
         '''Extract BucketSettings from argparse.Namespace.'''
-        bset = rset.BucketSettings()
         for arg, prop in cls._adapter.items():
             if arg in args:
                 setattr(bset, prop, getattr(args, arg))
@@ -348,9 +380,9 @@ class TabSettingsAdapter(SettingsAdapter):
     _cls = rset.TabSettings
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace):
+    @load_preset('tab_settings', rset.TabSettings)
+    def to_setting(cls, args: argparse.Namespace, tset: rset.TabSettings):
         '''Extract TabSettings from argparse.Namespace.'''
-        tset = rset.TabSettings()
         for arg, prop in cls._adapter.items():
             if arg in args:
                 setattr(tset, prop, getattr(args, arg))
@@ -382,9 +414,9 @@ class CTOptsAdapter(SettingsAdapter):
     _cls = ctoptions.CTOpts
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> ctoptions.CTOpts:
+    @load_preset('ctoptions', ctoptions.CTOpts)
+    def to_setting(cls, args: argparse.Namespace, ct_opts: ctoptions.CTOpts) -> ctoptions.CTOpts:
         '''Extract CTOpts from argparse.Namespace.'''
-        ct_opts = ctoptions.CTOpts()
         inverted_args = ['save_skill_cursor_off', 'skill_item_info_off']
         plus_one_args = ['battle_speed', 'battle_msg_speed', 'background']
 
@@ -403,10 +435,9 @@ class CharSettingsAdapter(SettingsAdapter):
     _cls = Type[rset.CharSettings]
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> rset.CharSettings:
+    @load_preset('char_settings', rset.CharSettings)
+    def to_setting(cls, args: argparse.Namespace, charset: rset.CharSettings) -> rset.CharSettings:
         '''Extract CharSettings from argparse.Namespace.'''
-        charset = rset.CharSettings()
-
         for name in rset.CharNames.default():
             name_arg = f"{name.lower()}_name"
             if name_arg in args:
@@ -467,14 +498,14 @@ class MysterySettingsAdapter(SettingsAdapter):
                 yield (arg, key)
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> rset.MysterySettings:
+    @load_preset('mystery_settings', rset.MysterySettings)
+    def to_setting(cls, args: argparse.Namespace, mset: rset.MysterySettings) -> rset.MysterySettings:
         '''Get mystery settings from args.
 
         This creates a MysterySettings object where all explicitly-passed values from the CLI
         override the inherent defaults. Values not explicitly passed are suppressed by
         the parser and will not override the defaults from randosettings.MysterySettings.
         '''
-        mset = rset.MysterySettings()
         for arg, (field, key) in cls._adapter.items():
             if arg in args:
                 attr = getattr(mset, field)
@@ -822,6 +853,19 @@ class GenerationOptionsAG(ArgumentGroup):
             help='generate json spoilers with the randomized rom.',
             action='store_true',
         )
+        yield Argument(
+            '--preset',
+            help='path to preset JSON file from which to load settings',
+            type=cls._load_preset
+        )
+
+    @classmethod
+    def _load_preset(cls, preset: str) -> rset.Settings:
+        try:
+            data = rset.Settings.from_preset_file(Path(preset))
+        except Exception as ex:
+            raise argparse.ArgumentTypeError(f"Failed to parse preset as JSON: {preset}") from ex
+        return data
 
 
 class MysterySettingsArgumentGroup(ArgumentGroup):
