@@ -11,6 +11,7 @@ from tkinter import ttk
 from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
+from typing import Optional
 
 # custom/local libraries
 import bucketgui
@@ -2766,7 +2767,7 @@ class RandoGUI:
             #update listbox in another frame
             parent.listbox_values.set(options)
             
-        def _construct_callback(action: ActionMap = None):
+        def _construct_callback(action: Optional[ActionMap] = None):
             '''
             Constructs callback function for gui usage.
             '''

@@ -236,7 +236,7 @@ class BucketPage(tk.Frame):
 
     # https://stackoverflow.com/questions/55649709/
     # is-autocomplete-search-feature-available-in-tkinter-combo-box
-    def check_combobox_input(self, event, index: int = None):
+    def check_combobox_input(self, event, index: typing.Optional[int] = None):
         value = event.widget.get()
 
         if value == '':
