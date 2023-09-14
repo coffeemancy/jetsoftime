@@ -3,7 +3,7 @@ import copy
 import random
 
 from itertools import permutations
-from typing import List
+from typing import Dict, List
 
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
@@ -67,10 +67,10 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
     # It was important to do the scaling first so that we know what level
     # and tech level to use when reassigning
     if rset.GameFlags.CHAR_RANDO in settings.gameflags:
-        choices = {}
+        choices: Dict[CharID, CharID] = {}
         if rset.GameFlags.DUPLICATE_CHARS in settings.gameflags:
             for pc_id in CharID:
-                avail_choices = settings.char_choices[int(pc_id)]
+                avail_choices = settings.char_settings.choices[int(pc_id)]
                 choices[pc_id] = CharID(random.choice(avail_choices))
         # unique chars (default for char rando)
         else:
@@ -80,7 +80,7 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
                 permutation = next(
                     p for p in shuffle
                     if all(
-                        p[pc_id] in settings.char_choices[pc_id]
+                        p[pc_id] in settings.char_settings.choices[pc_id]
                         for pc_id in CharID
                     )
                 )

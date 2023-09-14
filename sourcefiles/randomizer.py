@@ -1298,8 +1298,8 @@ class Randomizer:
                     ", ".join([str(CharID(i))
                                for i in (set(range(7)) - set(choicelist))])
 
-        chars = {c: summarize_single(self.settings.char_choices[c])
-                 for c in range(len(self.settings.char_choices))}
+        chars = {c: summarize_single(self.settings.char_settings.choices[c])
+                 for c in range(len(self.settings.char_settings.choices))}
         rv = ""
         for c in sorted(chars.keys()):
             if chars[c] != "Any":
@@ -1334,7 +1334,7 @@ class Randomizer:
                 f"Speed {tab_set.speed_min}-{tab_set.speed_max}\n"
             )
         if rset.GameFlags.CHAR_RANDO in gf and \
-           self.settings.char_choices != rset.Settings().char_choices:
+           self.settings.char_settings.choices != rset.Settings().char_settings.choices:
 
             dupes = self._summarize_dupes()
             file_object.write(f"Characters: {dupes}\n")
@@ -1925,7 +1925,7 @@ class Randomizer:
             cosmetichacks.death_peak_singing_mountain_music(ctrom, settings)
 
         cosmetichacks.set_pc_names(
-            ctrom, *settings.char_names
+            ctrom, *settings.char_settings.names
         )
 
         if rset.CosmeticFlags.REDUCE_FLASH in cos_flags:

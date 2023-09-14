@@ -1,7 +1,8 @@
 from __future__ import annotations
+from collections import UserList
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field, fields
-from typing import Any, Callable, Dict, List, Union, Mapping, Optional, Sequence, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Union, Mapping, Optional, Sequence, Tuple, Type, TypeVar
 
 import bossrandotypes as rotypes
 import ctoptions
@@ -341,16 +342,102 @@ class BucketSettings:
         return {field.name: getattr(self, field.name) for field in fields(self)}
 
 
-class CharSettings:
-    '''Contains settings related to characters.'''
+class CharChoices(UserList):
+    '''Type-checked list of lists for character choices allowing get/set via string or index.'''
 
     def __init__(self):
-        self.names: List[str] = self.default_names()
+        self.data = [list(range(7)) for _ in range(7)]
+
+    def __getitem__(self, key):
+        '''Lookup items via characer name string or index.'''
+        return self.data[CharNames.lookup(key)]
+
+    def __setitem__(self, key, choices):
+        '''Set items via character name string or index.
+
+        When choices is a string, parse to determine character choice ints.
+        Otherwise, item must be a list of ints, or raise TypeError.
+        '''
+        index = CharNames.lookup(key)
+        if isinstance(choices, str):
+            self.data[index] = self._parse_choices(choices)
+        elif isinstance(choices, List) and all(isinstance(x, int) for x in choices):
+            self.data[index] = choices
+        else:
+            raise TypeError('Character choices must be either string or list of ints.')
 
     @staticmethod
-    def default_names() -> List[str]:
+    def _parse_choices(choices: str) -> List[int]:
+        '''Determine list of character choice ints based on specified string.'''
+        selections = choices.lower().split()
+
+        # select all character choices
+        if selections[0] == 'all':
+            return list(range(7))
+
+        # inverted selection: get all character choices except specified
+        if selections[0] == 'not':
+            indices = [CharNames.lookup(choice) for choice in selections[1:]]
+            return [index for index in range(7) if index not in indices]
+
+        # regular selection: get all character choices specified
+        indices = [CharNames.lookup(choice) for choice in selections]
+        return [index for index in range(7) if index in indices]
+
+    def to_jot_json(self) -> List[List[int]]:
+        return [[choice for choice in character] for character in self.data]
+
+
+class CharNames(UserList):
+    '''Type-checked list of character names allowing get/set via string or index.'''
+
+    def __init__(self, names: Optional[Iterable[str]] = None):
+        names = [name for name in names] if names else []
+        if not names:
+            names = self.default()
+        if len(names) != 8:
+            raise IndexError('Must specify 8 names if using assignment.')
+        if not all(isinstance(name, str) for name in names):
+            raise TypeError('All character names must be strings.')
+        self.data = names
+
+    def __getitem__(self, key):
+        '''Lookup items via characer name string or index.'''
+        return self.data[self.lookup(key)]
+
+    def __setitem__(self, key, name):
+        '''Set items via character name string or index.'''
+        if not isinstance(name, str):
+            raise TypeError('Character names must be strings.')
+        self.data[self.lookup(key)] = name
+
+    @staticmethod
+    def default() -> List[str]:
         '''Default character names.'''
         return ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch']
+
+    @staticmethod
+    def lookup(key) -> int:
+        if isinstance(key, str):
+            return CharNames.default().index(key.lower().capitalize())
+        return key
+
+    def to_jot_json(self) -> List[str]:
+        return [name for name in self.data]
+
+
+@dataclass
+class CharSettings:
+    '''Contains settings related to characters.'''
+    names: CharNames
+    choices: CharChoices
+
+    def __init__(self):
+        self.names = CharNames()
+        self.choices = CharChoices()
+
+    def to_jot_json(self) -> Dict[str, JSONType]:
+        return {field.name: getattr(self, field.name) for field in fields(self)}
 
 
 @dataclass
@@ -440,19 +527,16 @@ class Settings:
 
         self.gameflags = GameFlags(0)
         self.initial_flags = GameFlags(0)
-        self.char_choices = [list(range(7)) for j in range(7)]
 
         self.ro_settings = ROSettings.from_game_mode(self.game_mode)
         self.bucket_settings = BucketSettings()
-
+        self.char_settings = CharSettings()
         self.tab_settings = TabSettings()
         self.cosmetic_flags = CosmeticFlags(0)
 
         self.ctoptions = ctoptions.CTOpts()
 
         self.seed = ''
-
-        self.char_names = CharSettings.default_names()
 
     def to_jot_json(self) -> Dict[str, Any]:
         return {
@@ -464,14 +548,13 @@ class Settings:
             "mystery_settings": self.mystery_settings,
             "gameflags": self.gameflags,
             "initial_flags": self.initial_flags,
-            "char_choices": self.char_choices,
             "ro_settings": self.ro_settings,
             "bucket_settings": self.bucket_settings,
+            "char_settings": self.char_settings,
             "tab_settings": self.tab_settings,
             "cosmetic_flags": self.cosmetic_flags,
             "ctoptions": self.ctoptions,
             "seed": self.seed,
-            "char_names": self.char_names,
         }
 
     @staticmethod

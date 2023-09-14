@@ -36,7 +36,7 @@ def parser():
                 'shopprices': rset.ShopPrices.NORMAL,
                 'mystery_settings': rset.MysterySettings(),
                 'tab_settings': rset.TabSettings(),
-                'char_names': rset.CharSettings.default_names(),
+                'char_settings': rset.CharSettings(),
                 'bucket_settings': rset.BucketSettings(),
             },
         ),
@@ -45,7 +45,7 @@ def parser():
             (
                 '--mode loc --boss-randomization --char-rando --gear-rando --zenan-alt-music'
                 ' --item-difficulty hard --enemy-difficulty hard --tech-order balanced'
-                ' --shop-prices free --frog-name Glenn --marle-name Nadia --epoch-name Apoch'
+                ' --shop-prices free'
             ).split(' '),
             {
                 'game_mode': GM.LEGACY_OF_CYRUS,
@@ -55,7 +55,6 @@ def parser():
                 'enemy_difficulty': rset.Difficulty.HARD,
                 'techorder': rset.TechOrder.BALANCED_RANDOM,
                 'shopprices': rset.ShopPrices.FREE,
-                'char_names': ['Crono', 'Nadia', 'Lucca', 'Robo', 'Glenn', 'Ayla', 'Magus', 'Apoch'],
             },
         ),
     ],
@@ -149,7 +148,27 @@ def test_char_choices(cli_args, expected_choices, parser):
     args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
     settings = arguments.args_to_settings(args)
 
-    assert settings.char_choices == expected_choices
+    assert settings.char_settings.choices == expected_choices
+
+
+@pytest.mark.parametrize(
+    'cli_args, expected_names',
+    [
+        # default
+        ([], ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch']),
+        # overrides
+        (
+            '--frog-name Glenn --marle-name Nadia --epoch-name Apoch'.split(' '),
+            ['Crono', 'Nadia', 'Lucca', 'Robo', 'Glenn', 'Ayla', 'Magus', 'Apoch'],
+        ),
+    ],
+    ids=('default', 'override'),
+)
+def test_char_names(cli_args, expected_names, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    settings = arguments.args_to_settings(args)
+
+    assert settings.char_settings.names == expected_names
 
 
 @pytest.mark.parametrize(

@@ -27,7 +27,7 @@ def set_pc_names(
     '''
     Provide names to be used for characters and epoch.
     '''
-    default_names = rset.CharSettings.default_names()
+    default_names = rset.CharNames.default()
 
     copy_str = bytearray()
 

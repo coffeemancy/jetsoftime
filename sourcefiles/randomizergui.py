@@ -19,7 +19,7 @@ import randomizer
 import bossrandotypes as rotypes
 from randosettings import Settings, GameFlags, Difficulty, ShopPrices, \
     TechOrder, TabSettings, TabRandoScheme, ROSettings, ROFlags, \
-    CosmeticFlags, GameMode, MysterySettings, CharSettings
+    CosmeticFlags, GameMode, MysterySettings, CharNames
 from ctenums import ActionMap, InputMap
 import ctoptions
 import ctrom
@@ -279,7 +279,7 @@ class RandoGUI:
 
     def set_settings(self, new_settings: Settings):
         self.__settings = new_settings
-        # print(self.__settings.char_choices)
+        # print(self.__settings.char_settings.choices)
         # print(self.__settings.gameflags)
         # print(self.__settings.get_flag_string())
         self.update_gui_vars()
@@ -400,14 +400,8 @@ class RandoGUI:
             value = InputMap[button.get().upper().replace(' ', '_')]
             self.settings.ctoptions.controller_binds.mappings[action] = value
 
-        self.settings.char_names[0] = self.char_names['Crono'].get()
-        self.settings.char_names[1] = self.char_names['Marle'].get()
-        self.settings.char_names[2] = self.char_names['Lucca'].get()
-        self.settings.char_names[3] = self.char_names['Robo'].get()
-        self.settings.char_names[4] = self.char_names['Frog'].get()
-        self.settings.char_names[5] = self.char_names['Ayla'].get()
-        self.settings.char_names[6] = self.char_names['Magus'].get()
-        self.settings.char_names[7] = self.char_names['Epoch'].get()
+        for name in CharNames.default():
+            self.settings.char_settings.names[name] = self.char_names[name].get()
 
         self.settings.gameflags = \
             reduce(lambda a, b: a | b, flags, GameFlags(False))
@@ -432,10 +426,10 @@ class RandoGUI:
 
         # RC (dup duals already taken, just char choices)
         for i in range(7):
-            self.settings.char_choices[i] = []
+            self.settings.char_settings.choices[i] = []
             for j in range(7):
                 if self.char_choices[i][j].get() == 1:
-                    self.settings.char_choices[i].append(j)
+                    self.settings.char_settings.choices[i].append(j)
 
         # RO Settings
         # print(self.bosses)
@@ -507,14 +501,8 @@ class RandoGUI:
                 self.cosmetic_flag_dict[x].set(0)
 
         # Char names
-        self.char_names['Crono'].set(self.settings.char_names[0])
-        self.char_names['Marle'].set(self.settings.char_names[1])
-        self.char_names['Lucca'].set(self.settings.char_names[2])
-        self.char_names['Robo'].set(self.settings.char_names[3])
-        self.char_names['Frog'].set(self.settings.char_names[4])
-        self.char_names['Ayla'].set(self.settings.char_names[5])
-        self.char_names['Magus'].set(self.settings.char_names[6])
-        self.char_names['Epoch'].set(self.settings.char_names[7])
+        for name in CharNames.default():
+            self.char_names[name].set(self.settings.char_settings.names[name])
 
         increment_vars = [
             'menu_background',
@@ -567,7 +555,7 @@ class RandoGUI:
         # RC char choices
         for i in range(7):
             for j in range(7):
-                if j in self.settings.char_choices[i]:
+                if j in self.settings.char_settings.choices[i]:
                     self.char_choices[i][j].set(1)
                 else:
                     self.char_choices[i][j].set(0)
@@ -826,7 +814,7 @@ class RandoGUI:
         row = 0
         col = 0
 
-        char_names = CharSettings.default_names()[:-1]
+        char_names = CharNames.default()[:-1]
 
         row += 1
 
@@ -1727,8 +1715,8 @@ class RandoGUI:
                 if self.output_dir is None or self.output_dir.get() == '':
                     self.output_dir.set(str(input_path.parent))
 
-                base_name = input_path.name.split('.')[0]
-                out_dir = self.output_dir.get()
+                base_name = pathlib.Path(input_path.name.split('.')[0])
+                out_dir = pathlib.Path(self.output_dir.get())
 
                 writer = randomizer.RandomizerWriter(rando, base_name=base_name)
                 writer.write_output_rom(out_dir)

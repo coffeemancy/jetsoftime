@@ -13,7 +13,6 @@ import ctoptions
 import objectivehints as obhint
 import randosettings as rset
 
-from ctenums import CharID
 from randosettings import Difficulty, TechOrder, ShopPrices
 from randosettings import GameFlags as GF, GameMode as GM, CosmeticFlags as CF
 
@@ -400,32 +399,24 @@ class CTOptsAdapter(SettingsAdapter):
         return ct_opts
 
 
-class CharChoicesAdapter(SettingsAdapter):
-    # TODO: handle this logic in CharSettings itself?
+class CharSettingsAdapter(SettingsAdapter):
+    _cls = Type[rset.CharSettings]
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> List[List[int]]:
-        '''Extract character choice settings from argparse.Namespace.'''
-        return [
-            cls._parse_choices(getattr(args, f"{name.lower()}_choices", 'all'))
-            for name in rset.CharSettings.default_names()[:-1]
-        ]
+    def to_setting(cls, args: argparse.Namespace) -> rset.CharSettings:
+        '''Extract CharSettings from argparse.Namespace.'''
+        charset = rset.CharSettings()
 
-    @staticmethod
-    def _parse_choices(choice_string: str) -> List[int]:
-        choice_string = choice_string.lower()
+        for name in rset.CharNames.default():
+            name_arg = f"{name.lower()}_name"
+            if name_arg in args:
+                charset.names[name] = getattr(args, name_arg)
 
-        if choice_string == 'all':
-            return list(range(7))
+            choices_arg = f"{name.lower()}_choices"
+            if choices_arg in args:
+                charset.choices[name] = getattr(args, choices_arg)
 
-        choices = choice_string.split()
-
-        if choices[0] == 'not':
-            choice_ints = [CharID[choice.upper()] for choice in choices[1:]]
-            return [int(ind) for ind in range(7) if ind not in choice_ints]
-
-        choice_ints = [CharID[choice.upper()] for choice in choices]
-        return [int(ind) for ind in range(7) if ind in choice_ints]
+        return charset
 
 
 class MysterySettingsAdapter(SettingsAdapter):
@@ -491,14 +482,6 @@ class MysterySettingsAdapter(SettingsAdapter):
         return mset
 
 
-class CharNamesAdapter(SettingsAdapter):
-    # TODO: handle this logic in CharSettings itself?
-
-    @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> List[str]:
-        return [getattr(args, f"{name.lower()}_name", name) for name in rset.CharSettings.default_names()]
-
-
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
     ret_set = rset.Settings()
@@ -515,8 +498,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.tab_settings = TabSettingsAdapter.to_setting(args)
     ret_set.cosmetic_flags = CosmeticFlagsAdapter.to_setting(args)
     ret_set.ctoptions = CTOptsAdapter.to_setting(args)
-    ret_set.char_choices = CharChoicesAdapter.to_setting(args)
-    ret_set.char_names = CharNamesAdapter.to_setting(args)
+    ret_set.char_settings = CharSettingsAdapter.to_setting(args)
     ret_set.bucket_settings = BucketSettingsAdapter.to_setting(args)
     return ret_set
 
@@ -677,7 +659,7 @@ class CharNamesAG(ArgumentGroup):
 
     @classmethod
     def arguments(cls) -> Generator[Argument, None, None]:
-        for char_name in rset.CharSettings.default_names():
+        for char_name in rset.CharNames.default():
             yield Argument(f"--{char_name.lower()}-name", help=f"[{char_name}]", type=cls._verify_name)
 
     @staticmethod
@@ -697,7 +679,6 @@ class CharRandoAG(ArgumentGroup):
 
     @classmethod
     def arguments(cls) -> Generator[Argument, None, None]:
-        # TODO: remove defaults and handle in CharSettings class?
         yield Argument(
             '--duplicate-characters', '-dc',
             help='Allow multiple copies of a character to be present in a seed.',
@@ -715,10 +696,9 @@ class CharRandoAG(ArgumentGroup):
             'either Lucca or Robo.  If the list is preceded with "not" '
             '(e.g. not lucca ayla) then all except the listed characters will be '
             'allowed.',
-            default='all',
         )
-        for name in rset.CharSettings.default_names()[1:-1]:
-            yield Argument(f"--{name.lower()}-choices", help='Same as --crono-choices.', default='all')
+        for name in rset.CharNames.default()[1:-1]:
+            yield Argument(f"--{name.lower()}-choices", help='Same as --crono-choices.')
 
 
 class GameOptionsAG(ArgumentGroup):
