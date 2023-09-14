@@ -217,7 +217,7 @@ class ArgumentAdapter(SettingsAdapter):
     _cls: Type[rset.StrIntEnum]
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> rset.StrIntEnum:
+    def to_setting(cls, args: argparse.Namespace):
         '''Get coerced setting from args or default.'''
         if cls._arg in args:
             choice = getattr(args, cls._arg)
@@ -286,7 +286,7 @@ class FlagsAdapter(SettingsAdapter):
             raise KeyError(f"No flag associated with '{arg}'")
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None) -> SettingsFlags:
+    def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None):
         if init is None:
             init = cls._cls(0)
         flags = (

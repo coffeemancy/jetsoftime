@@ -24,6 +24,10 @@ class StrIntEnum(IntEnum):
         raise NotImplementedError(f"No .default implemented for {cls}")
 
     @classmethod
+    def get(cls, key: str):
+        return cls[key.upper().replace(' ', '_')]
+
+    @classmethod
     def str_dict(cls: Type[SIE]) -> dict[SIE, str]:
         enum_list: list[SIE] = list(cls)
         return dict((x, str(x)) for x in enum_list)
@@ -85,6 +89,20 @@ class SerializableFlag(Flag):
 
     def __sub__(self, other: Flag):
         return self & ~other
+
+    @classmethod
+    def get(cls, key: str):
+        return cls[key.partition('.')[-1].upper()]
+
+    @classmethod
+    def from_jot_json(cls, data: List[str]):
+        if not isinstance(data, List) and all(isinstance(item, str) for item in data):
+            raise TypeError('Flags must be lists of strings.')
+
+        flags = cls(0)
+        for flag in data:
+            flags |= cls.get(flag)
+        return flags
 
     def to_jot_json(self) -> List[str]:
         return [str(flag) for flag in type(self) if flag in self]
@@ -254,6 +272,20 @@ class TabSettings:
     speed_min: int = 1
     speed_max: int = 1
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> TabSettings:
+        if not isinstance(data, Mapping):
+            raise TypeError('TabSettings must be a dictionary/mapping.')
+
+        tabset = TabSettings()
+        attrs = [field.name for field in fields(tabset)]
+        for key, value in data.items():
+            if key == 'scheme':
+                tabset.scheme = TabRandoScheme.get(value)
+            elif key in attrs:
+                setattr(tabset, key, value)
+        return tabset
+
     def to_jot_json(self) -> Dict[str, JSONPrimitive]:
         data = {field.name: getattr(self, field.name) for field in fields(self)}
         data['scheme'] = str(self.scheme)
@@ -317,6 +349,24 @@ class ROSettings:
 
         return ROSettings(spots, boss_list, ro_flags)
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> ROSettings:
+        if not isinstance(data, Mapping):
+            raise TypeError('ROSettings must be a dictionary/mapping.')
+
+        roset = ROSettings()
+        if 'spots' in data:
+            if not isinstance(data['spots'], List) and all(isinstance(spot, str) for spot in data['spots']):
+                raise TypeError('Boss spots must be a list of strings.')
+            roset.spots = [rotypes.BossSpotID.get(spot) for spot in data['spots']]
+        if 'bosses' in data:
+            if not isinstance(data['bosses'], List) and all(isinstance(boss, str) for boss in data['bosses']):
+                raise TypeError('Bosses must be a list of strings.')
+            roset.bosses = [rotypes.BossID.get(boss) for boss in data['bosses']]
+        if 'flags' in data:
+            roset.flags = ROFlags.from_jot_json(data['flags'])
+        return roset
+
     def to_jot_json(self) -> Dict[str, Any]:
         data = {}
         for item in fields(self):
@@ -338,6 +388,18 @@ class BucketSettings:
     num_objectives_needed: int = 4
     hints: list[str] = field(default_factory=list)
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> BucketSettings:
+        if not isinstance(data, Mapping):
+            raise TypeError('BucketSettings must be a dictionary/mapping.')
+
+        bset = BucketSettings()
+        attrs = [field.name for field in fields(bset)]
+        for key, value in data.items():
+            if key in attrs:
+                setattr(bset, key, value)
+        return bset
+
     def to_jot_json(self) -> Dict[str, JSONType]:
         return {field.name: getattr(self, field.name) for field in fields(self)}
 
@@ -345,8 +407,12 @@ class BucketSettings:
 class CharChoices(UserList):
     '''Type-checked list of lists for character choices allowing get/set via string or index.'''
 
-    def __init__(self):
+    def __init__(self, choices: Optional[List[Union[str, List[int]]]] = None):
         self.data = [list(range(7)) for _ in range(7)]
+
+        if choices:
+            for pc_id, choice in enumerate(choices):
+                self.data[pc_id] = choice
 
     def __getitem__(self, key):
         '''Lookup items via characer name string or index.'''
@@ -436,6 +502,17 @@ class CharSettings:
         self.names = CharNames()
         self.choices = CharChoices()
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> CharSettings:
+        charset = CharSettings()
+        if 'names' in data:
+            charset.names = CharNames(data['names'])
+        if 'choices' in data:
+            if not isinstance(data['choices'], List):
+                raise TypeError('Character setting choices must be a list.')
+            charset.choices = CharChoices(data['choices'])
+        return charset
+
     def to_jot_json(self) -> Dict[str, JSONType]:
         return {field.name: getattr(self, field.name) for field in fields(self)}
 
@@ -494,6 +571,22 @@ class MysterySettings:
             GameFlags.HEALING_ITEM_RANDO: 0.25
         }
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Dict[str, Any]]) -> MysterySettings:
+        if not isinstance(data, Mapping) and all(isinstance(value, Mapping) for value in data.values()):
+            raise TypeError('MysterySettings must be a nested dictionary/mapping.')
+
+        mset = MysterySettings()
+        for key in (field.name for field in fields(mset)):
+            if key not in data:
+                continue
+
+            # coerce data to appropriate types
+            key_cls = type(next(k for k in mset[key].keys()))
+            getattr(mset, key).update({key_cls.get(k): v for k, v in data[key].items()})
+
+        return mset
+
     def to_jot_json(self) -> Dict[str, JSONType]:
         return {
             field.name: {str(k): freq for k, freq in self[field.name].items()}
@@ -512,7 +605,26 @@ class MysterySettings:
         return '\n'.join(str(self[field.name]) for field in fields(self)) + '\n'
 
 
+@dataclass
 class Settings:
+    '''Container for all settings which do not require reading ROM data.'''
+
+    # NOTE: all fields in dataclasses are used to determine object equivalence
+    # that is why initial_flags is intentionally missing from fields list, but initialized in __init__
+    game_mode: GameMode
+    item_difficulty: Difficulty
+    enemy_difficulty: Difficulty
+    techorder: TechOrder
+    shopprices: ShopPrices
+    mystery_settings: MysterySettings
+    gameflags: GameFlags
+    ro_settings: ROSettings
+    bucket_settings: BucketSettings
+    char_settings: CharSettings
+    tab_settings: TabSettings
+    cosmetic_flags: CosmeticFlags
+    ctoptions: ctoptions.CTOpts
+    seed: str
 
     def __init__(self):
 
@@ -538,23 +650,62 @@ class Settings:
 
         self.seed = ''
 
+
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> Settings:
+        settings = Settings()
+
+        # NOTE: initial_gameflags intentionally skipped below because only relevant during
+        # generation and should be set as part of randomization, not loading from preset
+
+        if 'game_mode' in data:
+            settings.game_mode = GameMode.get(str(data['game_mode']))
+        if 'enemy_difficulty' in data:
+            settings.enemy_difficulty = Difficulty.get(str(data['enemy_difficulty']))
+        if 'item_difficulty' in data:
+            settings.item_difficulty = Difficulty.get(str(data['item_difficulty']))
+        if 'techorder' in data:
+            settings.techorder = TechOrder.get(str(data['techorder']))
+        if 'shopprices' in data:
+            settings.shopprices = ShopPrices.get(str(data['shopprices']))
+        if 'mystery_settings' in data:
+            settings.mystery_settings = MysterySettings.from_jot_json(data['mystery_settings'])
+        if 'gameflags' in data:
+            settings.gameflags = GameFlags.from_jot_json(data['gameflags'])
+        if 'ro_settings' in data:
+            settings.ro_settings = ROSettings.from_jot_json(data['ro_settings'])
+        if 'bucket_settings' in data:
+            settings.bucket_settings = BucketSettings.from_jot_json(data['bucket_settings'])
+        if 'char_settings' in data:
+            settings.char_settings = CharSettings.from_jot_json(data['char_settings'])
+        if 'tab_settings' in data:
+            settings.tab_settings = TabSettings.from_jot_json(data['tab_settings'])
+        if 'cosmetic_flags' in data:
+            settings.cosmetic_flags = CosmeticFlags.from_jot_json(data['cosmetic_flags'])
+        if 'ctoptions' in data:
+            settings.ctoptions = ctoptions.CTOpts.from_jot_json(data['ctoptions'])
+        if 'seed' in data:
+            settings.seed = data['seed']
+
+        return settings
+
     def to_jot_json(self) -> Dict[str, Any]:
         return {
-            "game_mode": str(self.game_mode),
-            "enemy_difficulty": str(self.enemy_difficulty),
-            "item_difficulty": str(self.item_difficulty),
-            "techorder": str(self.techorder),
-            "shopprices": str(self.shopprices),
-            "mystery_settings": self.mystery_settings,
-            "gameflags": self.gameflags,
-            "initial_flags": self.initial_flags,
-            "ro_settings": self.ro_settings,
-            "bucket_settings": self.bucket_settings,
-            "char_settings": self.char_settings,
-            "tab_settings": self.tab_settings,
-            "cosmetic_flags": self.cosmetic_flags,
-            "ctoptions": self.ctoptions,
-            "seed": self.seed,
+            'game_mode': str(self.game_mode),
+            'enemy_difficulty': str(self.enemy_difficulty),
+            'item_difficulty': str(self.item_difficulty),
+            'techorder': str(self.techorder),
+            'shopprices': str(self.shopprices),
+            'mystery_settings': self.mystery_settings,
+            'gameflags': self.gameflags,
+            'initial_flags': self.initial_flags,
+            'ro_settings': self.ro_settings,
+            'bucket_settings': self.bucket_settings,
+            'char_settings': self.char_settings,
+            'tab_settings': self.tab_settings,
+            'cosmetic_flags': self.cosmetic_flags,
+            'ctoptions': self.ctoptions,
+            'seed': self.seed,
         }
 
     @staticmethod
