@@ -90,7 +90,7 @@ class ASMSnippet:
                     # The idea is to allow jumps outside of the snippet's range but
                     # catch bad jumps within the range.
                     if jump_target >= 0 and jump_target <= end:
-                    # print("ERROR:"+str(data)+f'{jump_target:04X}')
+                        # print("ERROR:"+str(data)+f'{jump_target:04X}')
                         raise inst.InvalidArgumentException(
                             "Branch is not to the start of a command."
                         )

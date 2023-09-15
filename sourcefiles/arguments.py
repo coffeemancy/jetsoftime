@@ -1,8 +1,10 @@
 from __future__ import annotations
 import argparse
-from dataclasses import dataclass
+import copy
 import functools
 import typing
+
+from dataclasses import dataclass
 
 import ctenums
 import ctstrings
@@ -135,6 +137,9 @@ _flag_entry_dict: dict[GF | CF, FlagEntry] = {
     GF.ADD_RACELOG_SPOT: FlagEntry(
         "--add-racelog-spot", None,
         "Gain a KI from the vanilla Race Log chest."),
+    GF.REMOVE_BLACK_OMEN_SPOT: FlagEntry(
+        "--remove-black-omen-spot", None,
+        "Removes Black Omen rock chest being a possible KI."),
     GF.SPLIT_ARRIS_DOME: FlagEntry(
         "--split-arris-dome", None,
         "Get one key item from the dead guy after Guardian.  Get a second "
@@ -379,6 +384,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.seed = val_dict['seed']
     ret_set.game_mode = mode
     ret_set.gameflags = flags
+    ret_set.initial_flags = copy.deepcopy(flags)
     ret_set.item_difficulty = item_difficulty
     ret_set.enemy_difficulty = enemy_difficulty
     ret_set.techorder = tech_order
@@ -538,9 +544,9 @@ def get_parser():
     )
 
     add_flags_to_parser(
-        "Logic Tweak Flags that add a KI Spot",
+        "Logic Tweak Flags that add/remove a KI Spot",
         (GF.ADD_BEKKLER_SPOT, GF.ADD_OZZIE_SPOT, GF.ADD_RACELOG_SPOT,
-         GF.ADD_CYRUS_SPOT, GF.VANILLA_ROBO_RIBBON),
+         GF.ADD_CYRUS_SPOT, GF.VANILLA_ROBO_RIBBON, GF.REMOVE_BLACK_OMEN_SPOT),
         parser
     )
 
