@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "name": "Hard",
+    "desc": "Standard hard preset with added difficulty and locked chars."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Hard",
+    "item_difficulty": "Hard",
+    "techorder": "Balanced random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.BOSS_SCALE",
+      "GameFlags.LOCKED_CHARS",
+      "GameFlags.FAST_TABS"
+    ]
+  }
+}

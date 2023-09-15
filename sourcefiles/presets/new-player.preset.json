@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "name": "New Player",
+    "desc": "Slightly easier preset intended for newer players of Jets of Time."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Easy",
+    "techorder": "Full random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.UNLOCKED_MAGIC",
+      "GameFlags.VISIBLE_HEALTH",
+      "GameFlags.FAST_TABS"
+    ]
+  }
+}

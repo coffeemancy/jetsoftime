@@ -1,4 +1,7 @@
 import pytest
+from pathlib import Path
+from typing import List
+
 import randosettings as rset
 
 from randosettings import GameFlags as _GF
@@ -9,6 +12,12 @@ ALL_KI_FLAGS: rset.GameFlags = _GF.RESTORE_JOHNNY_RACE | _GF.RESTORE_TOOLS | _GF
 MOST_SPOT_FLAGS: rset.GameFlags = _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT | _GF.ADD_RACELOG_SPOT
 
 # FIXTURES ###################################################################
+
+
+@pytest.fixture(scope='session')
+def presets(paths) -> List[Path]:
+    '''All preset JSON files.'''
+    return [path for path in paths['presets'].rglob('*.preset.json')]
 
 
 @pytest.fixture(scope='function')
@@ -145,3 +154,15 @@ def test_fix_flag_conflicts_unfixable(settings):
     with pytest.raises(ValueError) as ex:
         settings.fix_flag_conflicts()
     assert 'fix flag conflicts' in str(ex)
+
+
+def test_settings_from_preset_file(presets):
+    '''Check all .preset.json files in sourcefiles/presets can be parsed into Settings.'''
+    assert presets, 'Failed to find any .preset.json files'
+
+    for preset in presets:
+        settings = rset.Settings.from_preset_file(preset)
+        assert settings
+
+        # assure all presets have glitch fixes and fast tabs
+        assert settings.gameflags & (_GF.FIX_GLITCH | _GF.FAST_TABS)

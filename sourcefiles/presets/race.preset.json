@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "name": "Race",
+    "desc": "Standard racing preset."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Normal",
+    "techorder": "Full random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.FAST_TABS"
+    ]
+  }
+}

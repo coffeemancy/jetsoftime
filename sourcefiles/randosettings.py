@@ -3,6 +3,7 @@ import json
 from collections import UserList
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field, fields
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Union, Mapping, Optional, Sequence, Tuple, Type, TypeVar
 
 import bossrandotypes as rotypes
@@ -12,6 +13,7 @@ JSONPrimitive = Optional[Union[int, float, bool, str]]
 JSONType = Union[JSONPrimitive, Mapping[str, "JSONType"], Sequence["JSONType"]]
 SIE = TypeVar('SIE', bound='StrIntEnum')
 
+PRESETS_PATH: Path = Path(__file__).parent / 'presets'
 
 class StrIntEnum(IntEnum):
 
@@ -725,108 +727,29 @@ class Settings:
         return data['settings']
 
     @staticmethod
-    def get_race_presets():
-        ret = Settings()
-
-        ret.item_difficulty = Difficulty.NORMAL
-        ret.enemy_difficulty = Difficulty.NORMAL
-
-        ret.shopprices = ShopPrices.NORMAL
-        ret.techorder = TechOrder.FULL_RANDOM
-
-        ret.gameflags = (GameFlags.FIX_GLITCH |
-                         GameFlags.FAST_PENDANT |
-                         GameFlags.ZEAL_END)
-
-        ret.seed = ''
-
-        return ret
+    def get_race_presets() -> Settings:
+        return Settings.from_preset_file(PRESETS_PATH / 'race.preset.json')
 
     @staticmethod
-    def get_new_player_presets():
-        ret = Settings()
-
-        ret.item_difficulty = Difficulty.EASY
-        ret.enemy_difficulty = Difficulty.NORMAL
-
-        ret.shopprices = ShopPrices.NORMAL
-        ret.techorder = TechOrder.FULL_RANDOM
-
-        ret.gameflags = (GameFlags.FIX_GLITCH |
-                         GameFlags.FAST_PENDANT |
-                         GameFlags.ZEAL_END |
-                         GameFlags.UNLOCKED_MAGIC |
-                         GameFlags.VISIBLE_HEALTH |
-                         GameFlags.FAST_TABS)
-
-        ret.seed = ''
-
-        return ret
+    def get_new_player_presets() -> Settings:
+        return Settings.from_preset_file(PRESETS_PATH / 'new-players.preset.json')
 
     @staticmethod
-    def get_lost_worlds_presets():
-        ret = Settings()
-
-        ret.game_mode = GameMode.LOST_WORLDS
-        ret.item_difficulty = Difficulty.NORMAL
-        ret.enemy_difficulty = Difficulty.NORMAL
-
-        ret.shopprices = ShopPrices.NORMAL
-        ret.techorder = TechOrder.FULL_RANDOM
-
-        ret.gameflags = (GameFlags.FIX_GLITCH | GameFlags.ZEAL_END)
-
-        ret.seed = ''
-
-        return ret
+    def get_lost_worlds_presets() -> Settings:
+        return Settings.from_preset_file(PRESETS_PATH / 'lost-worlds.preset.json')
 
     @staticmethod
-    def get_hard_presets():
-        ret = Settings()
-
-        ret.item_difficulty = Difficulty.HARD
-        ret.enemy_difficulty = Difficulty.HARD
-
-        ret.shopprices = ShopPrices.NORMAL
-        ret.techorder = TechOrder.BALANCED_RANDOM
-
-        ret.gameflags = (GameFlags.FIX_GLITCH |
-                         GameFlags.BOSS_SCALE |
-                         GameFlags.LOCKED_CHARS)
-
-        ret.seed = ''
-        return ret
+    def get_hard_presets() -> Settings:
+        return Settings.from_preset_file(PRESETS_PATH / 'hard.preset.json')
 
     @staticmethod
     def get_tourney_early_preset() -> Settings:
-        '''
-        Settings for tourney up to Ro8.
-        '''
-        ret = Settings()
-
-        ret.item_difficulty = Difficulty.NORMAL
-        ret.enemy_difficulty = Difficulty.NORMAL
-        ret.shopprices = ShopPrices.NORMAL
-        ret.techorder = TechOrder.FULL_RANDOM
-
-        GF = GameFlags
-
-        ret.gameflags = (
-            GF.FIX_GLITCH | GF.ZEAL_END | GF.FAST_PENDANT | GF.BOSS_RANDO |
-            GF.BOSS_SPOT_HP | GF.FAST_TABS | GF.FREE_MENU_GLITCH |
-            GF.GEAR_RANDO | GF.HEALING_ITEM_RANDO
-        )
-
-        return ret
+        '''Settings for tourney up to Ro8.'''
+        return Settings.from_preset_file(PRESETS_PATH / 'catalack-cup.preset.json')
 
     @staticmethod
     def get_tourney_top8_preset() -> Settings:
-        ret = Settings.get_tourney_early_preset()
-
-        ret.item_difficulty = Difficulty.HARD
-        ret.gameflags &= ~GameFlags.FREE_MENU_GLITCH
-
-        return ret
+        return Settings.from_preset_file(PRESETS_PATH / 'catalack-cup-top8.preset.json')
 
     def get_flag_diffs(self) -> Tuple[GameFlags, GameFlags]:
         '''Get diff from initial flags (+, -).'''
