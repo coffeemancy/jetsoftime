@@ -2,9 +2,10 @@ from __future__ import annotations
 import argparse
 import copy
 import functools
+import operator
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Union
 
 import ctstrings
 import ctoptions
@@ -361,19 +362,21 @@ def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
 
     return mset
 
+def fill_flags(val_dict: Dict[str, Any], init: SettingsFlags) -> SettingsFlags:
+    cls = type(init)
+    return functools.reduce(
+        operator.or_,
+        (flag for (flag, entry) in _flag_entry_dict.items()
+         if isinstance(flag, cls)
+         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
+        init
+    )
 
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
 
     val_dict = vars(args)
-    # Fill GameFlags
-    flags = functools.reduce(
-        lambda x, y: x | y,
-        (flag for flag, entry in _flag_entry_dict.items()
-         if isinstance(flag, GF)
-         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
-        GF(0)
-    )
+    flags = rset.GameFlags(fill_flags(val_dict, GF(0)))
 
     mode = _mode_dict[val_dict['mode']]
     item_difficulty = _diff_dict[val_dict['item_difficulty']]
@@ -391,13 +394,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
 
     ret_set.mystery_settings = get_mystery_settings(args)
     
-    cos_flags = functools.reduce(
-        lambda x, y: x | y,
-        (flag for flag, entry in _flag_entry_dict.items()
-         if isinstance(flag, CF)
-         and val_dict[flag_name_to_namespace_key(entry.name)] is True),
-        CF(0)
-    )
+    cos_flags = rset.CosmeticFlags(fill_flags(val_dict, CF(0)))
 
     ct_opts = ctoptions.CTOpts()
     ct_opts.save_menu_cursor = val_dict['save_menu_cursor']
