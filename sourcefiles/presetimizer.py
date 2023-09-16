@@ -102,16 +102,20 @@ def build_preset(args: argparse.Namespace) -> Dict[str, rset.JSONType]:
     ret: Dict[str, Any] = {'settings': settings}
 
     if args.metadata:
-        metadata.update(json.loads(args.metadata))
+        metadata.update(args.metadata)
     ret['metadata'] = metadata
 
     return ret
 
 
-if __name__ == '__main__':
+def main():
     parser = get_parser()
     args = parser.parse_args()
     preset = build_preset(args)
 
     # write to stdout
     print(json.dumps(preset, cls=jotjson.JOTJSONEncoder, indent=2))
+
+
+if __name__ == '__main__':
+    main()

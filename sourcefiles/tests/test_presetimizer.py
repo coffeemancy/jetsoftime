@@ -62,6 +62,18 @@ def test_presetimizer(args, expected, presetimizer):
             assert key not in preset['settings'], f"Unexpected key in preset: '{key}'"
 
 
+def test_presetimizer_metadata(presetimizer):
+    '''Check that JSON data can be passed through presetimizer to set metadata.'''
+    metadata = {'name': 'Presetimizer Test', 'desc': 'Testing presetimizer', 'tags': ['a_tag', 'another_tag']}
+    sp = presetimizer(['--metadata', json.dumps(metadata).strip()])
+    assert sp.returncode == 0, f"Presetimizer issued non-zero exit code: {sp.returncode}"
+
+    stdout = sp.stdout.decode('utf-8')
+    preset = json.loads(stdout)
+
+    assert preset['metadata'] == metadata
+
+
 def test_presetimizer_preset(paths, presetimizer):
     '''Check can pass an input preset to prestimizer, add flags, and load preset into Settings.'''
     preset = paths['presets'] / 'race.preset.json'
