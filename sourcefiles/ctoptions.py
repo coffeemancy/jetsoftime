@@ -444,6 +444,9 @@ class CTOpts:
         
         return ret
 
+    def __eq__(self, other) -> bool:
+        return all(getattr(other, key, None) == value for key, value in self)
+
     def __iter__(self):
         
         ret = {
@@ -460,7 +463,6 @@ class CTOpts:
             'battle_gauge_style': self.battle_gauge_style,
             'consistent_paging': self.consistent_paging
         }
-        
 
         return iter(ret.items())
 
