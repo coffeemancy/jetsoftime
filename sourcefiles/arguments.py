@@ -303,15 +303,6 @@ class FlagsAdapter(SettingsAdapter):
     _field: str
 
     @classmethod
-    def get(cls, arg: str) -> SettingsFlags:
-        '''Get Flag associated with specified argparse argument.'''
-        for flag, entry in _flag_entry_dict.items():
-            if cls._flag_to_arg(entry) == arg:
-                return flag
-        else:
-            raise KeyError(f"No flag associated with '{arg}'")
-
-    @classmethod
     def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None):
         if init is None:
             if 'preset' in args:
