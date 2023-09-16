@@ -1,7 +1,9 @@
+from __future__ import annotations
 import copy
 import random
 
 from itertools import permutations
+from typing import List
 
 from techdb import TechDB
 from byteops import get_record, set_record, to_little_endian, \
@@ -69,7 +71,7 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
         if rset.GameFlags.DUPLICATE_CHARS in settings.gameflags:
             for pc_id in CharID:
                 avail_choices = settings.char_choices[int(pc_id)]
-                choices[pc_id] = random.choice(avail_choices)
+                choices[pc_id] = CharID(random.choice(avail_choices))
         # unique chars (default for char rando)
         else:
             all_choices = [p for p in permutations(range(0, 7), r=7)]
@@ -87,7 +89,7 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
                     'No valid permutation for unique characters based on '
                     'character choices.'
                 )
-            choices = {pc_id: permutation[pc_id] for pc_id in CharID}
+            choices = {pc_id: CharID(permutation[pc_id]) for pc_id in CharID}
 
         # Get Copies of stats
         orig_stats = {
@@ -112,7 +114,7 @@ def write_pcs_to_config(settings: rset.Settings, config: cfg.RandoConfig):
         # Turn choices back into a list for the rest of the stuff
         choices_list = [choices[CharID(i)] for i in range(7)]
     else:
-        choices_list = list(range(7))
+        choices_list = [CharID(x) for x in range(7)]
 
     dup_duals = rset.GameFlags.DUPLICATE_TECHS in settings.gameflags
     config.tech_db = get_reassign_techdb(config.tech_db,
@@ -1380,7 +1382,7 @@ def reassign_pc_magic(from_ind, to_ind, rom, db, magic_thresh):
     # applied when this option is selected
 
 
-def get_reassign_techdb(orig_db, reassign, dup_duals=False):
+def get_reassign_techdb(orig_db, reassign: List[CharID], dup_duals=False):
     # Make a db with the right menu/battle groups but no techs added yet
     new_db = max_expand_empty_db(orig_db, reassign, dup_duals)
 

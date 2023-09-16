@@ -1,11 +1,13 @@
 from __future__ import annotations
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field
-from typing import Callable, Union, Optional, Tuple, Type, TypeVar
+from typing import Callable, Union, Mapping, Optional, Sequence, Tuple, Type, TypeVar
 
 import bossrandotypes as rotypes
 import ctoptions
 
+JSONPrimitive = Optional[Union[int, float, bool, str]]
+JSONType = Union[JSONPrimitive, Mapping[str, "JSONType"], Sequence["JSONType"]]
 SIE = TypeVar('SIE', bound='StrIntEnum')
 
 
@@ -190,11 +192,11 @@ _forced_on_dict = {
 }
 
 
-def get_forced_off(flag: GameFlags) -> GameFlags:
+def get_forced_off(flag: Union[GameFlags, GameMode]) -> GameFlags:
     return _forced_off_dict.get(flag, GameFlags(0))
 
 
-def get_forced_on(flag: GameFlags) -> GameFlags:
+def get_forced_on(flag: Union[GameFlags, GameMode]) -> GameFlags:
     return _forced_on_dict.get(flag, GameFlags(0))
 
 

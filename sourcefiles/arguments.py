@@ -2,9 +2,9 @@ from __future__ import annotations
 import argparse
 import copy
 import functools
-import typing
 
 from dataclasses import dataclass
+from typing import Dict, Iterable, Optional, Union
 
 import ctstrings
 import ctoptions
@@ -12,15 +12,17 @@ import randosettings as rset
 from randosettings import GameFlags as GF, GameMode as GM, \
     CosmeticFlags as CF
 
+SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags]
+
 
 @dataclass
 class FlagEntry:
     name: str = ""
-    short_name: typing.Optional[str] = None
-    help_text: typing.Optional[str] = None
+    short_name: Optional[str] = None
+    help_text: Optional[str] = None
 
 
-_flag_entry_dict: dict[GF | CF, FlagEntry] = {
+_flag_entry_dict: Dict[SettingsFlags, FlagEntry] = {
     GF.FIX_GLITCH: FlagEntry(
         "--fix-glitch", "-g",
         "disable save anywhere and HP overflow glitches"),
@@ -219,12 +221,11 @@ _shop_price_dict: dict[str, rset.ShopPrices] = {
 }
 
 def add_flags_to_parser(
-        group_text: typing.Optional[str],
-        flag_list: typing.Iterable[GF | CF],
+        group_text: Optional[str],
+        flag_list: Iterable[GF | CF],
         parser: argparse.ArgumentParser):
 
-    add_target: typing.Union[argparse.ArgumentParser,
-                             argparse._ArgumentGroup]
+    add_target: Union[argparse.ArgumentParser, argparse._ArgumentGroup]
 
     if group_text is None:
         add_target = parser
@@ -234,7 +235,7 @@ def add_flags_to_parser(
 
     for flag in flag_list:
         flag_entry = _flag_entry_dict[flag]
-        add_args: typing.Iterable[str]
+        add_args: Iterable[str]
         if flag_entry.short_name is None:
             add_args = (flag_entry.name,)
         else:

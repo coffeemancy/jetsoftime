@@ -1,8 +1,14 @@
+from __future__ import annotations
 import json
-import randosettings as rset
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import randosettings as rset
+
 
 class JOTJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj) -> 'rset.JSONType':
         if hasattr(obj, '_jot_json'):
             return obj._jot_json()
         elif isinstance(obj, rset.GameFlags):
