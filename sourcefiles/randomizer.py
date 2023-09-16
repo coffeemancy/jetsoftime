@@ -1279,9 +1279,8 @@ class Randomizer:
                 self.write_json_spoiler_log(real_outfile)
         else:
             json.dump(
-                {"configuration": self.config,
-                 "settings": self.settings},
-                outfile, cls=JOTJSONEncoder
+                {"configuration": self.config, "settings": self.settings},
+                outfile, cls=JOTJSONEncoder, indent=2
             )
 
     def _summarize_dupes(self):

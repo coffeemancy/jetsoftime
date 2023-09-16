@@ -9,10 +9,6 @@ if TYPE_CHECKING:
 DecodedJOTJSON = Dict[str, Union['rset.Settings', 'rset.JSONType']]
 
 class JOTJSONEncoder(json.JSONEncoder):
-    def __init__(self, *args, **kwargs):
-        kwargs['indent'] = kwargs.get('indent', 2)
-        json.JSONEncoder.__init__(self, *args, **kwargs)
-
     def default(self, obj) -> 'rset.JSONType':
         if hasattr(obj, 'to_jot_json'):
             return obj.to_jot_json()
