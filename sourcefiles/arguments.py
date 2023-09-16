@@ -842,6 +842,7 @@ class GenerationOptionsAG(ArgumentGroup):
         yield Argument(
             '--output-path', '-o',
             help='path to output directory (default same as input)',
+            default=None,
             type=Path,
         )
         yield Argument(
@@ -851,21 +852,23 @@ class GenerationOptionsAG(ArgumentGroup):
         yield Argument(
             '--spoilers',
             help='generate spoilers with the randomized rom.',
+            default=None,
             action='store_true',
         )
         yield Argument(
             '--json-spoilers',
             help='generate json spoilers with the randomized rom.',
+            default=None,
             action='store_true',
         )
         yield Argument(
             '--preset',
             help='path to preset JSON file from which to load settings',
-            type=cls._load_preset
+            type=cls.load_preset
         )
 
     @classmethod
-    def _load_preset(cls, preset: str) -> rset.Settings:
+    def load_preset(cls, preset: Union[str, Path]) -> rset.Settings:
         try:
             data = rset.Settings.from_preset_file(Path(preset))
         except Exception as ex:
@@ -1013,31 +1016,42 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
+# list of all non-cosmetic argument groups affecting seed generation
+# these are selected prior to generation in the web GUI and may be included in a preset
+ALL_GENERATION_AG: List[Type[ArgumentGroup]] = [
+    GeneralOptionsAG,
+    BasicFlagsAG,
+    BossRandoAG,
+    CharRandoAG,
+    TabSettingsAG,
+    QoLFlagsAG,
+    ExtraFlagsAG,
+    LogicKIFlagsAG,
+    LogicSpotFlagsAG,
+    LogicNeutralFlagsAG,
+    BucketListAG,
+    MysteryModeAG,
+    MysteryItemDiffAG,
+    MysteryEnemyDiffAG,
+    MysteryTechOrderAG,
+    MysteryShopPricesAG,
+    MysteryFlagsAG,
+]
+
+# list of all argument groups affectiong cosmetics
+# these can be selected after seed generation in the web GUI and are not included in a preset
+ALL_COSMETIC_AG: List[Type[ArgumentGroup]] = [
+    CosmeticsFlagsAG,
+    CharNamesAG,
+    GameOptionsAG,
+]
+
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(formatter_class=SmartFormatter)
-    groups: List[Type[ArgumentGroup]] = [
-        GenerationOptionsAG,
-        GeneralOptionsAG,
-        BasicFlagsAG,
-        BossRandoAG,
-        CharRandoAG,
-        TabSettingsAG,
-        QoLFlagsAG,
-        ExtraFlagsAG,
-        LogicKIFlagsAG,
-        LogicSpotFlagsAG,
-        LogicNeutralFlagsAG,
-        BucketListAG,
-        MysteryModeAG,
-        MysteryItemDiffAG,
-        MysteryEnemyDiffAG,
-        MysteryTechOrderAG,
-        MysteryShopPricesAG,
-        MysteryFlagsAG,
-        CosmeticsFlagsAG,
-        CharNamesAG,
-        GameOptionsAG,
-    ]
+    groups: List[Type[ArgumentGroup]] = [GenerationOptionsAG]
+    groups.extend(ALL_GENERATION_AG)
+    groups.extend(ALL_COSMETIC_AG)
     for ag in groups:
         ag.add_to_parser(parser)
     return parser

@@ -2267,7 +2267,7 @@ def main():
     parser = arguments.get_parser()
     args = parser.parse_args()
 
-    if not args.input_file.exists():
+    if not args.input_file or not args.input_file.exists():
         raise FileNotFoundError("Invalid input file path.")
 
     if args.output_path is None:
