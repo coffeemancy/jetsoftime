@@ -454,7 +454,12 @@ class CharChoices(UserList):
         return [index for index in range(7) if index in indices]
 
     def to_jot_json(self) -> List[List[int]]:
-        return [[choice for choice in character] for character in self.data]
+        def _choices(choices):
+            if isinstance(choices, str):
+                return choices
+            else:
+                return [choice for choice in choices]
+        return [_choices(character) for character in self.data]
 
 
 class CharNames(UserList):
