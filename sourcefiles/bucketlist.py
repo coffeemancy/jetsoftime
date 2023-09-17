@@ -128,7 +128,7 @@ def add_objectives_to_config(settings: rset.Settings,
     rem_objs.secondary_stats.is_key_item = True
 
     num_objs = settings.bucket_settings.num_objectives
-    hints = list(settings.bucket_settings.hints)
+    hints = obhint.normalize_objectives_from_hints(settings.bucket_settings.hints)
 
     KeyType = typing.Union[oty.QuestID, ctenums.RecruitID,
                            rotypes.BossID, str]
