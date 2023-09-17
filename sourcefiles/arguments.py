@@ -5,6 +5,7 @@ import functools
 import operator
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union
 
 import ctstrings
@@ -424,11 +425,14 @@ def add_generation_options(parser: argparse.ArgumentParser):
     gen_group.add_argument(
         "--input-file", "-i",
         required=True,
-        help="path to Chrono Trigger (U) rom")
+        help="path to Chrono Trigger (U) rom",
+        type=Path,
+    )
 
     gen_group.add_argument(
         "--output-path", "-o",
-        help="path to output directory (default same as input)"
+        help="path to output directory (default same as input)",
+        type=Path,
     )
 
     gen_group.add_argument(

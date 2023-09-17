@@ -1729,8 +1729,8 @@ class RandoGUI:
                 if self.output_dir is None or self.output_dir.get() == '':
                     self.output_dir.set(str(input_path.parent))
 
-                base_name = input_path.name.split('.')[0]
-                out_dir = self.output_dir.get()
+                base_name = pathlib.Path(input_path.name.split('.')[0])
+                out_dir = pathlib.Path(self.output_dir.get())
 
                 writer = randomizer.RandomizerWriter(rando, base_name=base_name)
                 writer.write_output_rom(out_dir)
