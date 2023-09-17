@@ -500,6 +500,7 @@ class RandomizerCLIOptionsAG(ArgumentGroup):
             '--output-path',
             '-o',
             help='path to output directory (default same as input)',
+            default=None,
             type=Path,
         )
         yield Argument(
@@ -509,11 +510,13 @@ class RandomizerCLIOptionsAG(ArgumentGroup):
         yield Argument(
             '--spoilers',
             help='generate spoilers with the randomized rom.',
+            default=None,
             action='store_true',
         )
         yield Argument(
             '--json-spoilers',
             help='generate json spoilers with the randomized rom.',
+            default=None,
             action='store_true',
         )
 
