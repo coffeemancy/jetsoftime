@@ -35,7 +35,7 @@ def parser():
                 'enemy_difficulty': rset.Difficulty.NORMAL,
                 'techorder': rset.TechOrder.FULL_RANDOM,
                 'shopprices': rset.ShopPrices.NORMAL,
-                # 'mystery_settings': rset.MysterySettings(),
+                'mystery_settings': rset.MysterySettings(),
                 'tab_settings': rset.TabSettings(),
                 'char_settings': rset.CharSettings(),
                 'bucket_settings': rset.BucketSettings(),
@@ -257,7 +257,6 @@ def test_ro_settings():
     assert False
 
 
-@pytest.mark.xfail(reason='mystery defaults are wrong in arguments.py')
 @pytest.mark.parametrize(
     'cli_args, expected',
     [

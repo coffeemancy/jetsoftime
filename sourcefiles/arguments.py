@@ -3,42 +3,17 @@ import argparse
 import copy
 
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Any, Dict, Generator, Optional, Protocol, List, Tuple, Type
 
 import cli.adapters as adp
+import ctoptions
 import ctstrings
 import objectivehints as obhint
 import randosettings as rset
-
-from cli.constants import FLAG_ENTRY_DICT, MYSTERY_FLAG_PROB_ENTRIES
+from cli.constants import FLAG_ENTRY_DICT
+from randosettings import Difficulty
 from randosettings import GameFlags as GF, CosmeticFlags as CF
 
-
-def add_flags_to_parser(
-        group_text: Optional[str],
-        flag_list: Iterable[GF | CF],
-        parser: argparse.ArgumentParser):
-
-    add_target: Union[argparse.ArgumentParser, argparse._ArgumentGroup]
-
-    if group_text is None:
-        add_target = parser
-    else:
-        group = parser.add_argument_group(group_text)
-        add_target = group
-
-    for flag in flag_list:
-        flag_entry = FLAG_ENTRY_DICT[flag]
-        add_args: Iterable[str]
-        if flag_entry.short_name is None:
-            add_args = (flag_entry.name,)
-        else:
-            add_args = (flag_entry.name, flag_entry.short_name)
-        add_target.add_argument(
-            *add_args,
-            help=flag_entry.help_text,
-            action="store_true"
-        )
 
 # https://stackoverflow.com/questions/3853722/
 # how-to-insert-newlines-on-argparse-help-text
@@ -54,7 +29,8 @@ class SmartFormatter(argparse.HelpFormatter):
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
     ret_set = rset.Settings()
-    ret_set.seed = args.seed
+    if 'seed' in args:
+        ret_set.seed = args.seed
     ret_set.game_mode = adp.GameModeAdapter.to_setting(args)
     ret_set.gameflags = adp.GameFlagsAdapter.to_setting(args)
     ret_set.initial_flags = copy.deepcopy(ret_set.gameflags)
@@ -71,508 +47,493 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     return ret_set
 
 
-def add_generation_options(parser: argparse.ArgumentParser):
+class Argument:
+    '''Container for argparse argument for use with ArgumentGroup classes.
 
-    gen_group = parser.add_argument_group("Generation options")
+    Sets most arguments to use argparse.SUPPRESS default, meaning unless explicitly
+    passed on CLI, will not end up in argparse.Namespace. Code within SettingsAdapter
+    checks for this, and when suppressed, does not override the default values
+    assigned when randosettings.Settings is initialized. This prevents needing to
+    double set default values in this file and elsewhere and prevents such regressions.
+    '''
+    name: Tuple[str, ...]
+    options: Dict[str, Any]
 
-    gen_group.add_argument(
-        "--input-file", "-i",
-        required=True,
-        help="path to Chrono Trigger (U) rom",
-        type=Path,
-    )
-
-    gen_group.add_argument(
-        "--output-path", "-o",
-        help="path to output directory (default same as input)",
-        type=Path,
-    )
-
-    gen_group.add_argument(
-        "--seed",
-        help="seed for generation (not website share id)"
-    )
-
-    gen_group.add_argument(
-        "--spoilers",
-        help="generate spoilers with the randomized rom.",
-        action="store_true"
-    )
-
-    gen_group.add_argument(
-        "--json-spoilers",
-        help="generate json spoilers with the randomized rom.",
-        action="store_true"
-    )
+    def __init__(self, *name: str, **options):
+        if not options.get('required') and 'default' not in options:
+            options['default'] = argparse.SUPPRESS
+        self.name = name
+        self.options = options
 
 
-def get_parser():
-    parser = argparse.ArgumentParser(formatter_class=SmartFormatter)
+class ArgumentGroup(Protocol):
+    '''Protocol for building argparse argument groups and attaching to parser.'''
 
-    add_generation_options(parser)
+    # argument group title and description
+    _title: str
+    _desc: Optional[str] = None
 
-    # arguments with a default of "argparse.SUPPRESS", when explicitly specified
-    # on the CLI, will override any other value (e.g. from a preset file)
-    parser.add_argument(
-        "--mode",
-        choices=['std', 'lw', 'ia', 'loc', 'van'],
-        help="R|"
-        "the basic game mode\n"
-        " std: standard Jets of Time (default)\n"
-        "  lw: lost worlds\n"
-        "  ia: ice age\n"
-        " loc: legacy of cyrus\n"
-        " van: vanilla rando",
-        default=argparse.SUPPRESS,
-        type=str.lower
-    )
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        '''Yield arguments from group.'''
+        raise NotImplementedError(f"Missing .arguments definition for '{cls}'.")
 
-    parser.add_argument(
-        "--item-difficulty", "-idiff",
-        help="controls quality of treasure, drops, and starting gold "
-        "(default: normal)",
-        choices=['easy','normal', 'hard'],
-        default=argparse.SUPPRESS,
-        type=str.lower
-    )
+    @classmethod
+    def add_to_parser(cls, parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+        '''Create argument group, add all arguments to it, and attach to parser.'''
+        group = parser.add_argument_group(cls._title, description=cls._desc)
+        for arg in cls.arguments():
+            group.add_argument(*arg.name, **arg.options)
+        return group
 
-    parser.add_argument(
-        "--enemy-difficulty", "-ediff",
-        help="controls strength of enemies and xp/tp rewards "
-        "(default: normal)",
-        choices=['normal', 'hard'],
-        default=argparse.SUPPRESS,
-        type=str.lower
-    )
 
-    parser.add_argument(
-        "--tech-order",
-        help="R|"
-        "controls the order in which characters learn techs\n"
-        "  normal - vanilla tech order\n"
-        "balanced - random but biased towards better techs later\n"
-        "  random - fully random (default)",
-        choices=['normal', 'balanced', 'random'],
-        default=argparse.SUPPRESS,
-        type=str.lower
-    )
+class FlagsArgumentGroup(ArgumentGroup):
+    '''Implemention of ArgumentGroup for arguments related to Flag options.'''
 
-    parser.add_argument(
-        "--shop-prices",
-        help="R|"
-        "controls the prices in shops\n"
-        "    normal - standard prices (default)\n"
-        "    random - fully random prices\n"
-        "mostrandom - random except for staple consumables\n"
-        "      free - all items cost 1G",
-        choices=['normal', 'random', 'mostrandom', 'free'],
-        default=argparse.SUPPRESS,
-        type=str.lower
-    )
+    # list of flags which should have an argument created (one per flag)
+    _flags: List[adp.SettingsFlags]
 
-    add_flags_to_parser(
-        'Basic Flags',
-        (GF.FIX_GLITCH, GF.BOSS_SCALE, GF.ZEAL_END, GF.FAST_PENDANT,
-         GF.LOCKED_CHARS, GF.UNLOCKED_MAGIC, GF.CHRONOSANITY,
-         GF.TAB_TREASURES, GF.BOSS_RANDO, GF.CHAR_RANDO,
-         GF.MYSTERY, GF.HEALING_ITEM_RANDO, GF.GEAR_RANDO,
-         GF.EPOCH_FAIL), parser
-    )
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        for flag in cls._flags:
+            flag_entry = FLAG_ENTRY_DICT[flag]
+            name = [flag_entry.name]
+            if flag_entry.short_name is not None:
+                name.append(flag_entry.short_name)
+            yield Argument(*name, help=flag_entry.help_text, action='store_true')
 
-    add_flags_to_parser(
-        'QoL Flags',
-        (GF.FAST_TABS, GF.VISIBLE_HEALTH, GF.BOSS_SIGHTSCOPE,
-         GF.FREE_MENU_GLITCH),
-        parser
-    )
 
-    add_flags_to_parser(
-        "Extra Flags",
-        (GF.STARTERS_SUFFICIENT, GF.USE_ANTILIFE, GF.TACKLE_EFFECTS_ON,
-         GF.BUCKET_LIST, GF.TECH_DAMAGE_RANDO),
-        parser
-    )
+class BasicFlagsAG(FlagsArgumentGroup):
+    _title = 'Basic Flags'
+    _flags = [
+        GF.FIX_GLITCH, GF.BOSS_SCALE, GF.ZEAL_END, GF.FAST_PENDANT, GF.LOCKED_CHARS, GF.UNLOCKED_MAGIC,
+        GF.CHRONOSANITY, GF.TAB_TREASURES, GF.BOSS_RANDO, GF.CHAR_RANDO, GF.MYSTERY, GF.HEALING_ITEM_RANDO,
+        GF.GEAR_RANDO, GF.EPOCH_FAIL
+    ]
 
-    add_flags_to_parser(
-        "Logic Tweak Flags that add a KI",
-        (GF.RESTORE_JOHNNY_RACE, GF.RESTORE_TOOLS),
-        parser
-    )
 
-    add_flags_to_parser(
-        "Logic Tweak Flags that add/remove a KI Spot",
-        (GF.ADD_BEKKLER_SPOT, GF.ADD_OZZIE_SPOT, GF.ADD_RACELOG_SPOT,
-         GF.ADD_CYRUS_SPOT, GF.VANILLA_ROBO_RIBBON, GF.REMOVE_BLACK_OMEN_SPOT),
-        parser
-    )
+class QoLFlagsAG(FlagsArgumentGroup):
+    _title = 'QoL Flags'
+    _flags = [GF.FAST_TABS, GF.VISIBLE_HEALTH, GF.BOSS_SIGHTSCOPE, GF.FREE_MENU_GLITCH]
 
-    add_flags_to_parser(
-        "Logic Flags that are KI/KI Spot Neutral",
-        (GF.UNLOCKED_SKYGATES, GF.ADD_SUNKEEP_SPOT, GF.SPLIT_ARRIS_DOME,
-         GF.VANILLA_DESERT, GF.ROCKSANITY),
-        parser
-    )
 
-    bucket_options = parser.add_argument_group(
-        "--bucket-list [-k] options"
-    )
+class ExtraFlagsAG(FlagsArgumentGroup):
+    _title = 'Extra Flags'
+    _flags = [GF.STARTERS_SUFFICIENT, GF.USE_ANTILIFE, GF.TACKLE_EFFECTS_ON, GF.BUCKET_LIST, GF.TECH_DAMAGE_RANDO]
 
-    bucket_options.add_argument(
-        "--bucket-objective-count",
-        help="Number of objectives to use.",
-        type=int,
-        default=5
-    )
 
-    bucket_options.add_argument(
-        "--bucket-objective-needed-count",
-        help="Number of objectives needed to meet goal.",
-        type=int,
-        default=4
-    )
+class LogicKIFlagsAG(FlagsArgumentGroup):
+    _title = 'Logic Tweak Flags that add a KI'
+    _flags = [GF.RESTORE_JOHNNY_RACE, GF.RESTORE_TOOLS]
 
-    bucket_options.add_argument(
-        "--bucket-objectives-win",
-        help="Objectives win game instead of unlocking bucket.",
-        action="store_true"
-    )
 
-    bucket_options.add_argument(
-        "--bucket-disable-other-go",
-        help="The only way to win is through the bucket.",
-        action="store_true"
-    )
+class LogicSpotFlagsAG(FlagsArgumentGroup):
+    _title = 'Logic Tweak Flags that add/remove a KI Spot'
+    _flags = [
+        GF.ADD_BEKKLER_SPOT, GF.ADD_OZZIE_SPOT, GF.ADD_RACELOG_SPOT, GF.ADD_CYRUS_SPOT, GF.VANILLA_ROBO_RIBBON,
+        GF.REMOVE_BLACK_OMEN_SPOT
+    ]
 
-    def check_bucket_objective(hint: str) -> str:
+
+class LogicNeutralFlagsAG(FlagsArgumentGroup):
+    _title = 'Logic Flags that are KI/KI Spot Neutral'
+    _flags = [GF.UNLOCKED_SKYGATES, GF.ADD_SUNKEEP_SPOT, GF.SPLIT_ARRIS_DOME, GF.VANILLA_DESERT, GF.ROCKSANITY]
+
+
+class CosmeticsFlagsAG(FlagsArgumentGroup):
+    _title = 'Cosmetic Flags'
+    _desc = 'Have no effect on randomization.'
+    _flags = [CF.AUTORUN, CF.DEATH_PEAK_ALT_MUSIC, CF.ZENAN_ALT_MUSIC, CF.QUIET_MODE, CF.REDUCE_FLASH]
+
+
+class BucketListAG(ArgumentGroup):
+    _title = '--bucket-list [-k] options'
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        bset = rset.BucketSettings()
+        yield Argument(
+            '--bucket-objective-count',
+            help=f"Number of objectives to use. [{bset.num_objectives}]",
+            type=int,
+        )
+        yield Argument(
+            '--bucket-objective-needed-count',
+            help=f"Number of objectives needed to meet goal. [{bset.num_objectives_needed}]",
+            type=int,
+        )
+        yield Argument(
+            '--bucket-objectives-win',
+            help=f"Objectives win game instead of unlocking bucket. [{bset.objectives_win}]",
+            action='store_true',
+        )
+        yield Argument(
+            '--bucket-disable-other-go',
+            help=f"The only way to win is through the bucket. [{bset.disable_other_go_modes}]",
+            action='store_true',
+        )
+        for obj in range(1, 9):
+            yield Argument(f"--bucket-objective{obj}", f"-obj{obj}", type=cls._check_bucket_objective)
+
+    @staticmethod
+    def _check_bucket_objective(hint: str) -> str:
         valid, msg = obhint.is_hint_valid(hint)
         if not valid:
             raise argparse.ArgumentTypeError(f"Invalid bucket objective: '{msg}'")
         return hint
 
-    for obj_ind in range(1, 9):
-        bucket_options.add_argument(
-            f"--bucket-objective{obj_ind}", f"-obj{obj_ind}",
-            default=argparse.SUPPRESS,
-            type=check_bucket_objective
+
+class BossRandoAG(ArgumentGroup):
+    _title = '-ro Options'
+    _desc = 'These options are only valid when --boss-randomization [-ro] is set'
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        yield Argument(
+            '--boss-spot-hp',
+            help='boss HP is set to match the vanilla boss HP in each spot',
+            action='store_true',
         )
 
-    # Boss Rando Options
-    ro_options = parser.add_argument_group(
-        "-ro Options",
-        "These options are only valid when --boss-randomization [-ro] is set"
-    )
-    ro_options.add_argument(
-        "--boss-spot-hp",
-        help="boss HP is set to match the vanilla boss HP in each spot",
-        action="store_true"
-    )
 
-    # Character Rando Options
-    rc_options = parser.add_argument_group(
-        "-rc Options",
-        "These options are only valid when --char-rando [-rc] "
-        "is set"
-    )
+class CharNamesAG(ArgumentGroup):
+    _title = 'Character Names'
 
-    rc_options.add_argument(
-        "--duplicate-characters", "-dc",
-        help="Allow multiple copies of a character to be present in a seed.",
-        action="store_true"
-    )
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        for char_name in rset.CharNames.default():
+            yield Argument(f"--{char_name.lower()}-name", help=f"[{char_name}]", type=cls._verify_name)
 
-    rc_options.add_argument(
-        "--duplicate-techs",
-        help="Allow duplicate characters to perform dual techs together.",
-        action="store_true"
-    )
-
-    rc_options.add_argument(
-        "--crono-choices",
-        help="The characters Crono is allowed to be assigned. For example, "
-        "--crono-choices \"lucca robo\" would allow Crono to be assigned to "
-        "either Lucca or Robo.  If the list is preceded with \"not\" "
-        "(e.g. not lucca ayla) then all except the listed characters will be "
-        "allowed.",
-        default="all"
-    )
-
-    rc_options.add_argument(
-        "--marle-choices",
-        help="Same as --crono-choices.",
-        default="all"
-    )
-
-    rc_options.add_argument(
-        "--lucca-choices",
-        help="Same as --crono-choices.",
-        default="all"
-    )
-
-    rc_options.add_argument(
-        "--robo-choices",
-        help="Same as --crono-choices.",
-        default="all"
-    )
-
-    rc_options.add_argument(
-        "--frog-choices",
-        help="Same as --crono-choices.",
-        default="all"
-    )
-
-    rc_options.add_argument(
-        "--ayla-choices",
-        help="Same as --crono-choices.",
-        default="all"
-    )
-
-    rc_options.add_argument(
-        "--magus-choices",
-        help="Same as --crono-choices.",
-        default="all"
-    )
-
-    # Tab Options
-    tab_options = parser.add_argument_group(
-        "Tab Settings"
-    )
-
-    tab_options.add_argument(
-        "--min-power-tab",
-        help="The minimum value a power tab can increase power by (default 2)",
-        default=2,
-        type=int,
-        choices=range(1, 10)
-    )
-
-    tab_options.add_argument(
-        "--max-power-tab",
-        help="The maximum value a power tab can increase power by (default 4)",
-        default=4,
-        type=int,
-        choices=range(1, 10)
-    )
-
-    tab_options.add_argument(
-        "--min-magic-tab",
-        help="The minimum value a magic tab can increase power by (default 1)",
-        default=1,
-        type=int,
-        choices=range(1, 10)
-    )
-
-    tab_options.add_argument(
-        "--max-magic-tab",
-        help="The maximum value a magic tab can increase power by (default 3)",
-        default=3,
-        type=int,
-        choices=range(1, 10)
-    )
-
-    tab_options.add_argument(
-        "--min-speed-tab",
-        help="The minimum value a speed tab can increase power by (default 1)",
-        default=1,
-        type=int,
-        choices=range(1, 10)
-    )
-
-    tab_options.add_argument(
-        "--max-speed-tab",
-        help="The maximum value a speed tab can increase power by (default 1)",
-        default=1,
-        type=int,
-        choices=range(1, 10)
-    )
-
-    tab_options.add_argument(
-        "--tab-scheme",
-        help="The scheme to use for randomizing tabs (default uniform)",
-        default=argparse.SUPPRESS,
-        type=str,
-        choices=['binomial', 'uniform'],
-    )
-
-    tab_options.add_argument(
-        "--tab-binom-success",
-        help="Success probability for tabs (only when scheme is binomial) (default 0.5)",
-        default=argparse.SUPPRESS,
-        type=float,
-    )
-
-    def check_non_neg(value) -> int:
-        ivalue = int(value)
-        if ivalue < 0:
-            raise argparse.ArgumentTypeError(
-                "%s is an invalide negative frequency" % value
-            )
-
-        return ivalue
-
-    def fill_mystery_freq_group(freq_dict, arg_group: argparse._ArgumentGroup):
-        for string, rel_freq in freq_dict:
-            arg_group.add_argument(
-                f"--mystery-{string}",
-                type=check_non_neg,
-                help="default: %d" % rel_freq,
-                default=rel_freq,
-            )
-
-    mystery_modes = parser.add_argument_group(
-        "Mystery Game Mode relative frequency (only if --mystery is set). "
-        "Set the relative frequency with which "
-        "each game mode can appear.  These must be non-negative integers." 
-    )
-
-    mystery_mode_freq_entries = [
-        ("mode-std", 1), ("mode-lw", 1), ("mode-loc", 1),
-        ("mode-ia", 1), ("mode-van", 0),
-    ]
-
-    fill_mystery_freq_group(mystery_mode_freq_entries, mystery_modes)
-
-    mystery_item_diff = parser.add_argument_group(
-        "Mystery Item Difficulty relative frequency (only with --mystery)"
-    )
-
-    mystery_idiff_freq_entries = [
-        ("item-easy", 15),
-        ("item-norm", 75),
-        ("item-hard", 15),
-    ]
-
-    fill_mystery_freq_group(mystery_idiff_freq_entries, mystery_item_diff)
-
-    mystery_enemy_diff = parser.add_argument_group(
-        "Mystery Enemy Difficulty relative frequency (only with --mystery)"
-    )
-    mystery_ediff_freq_entries = [
-        ("enemy-norm", 75),
-        ("enemy-hard", 25),
-    ]
-
-    fill_mystery_freq_group(mystery_ediff_freq_entries, mystery_enemy_diff)
-
-    mystery_tech_order_freq_entries = [
-        ("tech-norm", 10),
-        ("tech-rand", 80),
-        ("tech-balanced", 10),
-    ]
-
-    mystery_tech_order = parser.add_argument_group(
-        "Mystery Tech Order relative frequency (only with --mystery)"
-    )
-    fill_mystery_freq_group(mystery_tech_order_freq_entries,
-                            mystery_tech_order)
-
-    mystery_price_freq_entries = [
-        ("prices-norm", 70),
-        ("prices-rand", 10),
-        ("prices-mostly-rand", 10),
-        ("prices-free", 10)
-    ]
-    mystery_prices = parser.add_argument_group(
-        "Mystery Shop Price relative frequency (only with --mystery)"
-    )
-
-    fill_mystery_freq_group(mystery_price_freq_entries, mystery_prices)
-
-    mystery_flags = parser.add_argument_group(
-        "Mystery Flags Probabilities.  The chance that a flag will be set in "
-        "the mystery settings.  All flags not listed here will be set as they "
-        "are in the main settings."
-    )
-
-    def check_prob(val) -> float:
-        fval = float(val)
-
-        if not 0 <= fval <= 1:
-            raise argparse.ArgumentTypeError("Probability must be in [0,1]")
-
-        return fval
-
-    for _, flag_str, prob in MYSTERY_FLAG_PROB_ENTRIES:
-        mystery_flags.add_argument(
-            f"--mystery-{flag_str}",
-            type=check_prob,
-            default=prob,
-            help="default %0.2f" % prob
-        )
-
-    add_flags_to_parser(
-        "Cosmetic Flags.  Have no effect on randomization.",
-        (CF.AUTORUN, CF.DEATH_PEAK_ALT_MUSIC, CF.ZENAN_ALT_MUSIC,
-         CF.QUIET_MODE, CF.REDUCE_FLASH),
-        parser
-    )
-
-    def verify_name(string: str) -> str:
+    @staticmethod
+    def _verify_name(string: str) -> str:
         if len(string) > 5:
-            raise argparse.ArgumentTypeError(
-                "Name must have length 5 or less.")
-
+            raise argparse.ArgumentTypeError('Name must have length 5 or less.')
         try:
-            ctnamestr = ctstrings.CTNameString.from_string(
-                string, 5)
+            ctnamestr = ctstrings.CTNameString.from_string(string, 5)
         except ctstrings.InvalidSymbolException as exc:
-            raise argparse.ArgumentTypeError(f"Invalid symbol: '{str(exc)}'")
-
+            raise argparse.ArgumentTypeError(f"Invalid symbol: '{exc}'")
         return string
 
-    name_group = parser.add_argument_group("Character Names")
-    for char_name in rset.CharNames.default():
-        name_group.add_argument(
-            f"--{char_name.lower()}-name",
-            type=verify_name,
-            default=char_name
+
+class CharRandoAG(ArgumentGroup):
+    _title = '-rc Options'
+    _desc = 'These options are only valid when --char-rando [-rc] is set'
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        yield Argument(
+            '--duplicate-characters', '-dc',
+            help='Allow multiple copies of a character to be present in a seed.',
+            action='store_true',
+        )
+        yield Argument(
+            '--duplicate-techs',
+            help='Allow duplicate characters to perform dual techs together.',
+            action='store_true',
+        )
+        yield Argument(
+            '--crono-choices',
+            help='The characters Crono is allowed to be assigned. For example, '
+            '--crono-choices "lucca robo" would allow Crono to be assigned to '
+            'either Lucca or Robo.  If the list is preceded with "not" '
+            '(e.g. not lucca ayla) then all except the listed characters will be '
+            'allowed.',
+            default='all',
+        )
+        for name in rset.CharNames.default()[1:-1]:
+            yield Argument(f"--{name.lower()}-choices", help='Same as --crono-choices.', default='all')
+
+
+class GameOptionsAG(ArgumentGroup):
+    _title = 'Game Options'
+    _desc = ''
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        ct_default = ctoptions.CTOpts()
+
+        menu_opts = (
+            ('--save-menu-cursor', 'save last used page of X-menu'),
+            ('--save-battle-cursor', 'save battle cursor position'),
+            ('--save-skill-cursor-off', 'do not save position in skill/item menu'),
+            ('--skill-item-info-off', 'do not show skill/item descriptions'),
+            ('--consistent-paging', 'page up/down have the same effect in all menus'),
         )
 
-    menu_opts = (
-        ("--save-menu-cursor", "save last used page of X-menu"),
-        ("--save-battle-cursor", "save battle cursor position"),
-        ("--save-skill-cursor-off",
-         "do not save position in skill/item menu"),
-        ("--skill-item-info-off", "do not show skill/item descriptions"),
-        ("--consistent-paging",
-         "page up/down have the same effect in all menus")
-    )
+        for name, desc in menu_opts:
+            default: Any = bool(getattr(ct_default, adp.CTOptsAdapter.get(name)))
+            if name.endswith('-off'):
+                default = not default
+            desc = f"{desc} [{default}]"
+            yield Argument(name, help=desc, action="store_true")
 
-    opts_group = parser.add_argument_group("Game Options")
-    for name, desc in menu_opts:
-        opts_group.add_argument(
-            name, help=desc, action="store_true"
+        plus_one_opts = (
+            ('--battle-speed', 'default battle speed (lower is faster)'),
+            ('--battle-msg-speed', 'default battle message speed (lower is faster)'),
+            ('--background', 'default background'),
+        )
+        for name, desc in plus_one_opts:
+            default = int(getattr(ct_default, adp.CTOptsAdapter.get(name))) + 1
+            desc = f"{desc} [{default}]"
+            yield Argument(name, help=desc, type=int, choices=range(1, 9))
+
+        default = int(getattr(ct_default, adp.CTOptsAdapter.get('battle_gauge_style')))
+        desc = f"default atb gauge style [{default}]"
+        yield Argument('--battle-gauge-style', help=desc, type=int, choices=range(3))
+
+
+class GeneralOptionsAG(ArgumentGroup):
+    _title = 'General options'
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        diff_default = str(Difficulty.default()).lower()
+        yield Argument(
+            '--mode',
+            choices=['std', 'lw', 'ia', 'loc', 'van'],
+            help="R|"
+            "the basic game mode\n"
+            " std: standard Jets of Time [default]\n"
+            "  lw: lost worlds\n"
+            "  ia: ice age\n"
+            " loc: legacy of cyrus\n"
+            " van: vanilla rando",
+            type=str.lower,
+        )
+        yield Argument(
+            '--item-difficulty', '-idiff',
+            help=f"controls quality of treasure, drops, and starting gold [{diff_default}]",
+            choices=['easy', 'normal', 'hard'],
+            type=str.lower,
+        )
+        yield Argument(
+            '--enemy-difficulty', '-ediff',
+            help=f"controls strength of enemies and xp/tp rewards [{diff_default}]",
+            choices=['normal', 'hard'],
+            type=str.lower,
+        )
+        yield Argument(
+            '--tech-order',
+            help="R|"
+            "controls the order in which characters learn techs\n"
+            "  normal - vanilla tech order\n"
+            "balanced - random but biased towards better techs later\n"
+            "  random - fully random [default]",
+            choices=['normal', 'balanced', 'random'],
+            type=str.lower,
+        )
+        yield Argument(
+            '--shop-prices',
+            help="R|"
+            "controls the prices in shops\n"
+            "    normal - standard prices [default]\n"
+            "    random - fully random prices\n"
+            "mostrandom - random except for staple consumables\n"
+            "      free - all items cost 1G",
+            choices=['normal', 'random', 'mostrandom', 'free'],
+            type=str.lower,
         )
 
-    opts_group.add_argument(
-        "--battle-speed",
-        help="default battle speed (lower is faster)",
-        type=int,
-        choices=range(1, 9),
-        default=5
+
+class MysterySettingsArgumentGroup(ArgumentGroup):
+    '''Implementation of ArgumentGroup for building arguments for mystery options.'''
+
+    # field from randosettings.MysterySettings to build arguments
+    _field: str
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        ms_default = rset.MysterySettings()
+
+        for arg, key in adp.MysterySettingsAdapter.args(cls._field):
+            flag = f"--{arg.replace('_', '-')}"
+            rel_freq = ms_default[cls._field][key]
+            desc = "[%d]" % rel_freq
+            yield Argument(flag, type=cls._check_non_neg, help=desc)
+
+    @staticmethod
+    def _check_non_neg(value) -> int:
+        ivalue = int(value)
+        if ivalue < 0:
+            raise argparse.ArgumentTypeError(f"Invalid negative frequency: {value}")
+        return ivalue
+
+
+class MysteryModeAG(MysterySettingsArgumentGroup):
+    _title = 'Mystery Game Mode relative frequency (only with --mystery)'
+    _desc = 'Set the relative frequency with which each game mode can appear. These must be non-negative integers.'
+    _field = 'game_mode_freqs'
+
+
+class MysteryItemDiffAG(MysterySettingsArgumentGroup):
+    _title = 'Mystery Item Difficulty relative frequency (only with --mystery)'
+    _field = 'item_difficulty_freqs'
+
+
+class MysteryEnemyDiffAG(MysterySettingsArgumentGroup):
+    _title = 'Mystery Enemy Difficulty relative frequency (only with --mystery)'
+    _field = 'enemy_difficulty_freqs'
+
+
+class MysteryTechOrderAG(MysterySettingsArgumentGroup):
+    _title = 'Mystery Tech Order relative frequency (only with --mystery)'
+    _field = 'tech_order_freqs'
+
+
+class MysteryShopPricesAG(MysterySettingsArgumentGroup):
+    _title = 'Mystery Shop Price relative frequency (only with --mystery)'
+    _field = 'shop_price_freqs'
+
+
+class MysteryFlagsAG(ArgumentGroup):
+    _title = 'Mystery Flags Probabilities (only with --mystery)'
+    _desc = (
+        'The chance that a flag will be set in  the mystery settings. '
+        'All flags not listed here will be set as they are in the main settings.'
     )
 
-    opts_group.add_argument(
-        "--battle-msg-speed",
-        help="default battle message speed (lower is faster)",
-        type=int,
-        choices=range(1, 9),
-        default=5
-    )
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        ms_default = rset.MysterySettings()
 
-    opts_group.add_argument(
-        "--battle-gauge-style",
-        help="default atb gauge style (default 1)",
-        type=int,
-        choices=range(3),
-        default=1
-    )
+        for arg, key in adp.MysterySettingsAdapter.args('flag_prob_dict'):
+            flag = f"--{arg.replace('_', '-')}"
+            prob = ms_default['flag_prob_dict'][key]
+            desc = "[%0.2f]" % prob
+            yield Argument(flag, type=cls._check_prob, help=desc)
 
-    opts_group.add_argument(
-        "--background",
-        help="default background (default 1)",
-        type=int,
-        choices=range(1, 9),
-        default=1
-    )
+    @staticmethod
+    def _check_prob(val) -> float:
+        fval = float(val)
+        if not 0 <= fval <= 1:
+            raise argparse.ArgumentTypeError(f"Invalid probability (must be in [0,1]): {fval}")
+        return fval
 
+
+class TabSettingsAG(ArgumentGroup):
+    _title = 'Tab Settings'
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        tabset = rset.TabSettings()
+        yield Argument(
+            '--min-power-tab',
+            help=f"The minimum value a power tab can increase power by [{tabset.power_min}]",
+            type=int,
+            choices=range(1, 10),
+        )
+        yield Argument(
+            '--max-power-tab',
+            help=f"The maximum value a power tab can increase power by [{tabset.power_max}]",
+            type=int,
+            choices=range(1, 10),
+        )
+        yield Argument(
+            '--min-magic-tab',
+            help=f"The minimum value a magic tab can increase power by [{tabset.magic_min}]",
+            type=int,
+            choices=range(1, 10),
+        )
+        yield Argument(
+            '--max-magic-tab',
+            help=f"The maximum value a magic tab can increase power by [{tabset.magic_max}]",
+            type=int,
+            choices=range(1, 10),
+        )
+        yield Argument(
+            '--min-speed-tab',
+            help=f"The minimum value a speed tab can increase power by [{tabset.speed_min}]",
+            type=int,
+            choices=range(1, 10),
+        )
+        yield Argument(
+            '--max-speed-tab',
+            help=f"The maximum value a speed tab can increase power by [{tabset.speed_max}]",
+            type=int,
+            choices=range(1, 10),
+        )
+        scheme = str(tabset.scheme).lower()
+        yield Argument(
+            '--tab-scheme',
+            help=f"Probability distribution scheme for tabs [{scheme}]",
+            choices=['uniform', 'binomial'],
+        )
+        yield Argument(
+            '--tab-binom-success',
+            help=f"Success probability for tabs (when binomial scheme used) [{tabset.binom_success}]",
+            type=float,
+        )
+
+
+class RandomizerCLIOptionsAG(ArgumentGroup):
+    '''Options specific to randomizer.py.'''
+    _title = 'Generation options'
+
+    @classmethod
+    def arguments(cls) -> Generator[Argument, None, None]:
+        yield Argument(
+            '--input-file', '-i',
+            required=True,
+            help='path to Chrono Trigger (U) rom',
+            type=Path,
+        )
+        yield Argument(
+            '--output-path', '-o',
+            help='path to output directory (default same as input)',
+            type=Path,
+        )
+        yield Argument(
+            '--seed',
+            help='seed for generation (not website share id)',
+        )
+        yield Argument(
+            '--spoilers',
+            help='generate spoilers with the randomized rom.',
+            action='store_true',
+        )
+        yield Argument(
+            '--json-spoilers',
+            help='generate json spoilers with the randomized rom.',
+            action='store_true',
+        )
+
+
+# list of argument groups related to generation of seeds
+# (does not include "cosmetics" which are below under "post-generation")
+ALL_GENERATION_AG: List[Type[ArgumentGroup]] = [
+    GeneralOptionsAG,
+    BasicFlagsAG,
+    BossRandoAG,
+    CharRandoAG,
+    TabSettingsAG,
+    QoLFlagsAG,
+    ExtraFlagsAG,
+    LogicKIFlagsAG,
+    LogicSpotFlagsAG,
+    LogicNeutralFlagsAG,
+    BucketListAG,
+    MysteryModeAG,
+    MysteryItemDiffAG,
+    MysteryEnemyDiffAG,
+    MysteryTechOrderAG,
+    MysteryShopPricesAG,
+    MysteryFlagsAG,
+]
+
+
+# list of argument groups which have to deal with "post-generation" aka "cosmetics"
+# (at least as far as web GUI generator is concerned)
+ALL_POST_GENERATION_AG: List[Type[ArgumentGroup]] = [
+    CosmeticsFlagsAG,
+    CharNamesAG,
+    GameOptionsAG,
+]
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(formatter_class=SmartFormatter)
+    groups: List[Type[ArgumentGroup]] = [RandomizerCLIOptionsAG]
+    groups.extend(ALL_GENERATION_AG)
+    groups.extend(ALL_POST_GENERATION_AG)
+    for ag in groups:
+        ag.add_to_parser(parser)
     return parser

@@ -13,6 +13,7 @@ from randosettings import Difficulty, ShopPrices, TechOrder
 from randosettings import GameMode as GM, GameFlags as GF
 
 SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags]
+GameArgumentType = Union[rset.GameMode, Difficulty, ShopPrices, TechOrder]
 
 
 class SettingsAdapter(Protocol):
@@ -42,12 +43,12 @@ class SettingsAdapter(Protocol):
 class ArgumentAdapter(SettingsAdapter):
     '''Adapter for converting single CLI arg directly into a setting.'''
 
-    _adapter: Mapping[str, rset.StrIntEnum] = {}
+    _adapter: Mapping[str, GameArgumentType] = {}
     _arg: str
-    _cls: Type[rset.StrIntEnum]
+    _cls: Type[GameArgumentType]
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace) -> rset.StrIntEnum:
+    def to_setting(cls, args: argparse.Namespace):
         '''Get coerced setting from args or default.'''
         if cls._arg in args:
             choice = getattr(args, cls._arg)
@@ -111,7 +112,7 @@ class FlagsAdapter(SettingsAdapter):
     _cls: Type[SettingsFlags]
 
     @classmethod
-    def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None) -> SettingsFlags:
+    def to_setting(cls, args: argparse.Namespace, init: Optional[SettingsFlags] = None):
         if init is None:
             init = cls._cls(0)
         flags = (
