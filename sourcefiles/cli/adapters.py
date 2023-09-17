@@ -130,3 +130,23 @@ class GameFlagsAdapter(FlagsAdapter):
 
 class CosmeticFlagsAdapter(FlagsAdapter):
     _cls = rset.CosmeticFlags
+
+
+class CharSettingsAdapter(SettingsAdapter):
+    _cls = Type[rset.CharSettings]
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> rset.CharSettings:
+        '''Extract CharSettings from argparse.Namespace.'''
+        charset = rset.CharSettings()
+
+        for name in rset.CharNames.default():
+            name_arg = f"{name.lower()}_name"
+            if name_arg in args:
+                charset.names[name] = getattr(args, name_arg)
+
+            choices_arg = f"{name.lower()}_choices"
+            if choices_arg in args:
+                charset.choices[name] = getattr(args, choices_arg)
+
+        return charset

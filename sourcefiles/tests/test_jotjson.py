@@ -11,7 +11,7 @@ def settings():
     settings = rset.Settings()
     settings.gameflags = GF.FIX_GLITCH | GF.EPOCH_FAIL
     settings.bucket_settings.objectives_win = True
-    settings.char_choices[5] == [5]
+    settings.char_settings.choices[5] == [5]
     settings.tab_settings.scheme = scheme = rset.TabRandoScheme.BINOMIAL
     return settings
 

@@ -36,6 +36,7 @@ def parser():
                 'techorder': rset.TechOrder.FULL_RANDOM,
                 'shopprices': rset.ShopPrices.NORMAL,
                 'tab_settings': rset.TabSettings(),
+                'char_settings': rset.CharSettings(),
             },
         ),
         # overriding most non-flag settings
@@ -66,6 +67,73 @@ def test_args_to_settings(cli_args, expected_settings, parser):
 
     for attr, value in expected_settings.items():
         assert getattr(settings, attr) == value
+
+
+@pytest.mark.parametrize(
+    'cli_args, expected_choices',
+    [
+        # default all characters to all
+        (
+            [],
+            [
+                [0, 1, 2, 3, 4, 5, 6],
+                [0, 1, 2, 3, 4, 5, 6],
+                [0, 1, 2, 3, 4, 5, 6],
+                [0, 1, 2, 3, 4, 5, 6],
+                [0, 1, 2, 3, 4, 5, 6],
+                [0, 1, 2, 3, 4, 5, 6],
+                [0, 1, 2, 3, 4, 5, 6],
+            ],
+        ),
+        # cover various options for character restriction including specifying characters,
+        # specificying "all", defaulting to all, and specifying "not" (can be other characters)
+        (
+            [
+                '--crono-choices=robo magus',
+                '--marle-choices=marle lucca ayla',
+                '--lucca-choices=crono lucca robo frog ayla',
+                '--robo-choices=all',
+                '--frog-choices=not magus crono',
+                '--ayla-choices=ayla',
+            ],
+            [
+                [3, 6],
+                [1, 2, 5],
+                [0, 2, 3, 4, 5],
+                [0, 1, 2, 3, 4, 5, 6],
+                [1, 2, 3, 4, 5],
+                [5],
+                [0, 1, 2, 3, 4, 5, 6],
+            ],
+        ),
+    ],
+    ids=('default', 'restricted'),
+)
+def test_char_choices(cli_args, expected_choices, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    settings = arguments.args_to_settings(args)
+
+    assert settings.char_settings.choices == expected_choices
+
+
+@pytest.mark.parametrize(
+    'cli_args, expected_names',
+    [
+        # default
+        ([], ['Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch']),
+        # overrides
+        (
+            '--frog-name Glenn --marle-name Nadia --epoch-name Apoch'.split(' '),
+            ['Crono', 'Nadia', 'Lucca', 'Robo', 'Glenn', 'Ayla', 'Magus', 'Apoch'],
+        ),
+    ],
+    ids=('default', 'override'),
+)
+def test_char_names(cli_args, expected_names, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    settings = arguments.args_to_settings(args)
+
+    assert settings.char_settings.names == expected_names
 
 
 @pytest.mark.parametrize(

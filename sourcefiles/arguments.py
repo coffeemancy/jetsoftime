@@ -86,44 +86,6 @@ def get_ctoptions(args: argparse.Namespace) -> ctoptions.CTOpts:
     return ct_opts
 
 
-_pc_index_dict: dict[str, int] = {
-    'crono': 0,
-    'marle': 1,
-    'lucca': 2,
-    'robo': 3,
-    'frog': 4,
-    'ayla': 5,
-    'magus': 6
-}
-
-_pc_names: list[str] = [
-    'Crono', 'Marle', 'Lucca', 'Robo', 'Frog', 'Ayla', 'Magus', 'Epoch'
-]
-
-
-def get_dc_choices(args: argparse.Namespace) -> list[list[int]]:
-    '''Extract dc-flag settings from argparse.Namespace.'''
-
-    arg_dict = vars(args)
-    def parse_choices(choice_string: str) -> list[int]:
-        choice_string = choice_string.lower()
-
-        if choice_string == 'all':
-            return list(range(7))
-
-        choices = choice_string.split()
-        if choices[0] == 'not':
-            choices = choices[1:]
-            choice_ints = [_pc_index_dict[choice] for choice in choices]
-            return [ind for ind in range(7) if ind not in choice_ints]
-        else:
-            choice_ints = [_pc_index_dict[choice] for choice in choices]
-            return [ind for ind in range(7) if ind in choice_ints]
-
-    namespace_vars = [name + '_choices' for name in _pc_index_dict]
-    return [parse_choices(arg_dict[name]) for name in namespace_vars]
-
-
 def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
     mset = rset.MysterySettings()
     val_dict = vars(args)
@@ -170,8 +132,6 @@ def get_mystery_settings(args: argparse.Namespace) -> rset.MysterySettings:
 def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     '''Convert result of argparse to settings object.'''
 
-    val_dict = vars(args)
-
     ret_set = rset.Settings()
     ret_set.seed = args.seed
     ret_set.game_mode = adp.GameModeAdapter.to_setting(args)
@@ -184,9 +144,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.mystery_settings = get_mystery_settings(args)
     ret_set.cosmetic_flags = adp.CosmeticFlagsAdapter.to_setting(args)
     ret_set.ctoptions = get_ctoptions(args)
-    ret_set.char_names = [
-        val_dict[name.lower()+"_name"] for name in _pc_names
-    ]
+    ret_set.char_settings = adp.CharSettingsAdapter.to_setting(args)
 
     return ret_set
 
@@ -619,7 +577,7 @@ def get_parser():
         return string
 
     name_group = parser.add_argument_group("Character Names")
-    for char_name in _pc_names:
+    for char_name in rset.CharNames.default():
         name_group.add_argument(
             f"--{char_name.lower()}-name",
             type=verify_name,
