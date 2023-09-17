@@ -13,7 +13,7 @@ import typing
 from pathlib import Path
 from typing import Optional
 
-import arguments
+import cli.arguments as arguments
 import charassign
 import eventfunction
 

@@ -18,7 +18,6 @@ from randosettings import GameFlags as GF, CosmeticFlags as CF
 # https://stackoverflow.com/questions/3853722/
 # how-to-insert-newlines-on-argparse-help-text
 class SmartFormatter(argparse.HelpFormatter):
-
     def _split_lines(self, text, width):
         if text.startswith('R|'):
             return text[2:].splitlines()
@@ -34,8 +33,8 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.game_mode = adp.GameModeAdapter.to_setting(args)
     ret_set.gameflags = adp.GameFlagsAdapter.to_setting(args)
     ret_set.initial_flags = copy.deepcopy(ret_set.gameflags)
-    ret_set.item_difficulty =  adp.ItemDifficultyAdapter.to_setting(args)
-    ret_set.enemy_difficulty =  adp.EnemyDifficultyAdapter.to_setting(args)
+    ret_set.item_difficulty = adp.ItemDifficultyAdapter.to_setting(args)
+    ret_set.enemy_difficulty = adp.EnemyDifficultyAdapter.to_setting(args)
     ret_set.techorder = adp.TechOrderAdapter.to_setting(args)
     ret_set.shopprices = adp.ShopPricesAdapter.to_setting(args)
     ret_set.mystery_settings = adp.MysterySettingsAdapter.to_setting(args)
@@ -56,6 +55,7 @@ class Argument:
     assigned when randosettings.Settings is initialized. This prevents needing to
     double set default values in this file and elsewhere and prevents such regressions.
     '''
+
     name: Tuple[str, ...]
     options: Dict[str, Any]
 
@@ -106,9 +106,20 @@ class FlagsArgumentGroup(ArgumentGroup):
 class BasicFlagsAG(FlagsArgumentGroup):
     _title = 'Basic Flags'
     _flags = [
-        GF.FIX_GLITCH, GF.BOSS_SCALE, GF.ZEAL_END, GF.FAST_PENDANT, GF.LOCKED_CHARS, GF.UNLOCKED_MAGIC,
-        GF.CHRONOSANITY, GF.TAB_TREASURES, GF.BOSS_RANDO, GF.CHAR_RANDO, GF.MYSTERY, GF.HEALING_ITEM_RANDO,
-        GF.GEAR_RANDO, GF.EPOCH_FAIL
+        GF.FIX_GLITCH,
+        GF.BOSS_SCALE,
+        GF.ZEAL_END,
+        GF.FAST_PENDANT,
+        GF.LOCKED_CHARS,
+        GF.UNLOCKED_MAGIC,
+        GF.CHRONOSANITY,
+        GF.TAB_TREASURES,
+        GF.BOSS_RANDO,
+        GF.CHAR_RANDO,
+        GF.MYSTERY,
+        GF.HEALING_ITEM_RANDO,
+        GF.GEAR_RANDO,
+        GF.EPOCH_FAIL,
     ]
 
 
@@ -130,8 +141,12 @@ class LogicKIFlagsAG(FlagsArgumentGroup):
 class LogicSpotFlagsAG(FlagsArgumentGroup):
     _title = 'Logic Tweak Flags that add/remove a KI Spot'
     _flags = [
-        GF.ADD_BEKKLER_SPOT, GF.ADD_OZZIE_SPOT, GF.ADD_RACELOG_SPOT, GF.ADD_CYRUS_SPOT, GF.VANILLA_ROBO_RIBBON,
-        GF.REMOVE_BLACK_OMEN_SPOT
+        GF.ADD_BEKKLER_SPOT,
+        GF.ADD_OZZIE_SPOT,
+        GF.ADD_RACELOG_SPOT,
+        GF.ADD_CYRUS_SPOT,
+        GF.VANILLA_ROBO_RIBBON,
+        GF.REMOVE_BLACK_OMEN_SPOT,
     ]
 
 
@@ -222,7 +237,8 @@ class CharRandoAG(ArgumentGroup):
     @classmethod
     def arguments(cls) -> Generator[Argument, None, None]:
         yield Argument(
-            '--duplicate-characters', '-dc',
+            '--duplicate-characters',
+            '-dc',
             help='Allow multiple copies of a character to be present in a seed.',
             action='store_true',
         )
@@ -301,13 +317,15 @@ class GeneralOptionsAG(ArgumentGroup):
             type=str.lower,
         )
         yield Argument(
-            '--item-difficulty', '-idiff',
+            '--item-difficulty',
+            '-idiff',
             help=f"controls quality of treasure, drops, and starting gold [{diff_default}]",
             choices=['easy', 'normal', 'hard'],
             type=str.lower,
         )
         yield Argument(
-            '--enemy-difficulty', '-ediff',
+            '--enemy-difficulty',
+            '-ediff',
             help=f"controls strength of enemies and xp/tp rewards [{diff_default}]",
             choices=['normal', 'hard'],
             type=str.lower,
@@ -467,18 +485,21 @@ class TabSettingsAG(ArgumentGroup):
 
 class RandomizerCLIOptionsAG(ArgumentGroup):
     '''Options specific to randomizer.py.'''
+
     _title = 'Generation options'
 
     @classmethod
     def arguments(cls) -> Generator[Argument, None, None]:
         yield Argument(
-            '--input-file', '-i',
+            '--input-file',
+            '-i',
             required=True,
             help='path to Chrono Trigger (U) rom',
             type=Path,
         )
         yield Argument(
-            '--output-path', '-o',
+            '--output-path',
+            '-o',
             help='path to output directory (default same as input)',
             type=Path,
         )
@@ -528,6 +549,7 @@ ALL_POST_GENERATION_AG: List[Type[ArgumentGroup]] = [
     CharNamesAG,
     GameOptionsAG,
 ]
+
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(formatter_class=SmartFormatter)

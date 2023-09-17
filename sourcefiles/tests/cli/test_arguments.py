@@ -10,7 +10,7 @@ TechOrder, ShopPrices, character names and settings (CharSettings), BucketSettin
 from __future__ import annotations
 import pytest
 
-import arguments
+import cli.arguments as arguments
 import cli.adapters as adp
 import ctoptions
 import randosettings as rset
