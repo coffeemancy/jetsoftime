@@ -254,10 +254,9 @@ class CharRandoAG(ArgumentGroup):
             'either Lucca or Robo.  If the list is preceded with "not" '
             '(e.g. not lucca ayla) then all except the listed characters will be '
             'allowed.',
-            default='all',
         )
         for name in rset.CharNames.default()[1:-1]:
-            yield Argument(f"--{name.lower()}-choices", help='Same as --crono-choices.', default='all')
+            yield Argument(f"--{name.lower()}-choices", help='Same as --crono-choices.')
 
 
 class GameOptionsAG(ArgumentGroup):

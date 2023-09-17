@@ -79,20 +79,26 @@ def test_args_to_settings(cli_args, expected_settings, parser):
         # set objectives
         (
             (
-                '--bucket-disable-other-go --bucket-objectives-win --bucket-objective-count 3'
+                '--bucket-disable-other-go --bucket-objectives-win --bucket-objective-count 4'
                 ' --bucket-objective-needed-count 2'
             ).split(' ')
             + [
                 '--bucket-objective1=quest_gated',
                 '--bucket-objective2=boss_nogo',
                 '-obj3=50:quest_gated, 30:boss_nogo, 20:recruit_gated',
+                '-obj4=Collect 3 Rocks',
             ],
             rset.BucketSettings(
                 disable_other_go_modes=True,
                 objectives_win=True,
-                num_objectives=3,
+                num_objectives=4,
                 num_objectives_needed=2,
-                hints=['quest_gated', 'boss_nogo', '50:quest_gated, 30:boss_nogo, 20:recruit_gated'],
+                hints=[
+                    'quest_gated',
+                    'boss_nogo',
+                    '50:quest_gated, 30:boss_nogo, 20:recruit_gated',
+                    'Collect 3 Rocks',
+                ],
             ),
         ),
     ],

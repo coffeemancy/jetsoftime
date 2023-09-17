@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from randosettings import GameFlags as GF, CosmeticFlags as CF
 
@@ -172,19 +172,3 @@ FLAG_ENTRY_DICT: Dict[SettingsFlags, FlagEntry] = {
         "disable most flashing effects"
     )
 }
-
-# flag, name, default
-MYSTERY_FLAG_PROB_ENTRIES: List[Tuple['rset.GameFlags', str, float]] = [
-    (GF.TAB_TREASURES, "flag-tab-treasures", 0.10),
-    (GF.UNLOCKED_MAGIC, "flag-unlocked-magic", 0.50),
-    (GF.BUCKET_LIST, "flag-bucket-list", 0.15),
-    (GF.CHRONOSANITY, "flag-chronosanity", 0.30),
-    (GF.BOSS_RANDO, "flag-boss-rando", 0.50),
-    (GF.BOSS_SCALE, "flag-boss-scaling", 0.30),
-    (GF.LOCKED_CHARS, "flag-locked-chars", 0.25),
-    (GF.CHAR_RANDO, "flag-char-rando", 0.5),
-    (GF.DUPLICATE_CHARS, "flag-duplicate-chars", 0.25),
-    (GF.EPOCH_FAIL, "flag-epoch-fail", 0.50),
-    (GF.GEAR_RANDO, "flag-gear-rando", 0.25),
-    (GF.HEALING_ITEM_RANDO, "flag-heal-rando", 0.25),
-]
