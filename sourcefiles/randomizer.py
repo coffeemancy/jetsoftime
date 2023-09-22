@@ -11,7 +11,7 @@ import textwrap
 import typing
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import cli.arguments as arguments
 import charassign
@@ -101,6 +101,8 @@ class Randomizer:
         rando.generate_rom()
         out_rom = rando.get_generated_rom()
     '''
+    _pickles_path: Path = Path(__file__).parent / 'pickles'
+
     def __init__(self, rom: bytes, is_vanilla: bool = True,
                  settings: Optional[rset.Settings] = None,
                  config: Optional[cfg.RandoConfig] = None):
@@ -190,11 +192,11 @@ class Randomizer:
         # provided.  You just have to make sure to redump any time time that
         # base_patch.ips or hard.ips change.  Demo below.
         '''
-        with open('./pickles/default_randoconfig.pickle', 'rb') as infile:
+        with self._get_pickle_path('default_randoconfig.pickle').open('rb') as infile:
             self.config = pickle.load(infile)
 
         if self.settings.enemy_difficulty == rset.Difficulty.HARD:
-            with open('./pickles/enemy_dict_hard.pickle', 'rb') as infile:
+            with self._get_pickle_path('enemy_dict_hard.pickle').open('rb') as infile:
                 self.config.enemy_dict = pickle.load(infile)
         '''
 
@@ -1947,7 +1949,7 @@ class Randomizer:
         cls.fill_default_config_entries(config)
         config.update_from_ct_rom(ct_rom)
 
-        with open('./pickles/default_randoconfig.pickle', 'wb') as outfile:
+        with Randomizer._get_pickle_path('default_randoconfig.pickle').open('wb') as outfile:
             pickle.dump(config, outfile)
 
     @classmethod
@@ -2227,6 +2229,11 @@ class Randomizer:
         rando.generate_rom()
         return rando.get_generated_rom()
 
+    @staticmethod
+    def _get_pickle_path(filename: Union[str, Path]) -> Path:
+        '''Get path to pickle from "pickles" directory in package.'''
+        return Randomizer._pickles_path / filename
+
 
 class RandomizerWriter:
     '''Utility class for writing output/spoilers for Randomizer.'''
@@ -2255,10 +2262,9 @@ class RandomizerWriter:
 
 
 def read_names():
-    p = open("names.txt", "r")
-    names = p.readline()
-    names = names.split(",")
-    p.close()
+    names_path = Path(__file__).parent / 'names.txt'
+    with names_path.open('r') as p:
+        names = p.readline().split(',')
     return names
 
 
