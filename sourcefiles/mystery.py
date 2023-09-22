@@ -43,11 +43,11 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
         if flag in base_settings.gameflags and flag not in mystery_flags
     ]
 
-    force_disabled_flags = rset.get_forced_off(ret_settings.game_mode)
-    force_enabled_flags = rset.get_forced_on(ret_settings.game_mode)
+    force_disabled_flags = rset.ForcedFlags.get_forced_off(ret_settings.game_mode)
+    force_enabled_flags = rset.ForcedFlags.get_forced_on(ret_settings.game_mode)
     for flag in extra_flags:
-        force_disabled_flags |= rset.get_forced_off(flag)
-        force_enabled_flags |= rset.get_forced_on(flag)
+        force_disabled_flags |= rset.ForcedFlags.get_forced_off(flag)
+        force_enabled_flags |= rset.ForcedFlags.get_forced_on(flag)
 
     # Check that we don't have any conflicts here.
     assert (force_disabled_flags & force_enabled_flags) == GF(0)
@@ -68,8 +68,8 @@ def generate_mystery_settings(base_settings: rset.Settings) -> rset.Settings:
             raise ValueError('Error: ' + str(flag))
 
         if added_flag == flag:
-            force_disabled_flags |= rset.get_forced_off(flag)
-            force_enabled_flags |= rset.get_forced_on(flag)
+            force_disabled_flags |= rset.ForcedFlags.get_forced_off(flag)
+            force_enabled_flags |= rset.ForcedFlags.get_forced_on(flag)
             ret_flags |= flag
 
     # Switching from lits[GF] to just GF

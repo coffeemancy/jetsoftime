@@ -138,92 +138,60 @@ class GameFlags(SerializableFlag):
 # Note that this is NOT symmetric.  For example Lost Worlds will force
 # Boss Scaling off, but not vice versa because it's annoying to have to
 # click off every minor flag to select a major flag like a game mode.
-_GF = GameFlags
-_GM = GameMode
-_forced_off_dict: dict[Union[_GF, _GM], _GF] = {
-    _GF.FIX_GLITCH: _GF(0),
-    _GF.BOSS_SCALE: _GF(0),
-    _GF.ZEAL_END: _GF(0),
-    _GF.FAST_PENDANT: _GF(0),
-    _GF.LOCKED_CHARS: _GF(0),
-    _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.CHRONOSANITY: _GF.BOSS_SCALE,
-    _GF.ROCKSANITY: _GF(0),
-    _GF.TAB_TREASURES: _GF(0),
-    _GF.BOSS_RANDO: _GF(0),
-    _GF.CHAR_RANDO: _GF(0),
-    _GF.DUPLICATE_CHARS: _GF(0),
-    _GF.DUPLICATE_TECHS: _GF(0),
-    _GF.VISIBLE_HEALTH: _GF(0),
-    _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_LIST: _GF(0),
-    _GF.MYSTERY: _GF(0),
-    _GF.GEAR_RANDO: _GF(0),
-    _GF.HEALING_ITEM_RANDO: _GF(0),
-    _GF.EPOCH_FAIL: _GF(0),
-    _GM.STANDARD: _GF(0),
-    _GM.LOST_WORLDS: (
-        _GF.BOSS_SCALE | _GF.BUCKET_LIST | _GF.EPOCH_FAIL |
-        _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT |
-        _GF.ADD_RACELOG_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_JOHNNY_RACE |
-        _GF.SPLIT_ARRIS_DOME | _GF.RESTORE_TOOLS | _GF.UNLOCKED_SKYGATES |
-        _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON | _GF.ROCKSANITY |
-        _GF.REMOVE_BLACK_OMEN_SPOT
-    ),
-    _GM.ICE_AGE: (
-        _GF.ZEAL_END |
-        _GF.BOSS_SCALE | _GF.BUCKET_LIST |
-        _GF.ADD_BEKKLER_SPOT
-    ),
-    _GM.LEGACY_OF_CYRUS: (
-        _GF.ZEAL_END |
-        _GF.BUCKET_LIST | _GF.BOSS_SCALE |
-        _GF.ADD_OZZIE_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_TOOLS |
-        _GF.RESTORE_JOHNNY_RACE | _GF.SPLIT_ARRIS_DOME | _GF.ADD_RACELOG_SPOT |
-        _GF.ADD_BEKKLER_SPOT
-    ),
-    _GM.VANILLA_RANDO: (
-        _GF.BOSS_SCALE
-    )
-}
+class ForcedFlags:
+    _GF = GameFlags
+    _GM = GameMode
+
+    forced_off: Dict[Union[GameFlags, GameMode], GameFlags] = {
+        _GF.CHRONOSANITY: _GF.BOSS_SCALE,
+        _GM.LOST_WORLDS: (
+            _GF.BOSS_SCALE | _GF.BUCKET_LIST | _GF.EPOCH_FAIL |
+            _GF.ADD_BEKKLER_SPOT | _GF.ADD_CYRUS_SPOT | _GF.ADD_OZZIE_SPOT |
+            _GF.ADD_RACELOG_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_JOHNNY_RACE |
+            _GF.SPLIT_ARRIS_DOME | _GF.RESTORE_TOOLS | _GF.UNLOCKED_SKYGATES |
+            _GF.VANILLA_DESERT | _GF.VANILLA_ROBO_RIBBON | _GF.ROCKSANITY |
+            _GF.REMOVE_BLACK_OMEN_SPOT
+        ),
+        _GM.ICE_AGE: (
+            _GF.ZEAL_END |
+            _GF.BOSS_SCALE | _GF.BUCKET_LIST |
+            _GF.ADD_BEKKLER_SPOT
+        ),
+        _GM.LEGACY_OF_CYRUS: (
+            _GF.ZEAL_END |
+            _GF.BUCKET_LIST | _GF.BOSS_SCALE |
+            _GF.ADD_OZZIE_SPOT | _GF.ADD_SUNKEEP_SPOT | _GF.RESTORE_TOOLS |
+            _GF.RESTORE_JOHNNY_RACE | _GF.SPLIT_ARRIS_DOME | _GF.ADD_RACELOG_SPOT |
+            _GF.ADD_BEKKLER_SPOT
+        ),
+        _GM.VANILLA_RANDO: _GF.BOSS_SCALE,
+    }
+
+    # Similar dictionary for forcing flags on
+    forced_on: Dict[Union[GameFlags, GameMode], GameFlags] = {
+        _GF.ROCKSANITY: _GF.UNLOCKED_SKYGATES,
+        _GF.DUPLICATE_CHARS: _GF.CHAR_RANDO,
+        _GF.DUPLICATE_TECHS: (_GF.CHAR_RANDO | _GF.DUPLICATE_CHARS),
+        _GM.LOST_WORLDS: _GF.UNLOCKED_MAGIC,
+        _GM.ICE_AGE: _GF.UNLOCKED_MAGIC,
+        _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC,
+    }
 
 
-# Similar dictionary for forcing flags on
-_forced_on_dict = {
-    _GF.FIX_GLITCH: _GF(0),
-    _GF.BOSS_SCALE: _GF(0),
-    _GF.ZEAL_END: _GF(0),
-    _GF.FAST_PENDANT: _GF(0),
-    _GF.LOCKED_CHARS: _GF(0),
-    _GF.UNLOCKED_MAGIC: _GF(0),
-    _GF.CHRONOSANITY: _GF(0),
-    _GF.ROCKSANITY: _GF.UNLOCKED_SKYGATES,
-    _GF.TAB_TREASURES: _GF(0),
-    _GF.BOSS_RANDO: _GF(0),
-    _GF.CHAR_RANDO: _GF(0),
-    _GF.DUPLICATE_CHARS: _GF.CHAR_RANDO,
-    _GF.DUPLICATE_TECHS: (_GF.CHAR_RANDO | _GF.DUPLICATE_CHARS),
-    _GF.VISIBLE_HEALTH: _GF(0),
-    _GF.FAST_TABS: _GF(0),
-    _GF.BUCKET_LIST: _GF(0),
-    _GF.MYSTERY: _GF(0),
-    _GF.GEAR_RANDO: _GF(0),
-    _GF.HEALING_ITEM_RANDO: _GF(0),
-    _GF.EPOCH_FAIL: _GF(0),
-    _GM.STANDARD: _GF(0),
-    _GM.LOST_WORLDS: _GF.UNLOCKED_MAGIC,
-    _GM.ICE_AGE: _GF.UNLOCKED_MAGIC,
-    _GM.LEGACY_OF_CYRUS: _GF.UNLOCKED_MAGIC,
-    _GM.VANILLA_RANDO: _GF(0)
-}
+    @classmethod
+    def get_forced_off(cls, flag: Union[GameFlags, GameMode]) -> GameFlags:
+        return cls.forced_off.get(flag, GameFlags(0))
 
+    @classmethod
+    def get_forced_on(cls, flag: Union[GameFlags, GameMode]) -> GameFlags:
+        return cls.forced_on.get(flag, GameFlags(0))
 
-def get_forced_off(flag: Union[GameFlags, GameMode]) -> GameFlags:
-    return _forced_off_dict.get(flag, GameFlags(0))
-
-
-def get_forced_on(flag: Union[GameFlags, GameMode]) -> GameFlags:
-    return _forced_on_dict.get(flag, GameFlags(0))
+    @classmethod
+    def to_jot_json(cls) -> Dict[str, Any]:
+        return {
+            'forced_off': {str(k): v for k, v in cls.forced_off.items()},
+            'forced_on': {str(k): v for k, v in cls.forced_on.items()},
+        }
 
 
 class CosmeticFlags(SerializableFlag):
@@ -704,7 +672,7 @@ class Settings:
         from resolveExtraKeyItems, if possible.
         '''
         mode = self.game_mode
-        forced_off = _forced_off_dict[mode]
+        forced_off = ForcedFlags.get_forced_off(mode)
         self.gameflags &= ~forced_off
 
         # Duplicate Character implies Character Rando
@@ -769,8 +737,7 @@ class Settings:
                 self.gameflags &= ~GameFlags.EPOCH_FAIL
                 added_kis -= 1
             else:
-                raise ValueError('Cannot fix flag conflicts')
-
+                raise ValueError(f"Cannot fix flag conflicts: {added_kis} KIs > {added_spots} spots")
 
 
     def get_flag_string(self):
