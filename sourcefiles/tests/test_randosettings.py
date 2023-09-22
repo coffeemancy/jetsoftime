@@ -145,3 +145,30 @@ def test_fix_flag_conflicts_unfixable(settings):
     with pytest.raises(ValueError) as ex:
         settings.fix_flag_conflicts()
     assert 'fix flag conflicts' in str(ex)
+
+
+@pytest.mark.parametrize('mode', list(rset.GameMode), ids=[str(mode) for mode in list(rset.GameMode)])
+def test_ro_settings_spots(mode):
+    '''Check that Boss Rando spots selected from game mode.'''
+    roset = rset.ROSettings.from_game_mode(mode)
+
+    assert roset.spots, f'Missing boss rando spots for mode: {mode}'
+    assert roset.bosses, f'Missing boss rando bosses for mode: {mode}'
+
+
+@pytest.mark.parametrize(
+    'preset',
+    [
+        rset.Settings.get_race_presets,
+        rset.Settings.get_new_player_presets,
+        rset.Settings.get_lost_worlds_presets,
+        rset.Settings.get_hard_presets,
+        rset.Settings.get_tourney_early_preset,
+        rset.Settings.get_tourney_top8_preset,
+    ],
+    ids=('race', 'new_player', 'lost_worlds', 'hard', 'tourney_early', 'tourney_top8'),
+)
+def test_settings_from_preset(preset):
+    '''Check all presets can be parsed into Settings.'''
+    settings = preset()
+    assert settings

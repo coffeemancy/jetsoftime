@@ -12,7 +12,7 @@ from cli.constants import FLAG_ENTRY_DICT, FlagEntry
 from randosettings import Difficulty, ShopPrices, TechOrder
 from randosettings import GameMode as GM, GameFlags as GF
 
-SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags]
+SettingsFlags = Union[rset.GameFlags, rset.CosmeticFlags, rset.ROFlags]
 GameArgumentType = Union[rset.GameMode, Difficulty, ShopPrices, TechOrder]
 
 
@@ -153,6 +153,23 @@ class CharSettingsAdapter(SettingsAdapter):
                 charset.choices[name] = getattr(args, choices_arg)
 
         return charset
+
+
+class BossRandoFlagsAdapter(FlagsAdapter):
+    _cls = rset.ROFlags
+
+
+class BossRandoSettingsAdapter(SettingsAdapter):
+    _cls = rset.ROSettings
+
+    @classmethod
+    def to_setting(cls, args: argparse.Namespace) -> rset.ROSettings:
+        '''Extract ROSettings from argparse.Namespace.'''
+        # just flags; spots, bosses are not implmeented options in CLI at this time
+        game_mode = GameModeAdapter.to_setting(args)
+        roset = rset.ROSettings.from_game_mode(game_mode)
+        roset.flags = BossRandoFlagsAdapter.to_setting(args)
+        return roset
 
 
 class BucketSettingsAdapter(SettingsAdapter):

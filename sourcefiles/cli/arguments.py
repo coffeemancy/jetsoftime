@@ -12,7 +12,7 @@ import objectivehints as obhint
 import randosettings as rset
 from cli.constants import FLAG_ENTRY_DICT
 from randosettings import Difficulty
-from randosettings import GameFlags as GF, CosmeticFlags as CF
+from randosettings import GameFlags as GF, CosmeticFlags as CF, ROFlags as RO
 
 
 # https://stackoverflow.com/questions/3853722/
@@ -42,6 +42,7 @@ def args_to_settings(args: argparse.Namespace) -> rset.Settings:
     ret_set.ctoptions = adp.CTOptsAdapter.to_setting(args)
     ret_set.char_settings = adp.CharSettingsAdapter.to_setting(args)
     ret_set.tab_settings = adp.TabSettingsAdapter.to_setting(args)
+    ret_set.ro_settings = adp.BossRandoSettingsAdapter.to_setting(args)
     ret_set.bucket_settings = adp.BucketSettingsAdapter.to_setting(args)
     return ret_set
 
@@ -123,6 +124,12 @@ class BasicFlagsAG(FlagsArgumentGroup):
     ]
 
 
+class BossRandoFlagsAG(FlagsArgumentGroup):
+    _title = 'Boss Rando Flags'
+    _desc = 'These options are only valid when --boss-randomization [-ro] is set'
+    _flags = [RO.BOSS_SPOT_HP, RO.PRESERVE_PARTS]
+
+
 class QoLFlagsAG(FlagsArgumentGroup):
     _title = 'QoL Flags'
     _flags = [GF.FAST_TABS, GF.VISIBLE_HEALTH, GF.BOSS_SIGHTSCOPE, GF.FREE_MENU_GLITCH]
@@ -196,19 +203,6 @@ class BucketListAG(ArgumentGroup):
         if not valid:
             raise argparse.ArgumentTypeError(f"Invalid bucket objective: '{msg}'")
         return hint
-
-
-class BossRandoAG(ArgumentGroup):
-    _title = '-ro Options'
-    _desc = 'These options are only valid when --boss-randomization [-ro] is set'
-
-    @classmethod
-    def arguments(cls) -> Generator[Argument, None, None]:
-        yield Argument(
-            '--boss-spot-hp',
-            help='boss HP is set to match the vanilla boss HP in each spot',
-            action='store_true',
-        )
 
 
 class CharNamesAG(ArgumentGroup):
@@ -526,7 +520,7 @@ class RandomizerCLIOptionsAG(ArgumentGroup):
 ALL_GENERATION_AG: List[Type[ArgumentGroup]] = [
     GeneralOptionsAG,
     BasicFlagsAG,
-    BossRandoAG,
+    BossRandoFlagsAG,
     CharRandoAG,
     TabSettingsAG,
     QoLFlagsAG,

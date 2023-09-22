@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from randosettings import GameFlags as GF, CosmeticFlags as CF
+from randosettings import GameFlags as GF, CosmeticFlags as CF, ROFlags as RO
 
 if TYPE_CHECKING:
     import randosettings as rset
 
-SettingsFlags = Union['rset.GameFlags', 'rset.CosmeticFlags']
+SettingsFlags = Union['rset.GameFlags', 'rset.CosmeticFlags', 'rset.ROFlags']
 
 
 @dataclass
@@ -105,9 +105,13 @@ FLAG_ENTRY_DICT: Dict[SettingsFlags, FlagEntry] = {
         "--epoch-fail", "-ef",
         "Epoch flight must be unlocked by bringing the JetsOfTime to "
         "Dalton in the Snail Stop"),
-    GF.BOSS_SPOT_HP: FlagEntry(
-        "--boss-spot-hp",
+    # Boss Rando flags
+    RO.BOSS_SPOT_HP: FlagEntry(
+        "--boss-spot-hp", None,
         "boss HP is set to match the vanilla boss HP in each spot"),
+    RO.PRESERVE_PARTS: FlagEntry(
+        "--legacy-boss-placement", None,
+        "use legacy boss placement for boss rando"),
     # Logic Tweak flags from VanillaRando mode
     GF.UNLOCKED_SKYGATES: FlagEntry(
         "--unlocked-skyways", None,

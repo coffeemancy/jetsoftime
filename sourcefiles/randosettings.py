@@ -116,7 +116,6 @@ class GameFlags(SerializableFlag):
     GEAR_RANDO = auto()
     STARTERS_SUFFICIENT = auto()
     EPOCH_FAIL = auto()
-    BOSS_SPOT_HP = auto()
     # Logic Tweak flags from VanillaRando mode
     UNLOCKED_SKYGATES = auto()
     ADD_SUNKEEP_SPOT = auto()
@@ -242,21 +241,15 @@ class ROSettings:
     Full Boss Rando settings allow specification of which bosses/spots are
     in the pool as well as some additional flags.
     '''
-    spots: list[rotypes.BossSpotID] = field(default_factory=list)
-    bosses: list[rotypes.BossID] = field(default_factory=list)
+    spots: List[rotypes.BossSpotID] = field(default_factory=list)
+    bosses: List[rotypes.BossID] = field(default_factory=list)
     flags: ROFlags = ROFlags(0)
 
-    @classmethod
+    @staticmethod
     def from_game_mode(
-            cls,
-            mode: GameMode,
-            boss_list: Optional[list[rotypes.BossID]] = None,
-            ro_flags: ROFlags = ROFlags(0)
-            ) -> ROSettings:
-        '''
-        Construct an ROSettings object with correct initial locations given
-        the game mode.
-        '''
+        mode: GameMode, bosses: Optional[List[rotypes.BossID]] = None, flags: ROFlags = ROFlags(0)
+    ) -> ROSettings:
+        '''Construct an ROSettings object with correct initial locations given the game mode.'''
         spots = []
         BS = rotypes.BossSpotID
         if mode == GameMode.LOST_WORLDS:
@@ -280,10 +273,10 @@ class ROSettings:
         else:  # Std, IA, Vanilla
             spots = list(BS)
 
-        if boss_list is None:
-            boss_list = rotypes.get_assignable_bosses()
+        if not bosses:
+            bosses = rotypes.get_assignable_bosses()
 
-        return ROSettings(spots, boss_list, ro_flags)
+        return ROSettings(spots, bosses, flags)
 
     def to_jot_json(self) -> Dict[str, Any]:
         data = {}
@@ -643,9 +636,10 @@ class Settings:
 
         ret.gameflags = (
             GF.FIX_GLITCH | GF.ZEAL_END | GF.FAST_PENDANT | GF.BOSS_RANDO |
-            GF.BOSS_SPOT_HP | GF.FAST_TABS | GF.FREE_MENU_GLITCH |
+            GF.FAST_TABS | GF.FREE_MENU_GLITCH |
             GF.GEAR_RANDO | GF.HEALING_ITEM_RANDO
         )
+        ret.ro_settings.flags = ROFlags.BOSS_SPOT_HP
 
         return ret
 
