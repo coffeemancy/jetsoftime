@@ -2086,7 +2086,7 @@ class RandoGUI:
         checkbox = tk.Checkbutton(
             extraoptionframe,
             text='Boss Spot HPs',
-            variable=self.flag_dict[GameFlags.BOSS_SPOT_HP]
+            variable=self.ro_flag_dict[ROFlags.BOSS_SPOT_HP]
         )
         checkbox.pack(anchor=tk.W)
 

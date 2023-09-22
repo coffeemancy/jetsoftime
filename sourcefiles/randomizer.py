@@ -1354,8 +1354,13 @@ class Randomizer:
                 minus = pretty(minus_flags, indent=" - |", width=73)
                 diff += f"\n  - {minus}"
             file_object.write(textwrap.indent(f"{diff}\n", 7*" "))
-        pretty_cosmetics = pretty(self.settings.cosmetic_flags, indent=23*" "+"|")
-        file_object.write(f"Cosmetic: {pretty_cosmetics}\n\n")
+        if rset.GameFlags.BOSS_RANDO in self.settings.gameflags and self.settings.ro_settings.flags:
+            pretty_ro = pretty(self.settings.ro_settings.flags, indent=23*" "+"|")
+            file_object.write(f"RO Flags: {pretty_ro}\n")
+        if self.settings.cosmetic_flags:
+            pretty_cosmetics = pretty(self.settings.cosmetic_flags, indent=23*" "+"|")
+            file_object.write(f"Cosmetic: {pretty_cosmetics}\n")
+        file_object.write("\n")
 
     def write_consumable_spoilers(self, file_object):
         file_object.write("Consumable Properties\n")
