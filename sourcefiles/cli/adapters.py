@@ -68,21 +68,23 @@ class GameModeAdapter(ArgumentAdapter):
     _cls = rset.GameMode
 
 
-class DifficultyAdapter(ArgumentAdapter):
+class EnemyDifficultyAdapter(ArgumentAdapter):
+    _adapter: Dict[str, Difficulty] = {
+        'normal': Difficulty.NORMAL,
+        'hard': Difficulty.HARD,
+    }
+    _arg = 'enemy_difficulty'
+    _cls = Difficulty
+
+
+class ItemDifficultyAdapter(ArgumentAdapter):
     _adapter: Dict[str, Difficulty] = {
         'easy': Difficulty.EASY,
         'normal': Difficulty.NORMAL,
         'hard': Difficulty.HARD,
     }
-    _cls = Difficulty
-
-
-class EnemyDifficultyAdapter(DifficultyAdapter):
-    _arg = 'enemy_difficulty'
-
-
-class ItemDifficultyAdapter(DifficultyAdapter):
     _arg = 'item_difficulty'
+    _cls = Difficulty
 
 
 class TechOrderAdapter(ArgumentAdapter):
