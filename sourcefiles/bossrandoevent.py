@@ -184,7 +184,8 @@ def get_random_assignment(
         ) -> dict[bt.BossSpotID, bt.BossID]:
 
     if len(spots) > len(bosses):
-        raise InsufficientSpotsException
+        err = f"Not enough bosses for spots: {len(spots)} spots > {len(bosses)} bosses"
+        raise InsufficientSpotsException(err)
 
     random.shuffle(bosses)
 

@@ -15,7 +15,7 @@ import cli.adapters as adp
 import ctoptions
 import randosettings as rset
 
-from randosettings import CosmeticFlags as CF, GameFlags as GF, GameMode as GM
+from randosettings import CosmeticFlags as CF, GameFlags as GF, GameMode as GM, ROFlags as RO
 
 
 @pytest.fixture(scope='session')
@@ -258,9 +258,25 @@ def test_flags_adapters(cli_args, cls, init, expected_flags, parser):
     assert flags == expected_flags, 'Flags do not match expected flags'
 
 
-@pytest.mark.xfail(reason='RO Settings cannot be set by CLI currently')
-def test_ro_settings():
-    assert False
+@pytest.mark.parametrize(
+    'cli_args, expected',
+    [
+        # default
+        ([], rset.ROSettings.from_game_mode(GM.STANDARD)),
+        # boss rando
+        ('-ro --boss-spot-hp'.split(' '), rset.ROSettings.from_game_mode(GM.STANDARD, flags=RO.BOSS_SPOT_HP)),
+        # boss rando LoC
+        ('--mode loc -ro'.split(' '), rset.ROSettings.from_game_mode(GM.LEGACY_OF_CYRUS)),
+        # boss rando Lost Worlds
+        ('--mode lw -ro'.split(' '), rset.ROSettings.from_game_mode(GM.LOST_WORLDS)),
+    ],
+    ids=('default', 'std', 'loc', 'lw'),
+)
+def test_ro_settings(cli_args, expected, parser):
+    args = parser.parse_args(cli_args + ['-i', 'ct.rom'])
+    ro_settings = arguments.args_to_settings(args).ro_settings
+
+    assert ro_settings == expected
 
 
 @pytest.mark.parametrize(

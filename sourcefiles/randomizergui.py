@@ -439,11 +439,11 @@ class RandoGUI:
         loc_list = [self.boss_locations[i]
                     for i in self.boss_location_listbox.curselection()]
 
-        self.settings.ro_settings = ROSettings(
-            loc_list,
-            boss_list,
-            False
-        )
+        if loc_list:
+            roset = ROSettings(loc_list, boss_list, False)
+        else:
+            roset = ROSettings.from_game_mode(self.settings.game_mode, bosses=boss_list)
+        self.settings.ro_settings = roset
         self.settings.ro_settings.flags = \
             reduce(lambda a, b: a | b, ro_flags, ROFlags(False))
 

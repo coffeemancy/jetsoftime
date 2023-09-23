@@ -1,4 +1,5 @@
 from __future__ import annotations
+import random
 from collections import UserList
 from enum import Flag, IntEnum, auto
 from dataclasses import dataclass, field, fields
@@ -275,6 +276,11 @@ class ROSettings:
 
         if not bosses:
             bosses = rotypes.get_assignable_bosses()
+        # if bosses specified, and not enough bosses for spots, assure any specified bosses are included,
+        # but randomly take enough other assignable bosses to fill all spots
+        elif (padding_needed := len(spots) - len(bosses)) > 0:
+            assignable = [boss for boss in rotypes.get_assignable_bosses() if boss not in bosses]
+            bosses.extend(random.sample(assignable, k=padding_needed))
 
         return ROSettings(spots, bosses, flags)
 
@@ -480,7 +486,6 @@ class MysterySettings:
 
     def __str__(self) -> str:
         return '\n'.join(str(self[field.name]) for field in fields(self)) + '\n'
-
 
 
 @dataclass
