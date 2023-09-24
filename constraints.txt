@@ -1,3 +1,5 @@
+jsonschema>=4.19.0,<5.0
+
 # constraints for test requirements
 black>=23.7.0,<24.0
 flake8>=6.1,<7.0
