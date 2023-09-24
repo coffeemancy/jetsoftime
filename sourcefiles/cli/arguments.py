@@ -513,6 +513,15 @@ class RandomizerCLIOptionsAG(ArgumentGroup):
             default=None,
             action='store_true',
         )
+        yield Argument('--preset', help='path to preset JSON file from which to load settings', type=cls.load_preset)
+
+    @staticmethod
+    def load_preset(preset: str) -> rset.Settings:
+        try:
+            data = rset.Settings.from_preset_file(Path(preset))
+        except Exception as ex:
+            raise argparse.ArgumentTypeError(f"\nFailed to load preset: {preset}\n{ex}") from ex
+        return data
 
 
 # list of argument groups related to generation of seeds

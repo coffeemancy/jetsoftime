@@ -1,8 +1,10 @@
 from __future__ import annotations
+import json
 import random
 from collections import UserList
 from enum import auto
 from dataclasses import dataclass, field, fields
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Union, Mapping, Optional, Tuple
 
 import bossrandotypes as rotypes
@@ -615,6 +617,23 @@ class Settings:
             "ctoptions": self.ctoptions,
             "seed": self.seed,
         }
+
+    @staticmethod
+    def from_preset_data(data: str) -> Settings:
+        # late import to prevent circular import between jotjson and randosettings
+        from jotjson import JOTJSONDecoder
+
+        # intentionally don't catch exceptions here, let raise up to handle higher up in chain
+        preset = json.loads(data, cls=JOTJSONDecoder)
+
+        return preset['settings']
+
+    @staticmethod
+    def from_preset_file(preset: Path) -> Settings:
+        if not preset.exists():
+            raise FileNotFoundError(f"Preset file does not exist: {preset}")
+
+        return Settings.from_preset_data(preset.read_text())
 
     @staticmethod
     def get_race_presets():
