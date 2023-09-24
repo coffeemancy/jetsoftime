@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "name": "Catalack Cup Top8",
+    "desc": "Settings for Catalack Cup tournament Top 8 seeds."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Hard",
+    "techorder": "Full Random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.BOSS_RANDO",
+      "GameFlags.FAST_TABS",
+      "GameFlags.HEALING_ITEM_RANDO",
+      "GameFlags.GEAR_RANDO"
+    ],
+    "ro_settings": {
+      "flags": [
+          "ROFlags.BOSS_SPOT_HP"
+        ]
+    }
+  }
+}

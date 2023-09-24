@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "name": "Bucket Gauntlet Boss Rando Hit List",
+    "desc": "Bucket List + Boss Rando mode requiring 5/8 bosses to be defeated"
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Normal",
+    "techorder": "Full Random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.BOSS_RANDO",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.FAST_TABS",
+      "GameFlags.BUCKET_LIST"
+    ],
+    "bucket_settings": {
+      "disable_other_go_modes": true,
+      "objectives_win": false,
+      "num_objectives": 8,
+      "num_objectives_needed": 5,
+      "hints": [
+        "boss_nogo",
+        "boss_nogo",
+        "boss_nogo",
+        "Random Boss (No Go Mode Dungeons)",
+        "boss_nogo",
+        "Random Boss (Includes Go Mode Dungeons)",
+        "boss_any",
+        "boss_any"
+      ]
+    },
+    "ro_settings": {
+      "bosses": [
+        "Yakra XIII",
+        "Magus (North Cape)",
+        "Nizbel II",
+        "Dalton Plus",
+        "Flea Plus",
+        "Super Slash"
+      ],
+      "flags": [
+        "ROFlags.BOSS_SPOT_HP"
+      ]
+    }
+  }
+}

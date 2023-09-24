@@ -1,0 +1,8 @@
+{
+  "tests": {
+    "$comment": "Missing entire 'settings' section yields generic schema_error.",
+    "expected_errors": [
+      "SchemaVE.schema_error"
+    ]
+  }
+}

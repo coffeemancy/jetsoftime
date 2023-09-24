@@ -41,6 +41,14 @@ class BossSpotID(enum.Enum):
     PRISON_CATWALKS = enum.auto()
     EPOCH_REBORN = enum.auto()
 
+    @classmethod
+    def get(cls, key: str):
+        for spot, name in _boss_spot_names.items():
+            if key == name:
+                return spot
+        else:
+            raise KeyError(f"No spot matching '{key}'")
+
     def __str__(self):
         return _boss_spot_names[self]
 
@@ -121,6 +129,14 @@ class BossID(enum.Enum):
     LAVOS_CORE = enum.auto()
     ZEAL = enum.auto()
     ZEAL_2 = enum.auto()
+
+    @classmethod
+    def get(cls, key: str):
+        if key == 'Magus (North Cape)':
+            return BossID.MAGUS_NORTH_CAPE
+        if key == 'Nizbel II':
+            return BossID.NIZBEL_2
+        return getattr(cls, key.replace(' ', '_').upper())
 
     def __str__(self):
         if self == BossID.MAGUS_NORTH_CAPE:

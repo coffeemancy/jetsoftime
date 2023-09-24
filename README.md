@@ -18,6 +18,8 @@ Excecutables are packaged with each release.  Windows users who desire to build 
 * Nuitka can create a standalone installation with `python.exe -m nuitka --standalone --enable-plugin=tk-inter`.  This will create a folder called `randomizergui.dist` in which the executable will be located.  The `patches`, `flux`, and `pickles` folders must also be copied
 into the `randomizergui.dist` folder.
 
+Additional developer notes can be found in the `docs/` directory of this repo.
+
 ## Credits
 Most contributions can be seen in the commit history, but special thanks go:
 * Mauron, Myself086, and Lagolunatic for general technical assistance; 

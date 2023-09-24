@@ -1,0 +1,66 @@
+{
+  "settings": {
+    "game_mode": "Ice Age",
+    "enemy_difficulty": "Hard",
+    "item_difficulty": "Easy",
+    "techorder": "Balanced Random",
+    "shopprices": "Mostly Random",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.UNLOCKED_MAGIC",
+      "GameFlags.ROCKSANITY",
+      "GameFlags.CHAR_RANDO",
+      "GameFlags.DUPLICATE_CHARS",
+      "GameFlags.DUPLICATE_TECHS",
+      "GameFlags.FAST_TABS",
+      "GameFlags.FREE_MENU_GLITCH",
+      "GameFlags.GEAR_RANDO",
+      "GameFlags.EPOCH_FAIL",
+      "GameFlags.UNLOCKED_SKYGATES",
+      "GameFlags.ADD_SUNKEEP_SPOT",
+      "GameFlags.ADD_CYRUS_SPOT",
+      "GameFlags.RESTORE_TOOLS",
+      "GameFlags.ADD_OZZIE_SPOT",
+      "GameFlags.RESTORE_JOHNNY_RACE",
+      "GameFlags.ADD_RACELOG_SPOT",
+      "GameFlags.SPLIT_ARRIS_DOME",
+      "GameFlags.REMOVE_BLACK_OMEN_SPOT",
+      "GameFlags.TECH_DAMAGE_RANDO"
+    ],
+    "char_settings": {
+      "choices": [
+        "not crono robo frog magus",
+        "crono lucca robo frog ayla",
+        "all",
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "not magus",
+        [
+          5
+        ],
+        "not frog"
+      ]
+    },
+    "tab_settings": {
+      "scheme": "Uniform",
+      "binom_success": 0.5,
+      "power_min": 4,
+      "power_max": 6,
+      "magic_min": 2,
+      "magic_max": 4,
+      "speed_min": 1,
+      "speed_max": 2
+    }
+  },
+  "metadata": {
+    "name": "Ice Age Kitchen Sink",
+    "desc": "Ice Age with restricted dupe chars, non-default tabs, and many settings."
+  }
+}

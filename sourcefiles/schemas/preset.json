@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CT:JoT Preset",
+  "description": "Schema for preset files for Chrono Trigger: Jets of Time",
+  "type": "object",
+  "$defs": {
+    "GameMode": {
+      "description": "Game mode value (randosettings.GameMode)",
+      "type": "string",
+      "enum": [
+        "Standard",
+        "Lost Worlds",
+        "Ice Age",
+        "Legacy Of Cyrus",
+        "Vanilla Rando"
+      ]
+    },
+    "ItemDifficulty": {
+      "description": "Item difficulty value (randosettings.ItemDifficulty)",
+      "type": "string",
+      "enum": [
+        "Easy",
+        "Normal",
+        "Hard"
+      ]
+    },
+    "EnemyDifficulty": {
+      "description": "Enemy difficulty value (randosettings.EnemyDifficulty)",
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Hard"
+      ]
+    },
+    "TechOrder": {
+      "description": "Tech order value (randosettings.TechOrder)",
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Full Random",
+        "Balanced Random"
+      ]
+    },
+    "ShopPrices": {
+      "description": "Shop prices value (randosettings.ShopPrices)",
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Mostly Random",
+        "Fully Random",
+        "Free"
+      ]
+    },
+    "MysterySettings": {
+      "description": "Mystery settings value (randosettings.MysterySettings)",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(game_mode|(item|enemy)_difficulty|tech_order|shop_price)_freqs$": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "properties": {
+        "flag_prob_dict": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^(Game|RO)Flags\\.[A-Z_]+$": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            }
+          }
+        }
+      }
+    },
+    "GameFlags": {
+      "description": "Game flags (randosettings.GameFlags)",
+      "type": "string",
+      "pattern": "^GameFlags\\.[A-Z_]+$"
+    },
+    "BossID": {
+      "description": "Boss IDs (bossrandotypes.BossID)",
+      "type": "string",
+      "$comment": "Begin with capital letter; then lower/upper case letters, numbers, spaces, open/close parens",
+      "pattern": "^[A-Z][a-zA-Z0-9 \\(\\)]+$"
+    },
+    "BossSpotID": {
+      "description": "Boss spot IDs (bossrandotypes.BossSpotID)",
+      "type": "string",
+      "$comment": "Begin with capital letter; then lower/upper case letters, numbers, spaces, single quote, '.'",
+      "pattern": "^[A-Z][a-zA-Z '\\.]+$"
+    },
+    "ROFlags": {
+      "description": "Boss rando flags (randosettings.ROFlags)",
+      "type": "string",
+      "pattern": "^ROFlags\\.[A-Z_]+$"
+    },
+    "ROSettings": {
+      "description": "Boss rando settings value (randosettings.ROSettings)",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BossSpotID"
+          }
+        },
+        "bosses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BossID"
+          }
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ROFlags"
+          }
+        }
+      }
+    },
+    "BucketSettings": {
+      "description": "Bucket settings value (randosettings.BucketSettings)",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "disable_other_go_modes": {
+          "type": "boolean"
+        },
+        "objectives_win": {
+          "type": "boolean"
+        },
+        "num_objectives": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "num_objectives_needed": {
+          "type": "integer",
+          "minium": 1,
+          "maximum": 8
+        },
+        "hints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8
+        }
+      }
+    },
+    "CharChoices": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minmum": 0,
+              "maximum": 6
+            },
+            "minItems": 1,
+            "maxItems": 7,
+            "uniqueItems": true
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "minItems": 7,
+      "maxItems": 7
+    },
+    "CharSettings": {
+      "description": "Char settings value (randosettings.CharSettings)",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "choices": {
+          "$ref": "#/$defs/CharChoices"
+        }
+      }
+    },
+    "TabRandoScheme": {
+      "description": "Tab randomization scheme value (randosettings.TabRandoScheme)",
+      "type": "string",
+      "enum": [
+        "Binomial",
+        "Uniform"
+      ]
+    },
+    "TabSettings": {
+      "description": "Tab settings value (randosettings.TabSettings)",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(power|magic|speed)_(min|max)$": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        }
+      },
+      "properties": {
+        "scheme": {
+          "$ref": "#/$defs/TabRandoScheme"
+        },
+        "binom_success": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      }
+    },
+    "Settings": {
+      "description": "Settings object (randosettings.Settings)",
+      "type": "object",
+      "additionalProperties": false,
+      "$comment": "Only includes properties passed in from a preset (no cosmetics, ctopts)",
+      "properties": {
+        "game_mode": {
+          "$ref": "#/$defs/GameMode"
+        },
+        "item_difficulty": {
+          "$ref": "#/$defs/ItemDifficulty"
+        },
+        "enemy_difficulty": {
+          "$ref": "#/$defs/EnemyDifficulty"
+        },
+        "techorder": {
+          "$ref": "#/$defs/TechOrder"
+        },
+        "shopprices": {
+          "$ref": "#/$defs/ShopPrices"
+        },
+        "mystery_settings": {
+          "$ref": "#/$defs/MysterySettings"
+        },
+        "gameflags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GameFlags"
+          }
+        },
+        "ro_settings": {
+          "$ref": "#/$defs/ROSettings"
+        },
+        "bucket_settings": {
+          "$ref": "#/$defs/BucketSettings"
+        },
+        "char_settings": {
+          "$ref": "#/$defs/CharSettings"
+        },
+        "tab_settings": {
+          "$ref": "#/$defs/TabSettings"
+        }
+      },
+      "required": [
+        "game_mode",
+        "item_difficulty",
+        "enemy_difficulty",
+        "techorder",
+        "shopprices"
+      ]
+    }
+  },
+  "properties": {
+    "metadata": {
+      "description": "Metadata for preset file",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of preset",
+          "type": "string"
+        },
+        "desc": {
+          "description": "Longer description of preset",
+          "type": "string"
+        },
+        "tags": {
+          "description": "List of tags associated with preset",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "settings": {
+      "$ref": "#/$defs/Settings"
+    }
+  },
+  "required": [
+    "settings"
+  ]
+}

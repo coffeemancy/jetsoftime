@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "name": "Murky Mystery",
+    "desc": "Mystery with non-default frequencies, probabilities, and flags."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Normal",
+    "techorder": "Full Random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.MYSTERY",
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.FAST_TABS"
+    ],
+    "mystery_settings": {
+      "game_mode_freqs": {
+        "Standard": 50,
+        "Lost Worlds": 20,
+        "Legacy Of Cyrus": 30,
+        "Ice Age": 15,
+        "Vanilla Rando": 5
+      },
+      "item_difficulty_freqs": {
+        "Easy": 0,
+        "Normal": 100,
+        "Hard": 50
+      },
+      "enemy_difficulty_freqs": {
+        "Normal": 50,
+        "Hard": 30
+      },
+      "tech_order_freqs": {
+        "Normal": 20,
+        "Balanced Random": 30,
+        "Full Random": 50
+      },
+      "shop_price_freqs": {
+        "Normal": 60,
+        "Mostly Random": 30,
+        "Fully Random": 15,
+        "Free": 5
+      },
+      "flag_prob_dict": {
+        "GameFlags.TAB_TREASURES": 0.08,
+        "GameFlags.UNLOCKED_MAGIC": 0.4,
+        "GameFlags.BUCKET_LIST": 0.33,
+        "GameFlags.CHRONOSANITY": 0.55,
+        "GameFlags.BOSS_RANDO": 0.6,
+        "GameFlags.BOSS_SCALE": 0.0,
+        "GameFlags.LOCKED_CHARS": 0.15,
+        "GameFlags.CHAR_RANDO": 1.0,
+        "GameFlags.DUPLICATE_CHARS": 0.3,
+        "GameFlags.EPOCH_FAIL": 0.4,
+        "GameFlags.GEAR_RANDO": 0.66,
+        "GameFlags.HEALING_ITEM_RANDO": 0.33
+      }
+    }
+  }
+}

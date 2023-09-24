@@ -1,24 +1,7 @@
 from __future__ import annotations
-from enum import IntEnum, auto
-from typing import TypeVar, Type
+from enum import auto
 
-StrIntEnumT = TypeVar('StrIntEnumT', bound='StrIntEnum')
-
-
-class StrIntEnum(IntEnum):
-
-    def __str__(self):
-        x = self.__repr__().split('.')[1].split(':')[0].lower().title()
-        x = x.replace('_', ' ')
-        return x
-
-    @classmethod
-    def str_dict(cls: Type[StrIntEnumT]) -> dict[StrIntEnumT, str]:
-        return dict((x, str(x)) for x in cls)
-
-    @classmethod
-    def inv_str_dict(cls: Type[StrIntEnumT]) -> dict[str, StrIntEnumT]:
-        return dict((str(x), x) for x in cls)
+from common.types import StrIntEnum
 
 
 class CharID(StrIntEnum):

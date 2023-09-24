@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "game_mode": "Standard",
+    "item_difficulty": "Hard",
+    "enemy_difficulty": "Normal",
+    "shopprices": "Mostly Random",
+    "techorder": "Full Random",
+    "gameflags": [
+      "GameFlags.EPOCH_FAIL",
+      "GameFlags.REMOVE_BLACK_OMEN_SPOT",
+      "GameFlags.RESTORE_JOHNNY_RACE",
+      "GameFlags.RESTORE_TOOLS",
+      "GameFlags.ROCKSANITY"
+    ],
+    "bucket_settings": {
+      "disable_other_go_modes": true,
+      "objectives_win": true,
+      "num_objectives": 3,
+      "num_objectives_needed": 4,
+      "hints": [
+        "boss_nogo",
+        "Random",
+        "Mostly Random"
+      ]
+    }
+  },
+  "tests": {
+    "$comment": "Invalid hint included fails is_valid_hint check",
+    "expected_errors": [
+      "BucketSettingsVE.too_many_needed",
+      "BucketSettingsVE.invalid_hint",
+      "SettingsVE.fix_flag_conflicts"
+    ]
+  }
+}

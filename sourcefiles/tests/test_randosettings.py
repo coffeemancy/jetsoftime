@@ -1,6 +1,8 @@
 import pytest
+
 import randosettings as rset
 
+from bossrandotypes import BossID
 from randosettings import GameFlags as _GF
 from randosettings import GameMode as _GM
 
@@ -17,6 +19,24 @@ def settings():
 
 
 # TESTS ###################################################################
+
+
+@pytest.mark.parametrize(
+    'cls',
+    [
+        rset.GameMode,
+        rset.Difficulty,
+        rset.TechOrder,
+        rset.ShopPrices,
+        rset.GameFlags,
+        rset.CosmeticFlags,
+        rset.TabRandoScheme,
+        rset.ROFlags,
+    ],
+)
+def test_coherence(cls, helpers):
+    for item in cls:
+        helpers.check_enum_coherence(cls, item)
 
 
 @pytest.mark.parametrize(
@@ -145,3 +165,36 @@ def test_fix_flag_conflicts_unfixable(settings):
     with pytest.raises(ValueError) as ex:
         settings.fix_flag_conflicts()
     assert 'fix flag conflicts' in str(ex)
+
+
+@pytest.mark.parametrize('mode', [rset.GameMode.STANDARD, rset.GameMode.LOST_WORLDS], ids=('standard', 'lostworlds'))
+def test_ro_settings_bosses(mode):
+    '''Check that Boss Rando bosses can be specified in ROSettings.
+
+    Check can specify a partial list of bosses and they are included in ROSettings.
+    The boss list is padded out with random other bosses to match number of spots.
+    '''
+    bosses = [BossID.MAGUS_NORTH_CAPE, BossID.YAKRA_XIII, BossID.NIZBEL_2, BossID.DALTON_PLUS]
+    roset = rset.ROSettings.from_game_mode(mode, bosses=bosses)
+
+    assert len(roset.spots) == len(roset.bosses)
+    assert bosses == roset.bosses[: len(bosses)], 'ROSettings bosses does not start with expected bosses'
+
+
+@pytest.mark.parametrize('mode', list(rset.GameMode), ids=[str(mode) for mode in list(rset.GameMode)])
+def test_ro_settings_spots(mode):
+    '''Check that Boss Rando spots selected from game mode.'''
+    roset = rset.ROSettings.from_game_mode(mode)
+
+    assert roset.spots, f'Missing boss rando spots for mode: {mode}'
+    assert roset.bosses, f'Missing boss rando bosses for mode: {mode}'
+
+
+def test_settings_from_preset_file(presets):
+    '''Check all .preset.json files in sourcefiles/presets can be parsed into Settings.'''
+    for preset in presets:
+        settings = rset.Settings.from_preset_file(preset)
+        assert settings
+
+        # assure all presets have glitch fixes and fast tabs
+        assert settings.gameflags & (_GF.FIX_GLITCH | _GF.FAST_TABS)
