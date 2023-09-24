@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Type
 
 from pathlib import Path
+from typing import Dict, List
 
 import pytest
 
@@ -31,3 +32,21 @@ class TestHelpers:
 @pytest.fixture
 def helpers():
     return TestHelpers
+
+
+@pytest.fixture(scope='session')
+def paths() -> Dict[str, Path]:
+    paths = {'tests': Path(__file__).parent.resolve()}
+    paths['sourcefiles'] = Path(paths['tests'].parent.resolve())
+    paths['presets'] = paths['sourcefiles'] / 'presets'
+    return paths
+
+
+@pytest.fixture(scope='session')
+def presets(paths) -> List[Path]:
+    '''All preset JSON files.'''
+    return [
+        path
+        for directory in [paths['presets'], paths['tests'] / 'data/presets']
+        for path in directory.rglob('*.preset.json')
+    ]

@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "name": "Lost Worlds",
+    "desc": "Lost Worlds preset."
+  },
+  "settings": {
+    "game_mode": "Lost Worlds",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Normal",
+    "techorder": "Full Random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_TABS"
+    ]
+  }
+}

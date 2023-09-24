@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "name": "Catalack Cup",
+    "desc": "Settings for Catalack Cup tournament seeds."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Normal",
+    "techorder": "Full Random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.BOSS_RANDO",
+      "GameFlags.FAST_TABS",
+      "GameFlags.HEALING_ITEM_RANDO",
+      "GameFlags.FREE_MENU_GLITCH",
+      "GameFlags.GEAR_RANDO"
+    ],
+    "ro_settings": {
+      "flags": [
+          "ROFlags.BOSS_SPOT_HP"
+        ]
+    }
+  }
+}

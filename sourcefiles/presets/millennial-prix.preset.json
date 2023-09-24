@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "Millennial Prix",
+    "desc": "Settings for Millennial Prix tournament seeds."
+  },
+  "settings": {
+    "game_mode": "Standard",
+    "enemy_difficulty": "Normal",
+    "item_difficulty": "Normal",
+    "techorder": "Full Random",
+    "shopprices": "Normal",
+    "gameflags": [
+      "GameFlags.FIX_GLITCH",
+      "GameFlags.ZEAL_END",
+      "GameFlags.FAST_PENDANT",
+      "GameFlags.BOSS_RANDO",
+      "GameFlags.FAST_TABS"
+    ],
+    "ro_settings": {
+      "flags": [
+          "ROFlags.BOSS_SPOT_HP"
+        ]
+    }
+  }
+}

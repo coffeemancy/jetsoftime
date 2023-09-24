@@ -1,4 +1,5 @@
 import pytest
+
 import randosettings as rset
 
 from bossrandotypes import BossID
@@ -189,19 +190,11 @@ def test_ro_settings_spots(mode):
     assert roset.bosses, f'Missing boss rando bosses for mode: {mode}'
 
 
-@pytest.mark.parametrize(
-    'preset',
-    [
-        rset.Settings.get_race_presets,
-        rset.Settings.get_new_player_presets,
-        rset.Settings.get_lost_worlds_presets,
-        rset.Settings.get_hard_presets,
-        rset.Settings.get_tourney_early_preset,
-        rset.Settings.get_tourney_top8_preset,
-    ],
-    ids=('race', 'new_player', 'lost_worlds', 'hard', 'tourney_early', 'tourney_top8'),
-)
-def test_settings_from_preset(preset):
-    '''Check all presets can be parsed into Settings.'''
-    settings = preset()
-    assert settings
+def test_settings_from_preset_file(presets):
+    '''Check all .preset.json files in sourcefiles/presets can be parsed into Settings.'''
+    for preset in presets:
+        settings = rset.Settings.from_preset_file(preset)
+        assert settings
+
+        # assure all presets have glitch fixes and fast tabs
+        assert settings.gameflags & (_GF.FIX_GLITCH | _GF.FAST_TABS)
