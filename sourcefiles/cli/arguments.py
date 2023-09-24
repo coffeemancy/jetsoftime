@@ -66,6 +66,11 @@ class Argument:
         self.name = name
         self.options = options
 
+    @property
+    def arg(self) -> str:
+        longname = next(name for name in self.name if name.startswith('--'))
+        return longname.lstrip('-').replace('-', '_')
+
 
 class ArgumentGroup(Protocol):
     '''Protocol for building argparse argument groups and attaching to parser.'''
