@@ -24,6 +24,22 @@ class SerializableFlag(Flag):
     def get(cls, key: str):
         return cls[key.partition('.')[-1].upper()]
 
+    @classmethod
+    def from_jot_json(cls, data: List[str]):
+        if not isinstance(data, List) and all(isinstance(item, str) for item in data):
+            raise TypeError('Flags must be lists of strings.')
+
+        flags = cls(0)
+        for item in data:
+            try:
+                flag = cls.get(item)
+            except KeyError:
+                # ignore missing flags when loading from JSON, in case of flag name changes
+                pass
+            else:
+                flags |= flag
+        return flags
+
     def to_jot_json(self) -> List[str]:
         return [str(flag) for flag in type(self) if flag in self]
 

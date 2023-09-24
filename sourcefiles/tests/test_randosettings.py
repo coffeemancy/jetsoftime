@@ -21,6 +21,24 @@ def settings():
 
 
 @pytest.mark.parametrize(
+    'cls',
+    [
+        rset.GameMode,
+        rset.Difficulty,
+        rset.TechOrder,
+        rset.ShopPrices,
+        rset.GameFlags,
+        rset.CosmeticFlags,
+        rset.TabRandoScheme,
+        rset.ROFlags,
+    ],
+)
+def test_coherence(cls, helpers):
+    for item in cls:
+        helpers.check_enum_coherence(cls, item)
+
+
+@pytest.mark.parametrize(
     'mode, spot_flags, expected_flags',
     [
         # need +2 spots for all flags

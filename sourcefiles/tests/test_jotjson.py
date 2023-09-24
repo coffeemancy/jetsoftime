@@ -19,3 +19,12 @@ def settings():
 def test_json_encode_settings(settings):
     data = json.dumps(settings, cls=jotjson.JOTJSONEncoder)
     assert data, 'Failed to encode settings into JSON.'
+
+
+def test_json_decode_settings(settings):
+    data = json.dumps({'configuration': {'test': 1}, 'settings': settings}, cls=jotjson.JOTJSONEncoder)
+    decoded = json.loads(data, cls=jotjson.JOTJSONDecoder)
+    assert decoded['settings'] == settings, 'Decoded settings do not match initial settings'
+
+    # for now, we strip configuration out
+    assert 'configuration' not in decoded, 'Unexpected configuration in decoded JSON'

@@ -3,7 +3,7 @@ import random
 from collections import UserList
 from enum import auto
 from dataclasses import dataclass, field, fields
-from typing import Any, Dict, Iterable, List, Union, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Union, Mapping, Optional, Tuple
 
 import bossrandotypes as rotypes
 import ctoptions
@@ -185,6 +185,20 @@ class TabSettings:
     speed_min: int = 1
     speed_max: int = 1
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> TabSettings:
+        if not isinstance(data, Mapping):
+            raise TypeError('TabSettings must be a dictionary/mapping.')
+
+        tabset = TabSettings()
+        attrs = [field.name for field in fields(tabset)]
+        for key, value in data.items():
+            if key == 'scheme':
+                tabset.scheme = TabRandoScheme.get(value)
+            elif key in attrs:
+                setattr(tabset, key, value)
+        return tabset
+
     def to_jot_json(self) -> Dict[str, JSONPrimitive]:
         data = {field.name: getattr(self, field.name) for field in fields(self)}
         data['scheme'] = str(self.scheme)
@@ -267,6 +281,18 @@ class BucketSettings:
     num_objectives: int = 5
     num_objectives_needed: int = 4
     hints: list[str] = field(default_factory=list)
+
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> BucketSettings:
+        if not isinstance(data, Mapping):
+            raise TypeError('BucketSettings must be a dictionary/mapping.')
+
+        bset = BucketSettings()
+        attrs = [field.name for field in fields(bset)]
+        for key, value in data.items():
+            if key in attrs:
+                setattr(bset, key, value)
+        return bset
 
     def to_jot_json(self) -> Dict[str, JSONType]:
         return {field.name: getattr(self, field.name) for field in fields(self)}
@@ -375,6 +401,17 @@ class CharSettings:
         self.names = CharNames()
         self.choices = CharChoices()
 
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> CharSettings:
+        charset = CharSettings()
+        if 'names' in data:
+            charset.names = CharNames(data['names'])
+        if 'choices' in data:
+            if not isinstance(data['choices'], List):
+                raise TypeError('Character setting choices must be a list.')
+            charset.choices = CharChoices(data['choices'])
+        return charset
+
     def to_jot_json(self) -> Dict[str, JSONType]:
         return {field.name: getattr(self, field.name) for field in fields(self)}
 
@@ -432,6 +469,22 @@ class MysterySettings:
             GameFlags.GEAR_RANDO: 0.25,
             GameFlags.HEALING_ITEM_RANDO: 0.25
         }
+
+    @staticmethod
+    def from_jot_json(data: Dict[str, Dict[str, Any]]) -> MysterySettings:
+        if not isinstance(data, Mapping) and all(isinstance(value, Mapping) for value in data.values()):
+            raise TypeError('MysterySettings must be a nested dictionary/mapping.')
+
+        mset = MysterySettings()
+        for key in (field.name for field in fields(mset)):
+            if key not in data:
+                continue
+
+            # coerce data to appropriate types
+            key_cls = type(next(k for k in mset[key].keys()))
+            getattr(mset, key).update({key_cls.get(k): v for k, v in data[key].items()})
+
+        return mset
 
     def to_jot_json(self) -> Dict[str, JSONType]:
         return {
@@ -495,6 +548,54 @@ class Settings:
         self.ctoptions = ctoptions.CTOpts()
 
         self.seed = ''
+
+
+    @staticmethod
+    def from_jot_json(data: Dict[str, Any]) -> Settings:
+        settings = Settings()
+
+        # NOTE: initial_gameflags intentionally skipped below because only relevant during
+        # generation and should be set as part of randomization, not loading from preset
+
+        if 'game_mode' in data:
+            settings.game_mode = GameMode.get(str(data['game_mode']))
+        if 'enemy_difficulty' in data:
+            settings.enemy_difficulty = Difficulty.get(str(data['enemy_difficulty']))
+        if 'item_difficulty' in data:
+            settings.item_difficulty = Difficulty.get(str(data['item_difficulty']))
+        if 'techorder' in data:
+            settings.techorder = TechOrder.get(str(data['techorder']))
+        if 'shopprices' in data:
+            settings.shopprices = ShopPrices.get(str(data['shopprices']))
+        if 'mystery_settings' in data:
+            settings.mystery_settings = MysterySettings.from_jot_json(data['mystery_settings'])
+        if 'gameflags' in data:
+            settings.gameflags = GameFlags.from_jot_json(data['gameflags'])
+        if 'ro_settings' in data:
+            # typically, spots will be determined from game mode
+            # however, if both spots and bosses are explicitly set, use those
+            roflags = ROFlags.from_jot_json(data['ro_settings'].get('flags', []))
+            bosses = [rotypes.BossID.get(boss) for boss in data['ro_settings'].get('bosses', [])]
+            spots = [rotypes.BossSpotID.get(spot) for spot in data['ro_settings'].get('spots', [])]
+            if spots and bosses:
+                roset = ROSettings(spots, bosses, roflags)
+            else:
+                roset = ROSettings.from_game_mode(settings.game_mode, bosses=bosses, flags=roflags)
+            settings.ro_settings = roset
+        if 'bucket_settings' in data:
+            settings.bucket_settings = BucketSettings.from_jot_json(data['bucket_settings'])
+        if 'char_settings' in data:
+            settings.char_settings = CharSettings.from_jot_json(data['char_settings'])
+        if 'tab_settings' in data:
+            settings.tab_settings = TabSettings.from_jot_json(data['tab_settings'])
+        if 'cosmetic_flags' in data:
+            settings.cosmetic_flags = CosmeticFlags.from_jot_json(data['cosmetic_flags'])
+        if 'ctoptions' in data:
+            settings.ctoptions = ctoptions.CTOpts.from_jot_json(data['ctoptions'])
+        if 'seed' in data:
+            settings.seed = data['seed']
+
+        return settings
 
     def to_jot_json(self) -> Dict[str, Any]:
         return {

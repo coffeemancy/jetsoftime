@@ -1,7 +1,7 @@
 '''
 Module for preconfiguring in-game options at compile time
 '''
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Mapping, Optional
 
 import byteops
 from ctenums import ActionMap, InputMap
@@ -504,6 +504,17 @@ class CTOpts:
         
         rom.seek(0x011483 + 1) # AND #$10
         rom.write(0x20.to_bytes(1, 'little'))
+
+    @staticmethod
+    def from_jot_json(data: Dict[str, 'rset.JSONPrimitive']) -> 'CTOpts':
+        if not isinstance(data, Mapping):
+            raise TypeError('CTOpts must be a dictionary/mapping.')
+
+        ctopts = CTOpts()
+        for key, value in data.items():
+            if hasattr(ctopts, key):
+                setattr(ctopts, key, value)
+        return ctopts
 
     def to_jot_json(self) -> Dict[str, 'rset.JSONPrimitive']:
         return {k: v for k, v in self}
