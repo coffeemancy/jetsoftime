@@ -317,7 +317,7 @@ class CharChoices(UserList):
 
         if choices:
             for pc_id, choice in enumerate(choices):
-                self.data[pc_id] = choice
+                self[pc_id] = choice
 
     def __getitem__(self, key):
         '''Lookup items via characer name string or index.'''
