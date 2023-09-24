@@ -13,8 +13,57 @@ import pytest
 sys.path.append(str(Path(__file__).parent.parent))
 
 
+class TestData:
+    '''Singleton-ish re-useable non-fixture data for testing.
+
+    The data is in lieu of using fixtures for these, since fixtures cannot be used
+    as values in parametrized tests to create separate tests.
+
+    In general, data in this class should be exceptional, only to be able to generate
+    separate tests i.e. with pytest.mark.parametrize.
+    '''
+
+    paths: Dict[str, Path] = {'tests': Path(__file__).parent.resolve()}
+    paths['sourcefiles'] = Path(paths['tests'].parent.resolve())
+    paths['presets'] = paths['sourcefiles'] / 'presets'
+    paths['schemas'] = paths['sourcefiles'] / 'schemas'
+
+    presets: List[Path] = [
+        path
+        for directory in [paths['presets'], paths['tests'] / 'data/presets']
+        for path in directory.rglob('*.preset.json')
+    ]
+    presets_ids: List[str] = [str(path.parts[-1]) for path in presets]
+    invalid_presets: List[Path] = [path for path in (paths['tests'] / 'data/invalid-presets').rglob('*.preset.json')]
+    invalid_presets_ids: List[str] = [str(path.parts[-1]) for path in invalid_presets]
+
+
+def pytest_addoption(parser):
+    # pytest CLI option to run tests requiring local access to vanilla CT rom at location from $CTROM env var
+    parser.addoption('--run-ctrom', action='store_true', default=False, help='run tests that require CT rom')
+
+
+def pytest_configure(config):
+    config.addinivalue_line('markers', 'ctrom: mark test requires CT rom to run')
+
+
+def pytest_collection_modifyitems(config, items):
+    '''Automatically skip tests marked with pytest.mark.ctrom unless --run-ctrom option passed.'''
+
+    if config.getoption('--run-ctrom'):
+        return
+
+    skip_ctrom = pytest.mark.skip(reason='need --run-ctrom option to run')
+    for item in items:
+        if 'ctrom' in item.keywords:
+            item.add_marker(skip_ctrom)
+
+
 class TestHelpers:
-    '''Re-useable static methods for testing.'''
+    '''Re-useable static methods for testing.
+
+    The methods can be used to make assertions instead of copy-pasting test code.
+    '''
 
     @staticmethod
     def check_enum_coherence(cls: Type[Enum], item):
@@ -36,17 +85,10 @@ def helpers():
 
 @pytest.fixture(scope='session')
 def paths() -> Dict[str, Path]:
-    paths = {'tests': Path(__file__).parent.resolve()}
-    paths['sourcefiles'] = Path(paths['tests'].parent.resolve())
-    paths['presets'] = paths['sourcefiles'] / 'presets'
-    return paths
+    return TestData.paths
 
 
 @pytest.fixture(scope='session')
 def presets(paths) -> List[Path]:
     '''All preset JSON files.'''
-    return [
-        path
-        for directory in [paths['presets'], paths['tests'] / 'data/presets']
-        for path in directory.rglob('*.preset.json')
-    ]
+    return TestData.presets

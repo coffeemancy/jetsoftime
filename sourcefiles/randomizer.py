@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
 The Chrono Trigger: Jets of Time Randomizer
 '''
