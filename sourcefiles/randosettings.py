@@ -1,40 +1,14 @@
 from __future__ import annotations
 import random
 from collections import UserList
-from enum import Flag, IntEnum, auto
+from enum import auto
 from dataclasses import dataclass, field, fields
-from typing import Any, Callable, Dict, Iterable, List, Union, Mapping, Optional, Sequence, Tuple, Type, TypeVar
+from typing import Any, Dict, Iterable, List, Union, Optional, Tuple
 
 import bossrandotypes as rotypes
 import ctoptions
 
-JSONPrimitive = Optional[Union[int, float, bool, str]]
-JSONType = Union[JSONPrimitive, Mapping[str, "JSONType"], Sequence["JSONType"]]
-SIE = TypeVar('SIE', bound='StrIntEnum')
-
-
-class StrIntEnum(IntEnum):
-
-    def __str__(self):
-        x = self.__repr__().split('.')[1].split(':')[0].lower().capitalize()
-        x = x.replace('_', ' ')
-        return x
-
-    @classmethod
-    def default(cls):
-        raise NotImplementedError(f"No .default implemented for {cls}")
-
-    @classmethod
-    def str_dict(cls: Type[SIE]) -> dict[SIE, str]:
-        enum_list: list[SIE] = list(cls)
-        return dict((x, str(x)) for x in enum_list)
-
-    @classmethod
-    def inv_str_dict(
-            cls: Type[SIE],
-            formatter: Callable[[str], str] = lambda x: x) -> dict[str, SIE]:
-        enum_list: list[SIE] = list(cls)
-        return dict((formatter(str(x)), x) for x in enum_list)
+from common.types import JSONPrimitive, JSONType, SerializableFlag, StrIntEnum
 
 
 class GameMode(StrIntEnum):
@@ -78,17 +52,6 @@ class ShopPrices(StrIntEnum):
     @classmethod
     def default(_):
         return ShopPrices.NORMAL
-
-
-class SerializableFlag(Flag):
-    def __add__(self, other: Flag):
-        return self | other
-
-    def __sub__(self, other: Flag):
-        return self & ~other
-
-    def to_jot_json(self) -> List[str]:
-        return [str(flag) for flag in type(self) if flag in self]
 
 
 class GameFlags(SerializableFlag):
