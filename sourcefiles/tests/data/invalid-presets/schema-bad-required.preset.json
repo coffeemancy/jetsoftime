@@ -1,0 +1,28 @@
+{
+  "settings": {
+    "game_mode": "Free",
+    "item_difficulty": 2,
+    "enemy_difficulty": [
+      3,
+      4,
+      5
+    ],
+    "shopprices": {
+      "shop": "free"
+    },
+    "techorder": "Mostly Random"
+  },
+  "tests": {
+    "$comment": "Invalid values for required, some with two errors because wrong type, too.",
+    "expected_errors": [
+      "SchemaVE.settings.game_mode",
+      "SchemaVE.settings.item_difficulty",
+      "SchemaVE.settings.item_difficulty",
+      "SchemaVE.settings.enemy_difficulty",
+      "SchemaVE.settings.enemy_difficulty",
+      "SchemaVE.settings.techorder",
+      "SchemaVE.settings.shopprices",
+      "SchemaVE.settings.shopprices"
+    ]
+  }
+}

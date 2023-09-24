@@ -1,0 +1,146 @@
+{
+  "settings": {
+    "game_mode": "Legacy Of Cyrus",
+    "item_difficulty": "Easy",
+    "enemy_difficulty": "Hard",
+    "shopprices": "Free",
+    "techorder": "Balanced Random",
+    "bucket_settings": {
+      "invalid": true,
+      "objectives_win": 7,
+      "num_objectives": 20,
+      "hints": [
+        3,
+        "foo",
+        5
+      ]
+    },
+    "char_settings": {
+      "names": [],
+      "choices": [
+        "all",
+        "not crono",
+        [
+          0,
+          2,
+          5,
+          6
+        ],
+        0,
+        [
+          3,
+          3
+        ],
+        [
+          8
+        ],
+        "not frog",
+        [
+          0
+        ]
+      ]
+    },
+    "gameflags": [
+      "GameFlags.GOOD_FLAG",
+      "gameflags.BAD",
+      "GameFlags.also_bad",
+      "ROFlags.NOT_HERE",
+      "CosmeticFlags.NOPE",
+      "GameFlags.OKAY_THIS_ONE_IS_FINE",
+      "NOT_A_FLAG",
+      42
+    ],
+    "mystery_settings": {
+      "invalid_section": {},
+      "game_mode_freqs": {
+        "Standard": 20,
+        "Invalid": 30,
+        "Lost Worlds": "fourty",
+        "Ice Age": -42
+      },
+      "flag_prob_dict": {
+        "GameFlags.FOO": 0.3,
+        "ROFlags.BAR": 0.5,
+        "GameFlags.BAZ": "nope",
+        "ROFlags.QUUX": [
+          1,
+          2,
+          3
+        ],
+        "invalid": 0.3,
+        "GameFlags.NEGATIVE": -0.5
+      }
+    },
+    "ro_settings": {
+      "bosses": [
+        "Elder Spawn",
+        "Boss-kun",
+        "Yakra XIII",
+        6,
+        "DALTON+++"
+      ],
+      "flags": [
+        "ROFlags.VALID",
+        "GameFlags.NOPE",
+        "Invalid",
+        7
+      ],
+      "other": false
+    },
+    "tab_settings": {
+      "plasma_max": 4,
+      "power_max": 9,
+      "power_min": "eight",
+      "magic_max": -1,
+      "speed_max": 12,
+      "speed_min": [
+        1,
+        2,
+        3
+      ],
+      "scheme": "Binomial",
+      "binom_success": -1
+    }
+  },
+  "tests": {
+    "$comment": "Valid required, but invalid values/types for optionals failing schema validation.",
+    "expected_errors": [
+      "SchemaVE.settings.bucket_settings",
+      "SchemaVE.settings.bucket_settings.hints[0]",
+      "SchemaVE.settings.bucket_settings.hints[2]",
+      "SchemaVE.settings.bucket_settings.num_objectives",
+      "SchemaVE.settings.bucket_settings.objectives_win",
+      "SchemaVE.settings.char_settings",
+      "SchemaVE.settings.char_settings.choices",
+      "SchemaVE.settings.char_settings.choices[3]",
+      "SchemaVE.settings.char_settings.choices[4]",
+      "SchemaVE.settings.char_settings.choices[5]",
+      "SchemaVE.settings.gameflags[1]",
+      "SchemaVE.settings.gameflags[2]",
+      "SchemaVE.settings.gameflags[3]",
+      "SchemaVE.settings.gameflags[4]",
+      "SchemaVE.settings.gameflags[6]",
+      "SchemaVE.settings.gameflags[7]",
+      "SchemaVE.settings.mystery_settings",
+      "SchemaVE.settings.mystery_settings.flag_prob_dict",
+      "SchemaVE.settings.mystery_settings.flag_prob_dict.GameFlags.BAZ",
+      "SchemaVE.settings.mystery_settings.flag_prob_dict.GameFlags.NEGATIVE",
+      "SchemaVE.settings.mystery_settings.flag_prob_dict.ROFlags.QUUX",
+      "SchemaVE.settings.mystery_settings.game_mode_freqs.Ice Age",
+      "SchemaVE.settings.mystery_settings.game_mode_freqs.Lost Worlds",
+      "SchemaVE.settings.ro_settings",
+      "SchemaVE.settings.ro_settings.bosses[1]",
+      "SchemaVE.settings.ro_settings.bosses[3]",
+      "SchemaVE.settings.ro_settings.bosses[4]",
+      "SchemaVE.settings.ro_settings.flags[1]",
+      "SchemaVE.settings.ro_settings.flags[2]",
+      "SchemaVE.settings.ro_settings.flags[3]",
+      "SchemaVE.settings.tab_settings",
+      "SchemaVE.settings.tab_settings.binom_success",
+      "SchemaVE.settings.tab_settings.magic_max",
+      "SchemaVE.settings.tab_settings.power_min",
+      "SchemaVE.settings.tab_settings.speed_max",
+      "SchemaVE.settings.tab_settings.speed_min"
+    ]
+  }
+}

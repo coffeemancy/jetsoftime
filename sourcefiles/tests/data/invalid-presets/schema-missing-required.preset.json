@@ -1,0 +1,13 @@
+{
+  "settings": {},
+  "tests": {
+    "$comment": "5 schema errors because missing the 5 required for Settings.",
+    "expected_errors": [
+      "SchemaVE.settings",
+      "SchemaVE.settings",
+      "SchemaVE.settings",
+      "SchemaVE.settings",
+      "SchemaVE.settings"
+    ]
+  }
+}
